@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -R \"D:\\\\Products\\\\interactive-map\\\\content\\\\lib\" \"D:\\\\Products\\\\interactive-map\\\\content\\\\assets\" 2>nul; echo \"---TILES COUNT---\"; find \"D:\\\\Products\\\\interactive-map\\\\content\\\\tiles\" -type f 2>/dev/null | wc -l)"
+    ]
+  }
+}

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.ProductShell" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
+        <item name="colorPrimary">#6366f1</item>
+        <item name="colorPrimaryVariant">#4f46e5</item>
+        <item name="colorOnPrimary">#ffffff</item>
+    </style>
+
+    <style name="Theme.ProductShell.Fullscreen" parent="Theme.ProductShell">
+        <item name="android:windowFullscreen">true</item>
+        <item name="windowNoTitle">true</item>
+        <item name="windowActionBar">false</item>
+    </style>
+</resources>

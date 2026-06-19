@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "music-encyclopedia",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8780", "--directory", "D:/Products/music-encyclopedia/content"],
+      "port": 8780
+    }
+  ]
+}

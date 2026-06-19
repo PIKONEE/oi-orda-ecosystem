@@ -1,0 +1,30 @@
+{
+  "product_id": 7,
+  "slug": "speech-therapy",
+  "name": "Кабинет логопеда — игры для речи",
+  "version": "1.0.0",
+  "publisher": "Oi-Orda",
+
+  "android_namespace": "kz.digitouch.speechtherapy",
+
+  "engine": "webview2",
+
+  "content_dir": "content",
+  "entry_html": "index.html",
+  "icon": "assets/icon.svg",
+
+  "variants": [
+    {"id": 0, "slug": "speech", "name": "Логопедические игры"}
+  ],
+
+  "window": {
+    "title": "Кабинет логопеда — Oi-Orda",
+    "fullscreen": true
+  },
+
+  "security": {
+    "anti_copy": true,
+    "flag_secure": true,
+    "skip_activation": false
+  }
+}

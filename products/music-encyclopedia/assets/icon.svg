@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1d1b2e"/>
+      <stop offset="1" stop-color="#14131f"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f1d18a"/>
+      <stop offset="1" stop-color="#cf9f4f"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="52" fill="url(#bg)"/>
+  <!-- глобус (карта традиций) -->
+  <circle cx="128" cy="128" r="78" fill="none" stroke="url(#gold)" stroke-width="3" opacity="0.45"/>
+  <ellipse cx="128" cy="128" rx="34" ry="78" fill="none" stroke="url(#gold)" stroke-width="2.5" opacity="0.35"/>
+  <line x1="50" y1="128" x2="206" y2="128" stroke="url(#gold)" stroke-width="2.5" opacity="0.35"/>
+  <line x1="64" y1="92" x2="192" y2="92" stroke="url(#gold)" stroke-width="2" opacity="0.28"/>
+  <line x1="64" y1="164" x2="192" y2="164" stroke="url(#gold)" stroke-width="2" opacity="0.28"/>
+  <!-- нота -->
+  <g fill="url(#gold)">
+    <rect x="150" y="58" width="9" height="104" rx="4"/>
+    <path d="M150 58 q34 4 34 26 q0 8 -10 12 q4 -22 -24 -26 z"/>
+    <ellipse cx="132" cy="166" rx="26" ry="19" transform="rotate(-18 132 166)"/>
+  </g>
+</svg>

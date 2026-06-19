@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Музыкальная энциклопедия — Oi-Orda</title>
+<link rel="stylesheet" href="lib/leaflet.css">
+<link rel="stylesheet" href="assets/fonts.css">
+<link rel="stylesheet" href="app.css?v=2">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="logo-disc" aria-hidden="true"></div>
+  <div class="brand">
+    <h1 data-i18n="appTitle">Музыкальная энциклопедия</h1>
+    <small data-i18n="tagline">Карта традиций · Лента истории · Тренажёр слуха</small>
+  </div>
+  <div class="eq" id="eq" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
+  <span class="spacer"></span>
+  <button class="credits-btn" id="creditsBtn" title="Источники">♪</button>
+  <div class="lang">
+    <button data-lang="ru" class="active">RU</button>
+    <button data-lang="kz">KZ</button>
+  </div>
+</header>
+
+<nav class="nav">
+  <button data-view="map" data-i18n="navMap" class="active">Карта традиций</button>
+  <button data-view="timeline" data-i18n="navTimeline">Лента истории</button>
+  <button data-view="ear" data-i18n="navEar">Тренажёр слуха</button>
+</nav>
+
+<main class="stage">
+  <!-- Раздел 1: карта -->
+  <section id="view-map" class="view active">
+    <div class="map-layout">
+      <div id="mmap" class="mmap"></div>
+      <aside class="card" id="regionCard"></aside>
+    </div>
+  </section>
+
+  <!-- Раздел 2: лента истории -->
+  <section id="view-timeline" class="view">
+    <div class="tl-layout">
+      <div class="tl-band" id="tlBand"></div>
+      <div class="card tl-card" id="tlCard"></div>
+    </div>
+  </section>
+
+  <!-- Раздел 3: тренажёр слуха -->
+  <section id="view-ear" class="view">
+    <div class="ear-wrap">
+      <div class="ear-controls">
+        <div class="seg" id="earModes"></div>
+        <div class="seg" id="earLevels"></div>
+      </div>
+      <div class="ear-stage">
+        <div class="ear-play">
+          <button id="earPlay" class="play-big">▶</button>
+          <button id="earReplay" class="play-sm">↻</button>
+        </div>
+        <div class="ear-ask" id="earAsk"></div>
+        <div class="ear-options" id="earOptions"></div>
+        <div class="ear-feedback" id="earFeedback"></div>
+      </div>
+      <div class="ear-stats" id="earStats"></div>
+    </div>
+  </section>
+</main>
+
+<!-- Источники аудио -->
+<div class="modal" id="creditsModal" hidden>
+  <div class="modal-box">
+    <div class="modal-head"><h3 data-i18n="creditsTitle">Источники аудио</h3>
+      <button class="modal-close" id="creditsClose" data-i18n="close">Закрыть</button></div>
+    <div class="modal-body" id="creditsBody"></div>
+  </div>
+</div>
+
+<!-- библиотека карты -->
+<script src="lib/leaflet.js"></script>
+<!-- данные (window.* — без fetch, офлайн, Android) -->
+<script src="data/regions.js?v=2"></script>
+<script src="data/eras_music.js?v=5"></script>
+<script src="data/eartrainer.js?v=2"></script>
+<script src="data/credits.js?v=5"></script>
+<script src="locales/i18n.js?v=2"></script>
+<!-- движок звука + оркестратор + модули -->
+<script src="js/audio.js?v=5"></script>
+<script src="app.js?v=2"></script>
+<script src="js/map.js?v=5"></script>
+<script src="js/timeline.js?v=5"></script>
+<script src="js/ear.js?v=2"></script>
+</body>
+</html>

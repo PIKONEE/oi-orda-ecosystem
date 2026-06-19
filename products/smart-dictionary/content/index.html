@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Умный словарь — Oi-Orda</title>
+<script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+<link rel="stylesheet" href="assets/fonts.css">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+
+<!-- ШАПКА -->
+<header class="topbar">
+  <button class="brand" id="goHome" title="">
+    <span class="brand-txt">Умный словарь<small data-i18n="tagline">Английский словарь для урока</small></span>
+  </button>
+
+  <span class="spacer"></span>
+
+  <div class="lang">
+    <button data-lang="ru" class="active">RU</button>
+    <button data-lang="kz">KZ</button>
+  </div>
+</header>
+
+<main class="main">
+
+  <!-- ===== ГЛАВНАЯ ===== -->
+  <section class="view" id="view-home">
+    <div class="hero">
+      <div class="hero-inner">
+        <h1 class="hero-title" data-i18n="heroTitle">Английский словарь</h1>
+        <p class="hero-sub" data-i18n="heroSub">Выберите тему или найдите слово</p>
+        <div class="search">
+          <span class="si">🔎</span>
+          <input id="search" type="text" data-i18n-ph="searchPh" placeholder="Поиск слова или перевода…" autocomplete="off">
+        </div>
+      </div>
+    </div>
+
+    <!-- результаты поиска (показываются вместо разделов при вводе) -->
+    <div id="searchResults" class="hidden">
+      <div class="row-head"><h2 id="searchTitle"></h2></div>
+      <div class="wordlist" id="searchList"></div>
+    </div>
+
+    <!-- разделы (группы → мини-разделы) -->
+    <div id="sectionsBlock">
+      <div id="allWordsSlot"></div>
+      <div class="row-head">
+        <h2 data-i18n="sections">Разделы</h2>
+        <span class="legend" id="legend"></span>
+      </div>
+      <div id="groups"></div>
+    </div>
+  </section>
+
+  <!-- ===== РАЗДЕЛ ===== -->
+  <section class="view hidden" id="view-topic">
+    <div class="topic-head">
+      <button class="btn-back" id="topicBack">‹ <span data-i18n="back">Назад</span></button>
+      <div class="topic-title"><span class="t-emoji" id="topicEmoji"></span><h1 id="topicName"></h1><span class="t-count" id="topicCount"></span></div>
+    </div>
+
+    <div class="topic-actions">
+      <button class="big-action a-cards" id="actCards"><span class="bi">📖</span><span data-i18n="startCards">Карточки</span></button>
+      <button class="big-action a-quiz"  id="actQuiz"><span class="bi">📝</span><span data-i18n="startQuiz">Квиз</span></button>
+    </div>
+
+    <div class="topic-tools">
+      <div class="lvl-filter" id="fltLevel"></div>
+      <button class="chip" id="toggleTr"><span data-i18n="hideTr">Скрыть перевод</span></button>
+      <button class="chip" id="toggleSelect"><span data-i18n="selectWords">Выбрать слова</span></button>
+      <span class="sel-tools hidden" id="selTools">
+        <button class="chip ghost" id="selAll" data-i18n="selectAll">Выделить все</button>
+        <button class="chip ghost" id="selClear" data-i18n="clearSel">Снять</button>
+        <span class="sel-count" id="selCount"></span>
+      </span>
+    </div>
+
+    <div class="wordlist" id="wordlist"></div>
+  </section>
+</main>
+
+<!-- ОВЕРЛЕЙ: КАРТОЧКИ (урок у доски) -->
+<div class="overlay" id="ovCards">
+  <div class="ovbar">
+    <button class="close" id="fcShuffle" title=""><span>🔀</span></button>
+    <span class="spacer"></span>
+    <span class="ovtitle" id="fcCounter">0 / 0</span>
+    <span class="spacer"></span>
+    <button class="close" id="fcClose">✕</button>
+  </div>
+  <div class="ovbody" id="fcBody"></div>
+  <div class="fc-nav" id="fcNav">
+    <button class="nav-btn" id="fcPrev">‹ <span data-i18n="prev">Назад</span></button>
+    <button class="nav-btn flip" id="fcFlip" data-i18n="showTr">Показать перевод</button>
+    <button class="nav-btn" id="fcNext"><span data-i18n="next">Далее</span> ›</button>
+  </div>
+</div>
+
+<!-- ОВЕРЛЕЙ: КВИЗ -->
+<div class="overlay" id="ovQuiz">
+  <div class="ovbar">
+    <div class="progwrap"><i id="qzProg"></i></div>
+    <span class="ovtitle score" id="qzScore">0</span>
+    <button class="close" id="qzClose">✕</button>
+  </div>
+  <div class="ovbody" id="qzBody"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- данные и переводы (через <script> — без fetch, работает на Win и Android) -->
+<script src="locales/i18n.js"></script>
+<script src="data/index.js"></script>
+<script src="data/cat_basics.js"></script>
+<script src="data/cat_phrases.js"></script>
+<script src="data/cat_people.js"></script>
+<script src="data/cat_food.js"></script>
+<script src="data/cat_home.js"></script>
+<script src="data/cat_objects.js"></script>
+<script src="data/cat_clothing.js"></script>
+<script src="data/cat_body.js"></script>
+<script src="data/cat_animals.js"></script>
+<script src="data/cat_nature.js"></script>
+<script src="data/cat_city.js"></script>
+<script src="data/cat_society.js"></script>
+<script src="data/cat_travel.js"></script>
+<script src="data/cat_work.js"></script>
+<script src="data/cat_school.js"></script>
+<script src="data/cat_tech.js"></script>
+<script src="data/cat_time.js"></script>
+<script src="data/cat_emotions.js"></script>
+<script src="data/cat_verbs.js"></script>
+<script src="data/cat_adjectives.js"></script>
+<script src="data/cat_money.js"></script>
+<script src="data/cat_sports.js"></script>
+<script src="data/cat_misc.js"></script>
+<script src="data/cat_academic.js"></script>
+<script src="data/cat_business2.js"></script>
+<script src="data/cat_science.js"></script>
+<script src="data/cat_nature2.js"></script>
+<script src="data/cat_society2.js"></script>
+<script src="data/cat_character.js"></script>
+<script src="data/cat_verbs2.js"></script>
+<script src="data/cat_communication.js"></script>
+<script src="data/cat_phrasal.js"></script>
+<script src="data/cat_abstract.js"></script>
+<script src="data/cat_more.js"></script>
+<script src="data/cat_adv_academic.js"></script>
+<script src="data/cat_adv_verbs.js"></script>
+<script src="data/cat_adv_adjectives.js"></script>
+<script src="data/cat_adv_people.js"></script>
+<script src="data/cat_adv_society.js"></script>
+<script src="data/cat_adv_phrases.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

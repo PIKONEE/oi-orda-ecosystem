@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Кабинет логопеда — Oi-Orda</title>
+<link rel="stylesheet" href="assets/fonts.css">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+
+<header class="topbar">
+  <button class="back" id="backBtn" data-i18n="back">‹ Назад</button>
+  <div class="brand">
+    <h1 data-i18n="appTitle">Кабинет логопеда</h1>
+    <small data-i18n="tagline">Игры для развития речи</small>
+  </div>
+  <span class="spacer"></span>
+  <button class="credits-btn" id="creditsBtn" title="Источники">ⓘ</button>
+  <div class="lang">
+    <button data-lang="ru" class="active">RU</button>
+    <button data-lang="kz">KZ</button>
+  </div>
+</header>
+
+<main class="stage">
+  <!-- Домашний экран -->
+  <section id="view-home" class="view active">
+    <h2 class="home-title" data-i18n="home">Выберите игру</h2>
+    <div class="tiles">
+      <button class="tile t-cards" data-go="cards">
+        <span class="tile-emoji">🔤</span>
+        <span class="tile-name" data-i18n="modCards">Карточки звуков</span>
+        <span class="tile-sub" data-i18n="modCardsSub">Буква, картинка и звук</span>
+      </button>
+      <button class="tile t-game" data-go="game">
+        <span class="tile-emoji">👂</span>
+        <span class="tile-name" data-i18n="modGame">Определи звук</span>
+        <span class="tile-sub" data-i18n="modGameSub">Какой звук в слове?</span>
+      </button>
+      <button class="tile t-tw" data-go="twisters">
+        <span class="tile-emoji">💬</span>
+        <span class="tile-name" data-i18n="modTw">Скороговорки</span>
+        <span class="tile-sub" data-i18n="modTwSub">Читай и тренируй звук</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- Карточки звуков -->
+  <section id="view-cards" class="view">
+    <div class="chips" id="cardChips"></div>
+    <div class="card-stage" id="cardStage">
+      <button class="nav-arrow" id="cardPrev">‹</button>
+      <div class="card" id="cardMain"></div>
+      <button class="nav-arrow" id="cardNext">›</button>
+    </div>
+    <div class="card-dots" id="cardDots"></div>
+  </section>
+
+  <!-- Определи звук -->
+  <section id="view-game" class="view">
+    <div class="chips" id="gamePairs"></div>
+    <div class="game-stage">
+      <button class="big-listen" id="gamePlay">▶</button>
+      <div class="ask" id="gameAsk"></div>
+      <div class="game-options" id="gameOptions"></div>
+      <div class="game-fb" id="gameFb"></div>
+    </div>
+    <div class="game-stats" id="gameStats"></div>
+  </section>
+
+  <!-- Скороговорки -->
+  <section id="view-twisters" class="view">
+    <div class="chips tw-list" id="twList"></div>
+    <div class="tw-stage">
+      <div class="tw-text" id="twText"></div>
+      <button class="big-listen" id="twPlay">▶</button>
+    </div>
+  </section>
+</main>
+
+<div class="modal" id="creditsModal" hidden>
+  <div class="modal-box">
+    <div class="modal-head"><h3 data-i18n="creditsTitle">Источники</h3>
+      <button class="modal-close" id="creditsClose" data-i18n="close">Закрыть</button></div>
+    <div class="modal-body" id="creditsBody"></div>
+  </div>
+</div>
+
+<!-- данные -->
+<script src="data/sounds_ru.js"></script>
+<script src="data/sounds_kz.js"></script>
+<script src="data/game_ru.js"></script>
+<script src="data/game_kz.js"></script>
+<script src="data/twisters_ru.js"></script>
+<script src="data/twisters_kz.js"></script>
+<script src="data/credits.js"></script>
+<script src="locales/i18n.js"></script>
+<!-- движок + оркестратор + модули -->
+<script src="js/audio.js?v=1"></script>
+<script src="app.js?v=1"></script>
+<script src="js/cards.js?v=1"></script>
+<script src="js/game.js?v=1"></script>
+<script src="js/twisters.js?v=1"></script>
+</body>
+</html>

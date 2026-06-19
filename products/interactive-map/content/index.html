@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Карта истории Казахстана — Oi-Orda</title>
+<link rel="stylesheet" href="lib/leaflet.css">
+<link rel="stylesheet" href="assets/fonts.css">
+<link rel="stylesheet" href="app.css?v=4">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <h1 data-i18n="appTitle">Карта истории Казахстана</h1>
+    <small data-i18n="tagline">Интерактивная историческая карта</small>
+  </div>
+  <span class="spacer"></span>
+  <div class="lang">
+    <button data-lang="ru" class="active">RU</button>
+    <button data-lang="kz">KZ</button>
+  </div>
+</header>
+
+<main class="layout">
+  <aside class="sidebar">
+    <div class="side-block">
+      <div class="side-head" data-i18n="categories">Категории событий</div>
+      <div class="cats" id="cats"></div>
+    </div>
+    <div class="side-block events-wrap">
+      <div class="side-head"><span data-i18n="eventsTitle">События периода</span> <span class="ev-count" id="evCount"></span></div>
+      <div class="events" id="events"></div>
+    </div>
+  </aside>
+
+  <div class="mapwrap">
+    <div id="map"></div>
+    <div class="era-badge" id="eraBadge"></div>
+    <div class="approx" id="approxNote"></div>
+  </div>
+</main>
+
+<!-- полноэкранная страница-статья события (рендерится в app.js) -->
+<div class="detail" id="detail" aria-hidden="true" role="dialog" aria-modal="true">
+  <div class="detail-scroll" id="detailScroll" tabindex="-1"></div>
+</div>
+
+<footer class="timebar">
+  <button class="era-nav" id="prevEra" title="">‹</button>
+  <div class="slider">
+    <div class="yearline">
+      <span class="yearval" id="yearVal">1465</span>
+      <span class="eraval" id="eraVal"></span>
+    </div>
+    <input type="range" id="year" min="-800" max="2025" step="1" value="1465">
+  </div>
+  <button class="era-nav" id="nextEra" title="">›</button>
+</footer>
+
+<!-- библиотека карты -->
+<script src="lib/leaflet.js"></script>
+<!-- данные (через window.* — без fetch, работает офлайн и на Android) -->
+<script src="data/eras.js?v=2"></script>
+<script src="data/territories.js?v=2"></script>
+<script src="data/base_geo.js"></script>
+<script src="data/events_saka.js?v=4"></script>
+<script src="data/events_huns.js?v=4"></script>
+<script src="data/events_turkic.js?v=4"></script>
+<script src="data/events_medieval.js?v=4"></script>
+<script src="data/events_mongol.js?v=4"></script>
+<script src="data/events_khanate.js?v=4"></script>
+<script src="data/events_russia.js?v=4"></script>
+<script src="data/events_alash.js?v=4"></script>
+<script src="data/events_kazssr.js?v=4"></script>
+<script src="data/events_independence.js?v=4"></script>
+<script src="locales/i18n.js?v=4"></script>
+<script src="app.js?v=4"></script>
+</body>
+</html>

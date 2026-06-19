@@ -1,0 +1,20 @@
+# === Секреты и лицензии экосистемы — НИКОГДА не коммитить ===
+**/_secret.py
+**/ecosystem.keys
+**/keys.db
+**/master.key
+**/license.dat
+
+# === Сборки и кэш ===
+**/builds/
+**/dist/
+**/_build_staging/
+**/_build_temp/
+**/__pycache__/
+*.pyc
+*.apk
+*.exe
+
+# === ОС ===
+Thumbs.db
+.DS_Store

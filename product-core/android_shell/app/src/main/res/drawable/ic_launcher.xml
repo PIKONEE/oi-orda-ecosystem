@@ -1,0 +1,15 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <!-- Фон: индиго-скруглённый квадрат (в тон экрану активации) -->
+    <path
+        android:fillColor="#6366F1"
+        android:pathData="M9,0h30a9,9 0 0 1 9,9v30a9,9 0 0 1 -9,9h-30a9,9 0 0 1 -9,-9v-30a9,9 0 0 1 9,-9z" />
+    <!-- Белое кольцо «O» (Oi-Orda) через evenOdd -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M13,24a11,11 0 1 0 22,0a11,11 0 1 0 -22,0zM19,24a5,5 0 1 1 10,0a5,5 0 1 1 -10,0z" />
+</vector>

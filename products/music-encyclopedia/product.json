@@ -1,0 +1,30 @@
+{
+  "product_id": 6,
+  "slug": "music-encyclopedia",
+  "name": "Интерактивная музыкальная энциклопедия",
+  "version": "1.0.0",
+  "publisher": "Oi-Orda",
+
+  "android_namespace": "kz.digitouch.musicencyclopedia",
+
+  "engine": "webview2",
+
+  "content_dir": "content",
+  "entry_html": "index.html",
+  "icon": "assets/icon.svg",
+
+  "variants": [
+    {"id": 0, "slug": "music", "name": "Музыкальная энциклопедия"}
+  ],
+
+  "window": {
+    "title": "Музыкальная энциклопедия — Oi-Orda",
+    "fullscreen": true
+  },
+
+  "security": {
+    "anti_copy": true,
+    "flag_secure": true,
+    "skip_activation": true
+  }
+}
