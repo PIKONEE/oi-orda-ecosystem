@@ -9,7 +9,7 @@ const data = () => (APP.lang === "kz" ? window.TW_KZ : window.TW_RU) || [];
 let idx = 0;
 
 function init(){
-  $("#twPlay").addEventListener("click", () => { const t = data()[idx]; if (t && window.SP) SP.speak(t.text, APP.lang); });
+  $("#twPlay").addEventListener("click", () => { const t = data()[idx]; if (t && window.SP) SP.playWord(t.text, APP.lang, "tw" + (idx + 1)); });
   render();
 }
 function highlight(text, sounds){

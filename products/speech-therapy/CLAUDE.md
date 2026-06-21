@@ -18,8 +18,10 @@
   `audio/<lang>_<slug>.(mp3|ogg)`; если файла нет — **`speechSynthesis`** (системный TTS
   планшета). Стоп-предыдущего. `SP.translit()` ОБЯЗАН совпадать с `tools/fetch_speech.py`
   (slug файла). `SP.emojiCode()` → имя файла OpenMoji.
-- **Озвучка вшита:** RU — Google TTS (полный набор), KZ — native-записи Wikimedia (где есть)
-  + рантайм-фолбэк (Google TTS **не** поддерживает kk). Поэтому KZ-слова стоит вшивать файлами.
+- **Озвучка вшита (Azure Neural TTS):** RU и KZ запекаются `tools/fetch_speech.py` (Azure
+  Cognitive Services, env `AZURE_SPEECH_KEY`/`AZURE_SPEECH_REGION`). Ударение RU — знак U+0301
+  из карты `STRESS_RU` (Azure ru-RU реагирует). Azure **kk-KZ ударение НЕ перепозиционирует**
+  (произносит по своей модели — финальный слог); проверено пробой. Рантайм-фолбэк — `speechSynthesis`.
 - **Картинки:** OpenMoji (`content/images/<CODE>.svg`, единый стиль, CC BY-SA 4.0); карточка
   строит src из эмодзи; фолбэк — сам эмодзи символом.
 - `_secret.py` (v4) — `python -m product_core.keygen embed 7` (⚠ `PYTHONIOENCODING=utf-8`).
