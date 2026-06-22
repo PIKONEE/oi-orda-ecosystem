@@ -1,0 +1,64 @@
+name: build-apks
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/azure-tts-and-3x-content
+    paths:
+      - 'products/**'
+      - 'product-core/**'
+      - '.github/workflows/build-apks.yml'
+
+jobs:
+  apks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-34 build-tools;34.0.0'
+
+      - name: Make gradlew executable
+        run: chmod +x product-core/android_shell/gradlew
+
+      - name: Build all 4 APKs (skip_activation demos, no secrets needed)
+        run: |
+          set -u
+          java -version
+          python --version
+          cd product-core
+          ok=""; fail=""
+          for slug in smart-dictionary interactive-map music-encyclopedia speech-therapy; do
+            echo "::group::build $slug"
+            if python -m build ../products/$slug --android; then ok="$ok $slug"; else fail="$fail $slug"; fi
+            echo "::endgroup::"
+          done
+          echo "=== OK:$ok ==="
+          echo "=== FAILED:$fail ==="
+          mkdir -p ../_apks
+          find ../products -path '*/builds/android/*.apk' -exec cp {} ../_apks/ \;
+          echo "--- collected APKs ---"
+          ls -la ../_apks || true
+          [ -z "$fail" ]
+
+      - name: Upload APKs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: oi-orda-apks
+          path: _apks/*.apk
+          if-no-files-found: warn
