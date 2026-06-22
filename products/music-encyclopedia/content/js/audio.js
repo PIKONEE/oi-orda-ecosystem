@@ -1,26 +1,25 @@
 /* ============================================================
-   Звуковой движок (Web Audio).
-   • Точный синтез нот/интервалов/аккордов для тренажёра.
-   • Проигрывание вшитых клипов — ТОЛЬКО короткий фрагмент (~13 c) с фейдами.
-   • Любой новый звук СНАЧАЛА останавливает предыдущий (stopAll).
-   AudioContext создаётся лениво — по первому жесту пользователя.
+   Звуковой движок (Web Audio для синтеза + нативный <audio> для клипов).
+   • Точный синтез нот/интервалов/аккордов для тренажёра (Web Audio).
+   • Вшитые клипы (инструменты/эпохи) играем через НАТИВНЫЙ <audio> — медиа-конвейер
+     устройства, без треска/лагов Web Audio decodeAudioData на Android WebView.
+   • Фрагмент ~13 c с фейдами (по громкости). Любой новый звук СНАЧАЛА стопает предыдущий.
+   • AudioContext с latencyHint:'playback' (крупнее буфер → меньше underrun/треска).
    ============================================================ */
 (function () {
 "use strict";
-let ctx = null, master = null;
-const buffers = {};      // key -> AudioBuffer
-const tried = {};        // key -> true
-let voices = [];         // активные голоса: {nodes:[...], gain}
-const CLIP_SEC = 13;     // максимум воспроизведения вшитого фрагмента
+let ctx = null, master = null, voices = [];
+let clipEl = null, clipTimer = null, fadeTimer = null;
+const CLIP_SEC = 13;
 
 function ensure() {
   if (!ctx) {
     const AC = window.AudioContext || window.webkitAudioContext;
-    ctx = new AC();
+    ctx = new AC({ latencyHint: "playback" });
     master = ctx.createGain(); master.gain.value = 0.7;
     const comp = ctx.createDynamicsCompressor();
-    comp.threshold.value = -12; comp.knee.value = 8; comp.ratio.value = 12;
-    comp.attack.value = 0.003; comp.release.value = 0.25;   // лимитер — против клиппинга/треска на аккордах
+    comp.threshold.value = -10; comp.knee.value = 10; comp.ratio.value = 12;
+    comp.attack.value = 0.004; comp.release.value = 0.25;   // лимитер против клиппинга
     master.connect(comp); comp.connect(ctx.destination);
   }
   if (ctx.state === "suspended") ctx.resume();
@@ -28,8 +27,7 @@ function ensure() {
 }
 const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
 
-/* остановить ВСЁ, что сейчас звучит (мгновенный фейд) */
-function stopAll() {
+function stopSynth() {
   if (!ctx) return;
   const t = ctx.currentTime;
   voices.forEach(v => {
@@ -38,17 +36,23 @@ function stopAll() {
   });
   voices = [];
 }
+function stopClip() {
+  if (clipTimer) { clearTimeout(clipTimer); clipTimer = null; }
+  if (fadeTimer) { clearInterval(fadeTimer); fadeTimer = null; }
+  if (clipEl) { try { clipEl.pause(); } catch (e) {} clipEl.onerror = null; clipEl.onended = null; clipEl = null; }
+}
+function stopAll() { stopSynth(); stopClip(); }
 
-/* внутренняя нота (без stopAll) — для последовательностей/аккордов */
+/* нота с 2 гармониками (легче для аудио-потока → меньше underrun на слабых планшетах) */
 function _note(midi, dur, when, gain) {
   const t = when || ctx.currentTime, f = mtof(midi);
   const g = ctx.createGain(); g.connect(master);
   g.gain.setValueAtTime(0.0001, t);
-  g.gain.exponentialRampToValueAtTime(gain, t + 0.012);
+  g.gain.exponentialRampToValueAtTime(gain, t + 0.014);
   g.gain.exponentialRampToValueAtTime(gain * 0.55, t + 0.20);
   g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
   const nodes = [];
-  [[1, 1], [2, 0.42], [3, 0.20], [4, 0.10]].forEach(([h, hg]) => {
+  [[1, 1], [2, 0.35]].forEach(([h, hg]) => {
     const o = ctx.createOscillator(); o.type = "sine"; o.frequency.value = f * h; o._t = t;
     const pg = ctx.createGain(); pg.gain.value = hg;
     o.connect(pg); pg.connect(g);
@@ -56,20 +60,16 @@ function _note(midi, dur, when, gain) {
   });
   voices.push({ nodes, gain: g });
 }
-
 function playNote(midi, dur, when, gain) { ensure(); stopAll(); _note(midi, dur || 0.9, when || ctx.currentTime, gain == null ? 0.2 : gain); }
-
 function playInterval(rootMidi, semi, melodic) {
   ensure(); stopAll(); const t0 = ctx.currentTime;
   if (melodic === false) { _note(rootMidi, 1.4, t0, 0.16); _note(rootMidi + semi, 1.4, t0, 0.16); }
   else { _note(rootMidi, 0.7, t0, 0.20); _note(rootMidi + semi, 0.9, t0 + 0.62, 0.20); }
 }
-
 function playChord(rootMidi, semis, dur) {
   ensure(); stopAll(); const t = ctx.currentTime;
-  semis.forEach(s => _note(rootMidi + s, dur || 1.5, t, 0.14));
+  semis.forEach(s => _note(rootMidi + s, dur || 1.5, t, 0.13));
 }
-
 function playMotif(motif, base, bpm) {
   ensure(); stopAll();
   base = base == null ? 60 : base; bpm = bpm || 110;
@@ -92,36 +92,29 @@ function playScale(scaleName, root) {
   seq.forEach(n => { _note(root + n, beat * 1.1, t, 0.18); t += beat; });
 }
 
-/* короткий фрагмент вшитого клипа content/audio/<key>.(mp3|ogg|wav) с offset (сек);
-   иначе fallback() */
+/* короткий фрагмент вшитого клипа через нативный <audio>: mp3 → ogg → wav → fallback() */
 function playKey(key, fallback, offset) {
   ensure(); stopAll(); offset = offset || 0;
-  if (buffers[key]) { startClip(buffers[key], offset); return; }
-  if (tried[key]) { if (fallback) fallback(); return; }
-  tried[key] = true;
-  const exts = ["mp3", "ogg", "wav"]; let i = 0;
-  (function next() {
-    if (i >= exts.length) { if (fallback) fallback(); return; }
-    fetch("audio/" + key + "." + exts[i++], { cache: "force-cache" })
-      .then(r => r.ok ? r.arrayBuffer() : Promise.reject())
-      .then(buf => ctx.decodeAudioData(buf))
-      .then(ab => { buffers[key] = ab; startClip(ab, offset); })
-      .catch(next);
-  })();
-}
-function startClip(ab, offset) {
-  offset = offset || 0;
-  if (offset >= ab.duration - 1) offset = 0;    // старт за пределами файла → с начала
-  const t = ctx.currentTime, dur = Math.min(CLIP_SEC, ab.duration - offset);
-  const fade = Math.min(1.5, dur / 2 - 0.05);   // фейд-ин и фейд-аут по 1.5 c
-  const src = ctx.createBufferSource(); src.buffer = ab; src._t = t;
-  const g = ctx.createGain(); src.connect(g); g.connect(master);
-  g.gain.setValueAtTime(0.0001, t);
-  g.gain.linearRampToValueAtTime(0.95, t + fade);          // плавное нарастание в начале
-  g.gain.setValueAtTime(0.95, t + dur - fade);
-  g.gain.linearRampToValueAtTime(0.0001, t + dur);         // плавное затухание в конце
-  src.start(t, offset, dur + 0.1); src.stop(t + dur + 0.15);
-  voices.push({ nodes: [src], gain: g });
+  const a = new Audio(); clipEl = a; a.preload = "auto"; a.volume = 0;
+  const exts = ["mp3", "ogg", "wav"]; let stage = 0;
+  function nextExt() {
+    if (clipEl !== a) return;
+    if (stage >= exts.length) { stopClip(); if (fallback) fallback(); return; }
+    a.src = "audio/" + key + "." + exts[stage++];
+    const p = a.play(); if (p && p.catch) p.catch(function(){});  // gesture/transient — не считаем «нет файла»
+  }
+  a.onerror = nextExt;                                            // 404/декод-ошибка → следующий формат → синтез
+  a.onloadedmetadata = function () { try { if (offset && offset < a.duration - 1) a.currentTime = offset; } catch (e) {} };
+  a.onended = function () { if (clipEl === a) stopClip(); };
+  nextExt();
+  const FADE = 1.5, start = Date.now();
+  fadeTimer = setInterval(function () {
+    if (clipEl !== a) { clearInterval(fadeTimer); return; }
+    const el = (Date.now() - start) / 1000; let v;
+    if (el < FADE) v = el / FADE; else if (el > CLIP_SEC - FADE) v = (CLIP_SEC - el) / FADE; else v = 1;
+    a.volume = Math.min(1, Math.max(0, v));
+  }, 60);
+  clipTimer = setTimeout(stopClip, CLIP_SEC * 1000);
 }
 
 window.AUDIO = { ensure, stopAll, mtof, playNote, playInterval, playChord, playMotif, playScale, playKey, SCALES };

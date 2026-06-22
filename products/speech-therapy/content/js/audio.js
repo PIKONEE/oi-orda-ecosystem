@@ -1,7 +1,8 @@
 /* ============================================================
-   Звук и помощники. playWord: вшитый клип audio/<lang>_<slug>.(mp3|ogg)
-   → если нет, говорит через системный TTS (speechSynthesis). Стоп-предыдущего.
-   Анти-клик: короткий fade-in при старте и fade-out при остановке (убирает треск).
+   Звук логопеда. Слова озвучиваются НАТИВНЫМ <audio> (медиа-конвейер устройства) —
+   это убирает треск/лаги, которые даёт Web Audio decodeAudioData на Android WebView.
+   Нет файла → системный TTS (speechSynthesis). Всегда стоп-предыдущего.
+   ding() — короткий сигнал верного/неверного (Web Audio, латентность 'playback').
    translit() ДОЛЖЕН совпадать с tools/fetch_speech.py. emojiCode() → имя OpenMoji.
    ============================================================ */
 window.SP = (function () {
@@ -22,29 +23,16 @@ function emojiCode(e){
     .map(cp => cp.toString(16).toUpperCase()).join("-");
 }
 
-let ctx = null, current = null, curGain = null;
-const buffers = {}, tried = {};
+let cur = null;       // текущий HTMLAudioElement
+let actx = null;      // AudioContext только для ding()
 function ensure(){
-  if (!ctx){ const AC = window.AudioContext || window.webkitAudioContext; if (AC) ctx = new AC(); }
-  if (ctx && ctx.state === "suspended") ctx.resume();
-  return ctx;
+  if (!actx){ const AC = window.AudioContext || window.webkitAudioContext;
+    if (AC) actx = new AC({ latencyHint: "playback" }); }
+  if (actx && actx.state === "suspended") actx.resume();
+  return actx;
 }
 function stopAll(){
-  try {
-    if (current){
-      current.onended = null;
-      if (curGain && ctx){
-        const t = ctx.currentTime;
-        curGain.gain.cancelScheduledValues(t);
-        curGain.gain.setValueAtTime(Math.max(curGain.gain.value || 0.0001, 0.0001), t);
-        curGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);  // fade-out (анти-клик)
-        current.stop(t + 0.06);
-      } else {
-        current.stop(0);
-      }
-    }
-  } catch (e) {}
-  current = null; curGain = null;
+  if (cur){ try { cur.pause(); } catch (e) {} cur.onerror = null; cur.onended = null; cur = null; }
   try { window.speechSynthesis && speechSynthesis.cancel(); } catch (e) {}
 }
 function speak(word, lang){
@@ -54,37 +42,25 @@ function speak(word, lang){
     speechSynthesis.cancel(); speechSynthesis.speak(u);
   } catch (e) {}
 }
-function playBuf(ab){
-  const c = ensure(); if (!c) return;
-  const s = c.createBufferSource(); s.buffer = ab;
-  const g = c.createGain();
-  const t = c.currentTime;
-  g.gain.setValueAtTime(0.0001, t);
-  g.gain.exponentialRampToValueAtTime(1, t + 0.03);   // fade-in (анти-клик)
-  s.connect(g); g.connect(c.destination);
-  s.onended = () => { if (current === s){ current = null; curGain = null; } };
-  s.start();
-  current = s; curGain = g;
-}
+/* Слово через нативный <audio>: mp3 → ogg → системный TTS */
 function playWord(word, lang, slug){
   stopAll();
   slug = slug || translit(word);
   const key = lang + "_" + slug;
-  if (!ensure()){ speak(word, lang); return; }            // нет Web Audio → системный TTS
-  if (buffers[key]){ playBuf(buffers[key]); return; }
-  if (tried[key]){ speak(word, lang); return; }           // уже знаем, что файла нет
-  tried[key] = true;
-  const exts = ["mp3", "ogg"]; let i = 0;
-  (function next(){
-    if (i >= exts.length){ speak(word, lang); return; }   // файла нет → системный TTS
-    fetch("audio/" + key + "." + exts[i++], { cache: "force-cache" })
-      .then(r => r.ok ? r.arrayBuffer() : Promise.reject())
-      .then(b => ctx.decodeAudioData(b))
-      .then(ab => { buffers[key] = ab; playBuf(ab); })
-      .catch(next);
-  })();
+  const a = new Audio(); cur = a; a.preload = "auto";
+  let stage = 0;  // 0=mp3 → 1=ogg → 2=tts
+  function fail(){
+    if (cur !== a || stage >= 2) return;
+    if (stage === 0){ stage = 1; a.src = "audio/" + key + ".ogg"; const p = a.play(); if (p && p.catch) p.catch(fail); }
+    else { stage = 2; speak(word, lang); }
+  }
+  a.onerror = fail;
+  a.onended = function(){ if (cur === a) cur = null; };
+  a.src = "audio/" + key + ".mp3";
+  const p = a.play();
+  if (p && p.catch) p.catch(fail);
 }
-/* короткий «дзинь» для верного/неверного ответа */
+/* короткий «дзинь» верного/неверного ответа */
 function ding(ok){
   const c = ensure(); if (!c) return;
   const t = c.currentTime, g = c.createGain(); g.connect(c.destination);
