@@ -1,6 +1,7 @@
 /* ============================================================
    Звук и помощники. playWord: вшитый клип audio/<lang>_<slug>.(mp3|ogg)
    → если нет, говорит через системный TTS (speechSynthesis). Стоп-предыдущего.
+   Анти-клик: короткий fade-in при старте и fade-out при остановке (убирает треск).
    translit() ДОЛЖЕН совпадать с tools/fetch_speech.py. emojiCode() → имя OpenMoji.
    ============================================================ */
 window.SP = (function () {
@@ -21,7 +22,7 @@ function emojiCode(e){
     .map(cp => cp.toString(16).toUpperCase()).join("-");
 }
 
-let ctx = null, current = null;
+let ctx = null, current = null, curGain = null;
 const buffers = {}, tried = {};
 function ensure(){
   if (!ctx){ const AC = window.AudioContext || window.webkitAudioContext; if (AC) ctx = new AC(); }
@@ -29,8 +30,21 @@ function ensure(){
   return ctx;
 }
 function stopAll(){
-  try { if (current){ current.onended = null; current.stop(0); } } catch (e) {}
-  current = null;
+  try {
+    if (current){
+      current.onended = null;
+      if (curGain && ctx){
+        const t = ctx.currentTime;
+        curGain.gain.cancelScheduledValues(t);
+        curGain.gain.setValueAtTime(Math.max(curGain.gain.value || 0.0001, 0.0001), t);
+        curGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);  // fade-out (анти-клик)
+        current.stop(t + 0.06);
+      } else {
+        current.stop(0);
+      }
+    }
+  } catch (e) {}
+  current = null; curGain = null;
   try { window.speechSynthesis && speechSynthesis.cancel(); } catch (e) {}
 }
 function speak(word, lang){
@@ -42,8 +56,15 @@ function speak(word, lang){
 }
 function playBuf(ab){
   const c = ensure(); if (!c) return;
-  const s = c.createBufferSource(); s.buffer = ab; s.connect(c.destination);
-  s.start(); current = s;
+  const s = c.createBufferSource(); s.buffer = ab;
+  const g = c.createGain();
+  const t = c.currentTime;
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(1, t + 0.03);   // fade-in (анти-клик)
+  s.connect(g); g.connect(c.destination);
+  s.onended = () => { if (current === s){ current = null; curGain = null; } };
+  s.start();
+  current = s; curGain = g;
 }
 function playWord(word, lang, slug){
   stopAll();

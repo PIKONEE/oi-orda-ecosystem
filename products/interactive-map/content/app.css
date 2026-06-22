@@ -103,7 +103,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 /* ── полноэкранная страница-статья события ───────────────────────────── */
 body.detail-open{overflow:hidden;}
 .detail{position:fixed;inset:0;z-index:1000;display:none;opacity:0;
-  background:rgba(38,26,14,.62);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+  background:rgba(38,26,14,.88);
   transition:opacity .26s var(--ease);}
 .detail.open{display:block;opacity:1;}
 .detail-scroll{position:absolute;inset:0;overflow-y:auto;outline:none;-webkit-overflow-scrolling:touch;}

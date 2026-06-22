@@ -31,7 +31,7 @@ function newQuestion(){
   $("#gameOptions").innerHTML = [pair.a, pair.b].map(s =>
     `<button class="opt-sound" data-s="${esc(s)}">${esc(s)}</button>`).join("");
   $("#gameOptions").onclick = onAnswer;
-  $("#gamePlay").textContent = APP.t("gamePlay");
+  $("#gamePlay").textContent = "▶";
   if (window.SP) SP.playWord(q.word, APP.lang);
 }
 function onAnswer(e){

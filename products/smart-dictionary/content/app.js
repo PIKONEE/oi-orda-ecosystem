@@ -156,8 +156,17 @@ function runSearch(q){
   if (!query){ sr.classList.add("hidden"); sb.classList.remove("hidden"); return; }
   sb.classList.add("hidden"); sr.classList.remove("hidden");
   const list = WORDS.filter(w => w.w.toLowerCase().includes(query) || w.ru.toLowerCase().includes(query) || w.kz.toLowerCase().includes(query));
-  $("#searchTitle").textContent = t("emptyTitle") && list.length ? `“${q}” · ${list.length}` : (list.length ? q : t("emptyTitle"));
-  renderWords($("#searchList"), list, false);
+  const LIMIT = 60;                                  // не рендерим тысячи карточек → нет лагов
+  const shown = list.length > LIMIT ? list.slice(0, LIMIT) : list;
+  $("#searchTitle").textContent = list.length ? `“${q}” · ${list.length}` : t("emptyTitle");
+  renderWords($("#searchList"), shown, false);
+  if (list.length > LIMIT){
+    const more = document.createElement("div");
+    more.className = "search-more";
+    more.textContent = (state.lang === "kz" ? "Тағы " : "Ещё ") + (list.length - LIMIT) +
+      (state.lang === "kz" ? " — сұранысты нақтылаңыз" : " — уточните запрос");
+    $("#searchList").appendChild(more);
+  }
 }
 
 /* ============================================================
@@ -384,8 +393,16 @@ function bind(){
   $("#goHome").addEventListener("click", goHome);
   $$(".lang button").forEach(b => b.addEventListener("click", () => setLang(b.dataset.lang)));
 
+  // кнопка «наверх» (показывается при прокрутке, прокручивает страницу в начало)
+  const toTop = $("#toTop");
+  if (toTop){
+    toTop.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
+    window.addEventListener("scroll", () => toTop.classList.toggle("show", window.scrollY > 400), { passive: true });
+  }
+
   // главная: поиск и переход в раздел
-  $("#search").addEventListener("input", e => runSearch(e.target.value));
+  let searchTimer;
+  $("#search").addEventListener("input", e => { const v = e.target.value; clearTimeout(searchTimer); searchTimer = setTimeout(() => runSearch(v), 130); });
   $("#sectionsBlock").addEventListener("click", e => { const g = e.target.closest("[data-go]"); if (g) openTopic(g.dataset.go); });
 
   // результаты поиска: озвучка/примеры/перевод

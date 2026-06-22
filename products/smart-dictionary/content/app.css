@@ -218,6 +218,7 @@ input{font-family:inherit;}
 .w-ex li::before{content:"";position:absolute;left:0;top:13px;width:7px;height:7px;border-radius:50%;background:var(--violet);}
 .w-ex li b{color:var(--ink);font-weight:800;}
 
+.search-more{grid-column:1/-1;text-align:center;color:var(--muted);font-weight:700;padding:14px;font-size:1rem;}
 .empty{grid-column:1/-1;text-align:center;padding:70px 20px;color:var(--muted);}
 .empty .e-emoji{font-size:3.2rem;}
 .empty h3{font-size:1.3rem;color:var(--ink);margin-top:8px;}
@@ -311,6 +312,15 @@ input{font-family:inherit;}
   background:var(--ink);color:#fff;padding:14px 24px;border-radius:14px;font-weight:700;font-size:1.05rem;
   opacity:0;transition:.3s var(--ease);box-shadow:var(--shadow-lg);}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* кнопка «наверх» (появляется при прокрутке) */
+.to-top{position:fixed;right:clamp(16px,3vw,32px);bottom:clamp(20px,4vw,36px);z-index:90;
+  width:54px;height:54px;border-radius:50%;background:var(--navy);color:#fff;font-size:1.5rem;font-weight:800;
+  box-shadow:var(--shadow-lg);display:grid;place-items:center;opacity:0;transform:translateY(16px);pointer-events:none;
+  transition:opacity .2s var(--ease),transform .2s var(--ease),background .18s;}
+.to-top.show{opacity:1;transform:translateY(0);pointer-events:auto;}
+.to-top:hover{background:var(--indigo);}
+.to-top:active{transform:scale(.92);}
 
 /* адаптив */
 @media(max-width:760px){

@@ -18,14 +18,17 @@ android {
 
     signingConfigs {
         create("release") {
-            // Настройте при необходимости; по умолчанию — debug signing для sideloading
+            storeFile = file("oilab-release.jks")
+            storePassword = "oilab2026"
+            keyAlias = "oilab"
+            keyPassword = "oilab2026"
         }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
         }
         debug {
             isDebuggable = true

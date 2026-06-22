@@ -17,8 +17,10 @@ function ensure() {
   if (!ctx) {
     const AC = window.AudioContext || window.webkitAudioContext;
     ctx = new AC();
-    master = ctx.createGain(); master.gain.value = 0.9;
+    master = ctx.createGain(); master.gain.value = 0.7;
     const comp = ctx.createDynamicsCompressor();
+    comp.threshold.value = -12; comp.knee.value = 8; comp.ratio.value = 12;
+    comp.attack.value = 0.003; comp.release.value = 0.25;   // лимитер — против клиппинга/треска на аккордах
     master.connect(comp); comp.connect(ctx.destination);
   }
   if (ctx.state === "suspended") ctx.resume();

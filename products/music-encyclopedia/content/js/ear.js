@@ -40,7 +40,7 @@ function reset(clearQ){
   $("#earOptions").innerHTML = "";
   $("#earFeedback").innerHTML = "";
   $("#earFeedback").className = "ear-feedback";
-  $("#earPlay").textContent = APP.t("earPlay");
+  $("#earPlay").textContent = "▶";
   $("#earReplay").style.visibility = "hidden";
   if (!clearQ) $("#earAsk").textContent = APP.t("earStart");
 }
@@ -69,7 +69,7 @@ function newQuestion(){
     $("#earAsk").textContent = APP.t("earAskChord");
   }
   renderOptions(opts);
-  $("#earPlay").textContent = APP.t("earPlay");
+  $("#earPlay").textContent = "▶";
   $("#earReplay").style.visibility = "visible";
   $("#earFeedback").innerHTML = ""; $("#earFeedback").className = "ear-feedback";
   play();
@@ -133,8 +133,8 @@ function renderStats(){
 
 function relang(){
   renderControls();
-  $("#earPlay").textContent = APP.t("earPlay");
-  $("#earReplay").textContent = APP.t("earReplay");
+  $("#earPlay").textContent = "▶";
+  $("#earReplay").textContent = "↻";
   if (q && !answered){ $("#earAsk").textContent = q.kind==="note"?APP.t("earAskNote"):q.kind==="interval"?APP.t("earAskInterval"):APP.t("earAskChord");
     renderOptions(options()); } else if (q && answered){ /* перерисуем варианты с метками не нужно */ }
   if (!q) $("#earAsk").textContent = APP.t("earStart");
