@@ -42,7 +42,7 @@ jobs:
           python --version
           cd product-core
           ok=""; fail=""
-          for slug in smart-dictionary interactive-map music-encyclopedia speech-therapy; do
+          for slug in smart-dictionary interactive-map music-encyclopedia speech-therapy math-tools; do
             echo "::group::build $slug"
             if python -m build ../products/$slug --android; then ok="$ok $slug"; else fail="$fail $slug"; fi
             echo "::endgroup::"

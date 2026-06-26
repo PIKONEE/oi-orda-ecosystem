@@ -1,0 +1,15 @@
+# Секреты и лицензии — НИКОГДА не коммитить
+_secret.py
+license.dat
+master.key
+keys.db
+
+# Сборка
+builds/
+_build_staging/
+_build_temp/
+*.spec
+
+# Python
+__pycache__/
+*.pyc

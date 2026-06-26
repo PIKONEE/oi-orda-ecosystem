@@ -1,0 +1,1587 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Математическая лаборатория</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%236a5af9'/%3E%3Cstop offset='1' stop-color='%2322d3ee'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='14' fill='%230b1020'/%3E%3Ctext x='32' y='44' font-size='36' text-anchor='middle' fill='url(%23g)' font-family='Georgia'%3E%E2%88%91%3C/text%3E%3C/svg%3E">
+<style>
+:root{
+  --bg:#0a0e1d;
+  --panel:rgba(255,255,255,.055);
+  --border:rgba(255,255,255,.09);
+  --text:#e8ecf8;
+  --muted:#9aa7c4;
+  --accent:#6a5af9;
+  --accent2:#22d3ee;
+  --danger:#fb7185;
+  --grad:linear-gradient(135deg,#6a5af9,#22d3ee);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif;
+  background:var(--bg);color:var(--text);overflow:hidden;font-size:16px;
+}
+/* ---- фон ---- */
+.bg{position:fixed;inset:0;z-index:-1;overflow:hidden;background:
+  radial-gradient(1200px 800px at 80% -10%, #1b1f4a55, transparent),
+  radial-gradient(1000px 700px at -10% 110%, #0e2a4a66, transparent), var(--bg);}
+.blob{display:none}   /* были 3 анимированных размытых (blur 95px) слоя — постоянно грузили GPU; фон даёт статичный градиент .bg */
+.b1{width:640px;height:640px;background:#6a5af9;left:-180px;top:-200px;animation:fl1 26s ease-in-out infinite alternate}
+.b2{width:560px;height:560px;background:#0ea5b7;right:-160px;top:30%;opacity:.3;animation:fl2 31s ease-in-out infinite alternate}
+.b3{width:480px;height:480px;background:#a855f7;left:35%;bottom:-260px;opacity:.22;animation:fl3 23s ease-in-out infinite alternate}
+@keyframes fl1{to{transform:translate(120px,90px) scale(1.12)}}
+@keyframes fl2{to{transform:translate(-100px,-120px) scale(.92)}}
+@keyframes fl3{to{transform:translate(-140px,-60px) scale(1.15)}}
+@media (prefers-reduced-motion: reduce){.blob{animation:none}}
+
+/* ---- шапка ---- */
+header{
+  height:72px;display:flex;align-items:center;gap:24px;padding:0 22px;
+  border-bottom:1px solid var(--border);
+  background:rgba(10,14,29,.92);
+  position:relative;z-index:5;
+}
+.logo{display:flex;align-items:center;gap:11px;font-weight:700;font-size:18px;white-space:nowrap}
+.logo .sigma{
+  width:38px;height:38px;border-radius:11px;background:var(--grad);
+  display:grid;place-items:center;font-size:21px;color:#fff;font-family:Georgia,serif;
+  box-shadow:0 4px 18px #6a5af977;
+}
+.logo .name{background:linear-gradient(90deg,#fff,#b9c5ff);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.tabs{display:flex;gap:4px;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:14px;padding:4px}
+.tab{
+  border:0;background:transparent;color:var(--muted);font:inherit;font-weight:600;font-size:15.5px;
+  padding:10px 22px;border-radius:10px;cursor:pointer;transition:all .25s;white-space:nowrap;
+}
+.tab:hover{color:var(--text)}
+.tab.active{background:var(--grad);color:#fff;box-shadow:0 4px 16px #6a5af966}
+.lang{margin-left:auto;display:flex;gap:3px;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:12px;padding:3px}
+.lang button{
+  border:0;background:transparent;color:var(--muted);font:inherit;font-weight:700;font-size:13.5px;
+  padding:7px 13px;border-radius:9px;cursor:pointer;transition:all .2s;letter-spacing:.5px;
+}
+.lang button.active{background:rgba(255,255,255,.14);color:#fff}
+.lang button:hover{color:#fff}
+
+main{height:calc(100vh - 72px)}
+.panel{display:none;height:100%}
+.panel.active{display:grid;gap:14px;padding:14px}
+#tab-graphs.active{grid-template-columns:400px minmax(0,1fr)}
+#tab-prob.active{grid-template-columns:410px minmax(0,1fr)}
+
+/* ---- карточки ---- */
+.side{overflow-y:auto;display:flex;flex-direction:column;gap:14px;min-height:0;padding-right:2px}
+.card{
+  background:var(--panel);border:1px solid var(--border);border-radius:16px;
+  padding:18px;animation:fadeUp .45s ease both;
+}
+.card h3{
+  font-size:13px;text-transform:uppercase;letter-spacing:1.4px;color:var(--muted);
+  margin-bottom:13px;font-weight:700;
+}
+.card .sub{font-size:14px;color:var(--muted);margin-top:-7px;margin-bottom:13px;line-height:1.45}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:99px;border:2px solid transparent;background-clip:content-box}
+::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.25);background-clip:content-box}
+::-webkit-scrollbar-track{background:transparent}
+
+/* ---- формы ---- */
+input[type=text],input[type=number],select{
+  background:rgba(255,255,255,.07);border:1px solid var(--border);border-radius:11px;
+  color:var(--text);font:inherit;font-size:16px;padding:10px 12px;outline:none;
+  transition:border .2s, box-shadow .2s;width:100%;
+}
+input:focus,select:focus{border-color:#6a5af9;box-shadow:0 0 0 3px #6a5af933}
+select option{background:#141a33;color:var(--text)}
+.field{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.field label{flex:0 0 auto;color:var(--muted);font-size:15px}
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px}
+.chip{
+  border:1px solid var(--border);background:rgba(255,255,255,.05);color:var(--text);
+  font:inherit;font-size:14.5px;padding:7px 13px;border-radius:999px;cursor:pointer;transition:all .2s;
+  display:inline-flex;align-items:center;
+}
+.chip:hover{border-color:#6a5af9;background:#6a5af922}
+.note{font-size:14.5px;color:var(--muted);line-height:1.55}
+.err-text{color:var(--danger);font-size:14.5px;margin-top:10px;display:none}
+.err-text.show{display:block}
+
+/* ---- список функций ---- */
+.fn-row{display:grid;grid-template-columns:auto 1fr auto;gap:9px;align-items:center;margin-bottom:12px}
+.fn-color{
+  width:21px;height:21px;border-radius:50%;border:2px solid rgba(255,255,255,.25);
+  background:var(--c);cursor:pointer;transition:all .2s;padding:0;box-shadow:0 0 10px var(--c);
+}
+.fn-color.off{background:transparent;box-shadow:none;border-color:var(--c)}
+input.fn-input{font-size:17px}
+.fn-del{
+  border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:16px;
+  width:30px;height:30px;border-radius:8px;transition:all .2s;
+}
+.fn-del:hover{color:var(--danger);background:#fb718522}
+.fn-err{grid-column:1/-1;color:var(--danger);font-size:13.5px;display:none;padding-left:31px}
+.fn-row.bad .fn-err{display:block}
+.fn-row.bad .fn-input{border-color:#fb7185aa}
+.fn-preview{
+  grid-column:1/-1;padding:2px 0 2px 31px;font-size:22px;min-height:0;
+  display:none;align-items:center;gap:8px;overflow-x:auto;overflow-y:hidden;
+}
+.fn-preview.show{display:flex}
+.fn-preview .eq{color:var(--muted);font-size:17px}
+.add-btn{
+  width:100%;padding:11px;border-radius:11px;border:1px dashed rgba(255,255,255,.22);
+  background:transparent;color:var(--muted);font:inherit;font-size:15px;cursor:pointer;transition:all .2s;margin-top:2px;
+}
+.add-btn:hover:not(:disabled){border-color:#6a5af9;color:#fff;background:#6a5af915}
+.add-btn:disabled{opacity:.35;cursor:default}
+
+/* ---- математическая клавиатура ---- */
+.keypad{display:grid;grid-template-columns:repeat(6,1fr);gap:7px;margin-top:13px}
+.kp{
+  border:1px solid var(--border);background:rgba(255,255,255,.06);color:var(--text);
+  font-family:'Cambria Math',Cambria,Georgia,serif;font-size:18px;
+  height:44px;border-radius:10px;cursor:pointer;transition:all .15s;
+  display:flex;align-items:center;justify-content:center;
+}
+.kp:hover{border-color:#6a5af9;background:#6a5af92b;transform:translateY(-1px)}
+.kp:active{transform:scale(.93)}
+.kp .bfrac{display:inline-flex;flex-direction:column;line-height:1;font-size:12px;text-align:center}
+.kp .bfrac b{border-bottom:1.3px solid currentColor;padding:0 4px;font-weight:400;font-style:italic}
+.kp .bfrac i{padding:0 4px}
+
+/* ---- красивая математическая запись ---- */
+.math{font-family:'Cambria Math',Cambria,Georgia,serif;white-space:nowrap;line-height:1.3}
+.math .mi{font-style:italic;padding:0 .5px}
+.math .mn{font-style:normal}
+.math .mo{font-style:normal;padding:0 2px;opacity:.95}
+.math .mf{font-style:normal;padding-right:1px}
+.math sup{font-size:.64em;font-style:inherit}
+.math .frac{display:inline-flex;flex-direction:column;text-align:center;vertical-align:middle;margin:0 2px}
+.math .fr-n{padding:0 5px 1px;border-bottom:1.6px solid currentColor;line-height:1.2}
+.math .fr-d{padding:1px 5px 0;line-height:1.2}
+.math .sqrt{display:inline-flex;align-items:stretch;vertical-align:middle;margin:0 1px}
+.math .rad{font-size:1.18em;line-height:1;align-self:center;font-style:normal}
+.math .vinc{border-top:1.7px solid currentColor;padding:2px 5px 0 2px}
+
+details{font-size:14.5px;color:var(--muted)}
+details summary{cursor:pointer;font-weight:600;color:var(--text);font-size:15px;user-select:none}
+details[open] summary{margin-bottom:9px}
+details li{margin:6px 0 6px 18px;line-height:1.5}
+details code{background:rgba(255,255,255,.08);padding:1px 6px;border-radius:5px;font-size:13.5px}
+
+/* ---- область графика ---- */
+.plot-wrap{
+  position:relative;border-radius:16px;border:1px solid var(--border);overflow:hidden;
+  background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.015));
+  min-width:0;animation:fadeUp .45s ease both;
+}
+#plotCanvas{position:absolute;inset:0;width:100%;height:100%;cursor:crosshair;touch-action:none;user-select:none}
+.plot-controls{position:absolute;top:12px;right:12px;display:flex;gap:7px;z-index:2}
+.pc-btn{
+  width:42px;height:42px;border-radius:11px;border:1px solid var(--border);
+  background:rgba(13,18,38,.75);color:var(--text);
+  font-size:20px;cursor:pointer;transition:all .2s;display:grid;place-items:center;
+}
+.pc-btn:hover{border-color:#6a5af9;background:#6a5af933}
+.coords{
+  position:absolute;bottom:11px;right:14px;color:var(--muted);font-size:14px;
+  font-variant-numeric:tabular-nums;pointer-events:none;background:rgba(10,14,29,.55);
+  padding:4px 11px;border-radius:9px;
+}
+.trace-tip{
+  position:absolute;pointer-events:none;display:none;z-index:3;
+  background:rgba(15,21,48,.95);border:1px solid var(--border);border-radius:10px;
+  padding:7px 12px;font-size:14.5px;white-space:nowrap;transform:translate(-50%,-135%);
+  font-variant-numeric:tabular-nums;box-shadow:0 6px 20px rgba(0,0,0,.4);
+}
+
+/* ---- вероятности ---- */
+.exp-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.exp-card{
+  border:1px solid var(--border);background:rgba(255,255,255,.04);border-radius:14px;
+  padding:14px 8px 12px;text-align:center;cursor:pointer;transition:all .22s;
+}
+.exp-card:hover{transform:translateY(-2px);border-color:rgba(255,255,255,.25)}
+.exp-card.active{
+  border-color:#6a5af9;background:linear-gradient(135deg,#6a5af926,#22d3ee1a);
+  box-shadow:0 6px 22px #6a5af93d;
+}
+.exp-ico{font-size:29px;line-height:1}
+.exp-name{font-size:14px;margin-top:8px;color:var(--text);font-weight:600}
+
+.ball-row{display:grid;grid-template-columns:auto 1fr 92px;gap:11px;align-items:center;margin-bottom:10px}
+.ball-dot{width:18px;height:18px;border-radius:50%;box-shadow:0 0 8px var(--c);background:var(--c)}
+.ball-row label{color:var(--muted);font-size:15px}
+.mix-bar{height:16px;border-radius:99px;overflow:hidden;display:flex;margin-top:11px;background:rgba(255,255,255,.05)}
+.mix-bar div{transition:flex-grow .35s ease}
+.mix-total{font-size:14px;color:var(--muted);margin-top:8px}
+.sector-row{display:grid;grid-template-columns:1fr 70px 52px 30px;gap:8px;align-items:center;margin-bottom:9px}
+.sector-pct{font-size:13.5px;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
+
+.run-btn{
+  width:100%;padding:17px;border:0;border-radius:15px;cursor:pointer;
+  background:var(--grad);color:#fff;font:inherit;font-size:17.5px;font-weight:700;letter-spacing:.3px;
+  box-shadow:0 10px 32px #6a5af955;transition:all .2s;
+}
+.run-btn:hover{transform:translateY(-2px);box-shadow:0 14px 38px #6a5af977;filter:brightness(1.07)}
+.run-btn:active{transform:scale(.97)}
+
+/* ---- результаты ---- */
+.results{overflow-y:auto;display:flex;flex-direction:column;gap:14px;min-height:0;padding-right:2px}
+.placeholder{
+  height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;
+  color:var(--muted);text-align:center;animation:fadeUp .5s ease both;
+}
+.placeholder .big{font-size:72px;filter:drop-shadow(0 8px 26px #6a5af966)}
+.placeholder b{color:var(--text);font-size:19px}
+.placeholder p{max-width:420px;line-height:1.6;font-size:16px}
+.sum-row{display:grid;grid-template-columns:1fr 1.7fr;gap:14px}
+.sum-card{background:var(--panel);border:1px solid var(--border);border-radius:15px;padding:16px 19px;animation:fadeUp .4s ease both}
+.sum-lbl{font-size:12.5px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);margin-bottom:7px;font-weight:700}
+.sum-val{font-size:27px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.15}
+.sum-val.grad{background:var(--grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.sum-val small{font-size:16px;color:var(--muted);font-weight:600}
+
+.bars-scroll{overflow-x:auto;padding-top:8px}
+.bars{display:flex;align-items:stretch;gap:8px}
+.bar-col{flex:1 0 56px;min-width:56px;display:flex;flex-direction:column;align-items:center}
+.bar-wrap{position:relative;height:250px;width:100%}
+.bar{
+  position:absolute;bottom:0;left:15%;width:70%;height:0;
+  border-radius:9px 9px 3px 3px;
+  transition:height .9s cubic-bezier(.22,1,.36,1);
+  box-shadow:0 0 18px -4px var(--c);
+  background:linear-gradient(180deg,var(--c),color-mix(in srgb,var(--c) 55%,#0a0e1d));
+}
+.bar.noanim,.bar-label.noanim{transition:none}
+.bar-theo{
+  position:absolute;left:4%;width:92%;height:0;border-top:2.5px dashed rgba(255,255,255,.55);
+  z-index:1;pointer-events:none;
+}
+.bar-label{
+  position:absolute;left:0;width:100%;text-align:center;bottom:0;
+  transform:translateY(-4px);transition:bottom .9s cubic-bezier(.22,1,.36,1);
+  pointer-events:none;line-height:1.3;
+}
+.bar-label b{display:block;font-size:14px;font-variant-numeric:tabular-nums}
+.bar-label i{display:block;font-style:normal;font-size:12.5px;color:var(--muted)}
+.bar-name{margin-top:8px;font-size:14px;color:var(--text);white-space:nowrap}
+
+.tbl{display:grid;grid-template-columns:auto 1fr auto auto auto;gap:9px 18px;font-size:15.5px;align-items:center;font-variant-numeric:tabular-nums}
+.tbl .hd{font-size:12.5px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:700}
+.tbl .num{text-align:right}
+.dot{width:13px;height:13px;border-radius:50%;box-shadow:0 0 7px var(--c);background:var(--c)}
+#convCanvas{width:100%;height:250px;display:block}
+.legend-dash i{display:inline-block;width:26px;border-top:2.5px dashed rgba(255,255,255,.55);vertical-align:middle;margin-right:7px}
+</style>
+</head>
+<body>
+<div class="bg"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
+
+<header>
+  <div class="logo"><span class="sigma">∑</span><span class="name" data-i18n="app_title">Математическая лаборатория</span></div>
+  <nav class="tabs">
+    <button class="tab active" data-tab="graphs" data-i18n="tab_graphs">📈 Графики функций</button>
+    <button class="tab" data-tab="prob" data-i18n="tab_prob">🎲 Вероятности</button>
+  </nav>
+  <div class="lang">
+    <button data-lang="ru">РУС</button>
+    <button data-lang="kz">ҚАЗ</button>
+  </div>
+</header>
+
+<main>
+  <!-- ================== ГРАФИКИ ================== -->
+  <section id="tab-graphs" class="panel active">
+    <div class="side">
+      <div class="card">
+        <h3 data-i18n="fns_title">Функции</h3>
+        <div id="fnList"></div>
+        <button class="add-btn" id="addFnBtn" data-i18n="add_fn">＋ Добавить функцию</button>
+        <div class="keypad" id="keypad"></div>
+      </div>
+      <div class="card" style="animation-delay:.06s">
+        <h3 data-i18n="presets_title">Примеры</h3>
+        <div class="chips" id="presetChips"></div>
+      </div>
+      <div class="card" style="animation-delay:.12s">
+        <details id="helpBox">
+          <summary data-i18n="help_summary">📖 Как вводить формулы</summary>
+          <ul id="helpList"></ul>
+        </details>
+      </div>
+      <div class="card" style="animation-delay:.18s">
+        <p class="note" data-i18n="hint_plot">🖱 Перетаскивайте поле мышью, масштабируйте колесом. Наведите курсор на кривую — появятся координаты точки.</p>
+      </div>
+    </div>
+    <div class="plot-wrap" id="plotWrap">
+      <canvas id="plotCanvas"></canvas>
+      <div class="plot-controls">
+        <button class="pc-btn" id="zoomIn" data-i18n-title="zoom_in">＋</button>
+        <button class="pc-btn" id="zoomOut" data-i18n-title="zoom_out">−</button>
+        <button class="pc-btn" id="zoomReset" data-i18n-title="zoom_reset">⌂</button>
+      </div>
+      <div class="coords" id="coords"></div>
+      <div class="trace-tip" id="traceTip"></div>
+    </div>
+  </section>
+
+  <!-- ================== ВЕРОЯТНОСТИ ================== -->
+  <section id="tab-prob" class="panel">
+    <div class="side">
+      <div class="card">
+        <h3 data-i18n="exp_title">Эксперимент</h3>
+        <div class="exp-grid" id="expGrid"></div>
+      </div>
+      <div class="card" style="animation-delay:.06s">
+        <h3 data-i18n="settings_title">Настройки</h3>
+        <div id="expSettings"></div>
+        <div class="err-text" id="probError"></div>
+      </div>
+      <div class="card" style="animation-delay:.12s">
+        <h3 data-i18n="trials_title">Число испытаний</h3>
+        <input type="number" id="trialsInput" min="1" max="1000000" step="1" value="1000">
+        <div class="chips" id="trialChips"></div>
+      </div>
+      <button class="run-btn" id="runBtn" data-i18n="run_btn">🎲 Провести испытания</button>
+    </div>
+
+    <div class="results" id="resultsArea">
+      <div class="placeholder" id="probPlaceholder">
+        <div class="big">🧪</div>
+        <b data-i18n="ph_hero1">Вероятностная лаборатория</b>
+        <p data-i18n="ph_hero2">Выберите эксперимент, настройте параметры и нажмите «Провести испытания» — программа мгновенно смоделирует тысячи случайных исходов.</p>
+      </div>
+      <div id="probResults" style="display:none;flex-direction:column;gap:14px">
+        <div class="sum-row">
+          <div class="sum-card"><div class="sum-lbl" data-i18n="sum_trials">Испытаний</div><div class="sum-val grad" id="sumTrials">0</div></div>
+          <div class="sum-card" style="animation-delay:.05s"><div class="sum-lbl" data-i18n="sum_top">Самый частый исход</div><div class="sum-val" id="sumTop">—</div></div>
+        </div>
+        <div class="card">
+          <h3 id="chartTitle">Распределение исходов</h3>
+          <p class="sub legend-dash"><i></i><span data-i18n="chart_theo">теоретическая вероятность</span></p>
+          <div class="bars-scroll"><div class="bars" id="barsBox"></div></div>
+        </div>
+        <div class="card">
+          <h3 data-i18n="stat_title">Подробная статистика</h3>
+          <div class="tbl" id="statTbl"></div>
+        </div>
+        <div class="card" id="convCard">
+          <h3 data-i18n="lln_title">Закон больших чисел</h3>
+          <p class="sub" data-i18n="lln_sub">Как частота каждого исхода приближается к его вероятности с ростом числа испытаний (шкала логарифмическая)</p>
+          <canvas id="convCanvas"></canvas>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+'use strict';
+/* Безопасный доступ к localStorage (в оболочке на file:// может быть недоступен) */
+const LS={get(k){try{return localStorage.getItem(k)}catch(e){return null}},
+          set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+/* ============================================================
+   ЯЗЫКИ
+   ============================================================ */
+const I18N={
+ru:{
+  app_title:'Математическая лаборатория',
+  tab_graphs:'📈 Графики функций', tab_prob:'🎲 Вероятности',
+  fns_title:'Функции', add_fn:'＋ Добавить функцию', presets_title:'Примеры',
+  help_summary:'📖 Как вводить формулы',
+  help_html:'<li>Набирайте формулу или нажимайте кнопки: <code>x²</code>, <code>√</code>, дробь…</li><li>Степень — кнопкой или знаком <code>^</code>: <code>x^2</code></li><li>Дробь пишется через <code>/</code> : <code>x³/20</code></li><li>Модуль: <code>|x|</code>, число π — кнопкой</li><li>Под формулой видно, как она выглядит в тетради</li><li>Запятая и точка в дробях равнозначны: <code>0,5x</code></li>',
+  hint_plot:'🖱 Перетаскивайте поле мышью, масштабируйте колесом. Наведите курсор на кривую — появятся координаты точки.',
+  fn_ph:'например: x²+2x', fn_show_hide:'Показать / скрыть график', fn_del:'Удалить',
+  zoom_in:'Приблизить', zoom_out:'Отдалить', zoom_reset:'Сбросить вид',
+  exp_title:'Эксперимент', settings_title:'Настройки', trials_title:'Число испытаний',
+  run_btn:'🎲 Провести испытания',
+  exp_coin:'Монета', exp_dice:'Кубик', exp_dice2:'Два кубика',
+  exp_cards:'Колода карт', exp_urn:'Урна с шарами', exp_roulette:'Рулетка',
+  coin_info:'Симметричная монета: вероятность орла и решки — по 50%. Проверьте на практике, насколько частота близка к теории!',
+  dice_faces:'Число граней:',
+  dice2_info:'Бросаются два шестигранных кубика, считается сумма очков (от 2 до 12). Классическая задача: почему сумма 7 выпадает чаще всего?',
+  cards_what:'Что считаем:', cards_suit_opt:'Масть (4 исхода)', cards_rank_opt:'Достоинство (13 исходов)', cards_color_opt:'Цвет (2 исхода)',
+  cards_info:'Каждое испытание — случайная карта из полной колоды в 52 листа (карта возвращается обратно).',
+  ball_red:'Красные', ball_blue:'Синие', ball_green:'Зелёные',
+  urn_total:'Всего шаров: {n}', urn_empty:'Урна пуста',
+  roul_info:'Вес сектора задаёт его относительный размер: вероятность = вес ÷ сумма весов.',
+  add_sector:'＋ Добавить сектор', sector_w_title:'Вес сектора', sector_name_ph:'Название', sector_default:'Сектор {n}', no_sectors:'Нет секторов',
+  def_red:'Красное', def_black:'Чёрное', def_zero:'Зеро',
+  ph_hero1:'Вероятностная лаборатория',
+  ph_hero2:'Выберите эксперимент, настройте параметры и нажмите «Провести испытания» — программа мгновенно смоделирует тысячи случайных исходов.',
+  sum_trials:'Испытаний', sum_top:'Самый частый исход',
+  chart_title:'Распределение исходов', chart_theo:'теоретическая вероятность',
+  stat_title:'Подробная статистика',
+  th_outcome:'Исход', th_count:'Выпало', th_freq:'Частота', th_theory:'Теория',
+  lln_title:'Закон больших чисел',
+  lln_sub:'Как частота каждого исхода приближается к его вероятности с ростом числа испытаний (шкала логарифмическая)',
+  out_heads:'Орёл', out_tails:'Решка',
+  suit_s:'♠ Пики', suit_h:'♥ Червы', suit_d:'♦ Бубны', suit_c:'♣ Трефы',
+  col_red:'🔴 Красные', col_black:'⚫ Чёрные',
+  uball_r:'🔴 Красные', uball_b:'🔵 Синие', uball_g:'🟢 Зелёные',
+  err_urn:'Положите в урну хотя бы один шар',
+  err_sectors:'Добавьте хотя бы один сектор с положительным весом',
+  err_faces:'Число граней должно быть от 2 до 100',
+  err_unknown:'Неизвестный символ «{s}»', err_badchar:'Недопустимый символ «{s}»',
+  err_badnum:'Некорректное число «{s}»', err_parens:'После функции «{s}» нужны скобки: {s}(…)',
+  err_empty_par:'Пустые скобки или пропущено выражение', err_extra_close:'Лишняя закрывающая скобка',
+  err_missing_before:'Не хватает выражения перед «{s}»', err_unfinished:'Формула не завершена',
+  err_unclosed:'Не закрыта скобка', err_empty_formula:'Пустая формула',
+},
+kz:{
+  app_title:'Математикалық зертхана',
+  tab_graphs:'📈 Функция графиктері', tab_prob:'🎲 Ықтималдық',
+  fns_title:'Функциялар', add_fn:'＋ Функция қосу', presets_title:'Мысалдар',
+  help_summary:'📖 Формуланы қалай енгізу керек',
+  help_html:'<li>Формуланы теріңіз немесе батырмаларды басыңыз: <code>x²</code>, <code>√</code>, бөлшек…</li><li>Дәреже — батырмамен немесе <code>^</code> белгісімен: <code>x^2</code></li><li>Бөлшек <code>/</code> арқылы жазылады: <code>x³/20</code></li><li>Модуль: <code>|x|</code>, π саны — батырмамен</li><li>Формуланың дәптердегідей жазылуы өрістің астында көрінеді</li><li>Бөлшекте үтір мен нүкте бірдей: <code>0,5x</code></li>',
+  hint_plot:'🖱 Өрісті тінтуірмен жылжытыңыз, дөңгелекпен масштабтаңыз. Қисыққа курсорды апарсаңыз — нүктенің координаттары көрінеді.',
+  fn_ph:'мысалы: x²+2x', fn_show_hide:'Графикті көрсету / жасыру', fn_del:'Өшіру',
+  zoom_in:'Жақындату', zoom_out:'Алыстату', zoom_reset:'Бастапқы қалпына келтіру',
+  exp_title:'Тәжірибе', settings_title:'Баптаулар', trials_title:'Сынақ саны',
+  run_btn:'🎲 Сынақ жүргізу',
+  exp_coin:'Тиын', exp_dice:'Ойын сүйегі', exp_dice2:'Екі ойын сүйегі',
+  exp_cards:'Карта дестесі', exp_urn:'Жәшіктегі шарлар', exp_roulette:'Рулетка',
+  coin_info:'Симметриялы тиын: елтаңба мен санның түсу ықтималдығы — 50%-дан. Жиіліктің теорияға қаншалықты жақын екенін іс жүзінде тексеріңіз!',
+  dice_faces:'Жақтар саны:',
+  dice2_info:'Екі алты жақты ойын сүйегі лақтырылып, ұпай қосындысы есептеледі (2-ден 12-ге дейін). Классикалық есеп: неліктен 7 қосындысы жиірек түседі?',
+  cards_what:'Нені санаймыз:', cards_suit_opt:'Масть (4 нәтиже)', cards_rank_opt:'Мәні (13 нәтиже)', cards_color_opt:'Түсі (2 нәтиже)',
+  cards_info:'Әр сынақ — 52 карталық толық дестеден кездейсоқ бір карта алу (карта кері қайтарылады).',
+  ball_red:'Қызыл', ball_blue:'Көк', ball_green:'Жасыл',
+  urn_total:'Барлығы: {n} шар', urn_empty:'Жәшік бос',
+  roul_info:'Сектордың салмағы оның салыстырмалы өлшемін анықтайды: ықтималдық = салмақ ÷ салмақтар қосындысы.',
+  add_sector:'＋ Сектор қосу', sector_w_title:'Сектор салмағы', sector_name_ph:'Атауы', sector_default:'{n}-сектор', no_sectors:'Сектор жоқ',
+  def_red:'Қызыл', def_black:'Қара', def_zero:'Зеро',
+  ph_hero1:'Ықтималдық зертханасы',
+  ph_hero2:'Тәжірибені таңдап, параметрлерді баптап, «Сынақ жүргізу» батырмасын басыңыз — бағдарлама мыңдаған кездейсоқ нәтижені лезде модельдейді.',
+  sum_trials:'Сынақ саны', sum_top:'Ең жиі түскен нәтиже',
+  chart_title:'Нәтижелердің таралуы', chart_theo:'теориялық ықтималдық',
+  stat_title:'Толық статистика',
+  th_outcome:'Нәтиже', th_count:'Түскені', th_freq:'Жиілік', th_theory:'Теория',
+  lln_title:'Үлкен сандар заңы',
+  lln_sub:'Сынақ саны өскен сайын әр нәтиженің жиілігі өз ықтималдығына қалай жақындайтыны (логарифмдік шкала)',
+  out_heads:'Елтаңба', out_tails:'Сан',
+  suit_s:'♠ Пика', suit_h:'♥ Черва', suit_d:'♦ Бубна', suit_c:'♣ Трефа',
+  col_red:'🔴 Қызыл', col_black:'⚫ Қара',
+  uball_r:'🔴 Қызыл', uball_b:'🔵 Көк', uball_g:'🟢 Жасыл',
+  err_urn:'Жәшікке кемінде бір шар салыңыз',
+  err_sectors:'Салмағы оң кемінде бір сектор қосыңыз',
+  err_faces:'Жақтар саны 2 мен 100 аралығында болуы керек',
+  err_unknown:'Белгісіз таңба «{s}»', err_badchar:'Рұқсат етілмеген таңба «{s}»',
+  err_badnum:'Қате жазылған сан «{s}»', err_parens:'«{s}» функциясынан кейін жақша керек: {s}(…)',
+  err_empty_par:'Бос жақша немесе өрнек жетіспейді', err_extra_close:'Артық жабылатын жақша',
+  err_missing_before:'«{s}» алдында өрнек жетіспейді', err_unfinished:'Формула аяқталмаған',
+  err_unclosed:'Жақша жабылмаған', err_empty_formula:'Бос формула',
+},
+};
+let lang=LS.get('mathlab-lang')||'ru';
+if(!I18N[lang])lang='ru';
+function t(key,params){
+  let s=(I18N[lang][key]!==undefined?I18N[lang][key]:I18N.ru[key])||key;
+  if(params)for(const k in params)s=s.split('{'+k+'}').join(params[k]);
+  return s;
+}
+
+/* ============================================================
+   ПАРСЕР ФОРМУЛ
+   ============================================================ */
+const FUNCS={
+  sin:Math.sin, cos:Math.cos, tan:Math.tan, tg:Math.tan,
+  ctg:x=>1/Math.tan(x), cot:x=>1/Math.tan(x),
+  asin:Math.asin, acos:Math.acos, atan:Math.atan,
+  arcsin:Math.asin, arccos:Math.acos, arctg:Math.atan, arctan:Math.atan,
+  arcctg:x=>Math.PI/2-Math.atan(x),
+  sinh:Math.sinh, cosh:Math.cosh, tanh:Math.tanh,
+  sqrt:Math.sqrt, cbrt:Math.cbrt, abs:Math.abs,
+  ln:Math.log, log:Math.log10, lg:Math.log10, exp:Math.exp,
+  floor:Math.floor, ceil:Math.ceil, round:Math.round, sign:Math.sign
+};
+const CONSTS={pi:Math.PI,'пи':Math.PI,e:Math.E};
+const CONST_SYM={pi:'π','пи':'π',e:'e'};
+const KNOWN=[...Object.keys(FUNCS),...Object.keys(CONSTS),'x'].sort((a,b)=>b.length-a.length);
+const SUP={'⁰':'0','¹':'1','²':'2','³':'3','⁴':'4','⁵':'5','⁶':'6','⁷':'7','⁸':'8','⁹':'9','⁻':'-','ˣ':'x'};
+
+function tokenize(src){
+  let s=src.toLowerCase()
+    .replace(/[х]/g,'x').replace(/[е]/g,'e')
+    .replace(/,/g,'.')
+    .replace(/−/g,'-').replace(/[×·]/g,'*').replace(/÷/g,'/')
+    .replace(/\*\*/g,'^')
+    .replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹⁻ˣ]+/g,m=>'^('+[...m].map(c=>SUP[c]).join('')+')')
+    .replace(/√\s*(\d+\.?\d*|x|pi|пи|e)/g,'sqrt($1)').replace(/√/g,'sqrt')
+    .replace(/∛\s*(\d+\.?\d*|x|pi|пи|e)/g,'cbrt($1)').replace(/∛/g,'cbrt')
+    .replace(/π/g,'pi');
+  // |…| -> abs(…): чередуем открытие/закрытие
+  if(s.includes('|')){
+    let open=false,res='';
+    for(const ch of s){
+      if(ch==='|'){res+=open?')':'abs(';open=!open;}
+      else res+=ch;
+    }
+    s=res;
+  }
+  const tokens=[];let i=0;
+  while(i<s.length){
+    const c=s[i];
+    if(c===' '||c==='\t'){i++;continue;}
+    if(/[0-9.]/.test(c)){
+      let j=i;while(j<s.length&&/[0-9.]/.test(s[j]))j++;
+      const numStr=s.slice(i,j);
+      if((numStr.match(/\./g)||[]).length>1||numStr==='.')
+        throw new Error(t('err_badnum',{s:numStr}));
+      tokens.push({t:'num',v:parseFloat(numStr)});i=j;continue;
+    }
+    if(/[a-zа-яё]/.test(c)){
+      let j=i;while(j<s.length&&/[a-zа-яё]/.test(s[j]))j++;
+      let word=s.slice(i,j);
+      while(word.length){
+        const m=KNOWN.find(name=>word.startsWith(name));
+        if(!m)throw new Error(t('err_unknown',{s:word}));
+        if(FUNCS[m]!==undefined&&CONSTS[m]===undefined)tokens.push({t:'func',v:m,f:FUNCS[m]});
+        else if(m==='x')tokens.push({t:'var'});
+        else tokens.push({t:'num',v:CONSTS[m],sym:CONST_SYM[m]});
+        word=word.slice(m.length);
+      }
+      i=j;continue;
+    }
+    if('+-*/^()'.includes(c)){tokens.push({t:c});i++;continue;}
+    throw new Error(t('err_badchar',{s:c}));
+  }
+  return tokens;
+}
+
+function insertImplicitMult(tokens){
+  const out=[];
+  for(const cur of tokens){
+    if(out.length){
+      const prev=out[out.length-1];
+      const prevIsVal=prev.t==='num'||prev.t==='var'||prev.t===')';
+      const curStarts=cur.t==='num'||cur.t==='var'||cur.t==='('||cur.t==='func';
+      if(prevIsVal&&curStarts)out.push({t:'*'});
+    }
+    out.push(cur);
+  }
+  return out;
+}
+
+function toRPN(tokens){
+  const out=[],st=[];
+  const prec={'+':1,'-':1,'*':2,'/':2,'neg':3,'^':4};
+  const rightAssoc={'^':1,'neg':1};
+  let expectOperand=true;
+  for(const tok of tokens){
+    if(tok.t==='num'||tok.t==='var'){out.push(tok);expectOperand=false;}
+    else if(tok.t==='func'){st.push(tok);}
+    else if(tok.t==='('){st.push(tok);expectOperand=true;}
+    else if(tok.t===')'){
+      if(expectOperand)throw new Error(t('err_empty_par'));
+      while(st.length&&st[st.length-1].t!=='(')out.push(st.pop());
+      if(!st.length)throw new Error(t('err_extra_close'));
+      st.pop();
+      if(st.length&&st[st.length-1].t==='func')out.push(st.pop());
+      expectOperand=false;
+    } else {
+      let op=tok.t;
+      if(expectOperand){
+        if(op==='-')op='neg';
+        else if(op==='+')continue;
+        else throw new Error(t('err_missing_before',{s:op}));
+      }
+      if(op!=='neg'){
+        while(st.length){
+          const top=st[st.length-1];
+          if(top.t==='('||top.t==='func')break;
+          const tp=prec[top.t],cp=prec[op];
+          if(tp>cp||(tp===cp&&!rightAssoc[op]))out.push(st.pop());else break;
+        }
+      }
+      st.push({t:op});
+      expectOperand=true;
+    }
+  }
+  if(expectOperand&&tokens.length)throw new Error(t('err_unfinished'));
+  while(st.length){
+    const top=st.pop();
+    if(top.t==='(')throw new Error(t('err_unclosed'));
+    out.push(top);
+  }
+  return out;
+}
+
+function validateRPN(rpn){
+  let depth=0;
+  for(const tk of rpn){
+    if(tk.t==='num'||tk.t==='var')depth++;
+    else if(tk.t==='neg'||tk.t==='func'){if(depth<1)throw new Error(t('err_unfinished'));}
+    else{if(depth<2)throw new Error(t('err_unfinished'));depth--;}
+  }
+  if(depth!==1)throw new Error(t('err_unfinished'));
+}
+
+function makeEvaluator(rpn){
+  const st=new Float64Array(rpn.length||1);
+  return function(x){
+    let sp=0;
+    for(let k=0;k<rpn.length;k++){
+      const tk=rpn[k];
+      switch(tk.t){
+        case 'num':st[sp++]=tk.v;break;
+        case 'var':st[sp++]=x;break;
+        case '+':sp--;st[sp-1]+=st[sp];break;
+        case '-':sp--;st[sp-1]-=st[sp];break;
+        case '*':sp--;st[sp-1]*=st[sp];break;
+        case '/':sp--;st[sp-1]/=st[sp];break;
+        case '^':sp--;st[sp-1]=Math.pow(st[sp-1],st[sp]);break;
+        case 'neg':st[sp-1]=-st[sp-1];break;
+        case 'func':st[sp-1]=tk.f(st[sp-1]);break;
+      }
+    }
+    return st[0];
+  };
+}
+
+function rpnToAst(rpn){
+  const st=[];
+  for(const tk of rpn){
+    if(tk.t==='num')st.push({t:'num',v:tk.v,sym:tk.sym});
+    else if(tk.t==='var')st.push({t:'var'});
+    else if(tk.t==='neg')st.push({t:'neg',a:st.pop()});
+    else if(tk.t==='func')st.push({t:'func',name:tk.v,a:st.pop()});
+    else{const r=st.pop(),l=st.pop();st.push({t:'bin',op:tk.t,l,r});}
+  }
+  return st[0];
+}
+
+function parseFormula(src){
+  const raw=tokenize(src);
+  if(!raw.length)throw new Error(t('err_empty_formula'));
+  for(let i=0;i<raw.length;i++)
+    if(raw[i].t==='func'&&!(raw[i+1]&&raw[i+1].t==='('))
+      throw new Error(t('err_parens',{s:raw[i].v}));
+  const rpn=toRPN(insertImplicitMult(raw));
+  validateRPN(rpn);
+  return {f:makeEvaluator(rpn),ast:rpnToAst(rpn)};
+}
+
+/* ---- красивый вывод формулы (как в тетради) ---- */
+function astPrec(n){
+  if(n.t==='bin')return n.op==='+'||n.op==='-'?1:n.op==='*'?2:n.op==='/'?5:3;
+  if(n.t==='neg')return 1;
+  return 9;
+}
+function fmtMathNum(v){
+  let s=String(parseFloat(v.toPrecision(10)));
+  return s.replace('.',',').replace('-','−');
+}
+function renderAst(n){
+  switch(n.t){
+    case 'num':
+      return '<span class="'+(n.sym?'mi':'mn')+'">'+(n.sym||fmtMathNum(n.v))+'</span>';
+    case 'var':
+      return '<span class="mi">x</span>';
+    case 'neg':{
+      const needP=astPrec(n.a)<=1;
+      return '<span class="mo">−</span>'+(needP?par(renderAst(n.a)):renderAst(n.a));
+    }
+    case 'func':{
+      const inner=renderAst(n.a);
+      if(n.name==='sqrt')return '<span class="sqrt"><span class="rad">√</span><span class="vinc">'+inner+'</span></span>';
+      if(n.name==='cbrt')return '<span class="sqrt"><span class="rad">∛</span><span class="vinc">'+inner+'</span></span>';
+      if(n.name==='abs')return '<span class="mo">|</span>'+inner+'<span class="mo">|</span>';
+      return '<span class="mf">'+n.name+'</span>'+par(inner);
+    }
+    case 'bin':{
+      const {op,l,r}=n;
+      if(op==='/')
+        return '<span class="frac"><span class="fr-n">'+renderAst(l)+'</span><span class="fr-d">'+renderAst(r)+'</span></span>';
+      if(op==='^'){
+        const baseAtomic=l.t==='num'&&!l.sym?true:l.t==='var'||l.t==='func'||(l.t==='num'&&l.sym);
+        const base=baseAtomic?renderAst(l):par(renderAst(l));
+        return base+'<sup>'+renderAst(r)+'</sup>';
+      }
+      if(op==='*'){
+        const lp=astPrec(l)<2?par(renderAst(l)):renderAst(l);
+        const rNeedP=astPrec(r)<2||r.t==='neg';
+        const rp=rNeedP?par(renderAst(r)):renderAst(r);
+        const lSimple=l.t==='num'||l.t==='var';
+        const rJuxta=r.t==='var'||r.t==='func'||(r.t==='num'&&r.sym)||(r.t==='bin'&&r.op==='^'&&r.l.t==='var');
+        const omitDot=lSimple&&(rJuxta||rNeedP);
+        return lp+(omitDot?'':'<span class="mo">·</span>')+rp;
+      }
+      // + и −
+      const lp=renderAst(l);
+      const rNeedP=op==='-'?astPrec(r)<=1:r.t==='neg';
+      const rp=rNeedP?par(renderAst(r)):renderAst(r);
+      return lp+'<span class="mo">'+(op==='-'?'−':'+')+'</span>'+rp;
+    }
+  }
+}
+function par(html){return '<span class="mo">(</span>'+html+'<span class="mo">)</span>';}
+function prettyFormula(src){
+  try{return '<span class="math">'+renderAst(parseFormula(src).ast)+'</span>';}
+  catch(e){return null;}
+}
+
+/* ============================================================
+   УТИЛИТЫ
+   ============================================================ */
+const $=id=>document.getElementById(id);
+function h(tag,cls,text){const e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e;}
+const fmtInt=v=>Math.round(v).toLocaleString('ru-RU');
+function fmtNum(v){
+  if(!isFinite(v))return '∞';
+  if(v===0)return '0';
+  const a=Math.abs(v);
+  if(a>=1e6||a<1e-4)return v.toExponential(3);
+  return String(parseFloat(v.toPrecision(5)));
+}
+function niceStep(raw){
+  const p=Math.pow(10,Math.floor(Math.log10(raw)));
+  for(const m of [1,2,5,10])if(p*m>=raw-1e-12)return p*m;
+  return p*10;
+}
+const easeOutC=tt=>1-Math.pow(1-tt,3);
+
+/* ============================================================
+   МОДУЛЬ 1: ГРАФИКИ
+   ============================================================ */
+const plot={
+  canvas:$('plotCanvas'),wrap:$('plotWrap'),
+  ctx:$('plotCanvas').getContext('2d'),
+  scale:60,cx:0,cy:0,
+  mouse:null,dragging:false,lastPX:0,lastPY:0,
+};
+const PALETTE=['#22d3ee','#a78bfa','#f472b6','#fb923c','#4ade80','#facc15','#60a5fa','#f87171'];
+const PRESETS=['sin(x)','cos(x)','tg(x)','x²','x³/20','√x','∛x','1/x','ln(x)','eˣ','|x|','x·sin(x)'];
+let fns=[],fnSeq=0,activeInput=null;
+
+function compileFn(fn){
+  const src=fn.src.trim();
+  if(!src){fn.f=null;fn.ast=null;fn.error=null;return;}
+  try{const p=parseFormula(src);fn.f=p.f;fn.ast=p.ast;fn.error=null;}
+  catch(e){fn.f=null;fn.ast=null;fn.error=e.message;}
+}
+
+function updateRowState(fn){
+  const row=$('fnList').querySelector('.fn-row[data-id="'+fn.id+'"]');
+  if(!row)return;
+  row.classList.toggle('bad',!!fn.error);
+  row.querySelector('.fn-err').textContent=fn.error||'';
+  const pv=row.querySelector('.fn-preview');
+  if(fn.ast){
+    pv.innerHTML='<span class="eq">=</span><span class="math">'+renderAst(fn.ast)+'</span>';
+    pv.style.color=fn.color;
+    pv.classList.add('show');
+  } else pv.classList.remove('show');
+}
+
+function addFn(src){
+  if(fns.length>=PALETTE.length)return null;
+  const color=PALETTE.find(c=>!fns.some(f=>f.color===c))||PALETTE[fns.length%PALETTE.length];
+  const fn={id:++fnSeq,src:src||'',color,visible:true,f:null,ast:null,error:null};
+  compileFn(fn);
+  fns.push(fn);
+  renderFnRow(fn);
+  updateRowState(fn);
+  $('addFnBtn').disabled=fns.length>=PALETTE.length;
+  drawPlot();
+  return fn;
+}
+
+function renderFnRow(fn){
+  const row=h('div','fn-row');
+  row.dataset.id=fn.id;
+  const colorBtn=h('button','fn-color');
+  colorBtn.style.setProperty('--c',fn.color);
+  colorBtn.title=t('fn_show_hide');
+  colorBtn.dataset.i18nTitle='fn_show_hide';
+  colorBtn.addEventListener('click',()=>{
+    fn.visible=!fn.visible;
+    colorBtn.classList.toggle('off',!fn.visible);
+    drawPlot();
+  });
+  const input=h('input','fn-input');
+  input.type='text';input.spellcheck=false;input.value=fn.src;
+  input.placeholder=t('fn_ph');
+  input.dataset.i18nPh='fn_ph';
+  input.addEventListener('input',()=>{
+    fn.src=input.value;
+    compileFn(fn);
+    updateRowState(fn);
+    drawPlot();
+  });
+  input.addEventListener('focus',()=>{activeInput=input;});
+  const del=h('button','fn-del','✕');
+  del.title=t('fn_del');
+  del.dataset.i18nTitle='fn_del';
+  del.addEventListener('click',()=>{
+    fns=fns.filter(f=>f!==fn);
+    row.remove();
+    if(activeInput===input)activeInput=null;
+    $('addFnBtn').disabled=false;
+    drawPlot();
+  });
+  const pv=h('div','fn-preview');
+  const errBox=h('div','fn-err');
+  row.append(colorBtn,input,del,pv,errBox);
+  $('fnList').append(row);
+  return input;
+}
+
+/* ---- математическая клавиатура ---- */
+const KEYS=[
+  {d:'<span class="math"><span class="mi">x</span><sup>2</sup></span>',ins:'x²'},
+  {d:'<span class="math"><span class="mi">x</span><sup>3</sup></span>',ins:'x³'},
+  {d:'<span class="math"><span class="mi">x</span><sup><span class="mi">n</span></sup></span>',ins:'^'},
+  {d:'√',ins:'√()',back:1},
+  {d:'∛',ins:'∛()',back:1},
+  {d:'<span class="bfrac"><b>a</b><i>b</i></span>',ins:'/'},
+  {d:'|<span class="math"><span class="mi">x</span></span>|',ins:'||',back:1},
+  {d:'π',ins:'π'},
+  {d:'<span class="math"><span class="mi">e</span><sup><span class="mi">x</span></sup></span>',ins:'eˣ'},
+  {d:'( )',ins:'()',back:1},
+  {d:'×',ins:'*'},
+  {d:'<span style="font-size:14px">sin</span>',ins:'sin()',back:1},
+  {d:'<span style="font-size:14px">cos</span>',ins:'cos()',back:1},
+  {d:'<span style="font-size:14px">tg</span>',ins:'tg()',back:1},
+  {d:'<span style="font-size:14px">ctg</span>',ins:'ctg()',back:1},
+  {d:'<span style="font-size:14px">ln</span>',ins:'ln()',back:1},
+  {d:'<span style="font-size:14px">lg</span>',ins:'lg()',back:1},
+  {d:'<span style="font-size:14px">arcsin</span>',ins:'arcsin()',back:1},
+];
+for(const k of KEYS){
+  const b=h('button','kp');
+  b.innerHTML=k.d;
+  b.tabIndex=-1;
+  b.addEventListener('mousedown',e=>e.preventDefault()); // не красть фокус
+  b.addEventListener('click',()=>{
+    let inp=activeInput;
+    if(!inp||!document.body.contains(inp)){
+      const rows=$('fnList').querySelectorAll('.fn-input');
+      inp=rows.length?rows[rows.length-1]:null;
+      if(!inp){const fn=addFn('');inp=fn?$('fnList').querySelector('.fn-row[data-id="'+fn.id+'"] .fn-input'):null;}
+      if(!inp)return;
+      activeInput=inp;
+    }
+    const start=inp.selectionStart??inp.value.length, end=inp.selectionEnd??inp.value.length;
+    inp.value=inp.value.slice(0,start)+k.ins+inp.value.slice(end);
+    const pos=start+k.ins.length-(k.back||0);
+    inp.focus();
+    inp.setSelectionRange(pos,pos);
+    inp.dispatchEvent(new Event('input'));
+  });
+  $('keypad').append(b);
+}
+
+/* ---- отрисовка ---- */
+function resizePlot(){
+  const r=plot.wrap.getBoundingClientRect();
+  if(r.width<2||r.height<2)return;
+  const dpr=Math.min(window.devicePixelRatio||1,1.5);  // кап DPI: меньше пикселей на кадр на 4K-панелях
+  plot.canvas.width=Math.round(r.width*dpr);
+  plot.canvas.height=Math.round(r.height*dpr);
+  plot.ctx.setTransform(dpr,0,0,dpr,0,0);
+  drawPlot();
+}
+
+function drawPlot(){
+  const ctx=plot.ctx;
+  const W=plot.canvas.clientWidth,H=plot.canvas.clientHeight;
+  if(W<2||H<2)return;
+  ctx.clearRect(0,0,W,H);
+  const {scale,cx,cy}=plot;
+  const left=cx-(W/2)/scale,right=cx+(W/2)/scale;
+  const bottom=cy-(H/2)/scale,top=cy+(H/2)/scale;
+  const sx=x=>W/2+(x-cx)*scale;
+  const sy=y=>H/2-(y-cy)*scale;
+
+  const step=niceStep(95/scale);
+  const minor=step/5;
+  ctx.lineWidth=1;
+  if(minor*scale>=13)gridLines(minor,'rgba(148,163,184,.07)');
+  gridLines(step,'rgba(148,163,184,.16)');
+  function gridLines(st,color){
+    ctx.strokeStyle=color;ctx.beginPath();
+    for(let k=Math.ceil(left/st);k*st<=right;k++){const px=sx(k*st);ctx.moveTo(px,0);ctx.lineTo(px,H);}
+    for(let k=Math.ceil(bottom/st);k*st<=top;k++){const py=sy(k*st);ctx.moveTo(0,py);ctx.lineTo(W,py);}
+    ctx.stroke();
+  }
+
+  const ax=sx(0),ay=sy(0);
+  ctx.strokeStyle='rgba(203,213,225,.75)';ctx.fillStyle='rgba(203,213,225,.75)';
+  ctx.lineWidth=1.5;
+  if(ax>=-1&&ax<=W+1){
+    ctx.beginPath();ctx.moveTo(ax,0);ctx.lineTo(ax,H);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(ax,2);ctx.lineTo(ax-5,13);ctx.lineTo(ax+5,13);ctx.fill();
+  }
+  if(ay>=-1&&ay<=H+1){
+    ctx.beginPath();ctx.moveTo(0,ay);ctx.lineTo(W,ay);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(W-2,ay);ctx.lineTo(W-13,ay-5);ctx.lineTo(W-13,ay+5);ctx.fill();
+  }
+
+  ctx.font='13px Segoe UI, sans-serif';
+  ctx.fillStyle='rgba(154,167,196,.95)';
+  const lblY=Math.min(Math.max(ay+18,16),H-8);
+  ctx.textAlign='center';
+  for(let k=Math.ceil(left/step);k*step<=right;k++){
+    if(k===0)continue;
+    const v=k*step,px=sx(v);
+    if(Math.abs(px-ax)<16&&ax>=0&&ax<=W)continue;
+    ctx.fillText(tickLabel(v),px,lblY);
+  }
+  ctx.textAlign='right';
+  const lblX=Math.min(Math.max(ax-8,34),W-6);
+  for(let k=Math.ceil(bottom/step);k*step<=top;k++){
+    if(k===0)continue;
+    const v=k*step,py=sy(v);
+    if(Math.abs(py-ay)<13&&ay>=0&&ay<=H)continue;
+    ctx.fillText(tickLabel(v),lblX,py+5);
+  }
+  if(ax>=-1&&ax<=W+1&&ay>=-1&&ay<=H+1){
+    ctx.textAlign='right';ctx.fillText('0',ax-7,ay+17);
+  }
+
+  ctx.lineJoin='round';ctx.lineCap='round';
+  for(const fn of fns){
+    if(!fn.visible||!fn.f)continue;
+    ctx.beginPath();
+    let pen=false,prevPY=0;
+    for(let px=0;px<=W;px++){
+      const wx=cx+(px-W/2)/scale;
+      const y=fn.f(wx);
+      if(!isFinite(y)){pen=false;continue;}
+      let py=H/2-(y-cy)*scale;
+      if(py<-1e6)py=-1e6;if(py>1e6)py=1e6;
+      if(pen&&Math.abs(py-prevPY)>H*1.5)pen=false;
+      if(!pen){ctx.moveTo(px,py);pen=true;}else ctx.lineTo(px,py);
+      prevPY=py;
+    }
+    ctx.lineWidth=7.5;ctx.strokeStyle=fn.color+'2e';ctx.stroke();
+    ctx.lineWidth=2.5;ctx.strokeStyle=fn.color;ctx.stroke();
+  }
+
+  const tip=$('traceTip');
+  let traceShown=false;
+  if(plot.mouse&&!plot.dragging){
+    const [mx,my]=plot.mouse;
+    const wx=cx+(mx-W/2)/scale;
+    let best=null;
+    for(const fn of fns){
+      if(!fn.visible||!fn.f)continue;
+      const y=fn.f(wx);
+      if(!isFinite(y))continue;
+      const py=H/2-(y-cy)*scale;
+      const d=Math.abs(py-my);
+      if(d<28&&(!best||d<best.d))best={fn,y,py,d};
+    }
+    if(best){
+      ctx.beginPath();ctx.arc(mx,best.py,5,0,7);
+      ctx.fillStyle=best.fn.color;ctx.fill();
+      ctx.lineWidth=2;ctx.strokeStyle='#fff';ctx.stroke();
+      tip.style.display='block';
+      tip.style.left=mx+'px';
+      tip.style.top=best.py+'px';
+      tip.style.borderColor=best.fn.color+'88';
+      tip.textContent='x = '+fmtNum(wx)+'   y = '+fmtNum(best.y);
+      traceShown=true;
+    }
+  }
+  if(!traceShown)tip.style.display='none';
+}
+
+// перерисовка не чаще раза за кадр — иначе десятки drawPlot за один pointermove тормозят
+let _drawPending=false;
+function scheduleDraw(){ if(_drawPending)return; _drawPending=true; requestAnimationFrame(()=>{ _drawPending=false; drawPlot(); }); }
+
+function tickLabel(v){
+  const a=Math.abs(v);
+  if(a>=1e6||a<1e-4)return v.toExponential(0).replace('+','');
+  return String(Math.round(v*1e9)/1e9);
+}
+
+function zoomAt(px,py,factor){
+  const W=plot.canvas.clientWidth,H=plot.canvas.clientHeight;
+  const newScale=Math.min(1e8,Math.max(1e-6,plot.scale*factor));
+  const wx=plot.cx+(px-W/2)/plot.scale;
+  const wy=plot.cy-(py-H/2)/plot.scale;
+  plot.cx=wx-(px-W/2)/newScale;
+  plot.cy=wy+(py-H/2)/newScale;
+  plot.scale=newScale;
+  scheduleDraw();
+}
+
+plot.canvas.addEventListener('wheel',e=>{
+  e.preventDefault();
+  const r=plot.canvas.getBoundingClientRect();
+  zoomAt(e.clientX-r.left,e.clientY-r.top,e.deltaY<0?1.18:1/1.18);
+},{passive:false});
+plot.canvas.addEventListener('pointerdown',e=>{
+  if(e.button!==0)return;
+  plot.dragging=true;
+  plot.lastPX=e.clientX;plot.lastPY=e.clientY;
+  plot.canvas.setPointerCapture(e.pointerId);
+  plot.canvas.style.cursor='grabbing';
+});
+plot.canvas.addEventListener('pointermove',e=>{
+  const r=plot.canvas.getBoundingClientRect();
+  const mx=e.clientX-r.left,my=e.clientY-r.top;
+  plot.mouse=[mx,my];
+  if(plot.dragging){
+    plot.cx-=(e.clientX-plot.lastPX)/plot.scale;
+    plot.cy+=(e.clientY-plot.lastPY)/plot.scale;
+    plot.lastPX=e.clientX;plot.lastPY=e.clientY;
+  }
+  const W=plot.canvas.clientWidth,H=plot.canvas.clientHeight;
+  $('coords').textContent='x: '+fmtNum(plot.cx+(mx-W/2)/plot.scale)+'   y: '+fmtNum(plot.cy-(my-H/2)/plot.scale);
+  scheduleDraw();
+});
+plot.canvas.addEventListener('pointerup',()=>{
+  plot.dragging=false;
+  plot.canvas.style.cursor='crosshair';
+});
+plot.canvas.addEventListener('pointerleave',()=>{
+  plot.mouse=null;
+  $('coords').textContent='';
+  scheduleDraw();
+});
+$('zoomIn').addEventListener('click',()=>zoomAt(plot.canvas.clientWidth/2,plot.canvas.clientHeight/2,1.35));
+$('zoomOut').addEventListener('click',()=>zoomAt(plot.canvas.clientWidth/2,plot.canvas.clientHeight/2,1/1.35));
+$('zoomReset').addEventListener('click',()=>{plot.scale=60;plot.cx=0;plot.cy=0;drawPlot();});
+new ResizeObserver(resizePlot).observe(plot.wrap);
+window.addEventListener('resize',resizePlot);
+resizePlot();
+
+$('addFnBtn').addEventListener('click',()=>{
+  const fn=addFn('');
+  if(fn){
+    const inp=$('fnList').querySelector('.fn-row[data-id="'+fn.id+'"] .fn-input');
+    if(inp){inp.focus();activeInput=inp;}
+  }
+});
+for(const p of PRESETS){
+  const c=h('button','chip');
+  const pretty=prettyFormula(p);
+  if(pretty)c.innerHTML=pretty;else c.textContent=p;
+  c.style.fontSize='16px';
+  c.addEventListener('click',()=>addFn(p));
+  $('presetChips').append(c);
+}
+addFn('sin(x)');
+addFn('x³/20');
+
+/* ============================================================
+   МОДУЛЬ 2: ВЕРОЯТНОСТИ
+   ============================================================ */
+const probState={exp:'coin'};
+const cfg={
+  dice:{faces:6},
+  cards:{mode:'suit'},
+  urn:{r:5,b:3,g:2},
+  roulette:{sectors:[{name:t('def_red'),w:18},{name:t('def_black'),w:18},{name:t('def_zero'),w:1}]},
+};
+const EXPERIMENTS=[
+  {key:'coin',ico:'🪙',nk:'exp_coin'},
+  {key:'dice',ico:'🎲',nk:'exp_dice'},
+  {key:'dice2',ico:'🎲🎲',nk:'exp_dice2'},
+  {key:'cards',ico:'🃏',nk:'exp_cards'},
+  {key:'urn',ico:'🎱',nk:'exp_urn'},
+];
+
+function autoColor(i,total){
+  return 'hsl('+Math.round(205+i*360/Math.max(total,1))%360+' 72% 62%)';
+}
+function sectorColor(name,i,total){
+  const n=name.toLowerCase();
+  if(n.includes('красн')||n.includes('қызыл'))return '#ef4444';
+  if(n.includes('черн')||n.includes('чёрн')||n.includes('қара'))return '#94a3b8';
+  if(n.includes('зел')||n.includes('зеро')||n.includes('жасыл'))return '#22c55e';
+  if(n.includes('син')||n.includes('көк'))return '#3b82f6';
+  if(n.includes('желт')||n.includes('жёлт')||n.includes('сары'))return '#eab308';
+  return autoColor(i,total);
+}
+const outLabel=o=>o.lkey?t(o.lkey):o.label;
+
+function getOutcomes(){
+  switch(probState.exp){
+    case 'coin':
+      return [
+        {lkey:'out_heads',p:.5,color:'#fbbf24'},
+        {lkey:'out_tails',p:.5,color:'#94a3b8'},
+      ];
+    case 'dice':{
+      const k=cfg.dice.faces;
+      if(!(k>=2&&k<=100))throw new Error(t('err_faces'));
+      return Array.from({length:k},(_,i)=>({label:String(i+1),p:1/k,color:autoColor(i,k)}));
+    }
+    case 'dice2':
+      return Array.from({length:11},(_,i)=>{
+        const s=i+2;
+        return {label:String(s),p:(6-Math.abs(7-s))/36,color:'hsl('+(180+i*14)+' 72% 62%)'};
+      });
+    case 'cards':{
+      const m=cfg.cards.mode;
+      if(m==='suit')return [
+        {lkey:'suit_s',p:.25,color:'#a3b3cc'},
+        {lkey:'suit_h',p:.25,color:'#f87171'},
+        {lkey:'suit_d',p:.25,color:'#fbbf24'},
+        {lkey:'suit_c',p:.25,color:'#4ade80'},
+      ];
+      if(m==='color')return [
+        {lkey:'col_red',p:.5,color:'#f87171'},
+        {lkey:'col_black',p:.5,color:'#94a3b8'},
+      ];
+      const ranks=['2','3','4','5','6','7','8','9','10','В','Д','К','Т'];
+      return ranks.map((r,i)=>({label:r,p:1/13,color:autoColor(i,13)}));
+    }
+    case 'urn':{
+      const {r,b,g}=cfg.urn,total=r+b+g;
+      if(total<=0)throw new Error(t('err_urn'));
+      const out=[];
+      if(r>0)out.push({lkey:'uball_r',p:r/total,color:'#ef4444'});
+      if(b>0)out.push({lkey:'uball_b',p:b/total,color:'#3b82f6'});
+      if(g>0)out.push({lkey:'uball_g',p:g/total,color:'#22c55e'});
+      return out;
+    }
+    case 'roulette':{
+      const secs=cfg.roulette.sectors.filter(s=>s.w>0);
+      if(!secs.length)throw new Error(t('err_sectors'));
+      const total=secs.reduce((a,s)=>a+s.w,0);
+      return secs.map((s,i)=>({
+        label:s.name.trim()||t('sector_default',{n:i+1}),
+        p:s.w/total,
+        color:sectorColor(s.name,i,secs.length),
+      }));
+    }
+  }
+}
+
+function mixBar(){
+  const bar=h('div','mix-bar');
+  return {
+    el:bar,
+    update(parts){
+      bar.innerHTML='';
+      for(const pt of parts){
+        const seg=h('div');
+        seg.style.flexGrow=String(Math.max(pt.p,0.0001));
+        seg.style.background=pt.color;
+        seg.title=pt.title;
+        bar.append(seg);
+      }
+    }
+  };
+}
+
+function renderSettings(){
+  const c=$('expSettings');
+  c.innerHTML='';
+  hideProbError();
+  const key=probState.exp;
+
+  if(key==='coin'){
+    c.append(h('p','note',t('coin_info')));
+  }
+  else if(key==='dice'){
+    const wrap=h('div','field');
+    wrap.append(h('label',null,t('dice_faces')));
+    const inp=h('input');
+    inp.type='number';inp.min=2;inp.max=100;inp.step=1;inp.value=cfg.dice.faces;
+    inp.addEventListener('input',()=>{
+      const v=parseInt(inp.value,10);
+      cfg.dice.faces=isNaN(v)?0:Math.min(100,Math.max(2,v));
+    });
+    wrap.append(inp);
+    c.append(wrap);
+    const chips=h('div','chips');
+    for(const v of [4,6,8,10,12,20]){
+      const ch=h('button','chip','d'+v);
+      ch.addEventListener('click',()=>{cfg.dice.faces=v;inp.value=v;});
+      chips.append(ch);
+    }
+    c.append(chips);
+  }
+  else if(key==='dice2'){
+    c.append(h('p','note',t('dice2_info')));
+  }
+  else if(key==='cards'){
+    const wrap=h('div','field');
+    wrap.append(h('label',null,t('cards_what')));
+    const sel=h('select');
+    for(const [v,k] of [['suit','cards_suit_opt'],['rank','cards_rank_opt'],['color','cards_color_opt']]){
+      const o=h('option',null,t(k));o.value=v;
+      if(cfg.cards.mode===v)o.selected=true;
+      sel.append(o);
+    }
+    sel.addEventListener('change',()=>{cfg.cards.mode=sel.value;});
+    wrap.append(sel);
+    c.append(wrap,h('p','note',t('cards_info')));
+  }
+  else if(key==='urn'){
+    const mb=mixBar(),totalLbl=h('div','mix-total');
+    const upd=()=>{
+      const {r,b,g}=cfg.urn,total=r+b+g;
+      totalLbl.textContent=t('urn_total',{n:total});
+      mb.update(total?[
+        {p:r/total,color:'#ef4444',title:t('ball_red')+': '+r},
+        {p:b/total,color:'#3b82f6',title:t('ball_blue')+': '+b},
+        {p:g/total,color:'#22c55e',title:t('ball_green')+': '+g},
+      ]:[{p:1,color:'rgba(255,255,255,.08)',title:t('urn_empty')}]);
+    };
+    for(const [keyB,nameK,col] of [['r','ball_red','#ef4444'],['b','ball_blue','#3b82f6'],['g','ball_green','#22c55e']]){
+      const row=h('div','ball-row');
+      const dot=h('div','ball-dot');dot.style.setProperty('--c',col);
+      const lbl=h('label',null,t(nameK));
+      const inp=h('input');inp.type='number';inp.min=0;inp.max=999;inp.step=1;inp.value=cfg.urn[keyB];
+      inp.addEventListener('input',()=>{
+        const v=parseInt(inp.value,10);
+        cfg.urn[keyB]=isNaN(v)?0:Math.min(999,Math.max(0,v));
+        upd();
+      });
+      row.append(dot,lbl,inp);
+      c.append(row);
+    }
+    c.append(mb.el,totalLbl);
+    upd();
+  }
+  else if(key==='roulette'){
+    const rows=h('div'),mb=mixBar();
+    const rebuild=()=>{
+      rows.innerHTML='';
+      cfg.roulette.sectors.forEach((s,idx)=>{
+        const row=h('div','sector-row');
+        const nameInp=h('input');nameInp.type='text';nameInp.value=s.name;nameInp.placeholder=t('sector_name_ph');
+        const wInp=h('input');wInp.type='number';wInp.min=0;wInp.step='any';wInp.value=s.w;wInp.title=t('sector_w_title');
+        const pct=h('span','sector-pct');
+        const del=h('button','fn-del','✕');del.title=t('fn_del');
+        nameInp.addEventListener('input',()=>{s.name=nameInp.value;updPct();});
+        wInp.addEventListener('input',()=>{const v=parseFloat(wInp.value);s.w=isNaN(v)||v<0?0:v;updPct();});
+        del.addEventListener('click',()=>{cfg.roulette.sectors.splice(idx,1);rebuild();});
+        row.append(nameInp,wInp,pct,del);
+        rows.append(row);
+      });
+      updPct();
+    };
+    const updPct=()=>{
+      const secs=cfg.roulette.sectors;
+      const total=secs.reduce((a,s)=>a+(s.w>0?s.w:0),0);
+      [...rows.querySelectorAll('.sector-pct')].forEach((el,i)=>{
+        el.textContent=total>0&&secs[i].w>0?(secs[i].w/total*100).toFixed(1)+'%':'0%';
+      });
+      mb.update(total>0
+        ?secs.filter(s=>s.w>0).map((s,i)=>({p:s.w/total,color:sectorColor(s.name,i,secs.length),title:(s.name||'—')+': '+(s.w/total*100).toFixed(1)+'%'}))
+        :[{p:1,color:'rgba(255,255,255,.08)',title:t('no_sectors')}]);
+    };
+    const addBtn=h('button','add-btn',t('add_sector'));
+    addBtn.addEventListener('click',()=>{
+      if(cfg.roulette.sectors.length>=16)return;
+      cfg.roulette.sectors.push({name:t('sector_default',{n:cfg.roulette.sectors.length+1}),w:1});
+      rebuild();
+    });
+    c.append(h('p','note',t('roul_info')),rows,addBtn,mb.el);
+    rebuild();
+  }
+}
+
+function showProbError(msg){const e=$('probError');e.textContent='⚠ '+msg;e.classList.add('show');}
+function hideProbError(){$('probError').classList.remove('show');}
+
+for(const ex of EXPERIMENTS){
+  const card=h('div','exp-card'+(ex.key===probState.exp?' active':''));
+  const nameEl=h('div','exp-name',t(ex.nk));
+  nameEl.dataset.i18n=ex.nk;
+  card.append(h('div','exp-ico',ex.ico),nameEl);
+  card.addEventListener('click',()=>{
+    probState.exp=ex.key;
+    document.querySelectorAll('.exp-card').forEach(el=>el.classList.remove('active'));
+    card.classList.add('active');
+    renderSettings();
+  });
+  $('expGrid').append(card);
+}
+renderSettings();
+
+for(const v of [100,1000,10000,100000,1000000]){
+  const ch=h('button','chip',fmtInt(v));
+  ch.addEventListener('click',()=>{$('trialsInput').value=v;});
+  $('trialChips').append(ch);
+}
+
+function simulate(outcomes,n){
+  const k=outcomes.length;
+  const cum=new Float64Array(k);
+  let acc=0;
+  for(let j=0;j<k;j++){acc+=outcomes[j].p;cum[j]=acc;}
+  cum[k-1]=1.0000001;
+  const counts=new Float64Array(k);
+  const cpIdx=[];
+  if(n>=10){
+    const steps=Math.max(20,Math.ceil(Math.log10(n)*18));
+    let last=0;
+    for(let s=0;s<=steps;s++){
+      const v=Math.max(1,Math.round(Math.pow(10,s*Math.log10(n)/steps)));
+      if(v>last&&v<=n){cpIdx.push(v);last=v;}
+    }
+    if(last!==n)cpIdx.push(n);
+  }
+  const cps=[];let nextCp=0;
+  for(let i=1;i<=n;i++){
+    const r=Math.random();
+    let j=0;
+    while(cum[j]<r)j++;
+    counts[j]++;
+    if(nextCp<cpIdx.length&&i===cpIdx[nextCp]){
+      const f=new Float64Array(k);
+      for(let m=0;m<k;m++)f[m]=counts[m]/i;
+      cps.push({i,f});
+      nextCp++;
+    }
+  }
+  return {counts,cps};
+}
+
+let lastRun=null,convProgress=1,countAnim=null;
+
+$('runBtn').addEventListener('click',()=>{
+  let outcomes;
+  try{outcomes=getOutcomes();}
+  catch(e){showProbError(e.message);return;}
+  hideProbError();
+  let n=parseInt($('trialsInput').value,10);
+  if(isNaN(n)||n<1)n=1;
+  if(n>1000000)n=1000000;
+  $('trialsInput').value=n;
+  const {counts,cps}=simulate(outcomes,n);
+  lastRun={outcomes,counts,cps,n,expKey:probState.exp};
+  renderResults(false);
+});
+
+function renderResults(instant){
+  const {outcomes,counts,cps,n,expKey}=lastRun;
+  $('probPlaceholder').style.display='none';
+  $('probResults').style.display='flex';
+  const exp=EXPERIMENTS.find(e=>e.key===expKey);
+  $('chartTitle').textContent=t('chart_title')+' — '+t(exp.nk);
+
+  let top=0;
+  for(let j=1;j<outcomes.length;j++)if(counts[j]>counts[top])top=j;
+  $('sumTop').innerHTML='';
+  $('sumTop').append(
+    document.createTextNode(outLabel(outcomes[top])+' '),
+    Object.assign(h('small'),{textContent:(counts[top]/n*100).toFixed(1)+'%'})
+  );
+
+  const box=$('barsBox');
+  box.innerHTML='';
+  let maxP=0;
+  for(let j=0;j<outcomes.length;j++)maxP=Math.max(maxP,counts[j]/n,outcomes[j].p);
+  const HMAX=84;
+  const counterEls=[];
+  outcomes.forEach((o,j)=>{
+    const col=h('div','bar-col');
+    const wrap=h('div','bar-wrap');
+    const hPct=(counts[j]/n)/maxP*HMAX;
+    const bar=h('div','bar'+(instant?' noanim':''));
+    bar.style.setProperty('--c',o.color);
+    bar.dataset.h=hPct+'%';
+    const theo=h('div','bar-theo');
+    theo.style.bottom=(o.p/maxP*HMAX)+'%';
+    const label=h('div','bar-label'+(instant?' noanim':''));
+    const cnt=h('b','','0');
+    const pct=h('i','','0%');
+    label.append(cnt,pct);
+    label.dataset.h=hPct+'%';
+    wrap.append(theo,bar,label);
+    col.append(wrap,h('div','bar-name',outLabel(o)));
+    col.title=outLabel(o)+': '+fmtInt(counts[j])+' / '+fmtInt(n)+' ('+(counts[j]/n*100).toFixed(2)+'%) · '+t('th_theory')+' '+(o.p*100).toFixed(2)+'%';
+    box.append(col);
+    counterEls.push({cnt,pct,final:counts[j]});
+  });
+
+  const setFinal=()=>{
+    $('sumTrials').textContent=fmtInt(n);
+    for(const ce of counterEls){
+      ce.cnt.textContent=fmtInt(ce.final);
+      ce.pct.textContent=(ce.final/n*100).toFixed(1)+'%';
+    }
+  };
+  if(instant){
+    box.querySelectorAll('.bar').forEach(b=>b.style.height=b.dataset.h);
+    box.querySelectorAll('.bar-label').forEach(l=>l.style.bottom=l.dataset.h);
+    if(countAnim)cancelAnimationFrame(countAnim);
+    setFinal();
+  } else {
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      box.querySelectorAll('.bar').forEach(b=>b.style.height=b.dataset.h);
+      box.querySelectorAll('.bar-label').forEach(l=>l.style.bottom=l.dataset.h);
+    }));
+    if(countAnim)cancelAnimationFrame(countAnim);
+    const tStart=performance.now(),dur=850;
+    const trialEl=$('sumTrials');
+    (function tick(){
+      const tt=Math.min(1,(performance.now()-tStart)/dur);
+      const e=easeOutC(tt);
+      trialEl.textContent=fmtInt(n*e);
+      for(const ce of counterEls){
+        const v=ce.final*e;
+        ce.cnt.textContent=fmtInt(v);
+        ce.pct.textContent=(v/n*100).toFixed(1)+'%';
+      }
+      if(tt<1)countAnim=requestAnimationFrame(tick);
+      else setFinal();
+    })();
+  }
+
+  const tbl=$('statTbl');
+  tbl.innerHTML='';
+  for(const k of ['','th_outcome','th_count','th_freq','th_theory'])
+    tbl.append(h('div','hd',k?t(k):''));
+  outcomes.forEach((o,j)=>{
+    const dot=h('div','dot');dot.style.setProperty('--c',o.color);
+    tbl.append(
+      dot,
+      h('div',null,outLabel(o)),
+      h('div','num',fmtInt(counts[j])),
+      h('div','num',(counts[j]/n*100).toFixed(2)+'%'),
+      h('div','num',(o.p*100).toFixed(2)+'%'),
+    );
+  });
+
+  if(cps.length>=4){
+    $('convCard').style.display='';
+    if(instant){convProgress=1;requestAnimationFrame(()=>drawConv());}
+    else{
+      convProgress=0;
+      const t0c=performance.now(),durC=1100;
+      (function anim(){
+        convProgress=Math.min(1,(performance.now()-t0c)/durC);
+        drawConv();
+        if(convProgress<1)requestAnimationFrame(anim);
+      })();
+    }
+  } else {
+    $('convCard').style.display='none';
+  }
+}
+
+function drawConv(){
+  if(!lastRun||lastRun.cps.length<4)return;
+  const cv=$('convCanvas');
+  const W=cv.clientWidth,H=cv.clientHeight;
+  if(W<2)return;
+  const dpr=Math.min(window.devicePixelRatio||1,1.5);  // кап DPI: меньше пикселей на кадр на 4K-панелях
+  if(cv.width!==Math.round(W*dpr)){cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);}
+  const ctx=cv.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,W,H);
+  const {outcomes,cps,n}=lastRun;
+  const padL=56,padR=12,padT=10,padB=30;
+  const pw=W-padL-padR,ph=H-padT-padB;
+  let ymax=0;
+  for(const o of outcomes)ymax=Math.max(ymax,o.p);
+  let dmax=0;
+  for(const cp of cps)if(cp.i>=5)for(const v of cp.f)dmax=Math.max(dmax,v);
+  ymax=Math.min(1,Math.max(ymax*1.6,dmax*1.12,.01));
+  const logN=Math.log10(n);
+  const lx=i=>padL+(Math.log10(i)/logN)*pw;
+  const ly=v=>padT+ph-(v/ymax)*ph;
+
+  ctx.font='12.5px Segoe UI, sans-serif';
+  ctx.fillStyle='rgba(154,167,196,.9)';
+  ctx.strokeStyle='rgba(148,163,184,.13)';
+  ctx.lineWidth=1;
+  ctx.textAlign='center';
+  for(let d=0;d<=logN+1e-9;d++){
+    const x=lx(Math.pow(10,d));
+    ctx.beginPath();ctx.moveTo(x,padT);ctx.lineTo(x,padT+ph);ctx.stroke();
+    ctx.fillText(fmtInt(Math.pow(10,d)),x,H-9);
+  }
+  const stepY=niceStep(ymax/4);
+  ctx.textAlign='right';
+  for(let v=0;v<=ymax+1e-12;v+=stepY){
+    const y=ly(v);
+    ctx.beginPath();ctx.moveTo(padL,y);ctx.lineTo(padL+pw,y);ctx.stroke();
+    ctx.fillText((v*100).toFixed(stepY<.01?1:0)+'%',padL-8,y+4);
+  }
+  ctx.setLineDash([5,4]);
+  ctx.globalAlpha=.55;
+  ctx.lineWidth=1.6;
+  for(const o of outcomes){
+    ctx.strokeStyle=o.color;
+    ctx.beginPath();ctx.moveTo(padL,ly(o.p));ctx.lineTo(padL+pw,ly(o.p));ctx.stroke();
+  }
+  ctx.setLineDash([]);
+  ctx.globalAlpha=1;
+  ctx.save();
+  ctx.beginPath();ctx.rect(padL,0,pw*convProgress+1,H);ctx.clip();
+  ctx.lineWidth=2;ctx.lineJoin='round';
+  outcomes.forEach((o,j)=>{
+    ctx.strokeStyle=o.color;
+    ctx.beginPath();
+    cps.forEach((cp,m)=>{
+      const x=lx(cp.i),y=ly(Math.min(cp.f[j],ymax));
+      if(m===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+  });
+  ctx.restore();
+}
+new ResizeObserver(()=>drawConv()).observe($('convCanvas'));
+
+/* ============================================================
+   ВКЛАДКИ И ЯЗЫК
+   ============================================================ */
+document.querySelectorAll('.tab').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(tb=>tb.classList.toggle('active',tb===btn));
+    document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id==='tab-'+btn.dataset.tab));
+    if(btn.dataset.tab==='graphs')requestAnimationFrame(resizePlot);
+    else requestAnimationFrame(()=>drawConv());
+  });
+});
+
+function applyLang(){
+  document.documentElement.lang=lang==='kz'?'kk':'ru';
+  document.title=t('app_title');
+  document.querySelectorAll('[data-i18n]').forEach(el=>{el.textContent=t(el.dataset.i18n);});
+  document.querySelectorAll('[data-i18n-title]').forEach(el=>{el.title=t(el.dataset.i18nTitle);});
+  document.querySelectorAll('[data-i18n-ph]').forEach(el=>{el.placeholder=t(el.dataset.i18nPh);});
+  $('helpList').innerHTML=t('help_html');
+  document.querySelectorAll('.lang button').forEach(b=>b.classList.toggle('active',b.dataset.lang===lang));
+  // динамические части
+  $('fnList').querySelectorAll('.fn-row').forEach(row=>{
+    const inp=row.querySelector('.fn-input');
+    if(inp&&inp.dataset.i18nPh)inp.placeholder=t(inp.dataset.i18nPh);
+    row.querySelectorAll('[data-i18n-title]').forEach(el=>{el.title=t(el.dataset.i18nTitle);});
+  });
+  for(const fn of fns){compileFn(fn);updateRowState(fn);}
+  renderSettings();
+  if(lastRun)renderResults(true);
+}
+document.querySelectorAll('.lang button').forEach(b=>{
+  b.addEventListener('click',()=>{
+    if(b.dataset.lang===lang)return;
+    lang=b.dataset.lang;
+    LS.set('mathlab-lang',lang);
+    applyLang();
+  });
+});
+applyLang();
+
+/* хуки для автотестов */
+window.__lab={
+  evalAt:(src,x)=>parseFormula(src).f(x),
+  parseError:src=>{try{parseFormula(src);return null;}catch(e){return e.message;}},
+  pretty:src=>prettyFormula(src),
+  resizePlot,drawConv,
+  simulate,getOutcomes,
+  setLang:l=>{lang=l;LS.set('mathlab-lang',l);applyLang();},
+  getLang:()=>lang,
+  state:probState,cfg,
+};
+</script>
+</body>
+</html>
