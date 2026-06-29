@@ -56,5 +56,9 @@ dependencies {
     implementation("com.google.android.material:material:1.11.0")
     // Ed25519-проверка лицензий v4 (используем низкоуровневый API, без JCA-провайдера)
     implementation("org.bouncycastle:bcprov-jdk18on:1.77")
-    implementation("com.journeyapps:zxing-android-embedded:4.3.0")
+    implementation("androidx.camera:camera-core:1.3.1")
+    implementation("androidx.camera:camera-camera2:1.3.1")
+    implementation("androidx.camera:camera-lifecycle:1.3.1")
+    implementation("androidx.camera:camera-view:1.3.1")
+    implementation("com.google.mlkit:barcode-scanning:17.2.0")
 }

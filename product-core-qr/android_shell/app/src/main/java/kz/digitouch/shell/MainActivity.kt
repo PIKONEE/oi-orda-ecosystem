@@ -18,8 +18,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
-import com.journeyapps.barcodescanner.ScanContract
-import com.journeyapps.barcodescanner.ScanOptions
+import android.content.Intent
 import androidx.webkit.WebViewAssetLoader
 import org.json.JSONObject
 import java.io.ByteArrayInputStream
@@ -47,21 +46,18 @@ class MainActivity : AppCompatActivity() {
     private lateinit var assetLoader: WebViewAssetLoader
 
     // QR-сканер лицензии (ZXing) + разрешение камеры
-    private val scanLauncher = registerForActivityResult(ScanContract()) { r ->
-        val text = r?.contents
-        if (text != null) activateWith(text)
+    private val scanLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { res ->
+        if (res.resultCode == RESULT_OK) {
+            val text = res.data?.getStringExtra("qr")
+            if (text != null) activateWith(text)
+        }
     }
     private val cameraPermLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) launchScan()
         else runOnUiThread { webView.evaluateJavascript("if(typeof onActivationError==='function')onActivationError('Нет доступа к камере');", null) }
     }
     private fun launchScan() {
-        val opts = ScanOptions()
-            .setDesiredBarcodeFormats(ScanOptions.QR_CODE)
-            .setPrompt("Наведите камеру на QR-код лицензии")
-            .setBeepEnabled(true)
-            .setOrientationLocked(false)
-        scanLauncher.launch(opts)
+        scanLauncher.launch(Intent(this, QrScanActivity::class.java))
     }
     private fun activateWith(key: String) {
         val (ok, message) = Licensing.activateLicense(this, key)
