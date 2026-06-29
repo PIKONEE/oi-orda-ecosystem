@@ -7,24 +7,22 @@ import android.widget.Button
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
-import com.google.zxing.BarcodeFormat
-import com.google.zxing.BinaryBitmap
-import com.google.zxing.DecodeHintType
-import com.google.zxing.MultiFormatReader
-import com.google.zxing.PlanarYUVLuminanceSource
-import com.google.zxing.common.HybridBinarizer
+import com.google.mlkit.vision.barcode.BarcodeScannerOptions
+import com.google.mlkit.vision.barcode.BarcodeScanning
+import com.google.mlkit.vision.barcode.common.Barcode
+import com.google.mlkit.vision.common.InputImage
 import java.util.concurrent.Executors
 
 /**
- * Сканер QR: CameraX (камера) + ZXing-core (декодер, лёгкий, офлайн).
- * По умолчанию ПЕРЕДНЯЯ камера (доска обращена в зал) + кнопка смены. Кадр 1280x720
- * — распознаёт с большей дистанции. Результат: Intent extra "qr".
+ * Сканер QR: CameraX + ML Kit (надёжное распознавание, модель вшита/офлайн).
+ * Передняя камера по умолчанию + кнопка смены. Кадр 1280x720 — больше дистанция.
  */
 class QrScanActivity : AppCompatActivity() {
 
@@ -34,12 +32,8 @@ class QrScanActivity : AppCompatActivity() {
     private var lensFacing = CameraSelector.LENS_FACING_FRONT
     @Volatile private var handled = false
 
-    private val reader = MultiFormatReader().apply {
-        setHints(mapOf(
-            DecodeHintType.POSSIBLE_FORMATS to listOf(BarcodeFormat.QR_CODE),
-            DecodeHintType.TRY_HARDER to true
-        ))
-    }
+    private val scanner = BarcodeScanning.getClient(
+        BarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_QR_CODE).build())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -72,32 +66,26 @@ class QrScanActivity : AppCompatActivity() {
         Toast.makeText(this, "Камера недоступна", Toast.LENGTH_LONG).show()
     }
 
+    @OptIn(ExperimentalGetImage::class)
     private fun analyze(proxy: ImageProxy) {
         if (handled) { proxy.close(); return }
-        try {
-            val plane = proxy.planes[0]
-            val buf = plane.buffer
-            val rowStride = plane.rowStride
-            val needed = rowStride * proxy.height
-            val data = ByteArray(needed)
-            buf.get(data, 0, minOf(buf.remaining(), needed))
-            val source = PlanarYUVLuminanceSource(
-                data, rowStride, proxy.height, 0, 0, proxy.width, proxy.height, false)
-            val text = reader.decodeWithState(BinaryBitmap(HybridBinarizer(source)))?.text
-            if (text != null && !handled) {
-                handled = true
-                runOnUiThread { setResult(RESULT_OK, Intent().putExtra("qr", text)); finish() }
+        val media = proxy.image ?: run { proxy.close(); return }
+        val img = InputImage.fromMediaImage(media, proxy.imageInfo.rotationDegrees)
+        scanner.process(img)
+            .addOnSuccessListener { list ->
+                val raw = list.firstOrNull { it.rawValue != null }?.rawValue
+                if (raw != null && !handled) {
+                    handled = true
+                    setResult(RESULT_OK, Intent().putExtra("qr", raw))
+                    finish()
+                }
             }
-        } catch (e: Exception) {
-            // QR не найден в кадре — пропускаем
-        } finally {
-            reader.reset()
-            proxy.close()
-        }
+            .addOnCompleteListener { proxy.close() }
     }
 
     override fun onDestroy() {
         super.onDestroy()
         exec.shutdown()
+        scanner.close()
     }
 }
