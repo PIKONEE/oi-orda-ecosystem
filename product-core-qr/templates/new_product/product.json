@@ -1,0 +1,30 @@
+{
+  "product_id": 1,
+  "slug": "my-product",
+  "name": "Мой продукт",
+  "version": "1.0.0",
+  "publisher": "Oi-Orda",
+
+  "android_namespace": "kz.digitouch.myproduct",
+
+  "engine": "webview2",
+
+  "content_dir": "content",
+  "entry_html": "index.html",
+  "icon": "assets/icon.svg",
+
+  "variants": [
+    {"id": 0, "slug": "default", "name": "Основной"}
+  ],
+
+  "window": {
+    "title": "Мой продукт",
+    "fullscreen": true
+  },
+
+  "security": {
+    "anti_copy": true,
+    "flag_secure": true,
+    "skip_activation": false
+  }
+}

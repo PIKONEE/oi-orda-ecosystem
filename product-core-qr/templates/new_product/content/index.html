@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Мой продукт</title>
+<script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f172a;color:#e2e8f0;
+       display:flex;align-items:center;justify-content:center;min-height:100vh;}
+  .container{text-align:center;padding:40px;}
+  h1{font-size:2.5rem;margin-bottom:12px;background:linear-gradient(135deg,#6366f1,#8b5cf6);
+     -webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+  p{font-size:1.1rem;color:#94a3b8;max-width:480px;margin:0 auto;}
+</style>
+</head>
+<body>
+  <div class="container">
+    <h1>Продукт работает!</h1>
+    <p>Замените этот файл (content/index.html) на свой контент: словарь, карту, 3D-модели и т.д.</p>
+    <p style="margin-top:20px;font-size:14px;color:#64748b;">
+      Оболочка product-core обеспечивает: лицензирование, защиту от копирования, сборку Win + Android.
+    </p>
+  </div>
+  <script>
+    // JS-мост к оболочке (Windows PySide6 / Android WebView)
+    if (typeof qt !== 'undefined') {
+      new QWebChannel(qt.webChannelTransport, function(ch){
+        window.core = ch.objects.core;
+      });
+    } else if (typeof core !== 'undefined') {
+      // Android: core уже доступен через addJavascriptInterface
+      window.core = core;
+    }
+  </script>
+</body>
+</html>

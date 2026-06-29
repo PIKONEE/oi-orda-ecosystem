@@ -1,0 +1,22 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8a5a2b"/>
+      <stop offset="0.55" stop-color="#a9712f"/>
+      <stop offset="1" stop-color="#6b3f1d"/>
+    </linearGradient>
+    <linearGradient id="paper" x1="120" y1="110" x2="400" y2="420" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#f6ecd2"/>
+      <stop offset="1" stop-color="#e7d3a8"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <!-- folded map -->
+  <path d="M118 150 L206 124 L306 152 L394 126 V362 L306 388 L206 360 L118 386 Z" fill="url(#paper)" stroke="#5c3a1c" stroke-width="10" stroke-linejoin="round"/>
+  <path d="M206 124 V360 M306 152 V388" stroke="#b9966a" stroke-width="8"/>
+  <!-- route dashes -->
+  <path d="M150 320 C200 280 210 230 270 220 C320 212 330 190 360 170" stroke="#9c6b34" stroke-width="7" stroke-linecap="round" stroke-dasharray="4 22"/>
+  <!-- location pin -->
+  <path d="M300 196 c-33 0 -60 26 -60 59 c0 44 60 101 60 101 c0 0 60 -57 60 -101 c0 -33 -27 -59 -60 -59 z" fill="#a82b2b" stroke="#5c1414" stroke-width="9"/>
+  <circle cx="300" cy="255" r="22" fill="#f6ecd2"/>
+</svg>
