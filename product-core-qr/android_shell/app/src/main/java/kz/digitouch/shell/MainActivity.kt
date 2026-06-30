@@ -52,15 +52,7 @@ class MainActivity : AppCompatActivity() {
             if (text != null) activateWith(text)
         }
     }
-    private val fileLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        if (uri != null) {
-            val key = try {
-                contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }?.trim()
-            } catch (e: Exception) { null }
-            if (!key.isNullOrEmpty()) activateWith(key)
-            else runOnUiThread { webView.evaluateJavascript("if(typeof onActivationError==='function')onActivationError('Не удалось прочитать файл лицензии');", null) }
-        }
-    }
+
     private val cameraPermLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) launchScan()
         else runOnUiThread { webView.evaluateJavascript("if(typeof onActivationError==='function')onActivationError('Нет доступа к камере');", null) }
@@ -226,7 +218,7 @@ class MainActivity : AppCompatActivity() {
                 else cameraPermLauncher.launch(Manifest.permission.CAMERA)
             }
         }
-        @JavascriptInterface fun importFile() { runOnUiThread { fileLauncher.launch("*/*") } }
+
         @JavascriptInterface fun log(msg: String) { Log.i(TAG, "[web] $msg") }
     }
 }

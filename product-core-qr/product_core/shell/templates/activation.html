@@ -56,7 +56,7 @@
               autocomplete="off" spellcheck="false"></textarea>
     <button id="btn">Активировать</button>
     <button id="scanBtn" style="display:none;background:linear-gradient(135deg,#0ea5e9,#22d3ee);">📷 Сканировать QR-код</button>
-    <button id="fileBtn" style="display:none;background:linear-gradient(135deg,#10b981,#34d399);">📂 Импорт из файла (USB)</button>
+
     <div id="msg" class="msg"></div>
 
     <div class="device">
@@ -121,10 +121,7 @@
       var sb = document.getElementById('scanBtn'); sb.style.display = 'block';
       sb.addEventListener('click', function(){ setMsg('Открываю камеру…'); window.AndroidShell.scanQr(); });
     }
-    if (window.AndroidShell.importFile) {
-      var fb = document.getElementById('fileBtn'); fb.style.display = 'block';
-      fb.addEventListener('click', function(){ setMsg('Открываю файл…'); window.AndroidShell.importFile(); });
-    }
+
   } else if (window.pywebview && window.pywebview.api) { usePywebview(); }
   else { window.addEventListener('pywebviewready', usePywebview); }
 
