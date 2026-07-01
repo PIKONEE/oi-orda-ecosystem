@@ -21,6 +21,9 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Install Python deps (шифрование контента)
+        run: pip install --quiet cryptography
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -35,12 +38,17 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x product-core/android_shell/gradlew
 
-      - name: Build all 4 APKs (skip_activation demos, no secrets needed)
+      - name: Build all 5 APKs (v4/QR protected)
+        env:
+          OI_CONTENT_MASTER: ${{ secrets.OI_CONTENT_MASTER }}
         run: |
           set -u
           java -version
           python --version
           cd product-core
+          # ключ шифрования контента из секрета (приватного ключа подписи здесь НЕТ)
+          python -c "import os,json; open('ecosystem.keys','w').write(json.dumps({'content_master': os.environ['OI_CONTENT_MASTER'].strip()}))"
+          python -c "import json; assert len(json.load(open('ecosystem.keys'))['content_master'])==64, 'bad content_master'; print('ecosystem.keys OK')"
           ok=""; fail=""
           for slug in smart-dictionary interactive-map music-encyclopedia speech-therapy math-tools; do
             echo "::group::build $slug"

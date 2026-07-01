@@ -209,9 +209,17 @@ def decode_license(license_str: str):
 
 # ─── Ключ шифрования контента (один на продукт) ───
 
-def derive_content_key(content_master: bytes, product_id: int) -> bytes:
-    return hmac.new(content_master, b"content:" + bytes([product_id & 0xFF]),
-                    hashlib.sha256).digest()
+def derive_content_key(content_master: bytes, product_id: int, variant_id: int = 0) -> bytes:
+    """Ключ контента продукта.
+
+    variant_id=0 → как раньше (b"content:"+product_id) — обратная совместимость с
+    уже выпущенными сборками/лицензиями. variant_id>0 → отдельный ключ на вариант
+    (предмет), чтобы ключ одного варианта не открывал контент другого варианта
+    того же продукта (поштучная продажа предметов «Интерактивных плакатов»)."""
+    msg = b"content:" + bytes([product_id & 0xFF])
+    if variant_id:
+        msg += b":" + bytes([variant_id & 0xFF])
+    return hmac.new(content_master, msg, hashlib.sha256).digest()
 
 
 def encrypt_content(data: bytes, content_key: bytes) -> bytes:

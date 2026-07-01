@@ -55,6 +55,8 @@
     <textarea id="key" placeholder="XXXXX-XXXXX-XXXXX-XXXXX   или   OL1-…"
               autocomplete="off" spellcheck="false"></textarea>
     <button id="btn">Активировать</button>
+    <button id="scanBtn" style="display:none;background:linear-gradient(135deg,#0ea5e9,#22d3ee);">📷 Сканировать QR-код</button>
+
     <div id="msg" class="msg"></div>
 
     <div class="device">
@@ -115,6 +117,11 @@
       activateKey: function(k){ window.AndroidShell.activateKey(k); }  // вызовет onActivationSuccess/Error
     };
     core.getDeviceId(showDeviceId);
+    if (window.AndroidShell.scanQr) {
+      var sb = document.getElementById('scanBtn'); sb.style.display = 'block';
+      sb.addEventListener('click', function(){ setMsg('Открываю камеру…'); window.AndroidShell.scanQr(); });
+    }
+
   } else if (window.pywebview && window.pywebview.api) { usePywebview(); }
   else { window.addEventListener('pywebviewready', usePywebview); }
 

@@ -23,6 +23,6 @@
   "security": {
     "anti_copy": true,
     "flag_secure": true,
-    "skip_activation": true
+    "skip_activation": false
   }
 }

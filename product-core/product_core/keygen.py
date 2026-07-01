@@ -127,7 +127,7 @@ def cmd_genlicense(args):
     ks = load_keystore()
     priv = bytes.fromhex(ks["ed25519_priv"])
     content_master = bytes.fromhex(ks["content_master"])
-    content_key = proto.derive_content_key(content_master, args.product_id)
+    content_key = proto.derive_content_key(content_master, args.product_id, args.variant_id)
     payload = proto.pack_payload(args.product_id, args.variant_id, args.client_id, args.months)
     sig = proto.sign_license(priv, payload, content_key, device_id)
     license_str = proto.encode_license(payload, content_key, sig)
@@ -163,7 +163,7 @@ def cmd_genshort(args):
         print(f"❌ Device ID должен быть 16 hex-символов (получено {len(device_id)})"); sys.exit(1)
 
     ks = load_keystore()
-    content_key = proto.derive_content_key(bytes.fromhex(ks["content_master"]), args.product_id)
+    content_key = proto.derive_content_key(bytes.fromhex(ks["content_master"]), args.product_id, args.variant_id)
     key = proto.encode_short(content_key, args.variant_id, args.client_id, args.months, device_id)
 
     conn = _db()

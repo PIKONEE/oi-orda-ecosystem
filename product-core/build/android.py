@@ -185,15 +185,8 @@ def build_android(product_dir: str, debug: bool = False):
 
     # Ключ контента (обфусцирован XOR-маской) — для короткого ключа активации
     # и расшифровки контента. Извлекаемо реверс-инженером = защита уровня v3 (как договорились).
-    keystore = CORE_ROOT / "ecosystem.keys"
-    if keystore.exists() and not cfg.get("security", {}).get("skip_activation", False):
-        from product_core import _protocol as _proto
-        _ks = json.loads(keystore.read_text(encoding="utf-8"))
-        ckey = _proto.derive_content_key(bytes.fromhex(_ks["content_master"]), cfg.get("product_id", 0))
-        mask = os.urandom(32)
-        product_config["ck_mask"] = list(mask)
-        product_config["ck_data"] = [ckey[i] ^ mask[i] for i in range(32)]
-        log("ключ контента встроен (для короткого ключа)")
+    # QR/v4-only: ключ контента НЕ встраиваем — он приходит ВНУТРИ лицензии (QR).
+    log("v4-only сборка: ключ контента в APK не встроен")
     with open(assets_dir / "product_config.json", "w", encoding="utf-8") as f:
         json.dump(product_config, f, ensure_ascii=False)
     log("product_config.json сгенерирован")

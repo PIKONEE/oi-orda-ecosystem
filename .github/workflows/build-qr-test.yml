@@ -1,14 +1,7 @@
 name: build-qr-test
 
 on:
-  workflow_dispatch:
-  push:
-    branches:
-      - feature/azure-tts-and-3x-content
-    paths:
-      - 'product-core-qr/**'
-      - 'products/interactive-map-qr/**'
-      - '.github/workflows/build-qr-test.yml'
+  workflow_dispatch:   # прототип; QR-ядро перенесено в product-core (см. build-apks). Только ручной запуск.
 
 jobs:
   qr:

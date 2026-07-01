@@ -1,6 +1,8 @@
 # === Секреты и лицензии экосистемы — НИКОГДА не коммитить ===
 **/_secret.py
 **/ecosystem.keys
+**/ecosystem.keys.*
+**/*.test_bak
 **/keys.db
 **/master.key
 **/license.dat
