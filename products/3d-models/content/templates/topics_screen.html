@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Choose Model</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0a0e27;
+            background-image:
+                radial-gradient(at 20% 30%, rgba(59, 130, 246, 0.15) 0px, transparent 50%),
+                radial-gradient(at 80% 70%, rgba(168, 85, 247, 0.15) 0px, transparent 50%);
+            min-height: 100vh;
+            padding: 40px 20px;
+            color: white;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Animated background particles */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image:
+                radial-gradient(2px 2px at 20% 30%, rgba(255,255,255,0.1), transparent),
+                radial-gradient(2px 2px at 60% 70%, rgba(255,255,255,0.1), transparent),
+                radial-gradient(1px 1px at 50% 50%, rgba(255,255,255,0.1), transparent);
+            background-size: 200px 200px, 300px 300px, 150px 150px;
+            animation: floatParticles 20s linear infinite;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        @keyframes floatParticles {
+            to {
+                transform: translateY(-100px);
+            }
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 50px;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex: 1;
+            min-width: 300px;
+        }
+
+        .back-button {
+            background: rgba(59, 130, 246, 0.2);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            color: white;
+            padding: 14px 28px;
+            border-radius: 14px;
+            font-size: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .back-button:hover {
+            background: rgba(59, 130, 246, 0.3);
+            border-color: rgba(59, 130, 246, 0.5);
+            transform: translateX(-5px);
+            box-shadow: 0 4px 20px rgba(59, 130, 246, 0.4);
+        }
+
+        header h1 {
+            font-size: 42px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -1px;
+        }
+
+        .search-wrap {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 14px;
+            padding: 12px 16px;
+            min-width: 320px;
+            transition: all 0.3s ease;
+        }
+
+        .search-wrap:focus-within {
+            border-color: rgba(59, 130, 246, 0.5);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        #search-input {
+            width: 340px;
+            max-width: 45vw;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: #fff;
+            font-size: 15px;
+            font-weight: 500;
+        }
+
+        #search-input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .clear-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #fff;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .clear-btn:hover {
+            background: rgba(239, 68, 68, 0.3);
+            border-color: rgba(239, 68, 68, 0.5);
+            transform: scale(1.05);
+        }
+
+        .hint {
+            margin: -10px 0 30px;
+            opacity: 0.7;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .topics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+
+        .topic-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            border-radius: 18px;
+            padding: 32px 28px;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            min-height: 140px;
+            position: relative;
+            overflow: hidden;
+            animation: fadeIn 0.5s ease forwards;
+            opacity: 0;
+        }
+
+        .topic-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, transparent 0%, rgba(59, 130, 246, 0.1) 100%);
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .topic-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            border-color: rgba(59, 130, 246, 0.4);
+            box-shadow:
+                0 15px 40px rgba(59, 130, 246, 0.25),
+                0 0 0 1px rgba(59, 130, 246, 0.2);
+        }
+
+        .topic-card:hover::before {
+            opacity: 1;
+        }
+
+        .topic-card h3 {
+            font-size: 17px;
+            font-weight: 600;
+            line-height: 1.5;
+            position: relative;
+            z-index: 1;
+            color: rgba(255, 255, 255, 0.95);
+        }
+
+        footer {
+            text-align: center;
+            opacity: 0.5;
+            font-size: 14px;
+            margin-top: 60px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            header h1 {
+                font-size: 32px;
+            }
+
+            .search-wrap {
+                width: 100%;
+                min-width: unset;
+            }
+
+            #search-input {
+                width: 100%;
+                max-width: unset;
+            }
+
+            .topics-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+
+            .topic-card {
+                padding: 28px 24px;
+                min-height: 120px;
+            }
+        }
+    </style>
+    <script type="text/javascript" src="qrc:///qtwebchannel/qwebchannel.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-left">
+                <button class="back-button" id="back-btn" onclick="goBack()">
+                    <span>←</span>
+                    <span>Back</span>
+                </button>
+                <h1 id="subject-title">Loading...</h1>
+            </div>
+
+            <div class="search-wrap">
+                <input id="search-input" type="text" placeholder="Search models..." autocomplete="off">
+                <button class="clear-btn" id="clear-btn" title="Clear">×</button>
+            </div>
+        </header>
+
+        <div class="hint" id="hint"></div>
+
+        <div class="topics-grid" id="topics-grid">
+            <!-- Темы будут загружены здесь -->
+        </div>
+
+        <footer>
+            <p>© 2024 Interactive 3D Models • Powered by Three.js</p>
+        </footer>
+    </div>
+
+    <script>
+        let bridge = null;
+        let bridgeReady = false;
+        let allTopics = [];
+
+        function goBack() {
+            console.log("🔙 Клик на кнопку Назад");
+            if (bridgeReady && bridge) {
+                bridge.onBackClicked();
+            }
+        }
+
+        function renderTopics(topics) {
+            allTopics = Array.isArray(topics) ? topics : [];
+            console.log("📚 renderTopics() вызвана с", topics.length, "темами");
+            const grid = document.getElementById('topics-grid');
+            grid.innerHTML = '';
+
+            topics.forEach((topic, index) => {
+                const card = document.createElement('div');
+                card.className = 'topic-card';
+                card.style.animationDelay = `${index * 0.05}s`;
+                card.setAttribute('data-topic-id', topic.id);
+                card.onclick = () => {
+                    console.log("📖 Клик на тему:", topic.id);
+                    if (bridgeReady && bridge) {
+                        bridge.onTopicClicked(topic.id);
+                    }
+                };
+
+                card.innerHTML = `<h3>${topic.name}</h3>`;
+                grid.appendChild(card);
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log("📱 DOMContentLoaded - инициализирую topics_screen");
+
+            if (typeof QWebChannel !== 'undefined') {
+                console.log("✅ QWebChannel найден");
+
+                try {
+                    new QWebChannel(qt.webChannelTransport, function(channel) {
+                        bridge = channel.objects.bridge;
+                        bridgeReady = true;
+                        console.log("✅ Bridge получен и готов");
+                        console.log("   Вызываю onFrontEndReady()");
+                        bridge.onFrontEndReady();
+                    });
+                } catch (e) {
+                    console.error("❌ Ошибка инициализации QWebChannel:", e);
+                }
+            } else {
+                console.error("❌ QWebChannel не найден!");
+            }
+
+            // Поиск
+            const input = document.getElementById('search-input');
+            const clearBtn = document.getElementById('clear-btn');
+            const hint = document.getElementById('hint');
+
+            function applyFilter() {
+                const q = (input.value || '').trim().toLowerCase();
+                const filtered = !q
+                    ? allTopics
+                    : allTopics.filter(t => (t.name || '').toLowerCase().includes(q));
+
+                const grid = document.getElementById('topics-grid');
+                grid.innerHTML = '';
+
+                if (hint) {
+                    hint.innerText = q
+                        ? `Found: ${filtered.length} of ${allTopics.length}`
+                        : `Found: ${allTopics.length}`;
+                }
+
+                filtered.forEach((topic, index) => {
+                    const card = document.createElement('div');
+                    card.className = 'topic-card';
+                    card.style.animationDelay = `${index * 0.03}s`;
+                    card.onclick = () => {
+                        if (bridgeReady && bridge) bridge.onTopicClicked(topic.id);
+                    };
+                    card.innerHTML = `<h3>${topic.name}</h3>`;
+                    grid.appendChild(card);
+                });
+            }
+
+            if (input) {
+                input.addEventListener('input', applyFilter);
+                input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape') {
+                        input.value = '';
+                        applyFilter();
+                        input.blur();
+                    }
+                });
+            }
+
+            if (clearBtn) {
+                clearBtn.addEventListener('click', () => {
+                    input.value = '';
+                    applyFilter();
+                    input.focus();
+                });
+            }
+        });
+    </script>
+</body>
+</html>

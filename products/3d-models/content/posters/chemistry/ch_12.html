@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="page_title">Электролиз — Процессы на катоде и аноде</title>
+<script src="../../libs/vendor/three-r128/three.min.js"></script>
+<style>
+
+
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --blue:#38bdf8;--purple:#a78bfa;--orange:#fb923c;--green:#4ade80;--red:#f87171;
+  --yellow:#facc15;--cyan:#22d3ee;--pink:#f472b6;
+  --cathode:#60a5fa;--anode:#f87171;--electron:#facc15;--cation:#4ade80;--anion:#fb923c;
+  --glass-bg:rgba(10,14,32,0.65);--glass-border:rgba(255,255,255,0.1);
+  --text:#e2e8f0;--text-dim:#94a3b8;
+  --mono:'JetBrains Mono',monospace;--serif:'Playfair Display',serif;--sans:'Nunito',sans-serif;
+}
+body{background:radial-gradient(ellipse at 40% 30%,#0c1024 0%,#030712 55%,#000 100%);color:var(--text);font-family:var(--sans);overflow:hidden;height:100vh;width:100vw;}
+#canvas-container{position:absolute;inset:0;z-index:0;}
+canvas{display:block;}
+
+.glass{background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,0.5),inset 0 1px 0 rgba(255,255,255,0.04);}
+::-webkit-scrollbar{width:5px;}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.12);border-radius:3px;}
+
+/* LEFT PANEL */
+#left-panel{position:absolute;top:56px;left:16px;width:370px;z-index:10;padding:24px;display:flex;flex-direction:column;gap:16px;max-height:calc(100vh - 72px);overflow-y:auto;}
+.panel-title{font-family:var(--serif);font-size:28px;font-weight:700;background:linear-gradient(135deg,var(--cathode),var(--anode));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.panel-subtitle{font-size:15px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1.5px;}
+.separator{height:1px;background:linear-gradient(90deg,transparent,var(--glass-border),transparent);}
+
+.control-group{display:flex;flex-direction:column;gap:8px;}
+.control-label{display:flex;justify-content:space-between;align-items:baseline;font-size:18px;color:var(--text-dim);}
+.control-value{font-family:var(--mono);font-weight:600;font-size:20px;color:var(--yellow);}
+
+input[type="range"]{-webkit-appearance:none;width:100%;height:10px;border-radius:5px;background:rgba(255,255,255,0.08);outline:none;cursor:pointer;}
+input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:28px;height:28px;border-radius:50%;background:var(--yellow);box-shadow:0 0 12px rgba(251,191,36,0.5);cursor:pointer;transition:transform .15s;}
+input[type="range"]::-webkit-slider-thumb:hover{transform:scale(1.2);}
+.slider-blue::-webkit-slider-thumb{background:var(--blue);box-shadow:0 0 12px rgba(56,189,248,0.5);}
+.slider-green::-webkit-slider-thumb{background:var(--green);box-shadow:0 0 12px rgba(74,222,128,0.5);}
+
+.btn{padding:14px 20px;border:none;border-radius:14px;font-family:var(--sans);font-weight:700;font-size:20px;cursor:pointer;transition:all .2s;letter-spacing:.5px;width:100%;}
+.btn-start{background:linear-gradient(135deg,var(--green),#16a34a);color:#052e16;box-shadow:0 4px 20px rgba(74,222,128,0.3);}
+.btn-start:hover{transform:translateY(-1px);box-shadow:0 6px 24px rgba(74,222,128,0.45);}
+.btn-stop{background:linear-gradient(135deg,var(--red),#dc2626);color:#450a0a;box-shadow:0 4px 20px rgba(248,113,113,0.3);}
+.btn-reset{background:rgba(255,255,255,0.08);color:var(--text);border:1px solid var(--glass-border);margin-top:4px;font-size:18px;padding:12px 16px;}
+.btn-reset:hover{background:rgba(255,255,255,0.14);}
+.btn-row{display:flex;gap:8px;}.btn-row .btn{flex:1;}
+
+.toggle-row{display:flex;align-items:center;justify-content:space-between;font-size:18px;color:var(--text-dim);}
+.toggle{width:52px;height:28px;border-radius:14px;background:rgba(255,255,255,0.1);position:relative;cursor:pointer;transition:background .3s;}
+.toggle.active{background:var(--blue);}
+.toggle::after{content:'';position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:white;transition:transform .3s;}
+.toggle.active::after{transform:translateX(24px);}
+
+/* ELECTROLYTE SELECTOR */
+.elec-selector{display:flex;gap:6px;flex-wrap:wrap;}
+.elec-btn{padding:10px 8px;border:1px solid var(--glass-border);border-radius:10px;background:rgba(255,255,255,0.03);color:var(--text-dim);font-size:15px;cursor:pointer;transition:all .2s;text-align:center;flex:1;min-width:90px;font-family:var(--mono);}
+.elec-btn.active{background:rgba(56,189,248,0.12);border-color:var(--blue);color:var(--blue);}
+.elec-btn:hover{background:rgba(255,255,255,0.07);}
+.elec-btn .name{font-family:var(--sans);font-size:12px;display:block;margin-top:2px;color:var(--text-dim);}
+
+/* RIGHT PANEL */
+#right-panel{position:absolute;top:16px;right:16px;width:400px;z-index:10;padding:24px;display:flex;flex-direction:column;gap:14px;max-height:calc(100vh - 32px);overflow-y:auto;}
+.stat-row{display:flex;justify-content:space-between;align-items:baseline;}
+.stat-label{font-size:17px;color:var(--text-dim);}
+.stat-value{font-family:var(--mono);font-weight:600;font-size:22px;}
+
+.reaction-box{background:rgba(0,0,0,0.35);border-radius:14px;padding:16px 18px;border:1px solid rgba(255,255,255,0.06);}
+.reaction-title{font-size:18px;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:8px;}
+.reaction-eq{font-family:var(--serif);font-size:20px;line-height:2;color:var(--text);font-style:italic;}
+.reaction-eq .species{font-weight:700;}
+.reaction-eq .note{font-family:var(--sans);font-size:14px;font-style:normal;color:var(--text-dim);display:block;margin-top:2px;}
+
+.formula-box{background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:14px 16px;font-family:var(--serif);font-size:20px;line-height:1.9;color:var(--text-dim);}
+.formula-box .f{color:var(--text);font-style:italic;}
+
+.info-box{background:rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.05);border-radius:12px;padding:14px 16px;font-size:17px;line-height:1.7;color:var(--text-dim);}
+.info-box b{color:var(--text);font-weight:600;}
+
+.legend-item{display:flex;align-items:center;gap:10px;font-size:16px;color:var(--text-dim);}
+.legend-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0;}
+
+/* BOTTOM */
+#bottom-panel{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);z-index:10;padding:16px 36px;display:flex;gap:44px;align-items:center;white-space:nowrap;}
+.bottom-stat{display:flex;flex-direction:column;align-items:center;gap:3px;}
+.bottom-stat .label{font-size:14px;text-transform:uppercase;letter-spacing:1.2px;color:var(--text-dim);}
+.bottom-stat .value{font-family:var(--mono);font-size:26px;font-weight:700;}
+
+/* STATUS */
+#status-bar{position:absolute;top:16px;left:50%;transform:translateX(-50%);z-index:10;padding:12px 28px;display:flex;align-items:center;gap:14px;font-size:20px;font-weight:700;letter-spacing:1px;}
+.status-dot{width:16px;height:16px;border-radius:50%;flex-shrink:0;}
+.status-dot.on{background:var(--green);animation:blink 1s infinite;}
+.status-dot.off{background:var(--text-dim);}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.4;}}
+
+/* ELECTRODE LABELS on scene */
+.electrode-label{position:absolute;z-index:5;font-family:var(--mono);font-size:22px;font-weight:700;pointer-events:none;text-shadow:0 0 16px rgba(0,0,0,0.9);padding:6px 14px;border-radius:10px;}
+
+</style>
+</head>
+<body>
+<div id="canvas-container"></div>
+
+<!-- STATUS -->
+<div id="status-bar" class="glass">
+  <div class="status-dot off" id="status-dot"></div>
+  <span id="status-text" style="color:var(--text-dim);" data-i18n="status_off">ТОК ОТКЛЮЧЁН</span>
+</div>
+
+<!-- LEFT PANEL -->
+<div id="left-panel" class="glass">
+  <div>
+    <div class="panel-title" data-i18n="panel_title">Электролиз</div>
+    <div class="panel-subtitle" data-i18n="panel_subtitle">Процессы на электродах</div>
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="panel-subtitle" data-i18n="electrolyte_label">Электролит</div>
+  <div class="elec-selector">
+    <div class="elec-btn active" data-elec="nacl">NaCl<span class="name" data-i18n="elec_nacl">хлорид натрия</span></div>
+    <div class="elec-btn" data-elec="cuso4">CuSO₄<span class="name" data-i18n="elec_cuso4">сульфат меди</span></div>
+    <div class="elec-btn" data-elec="h2o">H₂O<span class="name" data-i18n="elec_h2o">вода (+ H₂SO₄)</span></div>
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="control-group">
+    <div class="control-label">
+      <span data-i18n="voltage">Напряжение</span>
+      <span class="control-value" id="voltage-val">6.0 В</span>
+    </div>
+    <input type="range" id="voltage-slider" min="0" max="120" value="60" step="1">
+    <div style="display:flex;justify-content:space-between;font-size:14px;color:var(--text-dim);">
+      <span>0 В</span><span>12 В</span>
+    </div>
+  </div>
+
+  <div class="control-group">
+    <div class="control-label">
+      <span data-i18n="concentration">Концентрация</span>
+      <span class="control-value" id="conc-val" style="color:var(--blue);">1.0 М</span>
+    </div>
+    <input type="range" id="conc-slider" class="slider-blue" min="1" max="30" value="10" step="1">
+  </div>
+
+  <div class="control-group">
+    <div class="control-label">
+      <span data-i18n="temperature">Температура</span>
+      <span class="control-value" id="temp-val" style="color:var(--green);">25 °C</span>
+    </div>
+    <input type="range" id="temp-slider" class="slider-green" min="10" max="90" value="25" step="1">
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="toggle-row">
+    <span data-i18n="toggle_ions">Движение ионов</span>
+    <div class="toggle active" id="toggle-ions"></div>
+  </div>
+  <div class="toggle-row">
+    <span data-i18n="toggle_electrons">Электроны в цепи</span>
+    <div class="toggle active" id="toggle-electrons"></div>
+  </div>
+  <div class="toggle-row">
+    <span data-i18n="toggle_bubbles">Пузырьки газа</span>
+    <div class="toggle active" id="toggle-bubbles"></div>
+  </div>
+  <div class="toggle-row">
+    <span data-i18n="toggle_ionlabels">Подписи ионов</span>
+    <div class="toggle active" id="toggle-ionlabels"></div>
+  </div>
+
+  <div class="separator"></div>
+
+  <button class="btn btn-start" id="btn-start" data-i18n="btn_start">⚡ Включить ток</button>
+  <button class="btn btn-reset" id="btn-reset" data-i18n="btn_reset">↺ Сброс</button>
+</div>
+
+<!-- RIGHT PANEL -->
+<div id="right-panel" class="glass">
+  <div class="panel-title" style="font-size:24px;" data-i18n="reactions_title">Реакции на электродах</div>
+
+  <!-- CATHODE -->
+  <div class="reaction-box" style="border-left:3px solid var(--cathode);">
+    <div class="reaction-title" style="color:var(--cathode);" data-i18n="cathode_title">⊖ Катод (восстановление)</div>
+    <div class="reaction-eq" id="cathode-reaction">
+      <span class="species" style="color:var(--cation);">Na⁺</span> + e⁻ → Na⁰
+      <span class="note" id="cathode-note">Восстановление катионов — получение электронов</span>
+    </div>
+  </div>
+
+  <!-- ANODE -->
+  <div class="reaction-box" style="border-left:3px solid var(--anode);">
+    <div class="reaction-title" style="color:var(--anode);" data-i18n="anode_title">⊕ Анод (окисление)</div>
+    <div class="reaction-eq" id="anode-reaction">
+      2<span class="species" style="color:var(--anion);">Cl⁻</span> − 2e⁻ → Cl₂↑
+      <span class="note" id="anode-note">Окисление анионов — отдача электронов</span>
+    </div>
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="stat-row">
+    <span class="stat-label" data-i18n="stat_current">Сила тока</span>
+    <span class="stat-value" id="stat-current" style="color:var(--yellow);">0.0 А</span>
+  </div>
+  <div class="stat-row">
+    <span class="stat-label" data-i18n="stat_time">Время процесса</span>
+    <span class="stat-value" id="stat-time" style="color:var(--blue);">0 с</span>
+  </div>
+  <div class="stat-row">
+    <span class="stat-label" data-i18n="stat_mass">Масса на катоде</span>
+    <span class="stat-value" id="stat-mass" style="color:var(--green);">0 мг</span>
+  </div>
+  <div class="stat-row">
+    <span class="stat-label" data-i18n="stat_gas">Объём газа</span>
+    <span class="stat-value" id="stat-gas" style="color:var(--purple);">0 мл</span>
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="panel-subtitle" data-i18n="faraday_title">Закон Фарадея</div>
+  <div class="formula-box">
+    <div><span class="f">m</span> = (<span class="f">M · I · t</span>) / (<span class="f">n · F</span>)</div>
+    <div style="font-size:16px;margin-top:6px;font-family:var(--sans);font-style:normal;">
+      <span style="color:var(--text);">M</span> — <span data-i18n="f_molar">молярная масса</span><br>
+      <span style="color:var(--text);">I</span> — <span data-i18n="f_current">сила тока</span>, <span style="color:var(--text);">t</span> — <span data-i18n="f_time">время</span><br>
+      <span style="color:var(--text);">n</span> — <span data-i18n="f_electrons">число электронов</span><br>
+      <span style="color:var(--text);">F</span> = 96 485 <span data-i18n="f_unit">Кл/моль</span>
+    </div>
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="panel-subtitle" data-i18n="legend_title">Легенда</div>
+  <div style="display:flex;flex-direction:column;gap:8px;">
+    <div class="legend-item"><div class="legend-dot" style="background:var(--cation);"></div><span data-i18n="legend_cation">Катионы (+) → к катоду</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--anion);"></div><span data-i18n="legend_anion">Анионы (−) → к аноду</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--electron);"></div><span data-i18n="legend_electron">Электроны (e⁻) в проводе</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--cathode);"></div><span data-i18n="legend_cathode">Катод (⊖) — восстановление</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--anode);"></div><span data-i18n="legend_anode">Анод (⊕) — окисление</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:rgba(255,255,255,0.5);"></div><span data-i18n="legend_bubbles">Пузырьки газа</span></div>
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="panel-subtitle" data-i18n="how_title">Как это работает</div>
+  <div class="info-box" data-i18n-html="info_electrolysis">
+    <b>Электролиз</b> — разложение вещества электрическим током. Электролит диссоциирует на ионы.<br><br>
+    <b>Катионы</b> (+) движутся к <b>катоду</b> (⊖), где получают электроны (<b>восстановление</b>).<br><br>
+    <b>Анионы</b> (−) движутся к <b>аноду</b> (⊕), где отдают электроны (<b>окисление</b>).<br><br>
+    Источник тока «проталкивает» электроны по внешней цепи от анода к катоду.
+  </div>
+</div>
+
+<!-- BOTTOM -->
+<div id="bottom-panel" class="glass">
+  <div class="bottom-stat">
+    <span class="label" data-i18n="voltage">Напряжение</span>
+    <span class="value" id="b-volt" style="color:var(--yellow);">0.0 В</span>
+  </div>
+  <div class="bottom-stat">
+    <span class="label" data-i18n="b_current">Ток</span>
+    <span class="value" id="b-current" style="color:var(--orange);">0.0 А</span>
+  </div>
+  <div class="bottom-stat">
+    <span class="label" data-i18n="b_cations">Катионы</span>
+    <span class="value" id="b-cations" style="color:var(--cation);">0</span>
+  </div>
+  <div class="bottom-stat">
+    <span class="label" data-i18n="b_anions">Анионы</span>
+    <span class="value" id="b-anions" style="color:var(--anion);">0</span>
+  </div>
+  <div class="bottom-stat">
+    <span class="label" data-i18n="b_time">Время</span>
+    <span class="value" id="b-time" style="color:var(--blue);">0 с</span>
+  </div>
+</div>
+
+<script>
+// =====================================================================
+//  I18N — встроенные переводы (RU / KZ / EN). Язык: ?lang=ru|kz|en.
+// =====================================================================
+const I18N = {
+  ru: {
+    page_title:'Электролиз — Процессы на катоде и аноде',panel_title:'Электролиз',panel_subtitle:'Процессы на электродах',
+    electrolyte_label:'Электролит',elec_nacl:'хлорид натрия',elec_cuso4:'сульфат меди',elec_h2o:'вода (+ H₂SO₄)',
+    voltage:'Напряжение',concentration:'Концентрация',temperature:'Температура',
+    toggle_ions:'Движение ионов',toggle_electrons:'Электроны в цепи',toggle_bubbles:'Пузырьки газа',toggle_ionlabels:'Подписи ионов',
+    btn_start:'⚡ Включить ток',btn_stop:'⏹ Выключить ток',btn_reset:'↺ Сброс',
+    reactions_title:'Реакции на электродах',cathode_title:'⊖ Катод (восстановление)',anode_title:'⊕ Анод (окисление)',
+    stat_current:'Сила тока',stat_time:'Время процесса',stat_mass:'Масса на катоде',stat_gas:'Объём газа',
+    faraday_title:'Закон Фарадея',f_molar:'молярная масса',f_current:'сила тока',f_time:'время',f_electrons:'число электронов',f_unit:'Кл/моль',
+    legend_title:'Легенда',legend_cation:'Катионы (+) → к катоду',legend_anion:'Анионы (−) → к аноду',legend_electron:'Электроны (e⁻) в проводе',legend_cathode:'Катод (⊖) — восстановление',legend_anode:'Анод (⊕) — окисление',legend_bubbles:'Пузырьки газа',
+    how_title:'Как это работает',
+    info_electrolysis:'<b>Электролиз</b> — разложение вещества электрическим током. Электролит диссоциирует на ионы.<br><br><b>Катионы</b> (+) движутся к <b>катоду</b> (⊖), где получают электроны (<b>восстановление</b>).<br><br><b>Анионы</b> (−) движутся к <b>аноду</b> (⊕), где отдают электроны (<b>окисление</b>).<br><br>Источник тока «проталкивает» электроны по внешней цепи от анода к катоду.',
+    b_current:'Ток',b_cations:'Катионы',b_anions:'Анионы',b_time:'Время',
+    status_off:'ТОК ОТКЛЮЧЁН',status_on:'⚡ ТОК ВКЛЮЧЁН',
+    label_cathode:'⊖ КАТОД',label_anode:'⊕ АНОД',
+    unit_v:'В',unit_a:'А',unit_m:'М',unit_s:'с',unit_mg:'мг',unit_ml:'мл'
+  },
+  kz: {
+    page_title:'Электролиз — Катод пен анодтағы процестер',panel_title:'Электролиз',panel_subtitle:'Электродтардағы процестер',
+    electrolyte_label:'Электролит',elec_nacl:'натрий хлориді',elec_cuso4:'мыс сульфаты',elec_h2o:'су (+ H₂SO₄)',
+    voltage:'Кернеу',concentration:'Концентрация',temperature:'Температура',
+    toggle_ions:'Иондар қозғалысы',toggle_electrons:'Тізбектегі электрондар',toggle_bubbles:'Газ көпіршіктері',toggle_ionlabels:'Ион белгілері',
+    btn_start:'⚡ Токты қосу',btn_stop:'⏹ Токты өшіру',btn_reset:'↺ Қалпына келтіру',
+    reactions_title:'Электродтардағы реакциялар',cathode_title:'⊖ Катод (тотықсыздану)',anode_title:'⊕ Анод (тотығу)',
+    stat_current:'Ток күші',stat_time:'Процесс уақыты',stat_mass:'Катодтағы масса',stat_gas:'Газ көлемі',
+    faraday_title:'Фарадей заңы',f_molar:'молярлық масса',f_current:'ток күші',f_time:'уақыт',f_electrons:'электрон саны',f_unit:'Кл/моль',
+    legend_title:'Шартты белгілер',legend_cation:'Катиондар (+) → катодқа',legend_anion:'Аниондар (−) → анодқа',legend_electron:'Электрондар (e⁻) сымда',legend_cathode:'Катод (⊖) — тотықсыздану',legend_anode:'Анод (⊕) — тотығу',legend_bubbles:'Газ көпіршіктері',
+    how_title:'Бұл қалай жұмыс істейді',
+    info_electrolysis:'<b>Электролиз</b> — заттың электр тогымен ыдырауы. Электролит иондарға диссоциацияланады.<br><br><b>Катиондар</b> (+) <b>катодқа</b> (⊖) жылжиды, мұнда электрондарды қабылдайды (<b>тотықсыздану</b>).<br><br><b>Аниондар</b> (−) <b>анодқа</b> (⊕) жылжиды, мұнда электрондарды береді (<b>тотығу</b>).<br><br>Ток көзі электрондарды сыртқы тізбек арқылы анодтан катодқа «итереді».',
+    b_current:'Ток',b_cations:'Катиондар',b_anions:'Аниондар',b_time:'Уақыт',
+    status_off:'ТОК ӨШІРУЛІ',status_on:'⚡ ТОК ҚОСУЛЫ',
+    label_cathode:'⊖ КАТОД',label_anode:'⊕ АНОД',
+    unit_v:'В',unit_a:'А',unit_m:'М',unit_s:'с',unit_mg:'мг',unit_ml:'мл'
+  },
+  en: {
+    page_title:'Electrolysis — Cathode and Anode Processes',panel_title:'Electrolysis',panel_subtitle:'Electrode processes',
+    electrolyte_label:'Electrolyte',elec_nacl:'sodium chloride',elec_cuso4:'copper sulfate',elec_h2o:'water (+ H₂SO₄)',
+    voltage:'Voltage',concentration:'Concentration',temperature:'Temperature',
+    toggle_ions:'Ion movement',toggle_electrons:'Electrons in circuit',toggle_bubbles:'Gas bubbles',toggle_ionlabels:'Ion labels',
+    btn_start:'⚡ Turn on current',btn_stop:'⏹ Turn off current',btn_reset:'↺ Reset',
+    reactions_title:'Electrode reactions',cathode_title:'⊖ Cathode (reduction)',anode_title:'⊕ Anode (oxidation)',
+    stat_current:'Current',stat_time:'Process time',stat_mass:'Mass on cathode',stat_gas:'Gas volume',
+    faraday_title:'Faraday\'s Law',f_molar:'molar mass',f_current:'current',f_time:'time',f_electrons:'number of electrons',f_unit:'C/mol',
+    legend_title:'Legend',legend_cation:'Cations (+) → to cathode',legend_anion:'Anions (−) → to anode',legend_electron:'Electrons (e⁻) in wire',legend_cathode:'Cathode (⊖) — reduction',legend_anode:'Anode (⊕) — oxidation',legend_bubbles:'Gas bubbles',
+    how_title:'How it works',
+    info_electrolysis:'<b>Electrolysis</b> is the decomposition of a substance by electric current. The electrolyte dissociates into ions.<br><br><b>Cations</b> (+) move to the <b>cathode</b> (⊖), where they receive electrons (<b>reduction</b>).<br><br><b>Anions</b> (−) move to the <b>anode</b> (⊕), where they give up electrons (<b>oxidation</b>).<br><br>The power source "pushes" electrons through the external circuit from anode to cathode.',
+    b_current:'Current',b_cations:'Cations',b_anions:'Anions',b_time:'Time',
+    status_off:'CURRENT OFF',status_on:'⚡ CURRENT ON',
+    label_cathode:'⊖ CATHODE',label_anode:'⊕ ANODE',
+    unit_v:'V',unit_a:'A',unit_m:'M',unit_s:'s',unit_mg:'mg',unit_ml:'mL'
+  }
+};
+const LANG=(()=>{const q=new URLSearchParams(location.search).get('lang');return(q&&I18N[q])?q:'ru';})();
+const t=(key)=>(I18N[LANG]&&I18N[LANG][key])??(I18N.ru&&I18N.ru[key]);
+
+function applyStaticI18N(){
+  document.documentElement.lang=LANG;
+  const tv=t('page_title');if(tv)document.title=tv;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{const v=t(el.getAttribute('data-i18n'));if(v)el.textContent=v;});
+  document.querySelectorAll('[data-i18n-html]').forEach(el=>{const v=t(el.getAttribute('data-i18n-html'));if(v)el.innerHTML=v;});
+}
+applyStaticI18N();
+// ═══════════════════════════════════════
+// ELECTROLYTE DATA
+// ═══════════════════════════════════════
+const ELECTROLYTES = {
+  nacl: {
+    name: 'NaCl (р-р)',
+    cation: {formula:'Na⁺', color:0x4ade80, label:'Na⁺'},
+    anion: {formula:'Cl⁻', color:0xfb923c, label:'Cl⁻'},
+    solutionColor: 0x0e4d6e,
+    solutionOpacity: 0.22,
+    cathodeRx: '2H₂O + 2e⁻ → H₂↑ + 2OH⁻',
+    cathodeNote: 'В растворе: вода восстанавливается (Na⁺ слишком активен)',
+    anodeRx: '2Cl⁻ − 2e⁻ → Cl₂↑',
+    anodeNote: 'Окисление хлорид-ионов — выделение хлора',
+    cathodeBubbles: true, anodeBubbles: true,
+    cathodeDeposit: false,
+    molarMass: 1, nElectrons: 1,
+    bubbleColorCathode: 0xccddff,
+    bubbleColorAnode: 0xaaff88,
+  },
+  cuso4: {
+    name: 'CuSO₄ (р-р)',
+    cation: {formula:'Cu²⁺', color:0x38bdf8, label:'Cu²⁺'},
+    anion: {formula:'SO₄²⁻', color:0xfb923c, label:'SO₄²⁻'},
+    solutionColor: 0x0c4a6e,
+    solutionOpacity: 0.28,
+    cathodeRx: 'Cu²⁺ + 2e⁻ → Cu⁰↓',
+    cathodeNote: 'Восстановление меди — осаждение на катоде',
+    anodeRx: '2H₂O − 4e⁻ → O₂↑ + 4H⁺',
+    anodeNote: 'Окисление воды — выделение кислорода',
+    cathodeBubbles: false, anodeBubbles: true,
+    cathodeDeposit: true, depositColor: 0xc87533,
+    molarMass: 63.5, nElectrons: 2,
+    bubbleColorAnode: 0xccddff,
+  },
+  h2o: {
+    name: 'H₂O + H₂SO₄',
+    cation: {formula:'H⁺', color:0x4ade80, label:'H⁺'},
+    anion: {formula:'OH⁻', color:0xfb923c, label:'OH⁻'},
+    solutionColor: 0x0a3d5c,
+    solutionOpacity: 0.18,
+    cathodeRx: '2H⁺ + 2e⁻ → H₂↑',
+    cathodeNote: 'Восстановление ионов водорода',
+    anodeRx: '2H₂O − 4e⁻ → O₂↑ + 4H⁺',
+    anodeNote: 'Окисление воды — выделение кислорода',
+    cathodeBubbles: true, anodeBubbles: true,
+    cathodeDeposit: false,
+    molarMass: 2, nElectrons: 2,
+    bubbleColorCathode: 0xccddff,
+    bubbleColorAnode: 0xccddff,
+  },
+};
+
+// ═══════════════════════════════════════
+// SCENE
+// ═══════════════════════════════════════
+const container = document.getElementById('canvas-container');
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x030712, 0.006);
+
+const camera = new THREE.PerspectiveCamera(50, innerWidth/innerHeight, 0.1, 300);
+camera.position.set(0, 12, 28);
+camera.lookAt(0, 2, 0);
+
+const renderer = new THREE.WebGLRenderer({antialias: true, alpha:true});
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = false;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+container.appendChild(renderer.domElement);
+
+// Lights
+scene.add(new THREE.AmbientLight(0x334466, 0.5));
+const dirLight = new THREE.DirectionalLight(0xffeedd, 0.6);
+dirLight.position.set(8, 20, 12);
+dirLight.castShadow = true;
+dirLight.shadow.mapSize.set(2048,2048);
+scene.add(dirLight);
+
+const pointLight1 = new THREE.PointLight(0x60a5fa, 0.3, 30);
+pointLight1.position.set(-6, 8, 5);
+scene.add(pointLight1);
+const pointLight2 = new THREE.PointLight(0xf87171, 0.3, 30);
+pointLight2.position.set(6, 8, 5);
+scene.add(pointLight2);
+
+// Floor
+const floorGeo = new THREE.PlaneGeometry(100, 100);
+const floorMat = new THREE.MeshStandardMaterial({color:0x080e1e, roughness:0.9});
+const floor = new THREE.Mesh(floorGeo, floorMat);
+floor.rotation.x = -Math.PI/2;
+floor.position.y = -0.5;
+floor.receiveShadow = true;
+scene.add(floor);
+
+// ═══════════════════════════════════════
+// BEAKER / CELL
+// ═══════════════════════════════════════
+const cellW = 12, cellH = 8, cellD = 7;
+
+// Glass walls
+const glassMat = new THREE.MeshStandardMaterial({color:0x88aacc, transparent:true, opacity:0.12, roughness:0.05, metalness:0.1, side:THREE.DoubleSide});
+
+// Front
+const frontGeo = new THREE.PlaneGeometry(cellW, cellH);
+const front = new THREE.Mesh(frontGeo, glassMat);
+front.position.set(0, cellH/2, cellD/2);
+scene.add(front);
+// Back
+const back = front.clone();
+back.position.z = -cellD/2;
+scene.add(back);
+// Left
+const sideGeo = new THREE.PlaneGeometry(cellD, cellH);
+const leftW = new THREE.Mesh(sideGeo, glassMat);
+leftW.rotation.y = Math.PI/2;
+leftW.position.set(-cellW/2, cellH/2, 0);
+scene.add(leftW);
+// Right
+const rightW = leftW.clone();
+rightW.position.x = cellW/2;
+scene.add(rightW);
+// Bottom
+const botGeo = new THREE.PlaneGeometry(cellW, cellD);
+const bot = new THREE.Mesh(botGeo, new THREE.MeshStandardMaterial({color:0x1e293b, roughness:0.5, metalness:0.3}));
+bot.rotation.x = -Math.PI/2;
+bot.position.y = 0;
+scene.add(bot);
+
+// Glass edges (wireframe)
+const edgeMat = new THREE.LineBasicMaterial({color:0x88aacc, transparent:true, opacity:0.25});
+const edgePoints = [
+  [-cellW/2,0,-cellD/2],[-cellW/2,0,cellD/2],[-cellW/2,cellH,cellD/2],[-cellW/2,cellH,-cellD/2],[-cellW/2,0,-cellD/2],
+  [cellW/2,0,-cellD/2],[cellW/2,0,cellD/2],[cellW/2,cellH,cellD/2],[cellW/2,cellH,-cellD/2],[cellW/2,0,-cellD/2],
+];
+const edgeGeo = new THREE.BufferGeometry().setFromPoints(edgePoints.map(p=>new THREE.Vector3(...p)));
+scene.add(new THREE.Line(edgeGeo, edgeMat));
+// top edges
+[[cellW/2,cellH,cellD/2],[-cellW/2,cellH,cellD/2]].forEach((p,i)=>{
+  const p2 = i===0 ? [cellW/2,0,cellD/2] : [-cellW/2,0,cellD/2];
+});
+const topEdges = [
+  [[-cellW/2,cellH,-cellD/2],[-cellW/2,cellH,cellD/2]],
+  [[cellW/2,cellH,-cellD/2],[cellW/2,cellH,cellD/2]],
+  [[-cellW/2,0,cellD/2],[cellW/2,0,cellD/2]],
+  [[-cellW/2,cellH,cellD/2],[cellW/2,cellH,cellD/2]],
+  [[-cellW/2,cellH,-cellD/2],[cellW/2,cellH,-cellD/2]],
+];
+topEdges.forEach(pair=>{
+  const g = new THREE.BufferGeometry().setFromPoints(pair.map(p=>new THREE.Vector3(...p)));
+  scene.add(new THREE.Line(g, edgeMat));
+});
+
+// Solution
+const solGeo = new THREE.BoxGeometry(cellW-0.2, cellH*0.82, cellD-0.2);
+const solMat = new THREE.MeshStandardMaterial({color:0x0e4d6e, transparent:true, opacity:0.22, roughness:0.1, side:THREE.DoubleSide});
+const solution = new THREE.Mesh(solGeo, solMat);
+solution.position.y = cellH*0.41;
+scene.add(solution);
+
+// ═══════════════════════════════════════
+// ELECTRODES
+// ═══════════════════════════════════════
+const electrodeH = 7, electrodeW = 0.3, electrodeD = 4;
+const cathodeX = -4, anodeX = 4;
+
+// Cathode (dark gray / blue tint)
+const cathodeGeo = new THREE.BoxGeometry(electrodeW, electrodeH, electrodeD);
+const cathodeMat = new THREE.MeshStandardMaterial({color:0x475569, roughness:0.3, metalness:0.8});
+const cathode = new THREE.Mesh(cathodeGeo, cathodeMat);
+cathode.position.set(cathodeX, electrodeH/2, 0);
+cathode.castShadow = true;
+scene.add(cathode);
+
+// Cathode glow
+const cathodeGlowGeo = new THREE.BoxGeometry(electrodeW+0.3, electrodeH+0.1, electrodeD+0.3);
+const cathodeGlowMat = new THREE.MeshBasicMaterial({color:0x60a5fa, transparent:true, opacity:0});
+const cathodeGlow = new THREE.Mesh(cathodeGlowGeo, cathodeGlowMat);
+cathode.add(cathodeGlow);
+
+// Anode
+const anodeMat = new THREE.MeshStandardMaterial({color:0x57534e, roughness:0.3, metalness:0.7});
+const anode = new THREE.Mesh(cathodeGeo.clone(), anodeMat);
+anode.position.set(anodeX, electrodeH/2, 0);
+anode.castShadow = true;
+scene.add(anode);
+
+const anodeGlowMat = new THREE.MeshBasicMaterial({color:0xf87171, transparent:true, opacity:0});
+const anodeGlow = new THREE.Mesh(cathodeGlowGeo.clone(), anodeGlowMat);
+anode.add(anodeGlow);
+
+// Copper deposit mesh (hidden initially)
+const depositGeo = new THREE.BoxGeometry(0.12, 0.01, electrodeD-0.5);
+const depositMat = new THREE.MeshStandardMaterial({color:0xc87533, roughness:0.4, metalness:0.9});
+const deposit = new THREE.Mesh(depositGeo, depositMat);
+deposit.position.set(cathodeX + 0.22, 1, 0);
+deposit.visible = false;
+scene.add(deposit);
+
+// ═══════════════════════════════════════
+// WIRES + BATTERY
+// ═══════════════════════════════════════
+const wireMat = new THREE.MeshStandardMaterial({color:0x94a3b8, roughness:0.3, metalness:0.8});
+
+// Wire paths — cathode up, across, down to anode
+const wireRadius = 0.08;
+
+// Cathode wire up
+const cWireGeo1 = new THREE.CylinderGeometry(wireRadius, wireRadius, 4, 8);
+const cWire1 = new THREE.Mesh(cWireGeo1, wireMat);
+cWire1.position.set(cathodeX, electrodeH + 2, 0);
+scene.add(cWire1);
+
+// Anode wire up
+const aWire1 = new THREE.Mesh(cWireGeo1.clone(), wireMat);
+aWire1.position.set(anodeX, electrodeH + 2, 0);
+scene.add(aWire1);
+
+// Horizontal wire
+const hWireGeo = new THREE.CylinderGeometry(wireRadius, wireRadius, anodeX - cathodeX, 8);
+const hWire = new THREE.Mesh(hWireGeo, wireMat);
+hWire.rotation.z = Math.PI/2;
+hWire.position.set(0, electrodeH + 4, 0);
+scene.add(hWire);
+
+// Battery
+const batteryGroup = new THREE.Group();
+const battBody = new THREE.CylinderGeometry(0.8, 0.8, 2.5, 16);
+const battMat = new THREE.MeshStandardMaterial({color:0x1e293b, roughness:0.4, metalness:0.6});
+const batt = new THREE.Mesh(battBody, battMat);
+batteryGroup.add(batt);
+// + terminal
+const termGeo = new THREE.CylinderGeometry(0.25, 0.25, 0.4, 12);
+const termPlusMat = new THREE.MeshStandardMaterial({color:0xef4444, roughness:0.3, metalness:0.7});
+const termPlus = new THREE.Mesh(termGeo, termPlusMat);
+termPlus.position.y = 1.45;
+batteryGroup.add(termPlus);
+// - terminal
+const termMinusMat = new THREE.MeshStandardMaterial({color:0x3b82f6, roughness:0.3, metalness:0.7});
+const termMinus = new THREE.Mesh(termGeo.clone(), termMinusMat);
+termMinus.position.y = -1.45;
+batteryGroup.add(termMinus);
+// label band
+const bandGeo = new THREE.CylinderGeometry(0.82, 0.82, 1.2, 16);
+const bandMat = new THREE.MeshStandardMaterial({color:0xfbbf24, roughness:0.5, metalness:0.2});
+const band = new THREE.Mesh(bandGeo, bandMat);
+batteryGroup.add(band);
+
+batteryGroup.rotation.z = Math.PI/2;
+batteryGroup.position.set(0, electrodeH + 4, 0);
+scene.add(batteryGroup);
+
+// ═══════════════════════════════════════
+// ELECTRONS IN WIRE
+// ═══════════════════════════════════════
+const electronPool = [];
+const activeElectrons = [];
+const electronGeo = new THREE.SphereGeometry(0.15, 8, 8);
+const electronMat = new THREE.MeshBasicMaterial({color:0xfacc15});
+
+for(let i=0;i<60;i++){
+  const m = new THREE.Mesh(electronGeo, electronMat.clone());
+  m.visible = false;
+  scene.add(m);
+  electronPool.push(m);
+}
+
+// Wire path: anode top → right → battery → left → cathode top
+// Parameterized path
+function getWirePoint(t){
+  // t: 0→1 around the circuit
+  // 0-0.2: anode electrode up
+  // 0.2-0.5: right to center (battery)
+  // 0.5-0.8: center to left (cathode top)
+  // 0.8-1.0: cathode down into solution
+  const topY = electrodeH + 4;
+  const bottomY = electrodeH;
+  if(t < 0.2){
+    const f = t / 0.2;
+    return new THREE.Vector3(anodeX, bottomY + (topY-bottomY)*f, 0);
+  } else if(t < 0.5){
+    const f = (t-0.2)/0.3;
+    return new THREE.Vector3(anodeX - (anodeX - cathodeX) * f * 0.5, topY, 0);
+  } else if(t < 0.8){
+    const f = (t-0.5)/0.3;
+    return new THREE.Vector3(0 - (0 - cathodeX) * f / 0.5 * 0.5 + cathodeX * f, topY, 0);
+  } else {
+    const f = (t-0.8)/0.2;
+    return new THREE.Vector3(cathodeX, topY - (topY-bottomY)*f, 0);
+  }
+}
+
+// Simpler path
+function getElectronPos(t){
+  t = ((t % 1) + 1) % 1;
+  const topY = electrodeH + 4;
+  const solTop = electrodeH;
+  if(t < 0.25){
+    const f = t/0.25;
+    return {x: anodeX, y: solTop + (topY - solTop)*f, z: 0};
+  } else if(t < 0.75){
+    const f = (t-0.25)/0.5;
+    return {x: anodeX + (cathodeX - anodeX)*f, y: topY, z: 0};
+  } else {
+    const f = (t-0.75)/0.25;
+    return {x: cathodeX, y: topY - (topY - solTop)*f, z: 0};
+  }
+}
+
+// ═══════════════════════════════════════
+// IONS
+// ═══════════════════════════════════════
+const MAX_IONS = 80;
+const ionMeshes = [];
+
+function createIonMesh(isPositive, colorHex, radius){
+  const geo = new THREE.SphereGeometry(radius || 0.28, 12, 12);
+  const mat = new THREE.MeshStandardMaterial({color:colorHex, roughness:0.4, metalness:0.3, emissive:colorHex, emissiveIntensity:0.15});
+  const m = new THREE.Mesh(geo, mat);
+  m.castShadow = true;
+  return m;
+}
+
+let ions = [];
+
+function spawnIons(elecData, count){
+  // Clear old
+  ions.forEach(ion => { scene.remove(ion.mesh); if(ion.labelDiv) ion.labelDiv.remove(); });
+  ions = [];
+
+  const halfW = cellW/2 - 1;
+  const solTop = cellH * 0.82;
+
+  for(let i = 0; i < count; i++){
+    const isPos = i < count/2;
+    const data = isPos ? elecData.cation : elecData.anion;
+    const mesh = createIonMesh(isPos, data.color, isPos ? 0.3 : 0.35);
+    const x = (Math.random() - 0.5) * (halfW*2 - 2);
+    const y = 0.5 + Math.random() * (solTop - 1);
+    const z = (Math.random() - 0.5) * (cellD - 2);
+    mesh.position.set(x, y, z);
+    scene.add(mesh);
+
+    // Label
+    const div = document.createElement('div');
+    div.style.cssText = `position:absolute;font-family:var(--mono);font-size:14px;font-weight:700;color:${isPos ? '#4ade80' : '#fb923c'};pointer-events:none;text-shadow:0 0 8px rgba(0,0,0,0.9);z-index:5;`;
+    div.textContent = data.label;
+    document.body.appendChild(div);
+
+    ions.push({
+      mesh, isPositive: isPos,
+      vx: 0, vy: 0, vz: 0,
+      labelDiv: div,
+      alive: true,
+      reachedElectrode: false,
+    });
+  }
+}
+
+// ═══════════════════════════════════════
+// BUBBLES
+// ═══════════════════════════════════════
+const bubbles = [];
+
+function spawnBubble(x, z, color){
+  const r = 0.06 + Math.random() * 0.12;
+  const geo = new THREE.SphereGeometry(r, 8, 8);
+  const mat = new THREE.MeshBasicMaterial({color: color || 0xccddff, transparent:true, opacity:0.5});
+  const m = new THREE.Mesh(geo, mat);
+  m.position.set(x + (Math.random()-0.5)*0.8, 0.5, z + (Math.random()-0.5)*2);
+  scene.add(m);
+  bubbles.push({mesh:m, vy: 1.5 + Math.random()*2, life:0, maxLife: 3+Math.random()*2});
+}
+
+// ═══════════════════════════════════════
+// HTML ELECTRODE LABELS
+// ═══════════════════════════════════════
+const catLabel = document.createElement('div');
+catLabel.className = 'electrode-label';
+catLabel.style.color = 'var(--cathode)';
+catLabel.style.background = 'rgba(96,165,250,0.1)';
+catLabel.style.border = '1px solid rgba(96,165,250,0.3)';
+catLabel.innerHTML = t('label_cathode');
+document.body.appendChild(catLabel);
+
+const anoLabel = document.createElement('div');
+anoLabel.className = 'electrode-label';
+anoLabel.style.color = 'var(--anode)';
+anoLabel.style.background = 'rgba(248,113,113,0.1)';
+anoLabel.style.border = '1px solid rgba(248,113,113,0.3)';
+anoLabel.innerHTML = t('label_anode');
+document.body.appendChild(anoLabel);
+
+function updateElectrodeLabel(div, worldPos){
+  const v = worldPos.clone().project(camera);
+  const hw=innerWidth/2, hh=innerHeight/2;
+  div.style.left = (v.x*hw+hw-40)+'px';
+  div.style.top = (-v.y*hh+hh)+'px';
+  div.style.display = v.z<1?'block':'none';
+}
+
+// ═══════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════
+const state = {
+  running: false,
+  voltage: 6.0,
+  concentration: 1.0,
+  temperature: 25,
+  electrolyte: 'nacl',
+  time: 0,
+  current: 0,
+  massDeposited: 0,
+  gasVolume: 0,
+  showIons: true,
+  showElectrons: true,
+  showBubbles: true,
+  showIonLabels: true,
+  electronPhases: [],
+};
+
+// Init electrons phases
+for(let i=0;i<20;i++){
+  state.electronPhases.push(i/20);
+}
+
+// ═══════════════════════════════════════
+// INIT ELECTROLYTE
+// ═══════════════════════════════════════
+function initElectrolyte(key){
+  state.electrolyte = key;
+  const data = ELECTROLYTES[key];
+
+  // Solution color
+  solMat.color.setHex(data.solutionColor);
+  solMat.opacity = data.solutionOpacity;
+
+  // Reactions
+  document.getElementById('cathode-reaction').innerHTML =
+    data.cathodeRx + `<span class="note" id="cathode-note">${data.cathodeNote}</span>`;
+  document.getElementById('anode-reaction').innerHTML =
+    data.anodeRx + `<span class="note" id="anode-note">${data.anodeNote}</span>`;
+
+  // Deposit
+  deposit.visible = false;
+  state.massDeposited = 0;
+
+  // Spawn ions
+  const count = Math.round(state.concentration * 20 + 10);
+  spawnIons(data, Math.min(count, MAX_IONS));
+}
+
+initElectrolyte('nacl');
+
+// ═══════════════════════════════════════
+// UI
+// ═══════════════════════════════════════
+document.getElementById('voltage-slider').addEventListener('input', e=>{
+  state.voltage = +e.target.value/10;
+  document.getElementById('voltage-val').textContent = state.voltage.toFixed(1)+' '+t('unit_v');
+});
+document.getElementById('conc-slider').addEventListener('input', e=>{
+  state.concentration = +e.target.value/10;
+  document.getElementById('conc-val').textContent = state.concentration.toFixed(1)+' '+t('unit_m');
+  if(!state.running) initElectrolyte(state.electrolyte);
+});
+document.getElementById('temp-slider').addEventListener('input', e=>{
+  state.temperature = +e.target.value;
+  document.getElementById('temp-val').textContent = state.temperature+' °C';
+});
+
+// Electrolyte buttons
+document.querySelectorAll('.elec-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.elec-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const wasRunning = state.running;
+    if(wasRunning) stopProcess();
+    initElectrolyte(btn.dataset.elec);
+    if(wasRunning) startProcess();
+  });
+});
+
+// Toggles
+document.getElementById('toggle-ions').addEventListener('click', function(){
+  this.classList.toggle('active'); state.showIons=this.classList.contains('active');
+});
+document.getElementById('toggle-electrons').addEventListener('click', function(){
+  this.classList.toggle('active'); state.showElectrons=this.classList.contains('active');
+});
+document.getElementById('toggle-bubbles').addEventListener('click', function(){
+  this.classList.toggle('active'); state.showBubbles=this.classList.contains('active');
+});
+document.getElementById('toggle-ionlabels').addEventListener('click', function(){
+  this.classList.toggle('active'); state.showIonLabels=this.classList.contains('active');
+});
+
+const btnStart = document.getElementById('btn-start');
+btnStart.addEventListener('click', ()=>{
+  if(!state.running) startProcess(); else stopProcess();
+});
+document.getElementById('btn-reset').addEventListener('click', resetAll);
+
+function startProcess(){
+  state.running = true;
+  state.time = 0;
+  state.massDeposited = 0;
+  state.gasVolume = 0;
+  btnStart.textContent = t('btn_stop');
+  btnStart.className = 'btn btn-stop';
+  document.getElementById('status-dot').className = 'status-dot on';
+  document.getElementById('status-text').style.color = 'var(--green)';
+  document.getElementById('status-text').textContent = t('status_on');
+}
+
+function stopProcess(){
+  state.running = false;
+  btnStart.textContent = t('btn_start');
+  btnStart.className = 'btn btn-start';
+  document.getElementById('status-dot').className = 'status-dot off';
+  document.getElementById('status-text').style.color = 'var(--text-dim)';
+  document.getElementById('status-text').textContent = t('status_off');
+  cathodeGlowMat.opacity = 0;
+  anodeGlowMat.opacity = 0;
+}
+
+function resetAll(){
+  stopProcess();
+  state.time = 0;
+  state.massDeposited = 0;
+  state.gasVolume = 0;
+  deposit.visible = false;
+  deposit.scale.y = 1;
+  // Kill bubbles
+  bubbles.forEach(b=>scene.remove(b.mesh));
+  bubbles.length = 0;
+  initElectrolyte(state.electrolyte);
+  camSph={r:32, theta:Math.PI*0.12, phi:Math.PI*0.32};
+  camTarget.set(0,3,0);
+  updateCam();
+  updateUI();
+}
+
+function updateUI(){
+  const data = ELECTROLYTES[state.electrolyte];
+  state.current = state.running ? state.voltage * (0.1 + state.concentration * 0.08) * (1 + (state.temperature-25)*0.005) : 0;
+
+  document.getElementById('stat-current').textContent = state.current.toFixed(2)+' '+t('unit_a');
+  document.getElementById('stat-time').textContent = state.time.toFixed(0)+' '+t('unit_s');
+  document.getElementById('stat-mass').textContent = state.massDeposited.toFixed(1)+' '+t('unit_mg');
+  document.getElementById('stat-gas').textContent = state.gasVolume.toFixed(1)+' '+t('unit_ml');
+
+  document.getElementById('b-volt').textContent = state.voltage.toFixed(1)+' '+t('unit_v');
+  document.getElementById('b-current').textContent = state.current.toFixed(1)+' '+t('unit_a');
+  document.getElementById('b-cations').textContent = ions.filter(i=>i.isPositive&&i.alive).length;
+  document.getElementById('b-anions').textContent = ions.filter(i=>!i.isPositive&&i.alive).length;
+  document.getElementById('b-time').textContent = state.time.toFixed(0)+' '+t('unit_s');
+}
+
+// ═══════════════════════════════════════
+// CAMERA
+// ═══════════════════════════════════════
+let isDrag=false,isPan=false,prevM={x:0,y:0};
+let camSph={r:32, theta:Math.PI*0.12, phi:Math.PI*0.32};
+let camTarget=new THREE.Vector3(0,3,0);
+
+function updateCam(){
+  camera.position.set(
+    camTarget.x+camSph.r*Math.sin(camSph.phi)*Math.cos(camSph.theta),
+    camTarget.y+camSph.r*Math.cos(camSph.phi),
+    camTarget.z+camSph.r*Math.sin(camSph.phi)*Math.sin(camSph.theta)
+  );
+  camera.lookAt(camTarget);
+}
+updateCam();
+
+renderer.domElement.addEventListener('mousedown',e=>{if(e.button===0)isDrag=true;if(e.button===2)isPan=true;prevM={x:e.clientX,y:e.clientY};});
+renderer.domElement.addEventListener('mousemove',e=>{
+  const dx=e.clientX-prevM.x,dy=e.clientY-prevM.y;prevM={x:e.clientX,y:e.clientY};
+  if(isDrag){camSph.theta-=dx*0.005;camSph.phi=Math.max(0.1,Math.min(Math.PI*0.48,camSph.phi+dy*0.005));updateCam();}
+  if(isPan){const r=new THREE.Vector3();camera.getWorldDirection(r);r.cross(new THREE.Vector3(0,1,0)).normalize();camTarget.addScaledVector(r,-dx*0.04);camTarget.y=Math.max(-2,camTarget.y+dy*0.04);updateCam();}
+});
+renderer.domElement.addEventListener('mouseup',()=>{isDrag=false;isPan=false;});
+renderer.domElement.addEventListener('contextmenu',e=>e.preventDefault());
+renderer.domElement.addEventListener('wheel',e=>{camSph.r=Math.max(8,Math.min(80,camSph.r+e.deltaY*0.03));updateCam();});
+
+// ═══════════════════════════════════════
+// ANIMATE
+// ═══════════════════════════════════════
+const clock = new THREE.Clock();
+
+function animate(){
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  const data = ELECTROLYTES[state.electrolyte];
+  const speedFactor = state.voltage / 6;
+
+  if(state.running){
+    state.time += dt;
+    state.current = state.voltage * (0.1 + state.concentration * 0.08) * (1+(state.temperature-25)*0.005);
+
+    // Faraday: mass deposit
+    if(data.cathodeDeposit){
+      state.massDeposited += (data.molarMass * state.current * dt) / (data.nElectrons * 96485) * 1000 * 50; // scaled for visibility
+    }
+    // Gas volume (scaled)
+    state.gasVolume += state.current * dt * 0.05;
+
+    // Electrode glow pulsing
+    const pulse = 0.08 + 0.04 * Math.sin(performance.now()*0.004);
+    cathodeGlowMat.opacity = pulse;
+    anodeGlowMat.opacity = pulse;
+
+    // Deposit visual
+    if(data.cathodeDeposit && state.massDeposited > 5){
+      deposit.visible = true;
+      deposit.scale.y = Math.min(200, state.massDeposited / 5);
+      deposit.position.y = deposit.scale.y * 0.005 + 0.5;
+    }
+
+    // ─── Move ions ───
+    const solTop = cellH * 0.82;
+    ions.forEach(ion => {
+      if(!ion.alive) return;
+      const m = ion.mesh;
+
+      if(state.showIons) m.visible = true;
+      else { m.visible = false; }
+
+      // Drift toward electrode
+      const targetX = ion.isPositive ? cathodeX : anodeX;
+      const driftSpeed = speedFactor * 0.8 * (1+(state.temperature-25)*0.003);
+      const dx = targetX - m.position.x;
+      ion.vx += Math.sign(dx) * driftSpeed * dt;
+      // Random thermal motion
+      ion.vx += (Math.random()-0.5) * 2 * dt;
+      ion.vy += (Math.random()-0.5) * 1.5 * dt;
+      ion.vz += (Math.random()-0.5) * 2 * dt;
+      // Damping
+      ion.vx *= 0.96; ion.vy *= 0.96; ion.vz *= 0.96;
+
+      m.position.x += ion.vx * dt;
+      m.position.y += ion.vy * dt;
+      m.position.z += ion.vz * dt;
+
+      // Bounds
+      const hw = cellW/2 - 0.5;
+      const hd = cellD/2 - 0.5;
+      if(m.position.x < -hw) {m.position.x = -hw; ion.vx *= -0.5;}
+      if(m.position.x > hw) {m.position.x = hw; ion.vx *= -0.5;}
+      if(m.position.y < 0.5) {m.position.y = 0.5; ion.vy *= -0.5;}
+      if(m.position.y > solTop-0.3) {m.position.y = solTop-0.3; ion.vy *= -0.5;}
+      if(m.position.z < -hd) {m.position.z = -hd; ion.vz *= -0.5;}
+      if(m.position.z > hd) {m.position.z = hd; ion.vz *= -0.5;}
+
+      // Reached electrode? React!
+      if(ion.isPositive && m.position.x < cathodeX + 0.6){
+        if(Math.random() < dt * 2){
+          ion.alive = false;
+          m.visible = false;
+          ion.labelDiv.style.display = 'none';
+          // Respawn after delay
+          setTimeout(()=>{
+            if(state.running){
+              ion.alive = true;
+              m.position.set((Math.random()-0.5)*4, 0.5+Math.random()*(solTop-1), (Math.random()-0.5)*(cellD-2));
+              ion.vx=0;ion.vy=0;ion.vz=0;
+            }
+          }, 2000+Math.random()*2000);
+        }
+      }
+      if(!ion.isPositive && m.position.x > anodeX - 0.6){
+        if(Math.random() < dt * 2){
+          ion.alive = false;
+          m.visible = false;
+          ion.labelDiv.style.display = 'none';
+          setTimeout(()=>{
+            if(state.running){
+              ion.alive = true;
+              m.position.set((Math.random()-0.5)*4, 0.5+Math.random()*(solTop-1), (Math.random()-0.5)*(cellD-2));
+              ion.vx=0;ion.vy=0;ion.vz=0;
+            }
+          }, 2000+Math.random()*2000);
+        }
+      }
+
+      // Label
+      if(state.showIonLabels && ion.alive && m.visible){
+        const v = m.position.clone();
+        v.y += 0.5;
+        v.project(camera);
+        ion.labelDiv.style.left = (v.x*innerWidth/2+innerWidth/2-10)+'px';
+        ion.labelDiv.style.top = (-v.y*innerHeight/2+innerHeight/2-16)+'px';
+        ion.labelDiv.style.display = v.z<1?'block':'none';
+      } else {
+        ion.labelDiv.style.display = 'none';
+      }
+    });
+
+    // ─── Electrons in wire ───
+    state.electronPhases.forEach((ph, i) => {
+      state.electronPhases[i] = (ph + dt * speedFactor * 0.3) % 1;
+      const pool = electronPool[i];
+      if(state.showElectrons){
+        pool.visible = true;
+        const pos = getElectronPos(state.electronPhases[i]);
+        pool.position.set(pos.x, pos.y, pos.z + (Math.random()-0.5)*0.1);
+        pool.material.opacity = 0.7 + 0.3*Math.sin(performance.now()*0.01+i);
+      } else {
+        pool.visible = false;
+      }
+    });
+
+    // ─── Bubbles ───
+    if(state.showBubbles){
+      // Cathode bubbles
+      if(data.cathodeBubbles && Math.random() < dt * speedFactor * 4){
+        spawnBubble(cathodeX + 0.3, (Math.random()-0.5)*electrodeD, data.bubbleColorCathode);
+      }
+      // Anode bubbles
+      if(data.anodeBubbles && Math.random() < dt * speedFactor * 4){
+        spawnBubble(anodeX - 0.3, (Math.random()-0.5)*electrodeD, data.bubbleColorAnode);
+      }
+    }
+  } else {
+    // Idle: slight thermal motion for ions
+    ions.forEach(ion=>{
+      if(!ion.alive) return;
+      const m = ion.mesh;
+      m.visible = state.showIons;
+      ion.vx += (Math.random()-0.5)*0.5*dt;
+      ion.vy += (Math.random()-0.5)*0.5*dt;
+      ion.vz += (Math.random()-0.5)*0.5*dt;
+      ion.vx*=0.97;ion.vy*=0.97;ion.vz*=0.97;
+      m.position.x+=ion.vx*dt;m.position.y+=ion.vy*dt;m.position.z+=ion.vz*dt;
+      const hw=cellW/2-0.5,hd=cellD/2-0.5,solTop=cellH*0.82;
+      if(m.position.x<-hw){m.position.x=-hw;ion.vx*=-0.5;}
+      if(m.position.x>hw){m.position.x=hw;ion.vx*=-0.5;}
+      if(m.position.y<0.5){m.position.y=0.5;ion.vy*=-0.5;}
+      if(m.position.y>solTop-0.3){m.position.y=solTop-0.3;ion.vy*=-0.5;}
+      if(m.position.z<-hd){m.position.z=-hd;ion.vz*=-0.5;}
+      if(m.position.z>hd){m.position.z=hd;ion.vz*=-0.5;}
+
+      if(state.showIonLabels && ion.alive && m.visible){
+        const v=m.position.clone();v.y+=0.5;v.project(camera);
+        ion.labelDiv.style.left=(v.x*innerWidth/2+innerWidth/2-10)+'px';
+        ion.labelDiv.style.top=(-v.y*innerHeight/2+innerHeight/2-16)+'px';
+        ion.labelDiv.style.display=v.z<1?'block':'none';
+      } else { ion.labelDiv.style.display='none'; }
+    });
+    // Hide wire electrons
+    electronPool.forEach(m=>m.visible=false);
+  }
+
+  // ─── Bubble animation ───
+  for(let i=bubbles.length-1;i>=0;i--){
+    const b=bubbles[i];
+    b.life+=dt;
+    b.mesh.position.y+=b.vy*dt;
+    b.mesh.position.x+=(Math.random()-0.5)*0.3*dt;
+    b.mesh.material.opacity=Math.max(0,0.5*(1-b.life/b.maxLife));
+    b.mesh.scale.setScalar(1+b.life*0.5);
+    if(b.life>b.maxLife||b.mesh.position.y>cellH+1){
+      scene.remove(b.mesh);
+      bubbles.splice(i,1);
+    }
+    b.mesh.visible = state.showBubbles;
+  }
+
+  // Labels
+  updateElectrodeLabel(catLabel, new THREE.Vector3(cathodeX, electrodeH+0.5, 0));
+  updateElectrodeLabel(anoLabel, new THREE.Vector3(anodeX, electrodeH+0.5, 0));
+
+  updateUI();
+  renderer.render(scene, camera);
+}
+
+animate();
+updateUI();
+
+window.addEventListener('resize',()=>{
+  camera.aspect=innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+});
+</script>
+</body>
+</html>

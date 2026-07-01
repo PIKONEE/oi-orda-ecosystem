@@ -1,0 +1,1713 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Баллистика — Траектория полёта</title>
+<script src="../../libs/vendor/three-r128/three.min.js"></script>
+<style>
+  
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  :root {
+    --blue: #38bdf8;
+    --purple: #a78bfa;
+    --orange: #fb923c;
+    --green: #4ade80;
+    --red: #f87171;
+    --glass-bg: rgba(15, 20, 40, 0.55);
+    --glass-border: rgba(255,255,255,0.12);
+    --text: #e2e8f0;
+    --text-dim: #94a3b8;
+    --mono: 'JetBrains Mono', monospace;
+    --serif: 'Playfair Display', serif;
+    --sans: 'Nunito', sans-serif;
+  }
+
+  body {
+    background: radial-gradient(ellipse at 30% 20%, #0f172a 0%, #020617 50%, #000 100%);
+    color: var(--text);
+    font-family: var(--sans);
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  #canvas-container {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+  }
+
+  canvas { display: block; }
+
+  .glass {
+    background: var(--glass-bg);
+    
+    
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05);
+  }
+
+  /* ───── LEFT PANEL ───── */
+  #left-panel {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    width: 300px;
+    z-index: 10;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
+  }
+
+  #left-panel::-webkit-scrollbar { width: 4px; }
+  #left-panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+
+  .panel-title {
+    font-family: var(--serif);
+    font-size: 20px;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--blue), var(--purple));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 2px;
+  }
+
+  .panel-subtitle {
+    font-size: 11px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 4px;
+  }
+
+  .control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .control-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 13px;
+    color: var(--text-dim);
+  }
+
+  .control-value {
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--blue);
+  }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    background: rgba(255,255,255,0.08);
+    outline: none;
+    cursor: pointer;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--blue);
+    box-shadow: 0 0 10px rgba(56,189,248,0.5);
+    cursor: pointer;
+    transition: transform 0.15s;
+  }
+
+  input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+  }
+
+  .slider-orange::-webkit-slider-thumb { background: var(--orange); box-shadow: 0 0 10px rgba(251,146,60,0.5); }
+  .slider-purple::-webkit-slider-thumb { background: var(--purple); box-shadow: 0 0 10px rgba(167,139,250,0.5); }
+
+  .btn {
+    padding: 10px 16px;
+    border: none;
+    border-radius: 12px;
+    font-family: var(--sans);
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.5px;
+  }
+
+  .btn-launch {
+    background: linear-gradient(135deg, var(--green), #22c55e);
+    color: #052e16;
+    box-shadow: 0 4px 20px rgba(74,222,128,0.3);
+  }
+  .btn-launch:hover { transform: translateY(-1px); box-shadow: 0 6px 24px rgba(74,222,128,0.45); }
+
+  .btn-stop {
+    background: linear-gradient(135deg, var(--red), #ef4444);
+    color: #450a0a;
+    box-shadow: 0 4px 20px rgba(248,113,113,0.3);
+  }
+
+  .btn-reset {
+    background: rgba(255,255,255,0.08);
+    color: var(--text);
+    border: 1px solid var(--glass-border);
+  }
+  .btn-reset:hover { background: rgba(255,255,255,0.14); }
+
+  .btn-row {
+    display: flex;
+    gap: 8px;
+  }
+  .btn-row .btn { flex: 1; }
+
+  .separator {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--glass-border), transparent);
+  }
+
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 13px;
+    color: var(--text-dim);
+  }
+
+  .toggle {
+    width: 40px;
+    height: 22px;
+    border-radius: 11px;
+    background: rgba(255,255,255,0.1);
+    position: relative;
+    cursor: pointer;
+    transition: background 0.3s;
+  }
+  .toggle.active { background: var(--blue); }
+  .toggle::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: white;
+    transition: transform 0.3s;
+  }
+  .toggle.active::after { transform: translateX(18px); }
+
+  /* ───── RIGHT PANEL ───── */
+  #right-panel {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 300px;
+    z-index: 10;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
+  }
+
+  #right-panel::-webkit-scrollbar { width: 4px; }
+  #right-panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+
+  .stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+
+  .stat-label {
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+
+  .stat-value {
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: 15px;
+  }
+
+  .stat-value.blue { color: var(--blue); }
+  .stat-value.orange { color: var(--orange); }
+  .stat-value.purple { color: var(--purple); }
+  .stat-value.green { color: var(--green); }
+
+  .formula-box {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-family: var(--serif);
+    font-size: 14px;
+    line-height: 1.8;
+    color: var(--text-dim);
+  }
+
+  .formula-box .f {
+    color: var(--text);
+    font-style: italic;
+  }
+
+  .formula-box .highlight {
+    color: var(--orange);
+    font-weight: 700;
+  }
+
+  /* ───── BOTTOM PANEL ───── */
+  #bottom-panel {
+    position: absolute;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    padding: 14px 24px;
+    display: flex;
+    gap: 32px;
+    align-items: center;
+    white-space: nowrap;
+  }
+
+  .bottom-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+
+  .bottom-stat .label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: var(--text-dim);
+  }
+
+  .bottom-stat .value {
+    font-family: var(--mono);
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  /* ───── ANGLE INDICATOR ───── */
+  #angle-indicator {
+    position: absolute;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+  }
+
+  /* ───── PRESETS ───── */
+  .preset-btn {
+    padding: 6px 10px;
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    background: rgba(255,255,255,0.04);
+    color: var(--text-dim);
+    font-size: 11px;
+    font-family: var(--sans);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .preset-btn:hover {
+    background: rgba(255,255,255,0.1);
+    color: var(--text);
+    border-color: var(--blue);
+  }
+  .presets-row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  /* ───── PROJECTILE SELECTOR ───── */
+  .proj-selector {
+    display: flex;
+    gap: 6px;
+  }
+  .proj-btn {
+    flex: 1;
+    padding: 8px 4px;
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    background: rgba(255,255,255,0.03);
+    color: var(--text-dim);
+    font-size: 11px;
+    font-family: var(--sans);
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+  }
+  .proj-btn.active {
+    background: rgba(56,189,248,0.12);
+    border-color: var(--blue);
+    color: var(--blue);
+  }
+  .proj-btn:hover { background: rgba(255,255,255,0.07); }
+  .proj-btn .icon { font-size: 18px; display: block; margin-bottom: 2px; }
+
+  /* ───── TRAIL OPTIONS ───── */
+  .trail-count {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--purple);
+  }
+</style>
+</head>
+<body>
+
+
+<div id="canvas-container"></div>
+
+<!-- LEFT CONTROL PANEL -->
+<div id="left-panel" class="glass">
+  <div>
+    <div class="panel-title">Баллистика</div>
+    <div class="panel-subtitle">Траектория полёта снаряда</div>
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="panel-subtitle">Снаряд</div>
+  <div class="proj-selector">
+    <div class="proj-btn active" data-proj="ball"><span class="icon">⚾</span>Мяч</div>
+    <div class="proj-btn" data-proj="bullet"><span class="icon">🔴</span>Ядро</div>
+    <div class="proj-btn" data-proj="rocket"><span class="icon">🚀</span>Ракета</div>
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="control-group">
+    <div class="control-label">
+      <span>Угол броска, θ</span>
+      <span class="control-value" id="angle-val">45°</span>
+    </div>
+    <input type="range" id="angle-slider" min="5" max="85" value="45" step="1">
+  </div>
+
+  <div class="control-group">
+    <div class="control-label">
+      <span>Начальная скорость, v₀</span>
+      <span class="control-value" id="velocity-val" style="color:var(--orange)">30 м/с</span>
+    </div>
+    <input type="range" id="velocity-slider" class="slider-orange" min="5" max="100" value="30" step="1">
+  </div>
+
+  <div class="control-group">
+    <div class="control-label">
+      <span>Ускор. свободного падения, g</span>
+      <span class="control-value" id="gravity-val" style="color:var(--purple)">9.81 м/с²</span>
+    </div>
+    <input type="range" id="gravity-slider" class="slider-purple" min="1" max="25" value="9.81" step="0.01">
+  </div>
+
+  <div class="control-group">
+    <div class="control-label">
+      <span>Высота старта, h₀</span>
+      <span class="control-value" id="height-val">0.0 м</span>
+    </div>
+    <input type="range" id="height-slider" min="0" max="20" value="0" step="0.5">
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="panel-subtitle">Пресеты планет</div>
+  <div class="presets-row">
+    <button class="preset-btn" data-g="9.81">🌍 Земля</button>
+    <button class="preset-btn" data-g="1.62">🌕 Луна</button>
+    <button class="preset-btn" data-g="3.72">🔴 Марс</button>
+    <button class="preset-btn" data-g="24.79">🪐 Юпитер</button>
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="toggle-row">
+    <span>Сопротивление воздуха</span>
+    <div class="toggle" id="toggle-drag"></div>
+  </div>
+  <div class="toggle-row">
+    <span>Показать вектора</span>
+    <div class="toggle active" id="toggle-vectors"></div>
+  </div>
+  <div class="toggle-row">
+    <span>Сетка расстояний</span>
+    <div class="toggle active" id="toggle-grid"></div>
+  </div>
+  <div class="toggle-row">
+    <span>Сохранять следы</span>
+    <div class="toggle" id="toggle-trails"></div>
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="btn-row">
+    <button class="btn btn-launch" id="btn-launch">▶ Запуск</button>
+    <button class="btn btn-reset" id="btn-reset">↺ Сброс</button>
+  </div>
+</div>
+
+<!-- RIGHT INFO PANEL -->
+<div id="right-panel" class="glass">
+  <div class="panel-title" style="font-size:16px;">Параметры полёта</div>
+
+  <div class="stat-row">
+    <span class="stat-label">Дальность полёта (R)</span>
+    <span class="stat-value blue" id="stat-range">— м</span>
+  </div>
+  <div class="stat-row">
+    <span class="stat-label">Макс. высота (H)</span>
+    <span class="stat-value orange" id="stat-height">— м</span>
+  </div>
+  <div class="stat-row">
+    <span class="stat-label">Время полёта (T)</span>
+    <span class="stat-value purple" id="stat-time">— с</span>
+  </div>
+  <div class="stat-row">
+    <span class="stat-label">Скорость удара</span>
+    <span class="stat-value green" id="stat-impact">— м/с</span>
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="stat-row">
+    <span class="stat-label">Текущее время</span>
+    <span class="stat-value" id="live-time" style="color:var(--text)">0.00 с</span>
+  </div>
+  <div class="stat-row">
+    <span class="stat-label">Текущая позиция</span>
+    <span class="stat-value" id="live-pos" style="color:var(--text);font-size:12px;">(0, 0) м</span>
+  </div>
+  <div class="stat-row">
+    <span class="stat-label">Текущая скорость</span>
+    <span class="stat-value" id="live-vel" style="color:var(--text)">0.0 м/с</span>
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="panel-subtitle">Формулы</div>
+  <div class="formula-box">
+    <div><span class="f">x</span>(t) = <span class="f">v</span>₀ · cos<span class="f">θ</span> · <span class="f">t</span></div>
+    <div><span class="f">y</span>(t) = <span class="f">h</span>₀ + <span class="f">v</span>₀ · sin<span class="f">θ</span> · <span class="f">t</span> − ½<span class="f">g</span> · <span class="f">t</span>²</div>
+    <div style="margin-top:6px;border-top:1px solid rgba(255,255,255,0.06);padding-top:6px;">
+      <span class="f">R</span> = <span class="highlight" id="formula-range">—</span> м
+    </div>
+    <div><span class="f">H</span> = <span class="highlight" id="formula-height">—</span> м</div>
+    <div><span class="f">T</span> = <span class="highlight" id="formula-time">—</span> с</div>
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="panel-subtitle">Оптимальные углы</div>
+  <div class="formula-box" style="font-family:var(--sans);font-size:12px;line-height:1.6;">
+    <div>📐 <b style="color:var(--blue)">45°</b> — максимальная дальность</div>
+    <div>📐 <b style="color:var(--orange)">~56°</b> — макс. дальность с высоты</div>
+    <div>📐 <b style="color:var(--purple)">90°</b> — максимальная высота</div>
+    <div>📐 <b style="color:var(--green)">30°/60°</b> — одинаковая дальность</div>
+  </div>
+</div>
+
+<!-- BOTTOM BAR -->
+<div id="bottom-panel" class="glass">
+  <div class="bottom-stat">
+    <span class="label">Vx</span>
+    <span class="value" id="bstat-vx" style="color:var(--blue)">0.0</span>
+  </div>
+  <div class="bottom-stat">
+    <span class="label">Vy</span>
+    <span class="value" id="bstat-vy" style="color:var(--orange)">0.0</span>
+  </div>
+  <div class="bottom-stat">
+    <span class="label">|V|</span>
+    <span class="value" id="bstat-v" style="color:var(--green)">0.0</span>
+  </div>
+  <div class="bottom-stat">
+    <span class="label">Угол</span>
+    <span class="value" id="bstat-angle" style="color:var(--purple)">0.0°</span>
+  </div>
+  <div class="bottom-stat">
+    <span class="label">X</span>
+    <span class="value" id="bstat-x" style="color:var(--text)">0.0</span>
+  </div>
+  <div class="bottom-stat">
+    <span class="label">Y</span>
+    <span class="value" id="bstat-y" style="color:var(--text)">0.0</span>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+// SCENE SETUP
+// ══════════════════════════════════════════
+const container = document.getElementById('canvas-container');
+const scene = new THREE.Scene();
+
+const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 500);
+camera.position.set(0, 12, 40);
+camera.lookAt(20, 0, 0);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = false;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+container.appendChild(renderer.domElement);
+
+// Fog
+scene.fog = new THREE.FogExp2(0x020617, 0.006);
+
+// ══════════════════════════════════════════
+// LIGHTING
+// ══════════════════════════════════════════
+const ambient = new THREE.AmbientLight(0x334466, 0.6);
+scene.add(ambient);
+
+const dirLight = new THREE.DirectionalLight(0xffeedd, 0.8);
+dirLight.position.set(20, 30, 10);
+dirLight.castShadow = true;
+dirLight.shadow.mapSize.width = 2048;
+dirLight.shadow.mapSize.height = 2048;
+dirLight.shadow.camera.near = 0.5;
+dirLight.shadow.camera.far = 100;
+dirLight.shadow.camera.left = -50;
+dirLight.shadow.camera.right = 50;
+dirLight.shadow.camera.top = 30;
+dirLight.shadow.camera.bottom = -5;
+scene.add(dirLight);
+
+const pointLight = new THREE.PointLight(0x38bdf8, 0.4, 60);
+pointLight.position.set(-5, 10, 5);
+scene.add(pointLight);
+
+// ══════════════════════════════════════════
+// GROUND
+// ══════════════════════════════════════════
+const groundGeo = new THREE.PlaneGeometry(200, 200);
+const groundMat = new THREE.MeshStandardMaterial({
+  color: 0x0a1628,
+  roughness: 0.9,
+  metalness: 0.1,
+});
+const ground = new THREE.Mesh(groundGeo, groundMat);
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+// ══════════════════════════════════════════
+// GRID
+// ══════════════════════════════════════════
+const gridGroup = new THREE.Group();
+scene.add(gridGroup);
+
+function buildGrid() {
+  while (gridGroup.children.length) gridGroup.remove(gridGroup.children[0]);
+
+  const gridMat = new THREE.LineBasicMaterial({ color: 0x1e3a5f, transparent: true, opacity: 0.3 });
+  const size = 100;
+  const step = 10;
+
+  for (let i = -size; i <= size; i += step) {
+    const pts1 = [new THREE.Vector3(i, 0.01, -size), new THREE.Vector3(i, 0.01, size)];
+    const pts2 = [new THREE.Vector3(-size, 0.01, i), new THREE.Vector3(size, 0.01, i)];
+    const g1 = new THREE.BufferGeometry().setFromPoints(pts1);
+    const g2 = new THREE.BufferGeometry().setFromPoints(pts2);
+    gridGroup.add(new THREE.Line(g1, gridMat));
+    gridGroup.add(new THREE.Line(g2, gridMat));
+  }
+
+  // Distance markers along X
+  const markerMat = new THREE.LineBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.5 });
+  for (let x = 10; x <= 100; x += 10) {
+    const pts = [new THREE.Vector3(x, 0.02, -0.5), new THREE.Vector3(x, 0.02, 0.5)];
+    const g = new THREE.BufferGeometry().setFromPoints(pts);
+    gridGroup.add(new THREE.Line(g, markerMat));
+  }
+
+  // Height markers along Y
+  for (let y = 5; y <= 50; y += 5) {
+    const pts = [new THREE.Vector3(-0.3, y, 0), new THREE.Vector3(0.3, y, 0)];
+    const g = new THREE.BufferGeometry().setFromPoints(pts);
+    gridGroup.add(new THREE.Line(g, markerMat));
+  }
+
+  // Axis lines
+  const axisMat = new THREE.LineBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.7 });
+  const xAxis = new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(0, 0.02, 0), new THREE.Vector3(100, 0.02, 0)
+  ]);
+  const yAxis = new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 50, 0)
+  ]);
+  gridGroup.add(new THREE.Line(xAxis, axisMat));
+  gridGroup.add(new THREE.Line(yAxis, axisMat));
+}
+buildGrid();
+
+// ══════════════════════════════════════════
+// LAUNCH PAD
+// ══════════════════════════════════════════
+const padGeo = new THREE.CylinderGeometry(1.2, 1.4, 0.3, 32);
+const padMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.5, metalness: 0.6 });
+const pad = new THREE.Mesh(padGeo, padMat);
+pad.position.set(0, 0.15, 0);
+pad.castShadow = true;
+pad.receiveShadow = true;
+scene.add(pad);
+
+// Launch pipe
+const pipeGroup = new THREE.Group();
+scene.add(pipeGroup);
+
+const pipeGeo = new THREE.CylinderGeometry(0.15, 0.2, 3, 16);
+const pipeMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.3, metalness: 0.8 });
+const pipe = new THREE.Mesh(pipeGeo, pipeMat);
+pipe.position.y = 1.5;
+pipe.castShadow = true;
+pipeGroup.add(pipe);
+
+// Base joint
+const jointGeo = new THREE.SphereGeometry(0.3, 16, 16);
+const jointMat = new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.4, metalness: 0.7 });
+const joint = new THREE.Mesh(jointGeo, jointMat);
+pipeGroup.add(joint);
+pipeGroup.position.set(0, 0.3, 0);
+
+// ══════════════════════════════════════════
+// PROJECTILE
+// ══════════════════════════════════════════
+let projectileMesh;
+const projectileGroup = new THREE.Group();
+scene.add(projectileGroup);
+
+function createProjectile(type) {
+  if (projectileMesh) projectileGroup.remove(projectileMesh);
+
+  let geo, mat;
+  if (type === 'ball') {
+    geo = new THREE.SphereGeometry(0.4, 32, 32);
+    mat = new THREE.MeshStandardMaterial({ color: 0xfb923c, roughness: 0.4, metalness: 0.3 });
+  } else if (type === 'bullet') {
+    geo = new THREE.SphereGeometry(0.5, 32, 32);
+    mat = new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.2, metalness: 0.9 });
+  } else {
+    // Rocket — cylinder + cone
+    const group = new THREE.Group();
+    const bodyGeo = new THREE.CylinderGeometry(0.2, 0.25, 1.2, 16);
+    const bodyMat = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.3, metalness: 0.5 });
+    const body = new THREE.Mesh(bodyGeo, bodyMat);
+    group.add(body);
+
+    const noseGeo = new THREE.ConeGeometry(0.2, 0.5, 16);
+    const noseMat = new THREE.MeshStandardMaterial({ color: 0xfbbf24, roughness: 0.3, metalness: 0.5 });
+    const nose = new THREE.Mesh(noseGeo, noseMat);
+    nose.position.y = 0.85;
+    group.add(nose);
+
+    projectileMesh = group;
+    projectileMesh.castShadow = true;
+    projectileGroup.add(projectileMesh);
+    return;
+  }
+
+  projectileMesh = new THREE.Mesh(geo, mat);
+  projectileMesh.castShadow = true;
+  projectileGroup.add(projectileMesh);
+}
+createProjectile('ball');
+
+// Glow around projectile
+const glowGeo = new THREE.SphereGeometry(0.7, 16, 16);
+const glowMat = new THREE.MeshBasicMaterial({ color: 0xfb923c, transparent: true, opacity: 0.15 });
+const glow = new THREE.Mesh(glowGeo, glowMat);
+projectileGroup.add(glow);
+
+// ══════════════════════════════════════════
+// TRAJECTORY LINE
+// ══════════════════════════════════════════
+const maxTrailPoints = 2000;
+const trailPositions = new Float32Array(maxTrailPoints * 3);
+const trailGeo = new THREE.BufferGeometry();
+trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPositions, 3));
+trailGeo.setDrawRange(0, 0);
+const trailMat = new THREE.LineBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.8 });
+const trail = new THREE.Line(trailGeo, trailMat);
+scene.add(trail);
+
+// Predicted trajectory (dashed)
+const predPoints = [];
+const predGeo = new THREE.BufferGeometry();
+const predMat = new THREE.LineDashedMaterial({ color: 0xa78bfa, transparent: true, opacity: 0.5, dashSize: 0.5, gapSize: 0.3 });
+const predLine = new THREE.Line(predGeo, predMat);
+scene.add(predLine);
+
+// Trail storage for multiple trails
+const trailLines = [];
+
+// ══════════════════════════════════════════
+// VECTORS
+// ══════════════════════════════════════════
+const vectorGroup = new THREE.Group();
+scene.add(vectorGroup);
+
+function createArrow(color, length) {
+  const dir = new THREE.Vector3(1, 0, 0);
+  const origin = new THREE.Vector3(0, 0, 0);
+  const arrow = new THREE.ArrowHelper(dir, origin, length, color, 0.4, 0.2);
+  return arrow;
+}
+
+const arrowV = createArrow(0x4ade80, 3);   // velocity (green)
+const arrowVx = createArrow(0x38bdf8, 2);  // vx (blue)
+const arrowVy = createArrow(0xfb923c, 2);  // vy (orange)
+const arrowG = createArrow(0xf87171, 1.5); // gravity (red)
+
+vectorGroup.add(arrowV, arrowVx, arrowVy, arrowG);
+
+// HTML labels for vectors
+function createLabel(text, color) {
+  const div = document.createElement('div');
+  div.style.cssText = `
+    position: absolute;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 700;
+    color: ${color};
+    pointer-events: none;
+    text-shadow: 0 0 8px rgba(0,0,0,0.8);
+    z-index: 5;
+    white-space: nowrap;
+  `;
+  div.textContent = text;
+  document.body.appendChild(div);
+  return div;
+}
+
+const labelV = createLabel('V', '#4ade80');
+const labelVx = createLabel('Vx', '#38bdf8');
+const labelVy = createLabel('Vy', '#fb923c');
+const labelG = createLabel('g', '#f87171');
+
+function updateLabel(label, worldPos) {
+  const v = worldPos.clone().project(camera);
+  const hw = window.innerWidth / 2;
+  const hh = window.innerHeight / 2;
+  label.style.left = (v.x * hw + hw + 8) + 'px';
+  label.style.top = (-v.y * hh + hh - 8) + 'px';
+  label.style.display = v.z < 1 ? 'block' : 'none';
+}
+
+// ══════════════════════════════════════════
+// IMPACT MARKER
+// ══════════════════════════════════════════
+const impactRingGeo = new THREE.RingGeometry(0.5, 0.8, 32);
+const impactRingMat = new THREE.MeshBasicMaterial({ color: 0xf87171, side: THREE.DoubleSide, transparent: true, opacity: 0 });
+const impactRing = new THREE.Mesh(impactRingGeo, impactRingMat);
+impactRing.rotation.x = -Math.PI / 2;
+impactRing.position.y = 0.05;
+scene.add(impactRing);
+
+// ══════════════════════════════════════════
+// PARTICLES (impact)
+// ══════════════════════════════════════════
+const particleCount = 60;
+const particleGeo = new THREE.BufferGeometry();
+const particlePositions = new Float32Array(particleCount * 3);
+const particleSizes = new Float32Array(particleCount);
+particleGeo.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+particleGeo.setAttribute('size', new THREE.BufferAttribute(particleSizes, 1));
+const particleMat = new THREE.PointsMaterial({ color: 0xfb923c, size: 0.3, transparent: true, opacity: 0, sizeAttenuation: true });
+const particles = new THREE.Points(particleGeo, particleMat);
+scene.add(particles);
+
+let particleVelocities = [];
+let particleActive = false;
+let particleTime = 0;
+
+function triggerParticles(pos) {
+  particleVelocities = [];
+  for (let i = 0; i < particleCount; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const elev = Math.random() * Math.PI * 0.5;
+    const speed = 2 + Math.random() * 5;
+    particleVelocities.push({
+      vx: Math.cos(angle) * Math.cos(elev) * speed,
+      vy: Math.sin(elev) * speed * 1.5,
+      vz: Math.sin(angle) * Math.cos(elev) * speed
+    });
+    particlePositions[i*3] = pos.x;
+    particlePositions[i*3+1] = pos.y;
+    particlePositions[i*3+2] = pos.z;
+    particleSizes[i] = 0.1 + Math.random() * 0.3;
+  }
+  particleGeo.attributes.position.needsUpdate = true;
+  particleGeo.attributes.size.needsUpdate = true;
+  particleMat.opacity = 1;
+  particleActive = true;
+  particleTime = 0;
+}
+
+// ══════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════
+let state = {
+  angle: 45,
+  velocity: 30,
+  gravity: 9.81,
+  height: 0,
+  projType: 'ball',
+  drag: false,
+  showVectors: true,
+  showGrid: true,
+  keepTrails: false,
+  running: false,
+  time: 0,
+  posX: 0,
+  posY: 0,
+  velX: 0,
+  velY: 0,
+  launched: false,
+  landed: false
+};
+
+// Scale factor: 1 physics meter = 1 three.js unit
+const S = 1;
+
+// ══════════════════════════════════════════
+// PHYSICS
+// ══════════════════════════════════════════
+function computeTheoretical() {
+  const a = state.angle * Math.PI / 180;
+  const v = state.velocity;
+  const g = state.gravity;
+  const h = state.height;
+
+  const vx = v * Math.cos(a);
+  const vy = v * Math.sin(a);
+
+  // Time of flight (quadratic: -0.5*g*t^2 + vy*t + h = 0)
+  const disc = vy * vy + 2 * g * h;
+  const T = (vy + Math.sqrt(disc)) / g;
+
+  // Range
+  const R = vx * T;
+
+  // Max height
+  const H = h + (vy * vy) / (2 * g);
+
+  // Impact speed
+  const vyImpact = -Math.sqrt(vy * vy + 2 * g * h);
+  const vImpact = Math.sqrt(vx * vx + vyImpact * vyImpact);
+
+  return { R, H, T, vImpact, vx, vy };
+}
+
+function updatePredictedTrajectory() {
+  const a = state.angle * Math.PI / 180;
+  const v = state.velocity;
+  const g = state.gravity;
+  const h = state.height;
+  const vx = v * Math.cos(a);
+  const vy = v * Math.sin(a);
+  const drag = state.drag ? 0.02 : 0;
+
+  const pts = [];
+  let t = 0;
+  const dt = 0.02;
+  let cvx = vx, cvy = vy;
+  let cx = 0, cy = h;
+
+  for (let i = 0; i < 3000; i++) {
+    pts.push(new THREE.Vector3(cx * S, cy * S, 0));
+    if (cy < 0 && i > 0) break;
+
+    const speed = Math.sqrt(cvx*cvx + cvy*cvy);
+    const dragFx = -drag * speed * cvx;
+    const dragFy = -drag * speed * cvy;
+
+    cvx += dragFx * dt;
+    cvy += (-g + dragFy) * dt;
+    cx += cvx * dt;
+    cy += cvy * dt;
+    t += dt;
+  }
+
+  predLine.geometry.dispose();
+  predLine.geometry = new THREE.BufferGeometry().setFromPoints(pts);
+  predLine.computeLineDistances();
+}
+
+function updateStats() {
+  const th = computeTheoretical();
+
+  document.getElementById('stat-range').textContent = th.R.toFixed(1) + ' м';
+  document.getElementById('stat-height').textContent = th.H.toFixed(1) + ' м';
+  document.getElementById('stat-time').textContent = th.T.toFixed(2) + ' с';
+  document.getElementById('stat-impact').textContent = th.vImpact.toFixed(1) + ' м/с';
+
+  document.getElementById('formula-range').textContent = th.R.toFixed(1);
+  document.getElementById('formula-height').textContent = th.H.toFixed(1);
+  document.getElementById('formula-time').textContent = th.T.toFixed(2);
+}
+
+// ══════════════════════════════════════════
+// PIPE ANGLE UPDATE
+// ══════════════════════════════════════════
+function updatePipeAngle() {
+  const a = state.angle * Math.PI / 180;
+  pipeGroup.rotation.z = a - Math.PI / 2;
+  pipeGroup.position.y = 0.3 + state.height;
+}
+
+// ══════════════════════════════════════════
+// CAMERA CONTROLS (manual orbit)
+// ══════════════════════════════════════════
+let isDragging = false;
+let isPanning = false;
+let prevMouse = { x: 0, y: 0 };
+let camSpherical = { radius: 90, theta: Math.PI * 0.48, phi: Math.PI * 0.38 };
+let camTarget = new THREE.Vector3(40, 8, 0);
+
+function updateCameraFromSpherical() {
+  const r = camSpherical.radius;
+  const t = camSpherical.theta;
+  const p = camSpherical.phi;
+  camera.position.set(
+    camTarget.x + r * Math.sin(p) * Math.cos(t),
+    camTarget.y + r * Math.cos(p),
+    camTarget.z + r * Math.sin(p) * Math.sin(t)
+  );
+  camera.lookAt(camTarget);
+}
+
+renderer.domElement.addEventListener('mousedown', e => {
+  if (e.button === 0) isDragging = true;
+  if (e.button === 2) isPanning = true;
+  prevMouse = { x: e.clientX, y: e.clientY };
+});
+
+renderer.domElement.addEventListener('mousemove', e => {
+  const dx = e.clientX - prevMouse.x;
+  const dy = e.clientY - prevMouse.y;
+  prevMouse = { x: e.clientX, y: e.clientY };
+
+  if (isDragging) {
+    camSpherical.theta -= dx * 0.005;
+    camSpherical.phi = Math.max(0.1, Math.min(Math.PI * 0.48, camSpherical.phi + dy * 0.005));
+    updateCameraFromSpherical();
+  }
+  if (isPanning) {
+    const right = new THREE.Vector3();
+    const up = new THREE.Vector3(0, 1, 0);
+    camera.getWorldDirection(right);
+    right.cross(up).normalize();
+    camTarget.addScaledVector(right, -dx * 0.05);
+    camTarget.y += dy * 0.05;
+    camTarget.y = Math.max(0, camTarget.y);
+    updateCameraFromSpherical();
+  }
+});
+
+renderer.domElement.addEventListener('mouseup', () => { isDragging = false; isPanning = false; });
+renderer.domElement.addEventListener('contextmenu', e => e.preventDefault());
+
+renderer.domElement.addEventListener('wheel', e => {
+  camSpherical.radius = Math.max(5, Math.min(120, camSpherical.radius + e.deltaY * 0.03));
+  updateCameraFromSpherical();
+});
+
+updateCameraFromSpherical();
+
+// ══════════════════════════════════════════
+// UI BINDINGS
+// ══════════════════════════════════════════
+const angleSlider = document.getElementById('angle-slider');
+const velocitySlider = document.getElementById('velocity-slider');
+const gravitySlider = document.getElementById('gravity-slider');
+const heightSlider = document.getElementById('height-slider');
+
+angleSlider.addEventListener('input', e => {
+  state.angle = +e.target.value;
+  document.getElementById('angle-val').textContent = state.angle + '°';
+  updatePipeAngle();
+  updatePredictedTrajectory();
+  updateStats();
+});
+
+velocitySlider.addEventListener('input', e => {
+  state.velocity = +e.target.value;
+  document.getElementById('velocity-val').textContent = state.velocity + ' м/с';
+  updatePredictedTrajectory();
+  updateStats();
+});
+
+gravitySlider.addEventListener('input', e => {
+  state.gravity = +e.target.value;
+  document.getElementById('gravity-val').textContent = (+e.target.value).toFixed(2) + ' м/с²';
+  updatePredictedTrajectory();
+  updateStats();
+});
+
+heightSlider.addEventListener('input', e => {
+  state.height = +e.target.value;
+  document.getElementById('height-val').textContent = (+e.target.value).toFixed(1) + ' м';
+  updatePipeAngle();
+  updatePredictedTrajectory();
+  updateStats();
+});
+
+// Presets
+document.querySelectorAll('.preset-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const g = +btn.dataset.g;
+    gravitySlider.value = g;
+    state.gravity = g;
+    document.getElementById('gravity-val').textContent = g.toFixed(2) + ' м/с²';
+    updatePredictedTrajectory();
+    updateStats();
+  });
+});
+
+// Projectile type
+document.querySelectorAll('.proj-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.proj-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    state.projType = btn.dataset.proj;
+    createProjectile(state.projType);
+  });
+});
+
+// Toggles
+document.getElementById('toggle-drag').addEventListener('click', function() {
+  this.classList.toggle('active');
+  state.drag = this.classList.contains('active');
+  updatePredictedTrajectory();
+  updateStats();
+});
+
+document.getElementById('toggle-vectors').addEventListener('click', function() {
+  this.classList.toggle('active');
+  state.showVectors = this.classList.contains('active');
+  vectorGroup.visible = state.showVectors;
+  [labelV, labelVx, labelVy, labelG].forEach(l => l.style.display = state.showVectors ? 'block' : 'none');
+});
+
+document.getElementById('toggle-grid').addEventListener('click', function() {
+  this.classList.toggle('active');
+  state.showGrid = this.classList.contains('active');
+  gridGroup.visible = state.showGrid;
+});
+
+document.getElementById('toggle-trails').addEventListener('click', function() {
+  this.classList.toggle('active');
+  state.keepTrails = this.classList.contains('active');
+});
+
+// Launch
+document.getElementById('btn-launch').addEventListener('click', () => {
+  if (state.running) return;
+  launch();
+});
+
+document.getElementById('btn-reset').addEventListener('click', () => {
+  resetSim();
+});
+
+// Keyboard
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space') {
+    e.preventDefault();
+    if (!state.running) launch();
+  }
+  if (e.code === 'KeyR') resetSim();
+});
+
+// ══════════════════════════════════════════
+// SIMULATION
+// ══════════════════════════════════════════
+let trailIndex = 0;
+
+function launch() {
+  if (state.keepTrails && state.launched) {
+    // Save current trail
+    const pts = [];
+    for (let i = 0; i < trailIndex; i++) {
+      pts.push(new THREE.Vector3(
+        trailPositions[i*3],
+        trailPositions[i*3+1],
+        trailPositions[i*3+2]
+      ));
+    }
+    if (pts.length > 1) {
+      const g = new THREE.BufferGeometry().setFromPoints(pts);
+      const m = new THREE.LineBasicMaterial({ color: 0xa78bfa, transparent: true, opacity: 0.3 });
+      const l = new THREE.Line(g, m);
+      scene.add(l);
+      trailLines.push(l);
+    }
+  }
+
+  const a = state.angle * Math.PI / 180;
+  state.velX = state.velocity * Math.cos(a);
+  state.velY = state.velocity * Math.sin(a);
+  state.posX = 0;
+  state.posY = state.height;
+  state.time = 0;
+  state.running = true;
+  state.launched = true;
+  state.landed = false;
+  trailIndex = 0;
+  trailGeo.setDrawRange(0, 0);
+
+  impactRingMat.opacity = 0;
+  particleMat.opacity = 0;
+  particleActive = false;
+
+  const btn = document.getElementById('btn-launch');
+  btn.textContent = '⏸ Летит...';
+  btn.className = 'btn btn-stop';
+}
+
+function resetSim() {
+  state.running = false;
+  state.launched = false;
+  state.landed = false;
+  state.time = 0;
+  state.posX = 0;
+  state.posY = state.height;
+  state.velX = 0;
+  state.velY = 0;
+  trailIndex = 0;
+  trailGeo.setDrawRange(0, 0);
+
+  projectileGroup.position.set(0, state.height, 0);
+  impactRingMat.opacity = 0;
+  particleMat.opacity = 0;
+  particleActive = false;
+
+  // Clear saved trails
+  trailLines.forEach(l => scene.remove(l));
+  trailLines.length = 0;
+
+  const btn = document.getElementById('btn-launch');
+  btn.textContent = '▶ Запуск';
+  btn.className = 'btn btn-launch';
+
+  updateLiveStats(0, state.posX, state.posY, 0, 0, 0);
+
+  // Reset camera
+  camSpherical = { radius: 90, theta: Math.PI * 0.48, phi: Math.PI * 0.38 };
+  camTarget.set(40, 8, 0);
+  updateCameraFromSpherical();
+}
+
+function updateLiveStats(t, x, y, vx, vy, speed) {
+  document.getElementById('live-time').textContent = t.toFixed(2) + ' с';
+  document.getElementById('live-pos').textContent = `(${x.toFixed(1)}, ${y.toFixed(1)}) м`;
+  document.getElementById('live-vel').textContent = speed.toFixed(1) + ' м/с';
+
+  document.getElementById('bstat-vx').textContent = vx.toFixed(1);
+  document.getElementById('bstat-vy').textContent = vy.toFixed(1);
+  document.getElementById('bstat-v').textContent = speed.toFixed(1);
+  document.getElementById('bstat-x').textContent = x.toFixed(1);
+  document.getElementById('bstat-y').textContent = y.toFixed(1);
+
+  const currentAngle = Math.atan2(vy, vx) * 180 / Math.PI;
+  document.getElementById('bstat-angle').textContent = currentAngle.toFixed(1) + '°';
+}
+
+// ══════════════════════════════════════════
+// ANIMATION LOOP
+// ══════════════════════════════════════════
+const clock = new THREE.Clock();
+
+function animate() {
+  requestAnimationFrame(animate);
+  const delta = Math.min(clock.getDelta(), 0.05);
+
+  // Physics step
+  if (state.running && !state.landed) {
+    const dt = delta * 1.5; // slight speedup for visibility
+    const drag = state.drag ? 0.02 : 0;
+    const speed = Math.sqrt(state.velX * state.velX + state.velY * state.velY);
+    const dragFx = -drag * speed * state.velX;
+    const dragFy = -drag * speed * state.velY;
+
+    state.velX += dragFx * dt;
+    state.velY += (-state.gravity + dragFy) * dt;
+    state.posX += state.velX * dt;
+    state.posY += state.velY * dt;
+    state.time += dt;
+
+    // Update projectile
+    projectileGroup.position.set(state.posX * S, Math.max(0, state.posY * S), 0);
+
+    // Rotate rocket toward velocity
+    if (state.projType === 'rocket' && projectileMesh) {
+      const va = Math.atan2(state.velY, state.velX);
+      projectileMesh.rotation.z = va - Math.PI / 2;
+    }
+
+    // Trail
+    if (trailIndex < maxTrailPoints) {
+      trailPositions[trailIndex * 3] = state.posX * S;
+      trailPositions[trailIndex * 3 + 1] = Math.max(0, state.posY * S);
+      trailPositions[trailIndex * 3 + 2] = 0;
+      trailIndex++;
+      trailGeo.attributes.position.needsUpdate = true;
+      trailGeo.setDrawRange(0, trailIndex);
+    }
+
+    // Update live stats
+    const spd = Math.sqrt(state.velX * state.velX + state.velY * state.velY);
+    updateLiveStats(state.time, state.posX, state.posY, state.velX, state.velY, spd);
+
+    // Vectors
+    if (state.showVectors) {
+      const px = projectileGroup.position.x;
+      const py = projectileGroup.position.y;
+      const pz = 0;
+      const vScale = 0.12;
+
+      arrowV.position.set(px, py, pz);
+      arrowV.setDirection(new THREE.Vector3(state.velX, state.velY, 0).normalize());
+      arrowV.setLength(spd * vScale, 0.4, 0.2);
+
+      arrowVx.position.set(px, py, pz);
+      arrowVx.setDirection(new THREE.Vector3(1, 0, 0));
+      arrowVx.setLength(Math.abs(state.velX) * vScale, 0.3, 0.15);
+
+      arrowVy.position.set(px, py, pz);
+      arrowVy.setDirection(new THREE.Vector3(0, state.velY >= 0 ? 1 : -1, 0));
+      arrowVy.setLength(Math.abs(state.velY) * vScale, 0.3, 0.15);
+
+      arrowG.position.set(px, py, pz);
+      arrowG.setDirection(new THREE.Vector3(0, -1, 0));
+      arrowG.setLength(state.gravity * 0.15, 0.3, 0.15);
+
+      updateLabel(labelV, new THREE.Vector3(px + state.velX * vScale * 0.5, py + state.velY * vScale * 0.5 + 0.8, 0));
+      updateLabel(labelVx, new THREE.Vector3(px + Math.abs(state.velX) * vScale + 0.5, py - 0.5, 0));
+      updateLabel(labelVy, new THREE.Vector3(px - 1.5, py + (state.velY >= 0 ? 1 : -1) * Math.abs(state.velY) * vScale * 0.5, 0));
+      updateLabel(labelG, new THREE.Vector3(px + 1, py - state.gravity * 0.15 - 0.5, 0));
+    }
+
+    // Glow pulse
+    glow.scale.setScalar(1 + 0.1 * Math.sin(state.time * 8));
+    glow.material.opacity = 0.15 + 0.05 * Math.sin(state.time * 6);
+
+    // Landing check
+    if (state.posY <= 0 && state.time > 0.1) {
+      state.posY = 0;
+      state.landed = true;
+      state.running = false;
+
+      projectileGroup.position.y = 0;
+
+      // Impact effects
+      impactRing.position.set(state.posX * S, 0.05, 0);
+      impactRingMat.opacity = 0.8;
+
+      triggerParticles(new THREE.Vector3(state.posX * S, 0.5, 0));
+
+      const btn = document.getElementById('btn-launch');
+      btn.textContent = '▶ Запуск';
+      btn.className = 'btn btn-launch';
+    }
+  }
+
+  // Particle animation
+  if (particleActive) {
+    particleTime += delta;
+    for (let i = 0; i < particleCount; i++) {
+      const pv = particleVelocities[i];
+      particlePositions[i*3] += pv.vx * delta;
+      particlePositions[i*3+1] += (pv.vy - 9.8 * particleTime) * delta;
+      particlePositions[i*3+2] += pv.vz * delta;
+      if (particlePositions[i*3+1] < 0) particlePositions[i*3+1] = 0;
+    }
+    particleGeo.attributes.position.needsUpdate = true;
+    particleMat.opacity = Math.max(0, 1 - particleTime * 1.5);
+    if (particleMat.opacity <= 0) particleActive = false;
+  }
+
+  // Impact ring fade
+  if (impactRingMat.opacity > 0 && state.landed) {
+    impactRingMat.opacity *= 0.995;
+    impactRing.scale.setScalar(1 + (1 - impactRingMat.opacity) * 3);
+  }
+
+  // Idle projectile position
+  if (!state.running && !state.landed) {
+    const a = state.angle * Math.PI / 180;
+    const tipX = Math.cos(a) * 1.5;
+    const tipY = state.height + 0.3 + Math.sin(a) * 1.5;
+    projectileGroup.position.set(tipX * S, tipY * S, 0);
+
+    // Initial vectors
+    if (state.showVectors) {
+      const px = projectileGroup.position.x;
+      const py = projectileGroup.position.y;
+      const vx = state.velocity * Math.cos(a);
+      const vy = state.velocity * Math.sin(a);
+      const spd = state.velocity;
+      const vScale = 0.12;
+
+      arrowV.position.set(px, py, 0);
+      arrowV.setDirection(new THREE.Vector3(vx, vy, 0).normalize());
+      arrowV.setLength(spd * vScale, 0.4, 0.2);
+
+      arrowVx.position.set(px, py, 0);
+      arrowVx.setDirection(new THREE.Vector3(1, 0, 0));
+      arrowVx.setLength(vx * vScale, 0.3, 0.15);
+
+      arrowVy.position.set(px, py, 0);
+      arrowVy.setDirection(new THREE.Vector3(0, 1, 0));
+      arrowVy.setLength(vy * vScale, 0.3, 0.15);
+
+      arrowG.position.set(px, py, 0);
+      arrowG.setDirection(new THREE.Vector3(0, -1, 0));
+      arrowG.setLength(state.gravity * 0.15, 0.3, 0.15);
+
+      updateLabel(labelV, new THREE.Vector3(px + vx * vScale * 0.5, py + vy * vScale * 0.5 + 0.8, 0));
+      updateLabel(labelVx, new THREE.Vector3(px + vx * vScale + 0.5, py - 0.5, 0));
+      updateLabel(labelVy, new THREE.Vector3(px - 1.5, py + vy * vScale * 0.5, 0));
+      updateLabel(labelG, new THREE.Vector3(px + 1, py - state.gravity * 0.15 - 0.5, 0));
+    }
+  }
+
+  // Hide vectors if not showing
+  vectorGroup.visible = state.showVectors;
+
+  renderer.render(scene, camera);
+}
+
+// ══════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════
+updatePipeAngle();
+updatePredictedTrajectory();
+updateStats();
+animate();
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+<script>
+(function() {
+    const TEXT_MAP = {
+    "Баллистика — Траектория полёта": {
+        "kz": "Баллистика — Ұшу траекториясы",
+        "en": "Ballistics — Projectile Trajectory"
+    },
+    "Баллистика": {
+        "kz": "Баллистика",
+        "en": "Ballistics"
+    },
+    "Траектория полёта снаряда": {
+        "kz": "Снарядтың ұшу траекториясы",
+        "en": "Projectile flight trajectory"
+    },
+    "Снаряд": {
+        "kz": "Снаряд",
+        "en": "Projectile"
+    },
+    "Ядро": {
+        "kz": "Ядро",
+        "en": "Cannonball"
+    },
+    "Ракета": {
+        "kz": "Зымыран",
+        "en": "Rocket"
+    },
+    "Угол броска, θ": {
+        "kz": "Лақтыру бұрышы, θ",
+        "en": "Launch angle, θ"
+    },
+    "Начальная скорость, v₀": {
+        "kz": "Бастапқы жылдамдық, v₀",
+        "en": "Initial velocity, v₀"
+    },
+    "Ускор. свободного падения, g": {
+        "kz": "Еркін түсу үдеуі, g",
+        "en": "Gravitational accel., g"
+    },
+    "Высота старта, h₀": {
+        "kz": "Старт биіктігі, h₀",
+        "en": "Launch height, h₀"
+    },
+    "Пресеты планет": {
+        "kz": "Ғаламшар пресеттері",
+        "en": "Planet presets"
+    },
+    "Сопротивление воздуха": {
+        "kz": "Ауа кедергісі",
+        "en": "Air resistance"
+    },
+    "Показать вектора": {
+        "kz": "Векторларды көрсету",
+        "en": "Show vectors"
+    },
+    "Сетка расстояний": {
+        "kz": "Қашықтық торы",
+        "en": "Distance grid"
+    },
+    "Сохранять следы": {
+        "kz": "Іздерді сақтау",
+        "en": "Keep trails"
+    },
+    "Параметры полёта": {
+        "kz": "Ұшу параметрлері",
+        "en": "Flight parameters"
+    },
+    "Дальность": {
+        "kz": "Қашықтық",
+        "en": "Range"
+    },
+    "Макс. высота": {
+        "kz": "Макс. биіктік",
+        "en": "Max. height"
+    },
+    "Время полёта": {
+        "kz": "Ұшу уақыты",
+        "en": "Flight time"
+    },
+    "▶ ПУСК": {
+        "kz": "▶ ІСКЕ ҚОСУ",
+        "en": "▶ LAUNCH"
+    },
+    "↺ Сброс": {
+        "kz": "↺ Қалпына келтіру",
+        "en": "↺ Reset"
+    }
+,
+    "Линзы — 3D Модель": {
+        "kz": "Линзалар — 3D Модель",
+        "en": "Lenses — 3D Model"
+    },
+    "🔍 Линзы": {
+        "kz": "🔍 Линзалар",
+        "en": "🔍 Lenses"
+    },
+    "Собирающая • Рассеивающая • Построение изображений": {
+        "kz": "Жинағыш • Шашыратқыш • Кескіндер салу",
+        "en": "Converging • Diverging • Image construction"
+    },
+    "Собирающая линза": {
+        "kz": "Жинағыш линза",
+        "en": "Converging lens"
+    },
+    "Рассеивающая линза": {
+        "kz": "Шашыратқыш линза",
+        "en": "Diverging lens"
+    },
+    "Фокусное расстояние": {
+        "kz": "Фокус қашықтығы",
+        "en": "Focal length"
+    },
+    "Расстояние до объекта": {
+        "kz": "Нысанға дейінгі қашықтық",
+        "en": "Object distance"
+    },
+    "Показать лучи": {
+        "kz": "Сәулелерді көрсету",
+        "en": "Show rays"
+    },
+    "Показать фокусы": {
+        "kz": "Фокустарды көрсету",
+        "en": "Show focal points"
+    },
+    "Тип линзы": {
+        "kz": "Линза түрі",
+        "en": "Lens type"
+    },
+    "↺ Сбросить": {
+        "kz": "↺ Қалпына келтіру",
+        "en": "↺ Reset"
+    },
+    "Отображение": {
+        "kz": "Бейнелеу",
+        "en": "Display"
+    },
+    "Изображение": {
+        "kz": "Кескін",
+        "en": "Image"
+    },
+    "Действительное": {
+        "kz": "Нақты",
+        "en": "Real"
+    },
+    "Мнимое": {
+        "kz": "Жалған",
+        "en": "Virtual"
+    },
+    "Увеличенное": {
+        "kz": "Үлкейтілген",
+        "en": "Magnified"
+    },
+    "Уменьшенное": {
+        "kz": "Кішірейтілген",
+        "en": "Reduced"
+    },
+    "ЛКМ — вращение • ПКМ — перемещение • Колёсико — зум": {
+        "kz": "Сол жақ батырма — айналдыру • Оң жақ батырма — жылжыту • Дөңгелек — масштабтау",
+        "en": "LMB — rotate • RMB — pan • Scroll — zoom"
+    }
+,
+    "🎯 Баллистика": {
+        "kz": "🎯 Баллистика",
+        "en": "🎯 Ballistics"
+    },
+    "Траектория полёта • Угол броска • Дальность": {
+        "kz": "Ұшу траекториясы • Лақтыру бұрышы • Қашықтық",
+        "en": "Flight trajectory • Launch angle • Range"
+    },
+    "▶ Запуск": {
+        "kz": "▶ Іске қосу",
+        "en": "▶ Launch"
+    },
+    "Показать траекторию": {
+        "kz": "Траекторияны көрсету",
+        "en": "Show trajectory"
+    },
+    "Показать векторы": {
+        "kz": "Векторларды көрсету",
+        "en": "Show vectors"
+    },
+    "Высота (м)": {
+        "kz": "Биіктік (м)",
+        "en": "Height (m)"
+    },
+    "Дальность (м)": {
+        "kz": "Қашықтық (м)",
+        "en": "Range (m)"
+    },
+    "Скорость (м/с)": {
+        "kz": "Жылдамдық (м/с)",
+        "en": "Speed (m/s)"
+    },
+    "Время (с)": {
+        "kz": "Уақыт (с)",
+        "en": "Time (s)"
+    },
+    "Координаты": {
+        "kz": "Координаталар",
+        "en": "Coordinates"
+    },
+    "м/с": {
+        "kz": "м/с",
+        "en": "m/s"
+    }
+,
+    "🎯 Баллистика — Траектория полёта": {"kz": "🎯 Баллистика — Ұшу траекториясы", "en": "🎯 Ballistics — Flight Trajectory"},
+    "Текущая позиция": {"kz": "Ағымдағы позиция", "en": "Current position"},
+    "Текущая скорость": {"kz": "Ағымдағы жылдамдық", "en": "Current speed"},
+    "Текущее время": {"kz": "Ағымдағы уақыт", "en": "Current time"},
+    "Скорость удара": {"kz": "Соққы жылдамдығы", "en": "Impact speed"},
+    "Время полёта (T)": {"kz": "Ұшу уақыты (T)", "en": "Flight time (T)"},
+    "Дальность полёта (R)": {"kz": "Ұшу қашықтығы (R)", "en": "Flight range (R)"},
+    "Макс. высота (H)": {"kz": "Макс. биіктік (H)", "en": "Max. height (H)"},
+    "Оптимальные углы": {"kz": "Оптималды бұрыштар", "en": "Optimal angles"},
+    "— максимальная высота": {"kz": "— максималды биіктік", "en": "— maximum height"},
+    "— максимальная дальность": {"kz": "— максималды қашықтық", "en": "— maximum range"},
+    "— одинаковая дальность с высоты": {"kz": "— биіктіктен бірдей қашықтық", "en": "— equal range from height"},
+    "формулы": {"kz": "формулалар", "en": "formulas"},
+    "Формулы": {"kz": "Формулалар", "en": "Formulas"},
+    "— м/с": {"kz": "— м/с", "en": "— m/s"},
+    "— с": {"kz": "— с", "en": "— s"},
+    "— макс. дальность с высоты": {"kz": "— макс. биіктіктен қашықтық", "en": "— max range from height"},
+    "м/с²": {"kz": "м/с²", "en": "m/s²"},
+    "⏳ Летит...": {"kz": "⏳ Ұшуда...", "en": "⏳ Flying..."},
+    "🌍 Земля": {"kz": "🌍 Жер", "en": "🌍 Earth"},
+    "🌕 Луна": {"kz": "🌕 Ай", "en": "🌕 Moon"},
+    "🔴 Марс": {"kz": "🔴 Марс", "en": "🔴 Mars"},
+    "🪐 Юпитер": {"kz": "🪐 Юпитер", "en": "🪐 Jupiter"},
+    "Мяч": {"kz": "Доп", "en": "Ball"}
+};
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentLang = urlParams.get('lang') || 'ru';
+
+    if (currentLang === 'ru') return; // No translation needed
+
+    function translateTextNodes(root) {
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
+        const nodes = [];
+        while (walker.nextNode()) nodes.push(walker.currentNode);
+        
+        nodes.forEach(node => {
+            let text = node.textContent;
+            if (!text || !text.trim()) return;
+            
+            const trimmed = text.trim();
+            if (TEXT_MAP[trimmed] && TEXT_MAP[trimmed][currentLang]) {
+                node.textContent = text.replace(trimmed, TEXT_MAP[trimmed][currentLang]);
+            }
+        });
+    }
+
+    function translateAttributes(root) {
+        root.querySelectorAll('[title]').forEach(el => {
+            const t = el.getAttribute('title');
+            if (TEXT_MAP[t] && TEXT_MAP[t][currentLang]) {
+                el.setAttribute('title', TEXT_MAP[t][currentLang]);
+            }
+        });
+        root.querySelectorAll('[placeholder]').forEach(el => {
+            const t = el.getAttribute('placeholder');
+            if (TEXT_MAP[t] && TEXT_MAP[t][currentLang]) {
+                el.setAttribute('placeholder', TEXT_MAP[t][currentLang]);
+            }
+        });
+        // Translate page title
+        const titleText = document.title.trim();
+        if (TEXT_MAP[titleText] && TEXT_MAP[titleText][currentLang]) {
+            document.title = TEXT_MAP[titleText][currentLang];
+        }
+    }
+
+    
+
+    function applyTranslations() {
+        translateTextNodes(document.body);
+        translateAttributes(document);
+        if (typeof translateData === 'function') translateData(currentLang);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', applyTranslations);
+    } else {
+        applyTranslations();
+    }
+
+    // Re-translate after dynamic content changes
+    window.currentLang = currentLang;
+    window._currentLang = currentLang;
+    window._TEXT_MAP = TEXT_MAP;
+
+    // One-time delayed re-translate for dynamic content
+    let _tc=0;const _ti=setInterval(()=>{translateTextNodes(document.body);translateAttributes(document);if(++_tc>=20)clearInterval(_ti);},500);
+})();
+</script>
+</body>
+</html>

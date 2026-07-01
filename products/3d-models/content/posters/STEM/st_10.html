@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Система Питания Робота</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #1e293b;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            color: #e2e8f0;
+        }
+
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        .header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 20px;
+            text-align: center;
+            background: linear-gradient(180deg, rgba(15, 23, 42, 0.9) 0%, transparent 100%);
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        h1 {
+            color: #facc15;
+            margin: 0;
+            font-size: 24px;
+            text-transform: uppercase;
+            text-shadow: 0 0 10px rgba(250, 204, 21, 0.5);
+        }
+
+        .control-panel {
+            position: absolute;
+            top: 80px;
+            left: 20px;
+            width: 320px;
+            background: rgba(15, 23, 42, 0.9);
+            border-radius: 12px;
+            padding: 20px;
+            z-index: 10;
+            border-left: 4px solid #facc15;
+            max-height: calc(100vh - 100px);
+            overflow-y: auto;
+        }
+
+        .slider-group {
+            margin-bottom: 20px;
+        }
+
+        .slider-group label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            color: #cbd5e1;
+            margin-bottom: 5px;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+            accent-color: #facc15;
+        }
+
+        .info-card {
+            position: absolute;
+            top: 80px;
+            right: 20px;
+            width: 340px;
+            background: rgba(15, 23, 42, 0.95);
+            border-radius: 12px;
+            padding: 20px;
+            z-index: 10;
+            border-right: 4px solid #3b82f6;
+            transform: translateX(120%);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .info-card.active {
+            transform: translateX(0);
+        }
+
+        .card-title {
+            color: #3b82f6;
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #334155;
+            padding-bottom: 5px;
+        }
+
+        .card-text {
+            font-size: 14px;
+            color: #cbd5e1;
+            line-height: 1.5;
+            margin-bottom: 15px;
+        }
+
+        .card-tag {
+            display: inline-block;
+            background: #334155;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #94a3b8;
+        }
+
+        .hint {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            text-align: center;
+            font-size: 13px;
+            color: #aaa;
+            pointer-events: none;
+            z-index: 5;
+            text-shadow: 0 1px 2px black;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: none;
+            border: none;
+            color: #64748b;
+            cursor: pointer;
+            font-size: 20px;
+        }
+
+        .close-btn:hover {
+            color: #fff;
+        }
+
+        .voltage-display {
+            font-family: monospace;
+            font-size: 16px;
+            color: #facc15;
+            text-align: center;
+            margin-bottom: 15px;
+            border: 1px solid #facc15;
+            padding: 10px;
+            border-radius: 6px;
+            background: rgba(250, 204, 21, 0.1);
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 15px;
+            font-size: 13px;
+            cursor: pointer;
+            color: #cbd5e1;
+        }
+
+        .checkbox-item input {
+            accent-color: #facc15;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+<script>
+(function(){
+  var lang = new URLSearchParams(location.search).get('lang') || 'ru';
+  var T = {
+    ru: {
+      title: '⚡ Система Питания Робота',
+      lbl_voltage: 'Напряжение:', lbl_state: 'Состояние:',
+      lbl_bat_h3: '🔋 Аккумулятор (Источник)', lbl_bat_charge: 'Заряд (3S Li-Ion):',
+      lbl_motors_h3: '⚙️ Моторы (Нагрузка)', lbl_throttle: 'Мощность (Газ):',
+      lbl_flow: 'Показать движение тока',
+      hint: '🖱️ Кликните по Аккумулятору, Платам или Моторам для изучения схемы',
+      st_normal: 'НОРМА', st_low: 'НИЗКИЙ ЗАРЯД', st_critical: 'КРИТИЧЕСКИЙ РАЗРЯД',
+      components: {
+        "Battery": { title: "Аккумуляторная сборка (3S Li-Ion)", desc: "Источник энергии. Три элемента 18650 соединены последовательно (Series), давая 12.6В при полном заряде. Если напряжение упадет ниже 9В, аккумулятор может деградировать.", tag: "Источник (Source)" },
+        "PowerBoard": { title: "BMS / Плата распределения", desc: "BMS (Battery Management System) защищает батарею от короткого замыкания и переразряда. Также здесь часто стоит DC-DC понижающий преобразователь, который превращает 12В в стабильные 5В для питания электроники.", tag: "Защита и Питание" },
+        "Driver": { title: "Драйвер моторов (L298N)", desc: "Силовой посредник. Получает сигналы управления от контроллера (слабый ток) и подает мощный ток от батареи на моторы. Греется при работе, поэтому имеет радиатор.", tag: "Силовая электроника" },
+        "Controller": { title: "Микроконтроллер (Arduino)", desc: "Мозг робота. Питается от стабилизированных 5В. При просадке напряжения аккумулятора может перезагрузиться или работать нестабильно (Brown-out).", tag: "Логика" },
+        "Motor": { title: "Мотор-редуктор DC", desc: "Основной потребитель энергии. Преобразует электричество в движение. Скорость вращения напрямую зависит от подаваемого напряжения. При низком заряде робот будет ехать медленно.", tag: "Нагрузка" }
+      }
+    },
+    kz: {
+      title: '⚡ Роботтың Қуат Жүйесі',
+      lbl_voltage: 'Кернеу:', lbl_state: 'Күй:',
+      lbl_bat_h3: '🔋 Аккумулятор (Дереккөз)', lbl_bat_charge: 'Заряд (3S Li-Ion):',
+      lbl_motors_h3: '⚙️ Моторлар (Жүктеме)', lbl_throttle: 'Қуат (Газ):',
+      lbl_flow: 'Ток қозғалысын көрсету',
+      hint: '🖱️ Аккумулятор, Тақталар немесе Моторларды зерттеу үшін басыңыз',
+      st_normal: 'НОРМА', st_low: 'ЗАРЯД ТӨМ', st_critical: 'КРИТИКАЛЫҚ',
+      components: {
+        "Battery": { title: "Аккумулятор жиыны (3S Li-Ion)", desc: "Энергия көзі. Үш 18650 элемент тізбекте жалғанып, толық зарядта 12.6В береді. Кернеу 9В-тан төмен түссе, аккумулятор деградациялануы мүмкін.", tag: "Дереккөз (Source)" },
+        "PowerBoard": { title: "BMS / Қуатты тарату тақтасы", desc: "BMS батареяны қысқа тұйықталудан және артық разряддан қорғайды. DC-DC түсіруші түрлендіргіш 12В-ты электроника үшін тұрақты 5В-қа айналдырады.", tag: "Қорғаныс және қуат" },
+        "Driver": { title: "Мотор драйвері (L298N)", desc: "Қуат делдалы. Контроллерден басқару сигналдарын алып, батареядан моторларға күшті ток береді. Жұмыс кезінде қызады, сондықтан радиаторы бар.", tag: "Күш электроникасы" },
+        "Controller": { title: "Микроконтроллер (Arduino)", desc: "Роботтың миы. Тұрақтандырылған 5В-тан қоректенеді. Аккумулятор кернеуі төмендегенде қайта жүктелуі немесе тұрақсыз жұмыс істеуі мүмкін (Brown-out).", tag: "Логика" },
+        "Motor": { title: "DC редукторлы мотор", desc: "Негізгі энергия тұтынушы. Электр энергиясын қозғалысқа айналдырады. Айналу жылдамдығы берілген кернеуге тікелей байланысты. Заряд аз болса, робот баяу жүреді.", tag: "Жүктеме" }
+      }
+    },
+    en: {
+      title: '⚡ Robot Power System',
+      lbl_voltage: 'Voltage:', lbl_state: 'Status:',
+      lbl_bat_h3: '🔋 Battery (Source)', lbl_bat_charge: 'Charge (3S Li-Ion):',
+      lbl_motors_h3: '⚙️ Motors (Load)', lbl_throttle: 'Power (Throttle):',
+      lbl_flow: 'Show current flow',
+      hint: '🖱️ Click on Battery, Boards or Motors to explore the circuit',
+      st_normal: 'NORMAL', st_low: 'LOW CHARGE', st_critical: 'CRITICAL DISCHARGE',
+      components: {
+        "Battery": { title: "Battery Pack (3S Li-Ion)", desc: "Energy source. Three 18650 cells in series, providing 12.6V at full charge. If voltage drops below 9V, the battery may degrade.", tag: "Source" },
+        "PowerBoard": { title: "BMS / Power Distribution Board", desc: "BMS protects the battery from short circuits and over-discharge. A DC-DC step-down converter also converts 12V to stable 5V for electronics.", tag: "Protection & Power" },
+        "Driver": { title: "Motor Driver (L298N)", desc: "Power intermediary. Receives control signals from the controller and delivers strong current from the battery to motors. Heats up during operation, hence the heatsink.", tag: "Power Electronics" },
+        "Controller": { title: "Microcontroller (Arduino)", desc: "Robot's brain. Powered by regulated 5V. When battery voltage drops, it may reset or work erratically (Brown-out).", tag: "Logic" },
+        "Motor": { title: "DC Gear Motor", desc: "Main energy consumer. Converts electricity into motion. Rotation speed directly depends on applied voltage. At low charge, the robot moves slowly.", tag: "Load" }
+      }
+    }
+  };
+  window._t = T[lang] || T.ru;
+  document.addEventListener('DOMContentLoaded', function(){
+    var t = window._t;
+    document.querySelector('h1').textContent = t.title;
+    document.getElementById('lbl-voltage').textContent = t.lbl_voltage;
+    document.getElementById('lbl-state').textContent = t.lbl_state;
+    document.getElementById('disp-status').textContent = t.st_normal;
+    document.getElementById('lbl-bat-h3').textContent = t.lbl_bat_h3;
+    document.getElementById('lbl-bat-charge').textContent = t.lbl_bat_charge;
+    document.getElementById('lbl-motors-h3').textContent = t.lbl_motors_h3;
+    document.getElementById('lbl-throttle').textContent = t.lbl_throttle;
+    document.querySelector('label[for="check-flow"]').textContent = t.lbl_flow;
+    document.getElementById('hint-text').textContent = t.hint;
+  });
+})();
+</script>
+
+<div id="canvas-container"></div>
+
+<div class="header">
+    <h1>⚡ Система Питания Робота</h1>
+</div>
+
+<div class="control-panel">
+    <div class="voltage-display">
+        <span id="lbl-voltage">Напряжение:</span> <span id="disp-voltage" style="font-weight:bold; font-size:1.2em;">12.6</span> V<br>
+        <div style="font-size:12px; color:#aaa; margin-top:5px;"><span id="lbl-state">Состояние:</span> <span id="disp-status"
+                                                                                  style="color:#22c55e; font-weight:bold;">НОРМА</span>
+        </div>
+    </div>
+
+    <h3 id="lbl-bat-h3" style="color:#fff; margin-bottom:10px; font-size:14px; border-bottom:1px solid #444; padding-bottom:5px;">🔋
+        Аккумулятор (Источник)</h3>
+    <div class="slider-group">
+        <label><span id="lbl-bat-charge">Заряд (3S Li-Ion):</span><span id="val-bat"
+                                                    style="color:#facc15; font-weight:bold;">100%</span></label>
+        <input type="range" id="input-bat" min="0" max="100" value="100">
+    </div>
+
+    <h3 id="lbl-motors-h3" style="color:#fff; margin-bottom:10px; font-size:14px; border-bottom:1px solid #444; padding-bottom:5px;">⚙️
+        Моторы (Нагрузка)</h3>
+    <div class="slider-group">
+        <label><span id="lbl-throttle">Мощность (Газ):</span><span id="val-throttle"
+                                                 style="color:#facc15; font-weight:bold;">0%</span></label>
+        <input type="range" id="input-throttle" min="0" max="100" value="0">
+    </div>
+
+    <div class="checkbox-item">
+        <input type="checkbox" id="check-flow" checked>
+        <label for="check-flow">Показать движение тока</label>
+    </div>
+</div>
+
+<div class="info-card" id="info-card">
+    <button class="close-btn" onclick="closeCard()">×</button>
+    <div class="card-title" id="card-title">Компонент</div>
+    <div class="card-text" id="card-desc">Описание...</div>
+    <div class="card-tag" id="card-tag">Категория</div>
+</div>
+
+<div class="hint" id="hint-text">🖱️ Кликните по Аккумулятору, Платам или Моторам для изучения схемы</div>
+
+<!-- Three.js -->
+<script type="importmap">
+    {
+        "imports": {
+            "three": "../../libs/vendor/three-0.160.0/three.module.js",
+            "three/addons/": "../../libs/vendor/three-0.160.0/addons/"
+        }
+    }
+</script>
+
+<script type="module">
+    import * as THREE from 'three';
+    import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+
+    // --- Configuration ---
+    const CONFIG = {
+        chassisColor: 0x334155,
+        wheelColor: 0x111111,
+        motorColor: 0xfacc15,
+        pcbColor: 0x0055aa,
+        driverColor: 0xef4444,
+        batteryColor: 0x3b82f6,
+        wireColor: 0xfacc15, // Energy flow color
+        powerBoardColor: 0x10b981 // BMS Green
+    };
+
+    // --- Data ---
+    const COMPONENTS = (window._t && window._t.components) || {
+        "Battery": {
+            title: "Аккумуляторная сборка (3S Li-Ion)",
+            desc: "Источник энергии. Три элемента 18650 соединены последовательно (Series), давая 12.6В при полном заряде. Если напряжение упадет ниже 9В, аккумулятор может деградировать.",
+            tag: "Источник (Source)"
+        },
+        "PowerBoard": {
+            title: "BMS / Плата распределения",
+            desc: "BMS (Battery Management System) защищает батарею от короткого замыкания и переразряда. Также здесь часто стоит DC-DC понижающий преобразователь, который превращает 12В в стабильные 5В для питания электроники.",
+            tag: "Защита и Питание"
+        },
+        "Driver": {
+            title: "Драйвер моторов (L298N)",
+            desc: "Силовой посредник. Получает сигналы управления от контроллера (слабый ток) и подает мощный ток от батареи на моторы. Греется при работе, поэтому имеет радиатор.",
+            tag: "Силовая электроника"
+        },
+        "Controller": {
+            title: "Микроконтроллер (Arduino)",
+            desc: "Мозг робота. Питается от стабилизированных 5В. При просадке напряжения аккумулятора может перезагрузиться или работать нестабильно (Brown-out).",
+            tag: "Логика"
+        },
+        "Motor": {
+            title: "Мотор-редуктор DC",
+            desc: "Основной потребитель энергии. Преобразует электричество в движение. Скорость вращения напрямую зависит от подаваемого напряжения. При низком заряде робот будет ехать медленно.",
+            tag: "Нагрузка"
+        }
+    };
+
+    // --- State ---
+    let state = {
+        batteryLevel: 100, // %
+        voltage: 12.6,
+        throttle: 0,
+        showFlow: true,
+        selectedObj: null
+    };
+
+    // --- Globals ---
+    let scene, camera, renderer, controls;
+    let robotGroup, wheels = [];
+    let flowParticles = []; // For visualization
+    let leds = []; // Array of meshes that should glow
+
+    // --- Init ---
+    function init() {
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x1e293b);
+        scene.fog = new THREE.Fog(0x1e293b, 40, 150);
+
+        camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(25, 25, 25);
+        camera.lookAt(0, 0, 0);
+
+        renderer = new THREE.WebGLRenderer({antialias: true});
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = false;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        // Lights
+        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.8);
+        scene.add(hemiLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        dirLight.position.set(20, 40, 20);
+        dirLight.castShadow = true;
+        scene.add(dirLight);
+
+        controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.minDistance = 10;
+        controls.maxDistance = 100;
+
+        createEnvironment();
+        createRobot();
+
+        window.addEventListener('resize', onResize);
+        window.addEventListener('mousedown', onMouseDown);
+        setupUI();
+
+        animate();
+    }
+
+    function createEnvironment() {
+        const grid = new THREE.GridHelper(100, 20, 0x334155, 0x0f172a);
+        grid.position.y = -2;
+        scene.add(grid);
+        const plane = new THREE.Mesh(
+                new THREE.PlaneGeometry(200, 200),
+                new THREE.MeshPhongMaterial({color: 0x1e293b, depthWrite: false})
+        );
+        plane.rotation.x = -Math.PI / 2;
+        plane.position.y = -2.01;
+        plane.receiveShadow = true;
+        scene.add(plane);
+    }
+
+    function createRobot() {
+        robotGroup = new THREE.Group();
+        scene.add(robotGroup);
+
+        // Chassis (Transparent to see inside)
+        const chassis = new THREE.Mesh(
+                new THREE.BoxGeometry(14, 0.5, 22),
+                new THREE.MeshStandardMaterial({color: CONFIG.chassisColor, transparent: true, opacity: 0.3})
+        );
+        chassis.castShadow = true;
+        robotGroup.add(chassis);
+
+        const deck = new THREE.Mesh(
+                new THREE.BoxGeometry(14, 0.5, 22),
+                new THREE.MeshStandardMaterial({color: CONFIG.chassisColor, transparent: true, opacity: 0.2})
+        );
+        deck.position.y = 4;
+        deck.castShadow = true;
+        robotGroup.add(deck);
+
+        // Standoffs
+        const standGeo = new THREE.CylinderGeometry(0.2, 0.2, 4, 8);
+        const standMat = new THREE.MeshStandardMaterial({color: 0xc0c0c0});
+        [[6, 2, 10], [-6, 2, 10], [6, 2, -10], [-6, 2, -10]].forEach(p => {
+            const s = new THREE.Mesh(standGeo, standMat);
+            s.position.set(...p);
+            robotGroup.add(s);
+        });
+
+        // Wheels & Motors
+        const wheelGeo = new THREE.CylinderGeometry(2.5, 2.5, 2, 32);
+        const wheelMat = new THREE.MeshStandardMaterial({color: CONFIG.wheelColor});
+        const motorGeo = new THREE.BoxGeometry(2, 2, 5);
+        const motorMat = new THREE.MeshStandardMaterial({color: CONFIG.motorColor});
+
+        const positions = [
+            {x: 8, z: 6}, {x: -8, z: 6},
+            {x: 8, z: -6}, {x: -8, z: -6}
+        ];
+
+        positions.forEach(p => {
+            const wGroup = new THREE.Group();
+            wGroup.position.set(p.x, 0, p.z);
+            const w = new THREE.Mesh(wheelGeo, wheelMat);
+            w.rotation.z = Math.PI / 2;
+            w.castShadow = true;
+            wGroup.add(w);
+            robotGroup.add(wGroup);
+            wheels.push(wGroup);
+
+            const m = new THREE.Mesh(motorGeo, motorMat);
+            m.position.set(p.x > 0 ? 5 : -5, 0, p.z);
+            m.userData = {id: "Motor"};
+            robotGroup.add(m);
+        });
+
+        // --- POWER SYSTEM ---
+
+        // 1. Battery Pack (Inside chassis)
+        const batGroup = new THREE.Group();
+        batGroup.position.set(0, 0.8, -5);
+        robotGroup.add(batGroup);
+        batGroup.userData = {id: "Battery"};
+
+        // Cells
+        const cellGeo = new THREE.CylinderGeometry(0.9, 0.9, 6.5, 16);
+        const cellMat = new THREE.MeshStandardMaterial({color: 0x3b82f6}); // Blue shrink wrap
+        for (let i = 0; i < 3; i++) {
+            const c = new THREE.Mesh(cellGeo, cellMat);
+            c.rotation.z = Math.PI / 2;
+            c.position.z = (i - 1) * 2;
+            batGroup.add(c);
+        }
+
+        // 2. Power Distribution Board / BMS (Green PCB next to battery)
+        const pdb = new THREE.Mesh(
+                new THREE.BoxGeometry(4, 0.5, 3),
+                new THREE.MeshStandardMaterial({color: CONFIG.powerBoardColor})
+        );
+        pdb.position.set(0, 1.0, 0); // Center
+        pdb.userData = {id: "PowerBoard"};
+        robotGroup.add(pdb);
+
+        // PDB LED
+        const pdbLed = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.2), new THREE.MeshStandardMaterial({
+            color: 0x00ff00,
+            emissive: 0x00ff00,
+            emissiveIntensity: 1
+        }));
+        pdbLed.position.set(1, 0.3, 1);
+        pdb.add(pdbLed);
+        leds.push({mesh: pdbLed, type: 'status'});
+
+        // 3. Motor Driver (Top Deck Rear)
+        const driver = new THREE.Mesh(
+                new THREE.BoxGeometry(5, 0.5, 5),
+                new THREE.MeshStandardMaterial({color: CONFIG.driverColor})
+        );
+        driver.position.set(0, 4.5, 5);
+        driver.userData = {id: "Driver"};
+        // Heatsink
+        const heat = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 2), new THREE.MeshStandardMaterial({color: 0x888888}));
+        heat.position.y = 1;
+        driver.add(heat);
+        // Driver LED
+        const drvLed = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.2, 0.3), new THREE.MeshStandardMaterial({
+            color: 0xff0000,
+            emissive: 0xff0000,
+            emissiveIntensity: 1
+        }));
+        drvLed.position.set(2, 0.3, 2);
+        driver.add(drvLed);
+        leds.push({mesh: drvLed, type: 'power'});
+        robotGroup.add(driver);
+
+        // 4. Microcontroller (Top Deck Front)
+        const arduino = new THREE.Mesh(
+                new THREE.BoxGeometry(5, 0.5, 7),
+                new THREE.MeshStandardMaterial({color: CONFIG.pcbColor})
+        );
+        arduino.position.set(0, 4.5, -5);
+        arduino.userData = {id: "Controller"};
+        // Chip
+        const chip = new THREE.Mesh(new THREE.BoxGeometry(1, 0.2, 3), new THREE.MeshStandardMaterial({color: 0x111111}));
+        chip.position.y = 0.4;
+        arduino.add(chip);
+        // Power LED
+        const ardLed = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.1, 0.2), new THREE.MeshStandardMaterial({
+            color: 0x00ff00,
+            emissive: 0x00ff00,
+            emissiveIntensity: 1
+        }));
+        ardLed.position.set(-2, 0.3, -3);
+        arduino.add(ardLed);
+        leds.push({mesh: ardLed, type: 'logic'});
+        robotGroup.add(arduino);
+
+        // --- WIRING (Visual Flow Paths) ---
+        // Path 1: Battery -> PDB
+        createWirePath(new THREE.Vector3(3, 0.8, -5), new THREE.Vector3(3, 1.0, 0), 20, 0.15);
+
+        // Path 2: PDB -> Driver
+        createWirePath(new THREE.Vector3(0, 1.0, 0), new THREE.Vector3(0, 4.5, 5), 40, 0.15);
+
+        // Path 3: PDB -> Arduino
+        createWirePath(new THREE.Vector3(0, 1.0, 0), new THREE.Vector3(0, 4.5, -5), 30, 0.08);
+
+        // Path 4: Driver -> Motors (4 paths)
+        const motorPos = [
+            new THREE.Vector3(5, 0, 6), new THREE.Vector3(-5, 0, 6),
+            new THREE.Vector3(5, 0, -6), new THREE.Vector3(-5, 0, -6)
+        ];
+        motorPos.forEach(pos => {
+            createWirePath(new THREE.Vector3(0, 4.5, 5), pos, 20, 0.1);
+        });
+    }
+
+    function createWirePath(start, end, count, size) {
+        // Visual Wire
+        const mid = start.clone().add(end).multiplyScalar(0.5);
+        mid.x += (Math.random() - 0.5) * 2;
+
+        const curve = new THREE.QuadraticBezierCurve3(start, mid, end);
+        const points = curve.getPoints(10);
+        const geo = new THREE.BufferGeometry().setFromPoints(points);
+        const mat = new THREE.LineBasicMaterial({color: 0x555555}); // Physical wire color
+        const line = new THREE.Line(geo, mat);
+        robotGroup.add(line);
+
+        // Flow Particles
+        const partGeo = new THREE.BufferGeometry();
+        const positions = new Float32Array(count * 3);
+        const partMat = new THREE.PointsMaterial({color: CONFIG.wireColor, size: size, transparent: true});
+
+        const curvePoints = curve.getSpacedPoints(count);
+        for (let i = 0; i < count; i++) {
+            positions[i * 3] = curvePoints[i].x;
+            positions[i * 3 + 1] = curvePoints[i].y;
+            positions[i * 3 + 2] = curvePoints[i].z;
+        }
+        partGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+        const particles = new THREE.Points(partGeo, partMat);
+        robotGroup.add(particles);
+
+        flowParticles.push({
+            mesh: particles,
+            curve: curve,
+            progress: Array(count).fill(0).map((_, i) => i / count),
+            speedBase: 0.01 // Base speed factor
+        });
+    }
+
+    // --- Interaction ---
+    function onMouseDown(event) {
+        if (event.target.closest('.control-panel') || event.target.closest('.info-card')) return;
+
+        const mouse = new THREE.Vector2(
+                (event.clientX / window.innerWidth) * 2 - 1,
+                -(event.clientY / window.innerHeight) * 2 + 1
+        );
+        const raycaster = new THREE.Raycaster();
+        raycaster.setFromCamera(mouse, camera);
+
+        const intersects = raycaster.intersectObjects(scene.children, true);
+
+        for (let hit of intersects) {
+            let obj = hit.object;
+            while (obj && !obj.userData.id) {
+                obj = obj.parent;
+            }
+
+            if (obj && obj.userData.id) {
+                showInfo(obj.userData.id);
+                // Flash effect
+                const originalHex = obj.material.emissive.getHex();
+                obj.material.emissive.setHex(0x555555);
+                setTimeout(() => {
+                    obj.material.emissive.setHex(originalHex);
+                }, 200);
+                break;
+            }
+        }
+    }
+
+    function showInfo(id) {
+        const data = COMPONENTS[id];
+        if (!data) return;
+        document.getElementById('card-title').textContent = data.title;
+        document.getElementById('card-desc').textContent = data.desc;
+        document.getElementById('card-tag').textContent = data.tag;
+        document.getElementById('info-card').classList.add('active');
+    }
+
+    window.closeCard = function () {
+        document.getElementById('info-card').classList.remove('active');
+    }
+
+    // --- Physics & Animation ---
+    function updatePhysics() {
+        // Battery Logic: 100% = 12.6V, 0% = 9.0V
+        const voltage = 9.0 + (state.batteryLevel / 100) * 3.6;
+
+        let isAlive = state.batteryLevel > 5; // Dead below 5%
+
+        // Voltage sag under load
+        const sag = (state.throttle / 100) * 0.5;
+        const effectiveV = Math.max(0, voltage - sag);
+
+        document.getElementById('disp-voltage').innerText = effectiveV.toFixed(1);
+
+        const statusEl = document.getElementById('disp-status');
+        var _s = window._t || {st_critical:'КРИТИЧЕСКИЙ РАЗРЯД', st_low:'НИЗКИЙ ЗАРЯД', st_normal:'НОРМА'};
+        if (state.batteryLevel < 10) {
+            statusEl.innerText = _s.st_critical;
+            statusEl.style.color = "#ef4444";
+        } else if (state.batteryLevel < 30) {
+            statusEl.innerText = _s.st_low;
+            statusEl.style.color = "#facc15";
+        } else {
+            statusEl.innerText = _s.st_normal;
+            statusEl.style.color = "#22c55e";
+        }
+
+        // Motor Speed scaling
+        // If Voltage < 10V, motors slow down significantly
+        const voltageFactor = Math.max(0, (effectiveV - 8) / (12.6 - 8));
+        const motorSpeed = isAlive ? (state.throttle / 100) * voltageFactor : 0;
+
+        // Animate Wheels
+        wheels.forEach(w => w.rotation.x -= motorSpeed * 0.3);
+
+        // Animate Flow Particles
+        const flowSpeed = isAlive ? (0.2 + (state.throttle / 100) * 0.8) * voltageFactor : 0;
+
+        if (state.showFlow && isAlive) {
+            flowParticles.forEach(fp => {
+                fp.mesh.visible = true;
+                const positions = fp.mesh.geometry.attributes.position.array;
+
+                for (let i = 0; i < fp.progress.length; i++) {
+                    fp.progress[i] += fp.speedBase * flowSpeed;
+                    if (fp.progress[i] > 1) fp.progress[i] -= 1;
+
+                    const t = fp.progress[i];
+                    const point = fp.curve.getPoint(t);
+                    positions[i * 3] = point.x;
+                    positions[i * 3 + 1] = point.y;
+                    positions[i * 3 + 2] = point.z;
+                }
+                fp.mesh.geometry.attributes.position.needsUpdate = true;
+                // Dim particles if battery low
+                fp.mesh.material.opacity = 0.2 + voltageFactor * 0.8;
+            });
+        } else {
+            flowParticles.forEach(fp => fp.mesh.visible = false);
+        }
+
+        // LED Brightness
+        leds.forEach(led => {
+            const intensity = isAlive ? voltageFactor : 0;
+            if (led.mesh.material && led.mesh.material.emissive) {
+                led.mesh.material.emissiveIntensity = intensity;
+            }
+        });
+    }
+
+    function setupUI() {
+        document.getElementById('input-bat').addEventListener('input', e => {
+            state.batteryLevel = parseInt(e.target.value);
+            document.getElementById('val-bat').innerText = state.batteryLevel + '%';
+        });
+        document.getElementById('input-throttle').addEventListener('input', e => {
+            state.throttle = parseInt(e.target.value);
+            document.getElementById('val-throttle').innerText = state.throttle + '%';
+        });
+        document.getElementById('check-flow').addEventListener('change', e => {
+            state.showFlow = e.target.checked;
+        });
+    }
+
+    function onResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+        updatePhysics();
+        controls.update();
+        renderer.render(scene, camera);
+    }
+
+    window.onload = init;
+
+</script>
+</body>
+</html>

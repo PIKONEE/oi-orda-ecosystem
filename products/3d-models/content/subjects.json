@@ -1,0 +1,1004 @@
+{
+	"subjects": [
+		{
+			"id": "biology",
+			"name_key": "biology",
+			"icon": "🧬",
+			"is_language_subject": false,
+			"topics": [
+				{
+					"id": "bio_15",
+					"name": "Human Skeleton",
+					"name_key": "b_topic_15",
+					"title_ru": "Скелет человека"
+				},
+				{
+					"id": "bio_5",
+					"name": "Human Skull",
+					"name_key": "b_topic_5",
+					"title_ru": "Череп человека"
+				},
+				{
+					"id": "bio_7",
+					"name": "Knee Joint",
+					"name_key": "b_topic_7",
+					"title_ru": "Коленный сустав"
+				},
+				{
+					"id": "bio_16",
+					"name": "Muscular System",
+					"name_key": "b_topic_16",
+					"title_ru": "Мышечная система"
+				},
+				{
+					"id": "bio_1",
+					"name": "Human Heart",
+					"name_key": "b_topic_1",
+					"title_ru": "Сердце человека"
+				},
+				{
+					"id": "bio_8",
+					"name": "Human Lungs",
+					"name_key": "b_topic_8",
+					"title_ru": "Лёгкие человека"
+				},
+				{
+					"id": "bio_17",
+					"name": "Digestive System",
+					"name_key": "b_topic_17",
+					"title_ru": "Пищеварительная система"
+				},
+				{
+					"id": "bio_13",
+					"name": "Tooth Cross-section",
+					"name_key": "b_topic_13",
+					"title_ru": "Строение зуба"
+				},
+				{
+					"id": "bio_6",
+					"name": "Kidneys & Urinary System",
+					"name_key": "b_topic_6",
+					"title_ru": "Почки и мочевыделительная система"
+				},
+				{
+					"id": "bio_2",
+					"name": "Human Brain",
+					"name_key": "b_topic_2",
+					"title_ru": "Мозг человека"
+				},
+				{
+					"id": "bio_3",
+					"name": "DNA Double Helix",
+					"name_key": "b_topic_3",
+					"title_ru": "Двойная спираль ДНК"
+				},
+				{
+					"id": "bio_10",
+					"name": "Mitochondrion",
+					"name_key": "b_topic_10",
+					"title_ru": "Митохондрия"
+				},
+				{
+					"id": "bio_11",
+					"name": "Chloroplast",
+					"name_key": "b_topic_11",
+					"title_ru": "Хлоропласт"
+				},
+				{
+					"id": "bio_9",
+					"name": "Neuron (Nerve Cell)",
+					"name_key": "b_topic_9",
+					"title_ru": "Нейрон"
+				},
+				{
+					"id": "bio_12",
+					"name": "Bacteriophage Virus",
+					"name_key": "b_topic_12",
+					"title_ru": "Бактериофаг"
+				},
+				{
+					"id": "bio_22",
+					"name": "Snail",
+					"name_key": "b_topic_22",
+					"title_ru": "Улитка"
+				},
+				{
+					"id": "bio_23",
+					"name": "Seashell",
+					"name_key": "b_topic_23",
+					"title_ru": "Морская ракушка"
+				},
+				{
+					"id": "bio_24",
+					"name": "Starfish",
+					"name_key": "b_topic_24",
+					"title_ru": "Морская звезда"
+				},
+				{
+					"id": "bio_19",
+					"name": "Monarch Butterfly",
+					"name_key": "b_topic_19",
+					"title_ru": "Бабочка-монарх"
+				},
+				{
+					"id": "bio_21",
+					"name": "Tick",
+					"name_key": "b_topic_21",
+					"title_ru": "Клещ"
+				},
+				{
+					"id": "bio_20",
+					"name": "Frog",
+					"name_key": "b_topic_20",
+					"title_ru": "Лягушка"
+				},
+				{
+					"id": "bio_18",
+					"name": "Bird Skeleton",
+					"name_key": "b_topic_18",
+					"title_ru": "Скелет птицы"
+				},
+				{
+					"id": "bio_26",
+					"name": "Bread Mold",
+					"name_key": "b_topic_26",
+					"title_ru": "Хлебная плесень"
+				},
+				{
+					"id": "bio_25",
+					"name": "Mushroom",
+					"name_key": "b_topic_25",
+					"title_ru": "Шляпочный гриб"
+				},
+				{
+					"id": "bio_14",
+					"name": "Flower Cross-section",
+					"name_key": "b_topic_14",
+					"title_ru": "Строение цветка"
+				},
+				{
+					"id": "bio_27",
+					"name": "Seed Anatomy",
+					"name_key": "b_topic_27",
+					"title_ru": "Строение семени"
+				}
+			]
+		},
+		{
+			"id": "chemistry",
+			"name_key": "chemistry",
+			"icon": "🧪",
+			"is_language_subject": false,
+			"topics": [
+				{
+					"id": "ch_1",
+					"name": "Water Molecule (H₂O)",
+					"name_key": "c_topic_1",
+					"title_ru": "Молекула воды (H₂O)"
+				},
+				{
+					"id": "ch_2",
+					"name": "Carbon Atom Structure",
+					"name_key": "c_topic_2",
+					"title_ru": "Структура атома углерода"
+				},
+				{
+					"id": "ch_3",
+					"name": "Salt Crystal Lattice (NaCl)",
+					"name_key": "c_topic_3",
+					"title_ru": "Кристаллическая решётка соли (NaCl)"
+				},
+				{
+					"id": "ch_4",
+					"name": "Methane Molecule (CH₄)",
+					"name_key": "c_topic_4",
+					"title_ru": "Молекула метана (CH₄)"
+				},
+				{
+					"id": "ch_5",
+					"name": "Compound reaction (synthesis)",
+					"name_key": "c_topic_4",
+					"title_ru": "Реакция соединения (синтез)"
+				},
+				{
+					"id": "ch_6",
+					"name": "Decomposition reaction",
+					"name_key": "c_topic_4",
+					"title_ru": "Реакция разложения"
+				},
+				{
+					"id": "ch_7",
+					"name": "Substitution reaction",
+					"name_key": "c_topic_4",
+					"title_ru": "Реакция замещения"
+				},
+				{
+					"id": "ch_8",
+					"name": "Redox reaction",
+					"name_key": "c_topic_4",
+					"title_ru": "Окислительно-восстановительная реакция"
+				},
+				{
+					"id": "ch_9",
+					"name": "Ammonia molecule (NH₃)",
+					"name_key": "c_topic_9",
+					"title_ru": "Молекула аммиака (NH₃)"
+				},
+				{
+					"id": "ch_10",
+					"name": "Chemical Equilibrium",
+					"name_key": "c_topic_10",
+					"title_ru": "Химическое равновесие"
+				},
+				{
+					"id": "ch_11",
+					"name": "Corrosion Process",
+					"name_key": "c_topic_11",
+					"title_ru": "Процесс коррозии"
+				},
+				{
+					"id": "ch_12",
+					"name": "Electrolysis Process",
+					"name_key": "c_topic_12",
+					"title_ru": "Процесс электролиза"
+				},
+				{
+					"id": "ch_13",
+					"name": "Galvanic Cell",
+					"name_key": "c_topic_13",
+					"title_ru": "Гальванический элемент"
+				},
+				{
+					"id": "ch_14",
+					"name": "Neutralization Reaction",
+					"name_key": "c_topic_14",
+					"title_ru": "Реакция нейтрализации"
+				},
+				{
+					"id": "ch_15",
+					"name": "pH Scale",
+					"name_key": "c_topic_15",
+					"title_ru": "Шкала pH"
+				},
+				{
+					"id": "ch_16",
+					"name": "Alkanes Homologous Series",
+					"name_key": "c_topic_16",
+					"title_ru": "Гомологический ряд алканов"
+				},
+				{
+					"id": "ch_17",
+					"name": "Law of Conservation of Mass",
+					"name_key": "c_topic_17",
+					"title_ru": "Закон сохранения массы"
+				},
+				{
+					"id": "ch_18",
+					"name": "Benzene Molecule (C₆H₆)",
+					"name_key": "c_topic_18",
+					"title_ru": "Молекула бензола (C₆H₆)"
+				},
+				{
+					"id": "ch_19",
+					"name": "Carbon Allotropy",
+					"name_key": "c_topic_19",
+					"title_ru": "Аллотропия углерода"
+				},
+				{
+					"id": "ch_20",
+					"name": "Oxygen Allotropy — O₂ and O₃",
+					"name_key": "c_topic_20",
+					"title_ru": "Аллотропия кислорода — O₂ и O₃"
+				},
+				{
+					"id": "ch_21",
+					"name": "NaCl Crystal Lattice",
+					"name_key": "c_topic_21",
+					"title_ru": "Кристаллическая решётка NaCl"
+				},
+				{
+					"id": "ch_22",
+					"name": "Haber Synthesis — N₂ + 3H₂ ⇌ 2NH₃",
+					"name_key": "c_topic_22",
+					"title_ru": "Синтез Хабера — N₂ + 3H₂ ⇌ 2NH₃"
+				},
+				{
+					"id": "ch_23",
+					"name": "Hydrogen Bond — H₂O",
+					"name_key": "c_topic_23",
+					"title_ru": "Водородная связь — H₂O"
+				},
+				{
+					"id": "ch_24",
+					"name": "Ethylene Polymerization",
+					"name_key": "c_topic_24",
+					"title_ru": "Полимеризация этилена"
+				},
+				{
+					"id": "ch_25",
+					"name": "Metal Activity Series",
+					"name_key": "c_topic_25",
+					"title_ru": "Ряд активности металлов"
+				},
+				{
+					"id": "ch_26",
+					"name": "DNA Nucleotide Structure",
+					"name_key": "c_topic_26",
+					"title_ru": "Нуклеотид ДНК — строение"
+				},
+				{
+					"id": "ch_27",
+					"name": "Salt Hydrolysis",
+					"name_key": "c_topic_27",
+					"title_ru": "Гидролиз солей"
+				},
+				{
+					"id": "ch_28",
+					"name": "Enzyme Structure — Active Site",
+					"name_key": "c_topic_28",
+					"title_ru": "Строение ферментов — Активный центр"
+				},
+				{
+					"id": "ch_29",
+					"name": "Orbital Hybridization — sp³, sp², sp",
+					"name_key": "c_topic_29",
+					"title_ru": "Гибридизация орбиталей — sp³, sp², sp"
+				},
+				{
+					"id": "ch_30",
+					"name": "Ion Hydration — Dissolving an Electrolyte",
+					"name_key": "c_topic_30",
+					"title_ru": "Гидратация ионов — растворение электролита"
+				},
+				{
+					"id": "ch_31",
+					"name": "Metal Crystal Lattices — BCC/FCC/HCP",
+					"name_key": "c_topic_31",
+					"title_ru": "Кристаллические решётки металлов — ОЦК, ГЦК, ГПУ"
+				},
+				{
+					"id": "ch_32",
+					"name": "Ethanol Molecule — C₂H₅OH",
+					"name_key": "c_topic_32",
+					"title_ru": "Молекула этанола — C₂H₅OH"
+				},
+				{
+					"id": "ch_33",
+					"name": "Glucose Molecule — C₆H₁₂O₆",
+					"name_key": "c_topic_33",
+					"title_ru": "Молекула глюкозы — C₆H₁₂O₆"
+				},
+				{
+					"id": "ch_34",
+					"name": "Peptide Bond — Dipeptide Formation",
+					"name_key": "c_topic_34",
+					"title_ru": "Пептидная связь — образование дипептида"
+				},
+				{
+					"id": "ch_35",
+					"name": "Collision Theory and Activation Energy",
+					"name_key": "c_topic_35",
+					"title_ru": "Теория столкновений и энергия активации"
+				}
+			]
+		},
+		{
+			"id": "physics",
+			"name_key": "physics",
+			"icon": "⚛️",
+			"is_language_subject": false,
+			"topics": [
+				{
+					"id": "ph_1",
+					"name": "Atom Structure (Bohr Model)",
+					"name_key": "p_topic_1",
+					"title_ru": "Строение атома (модель Бора)"
+				},
+				{
+					"id": "ph_2",
+					"name": "Magnetic Field Lines",
+					"name_key": "p_topic_2",
+					"title_ru": "Линии магнитного поля"
+				},
+				{
+					"id": "ph_3",
+					"name": "Simple Pendulum",
+					"name_key": "p_topic_3",
+					"title_ru": "Математический маятник"
+				},
+				{
+					"id": "ph_4",
+					"name": "Solar System",
+					"name_key": "p_topic_4",
+					"title_ru": "Солнечная система"
+				},
+				{
+					"id": "ph_5",
+					"name": "Inertia",
+					"name_key": "p_topic_5",
+					"title_ru": "Инерция"
+				},
+				{
+					"id": "ph_6",
+					"name": "Simple Electric Circuit",
+					"name_key": "p_topic_6",
+					"title_ru": "Простая электрическая цепь"
+				},
+				{
+					"id": "ph_7",
+					"name": "Kinetic Theory of Gases",
+					"name_key": "p_topic_7",
+					"title_ru": "Кинетическая теория газов"
+				},
+				{
+					"id": "ph_8",
+					"name": "Simple Lever",
+					"name_key": "p_topic_8",
+					"title_ru": "Рычаг первого рода"
+				},
+				{
+					"id": "ph_9",
+					"name": "DC Electric Motor",
+					"name_key": "p_topic_9",
+					"title_ru": "Электродвигатель постоянного тока"
+				},
+				{
+					"id": "ph_10",
+					"name": "Centripetal Force",
+					"name_key": "p_topic_10",
+					"title_ru": "Центростремительная сила — Круговое движение"
+				},
+				{
+					"id": "ph_11",
+					"name": "Nuclear Reactor",
+					"name_key": "p_topic_11",
+					"title_ru": "Ядерный реактор — Цепная реакция деления"
+				},
+				{
+					"id": "ph_12",
+					"name": "Phase Transitions",
+					"name_key": "p_topic_12",
+					"title_ru": "Фазовые переходы — Агрегатные состояния вещества"
+				},
+				{
+					"id": "ph_13",
+					"name": "Sound Waves",
+					"name_key": "p_topic_13",
+					"title_ru": "Звуковые волны — Резонанс в трубе"
+				},
+				{
+					"id": "ph_14",
+					"name": "Water Waves",
+					"name_key": "p_topic_14",
+					"title_ru": "Волны на воде — Интерференция и дифракция"
+				},
+				{
+					"id": "ph_15",
+					"name": "Ballistics",
+					"name_key": "p_topic_15",
+					"title_ru": "Баллистика — Траектория полёта"
+				},
+				{
+					"id": "ph_16",
+					"name": "Moon Phases",
+					"name_key": "p_topic_16",
+					"title_ru": "Фазы Луны — Освещение и Затмения"
+				},
+				{
+					"id": "ph_17",
+					"name": "Inclined Plane",
+					"name_key": "p_topic_17",
+					"title_ru": "Наклонная плоскость — Разложение сил"
+				},
+				{
+					"id": "ph_18",
+					"name": "Electromagnetic Wave",
+					"name_key": "p_topic_18",
+					"title_ru": "Электромагнитная волна"
+				},
+				{
+					"id": "ph_19",
+					"name": "Light Refraction (Prism)",
+					"name_key": "p_topic_19",
+					"title_ru": "Преломление света — Призма и дисперсия"
+				},
+				{
+					"id": "ph_20",
+					"name": "Doppler Effect",
+					"name_key": "p_topic_20",
+					"title_ru": "Эффект Доплера — Изменение частоты волн"
+				},
+				{
+					"id": "ph_21",
+					"name": "Convex & Concave Lens",
+					"name_key": "p_topic_21",
+					"title_ru": "Линзы — Собирающая и рассеивающая (ход лучей)"
+				},
+				{
+					"id": "ph_22",
+					"name": "Transformer",
+					"name_key": "p_topic_22",
+					"title_ru": "Трансформатор — Магнитный поток и ЭДС индукции"
+				},
+				{
+					"id": "ph_23",
+					"name": "Electric Generator",
+					"name_key": "p_topic_23",
+					"title_ru": "Электрический генератор — Вращение рамки в магнитном поле"
+				},
+				{
+					"id": "ph_24",
+					"name": "Gyroscope",
+					"name_key": "p_topic_24",
+					"title_ru": "Гироскоп — Момент импульса и прецессия"
+				},
+				{
+					"id": "ph_25",
+					"name": "Archimedes' Principle",
+					"name_key": "p_topic_25",
+					"title_ru": "Закон Архимеда — Выталкивающая сила"
+				},
+				{
+					"id": "ph_26",
+					"name": "Parallel-plate Capacitor",
+					"name_key": "p_topic_26",
+					"title_ru": "Плоский конденсатор — Электрическое поле и ёмкость"
+				},
+				{
+					"id": "ph_27",
+					"name": "Internal Combustion Engine",
+					"name_key": "p_topic_27",
+					"title_ru": "Двигатель внутреннего сгорания — Четырёхтактный цикл"
+				},
+				{
+					"id": "ph_28",
+					"name": "Jet Engine & Nozzle",
+					"name_key": "p_topic_28",
+					"title_ru": "Реактивный двигатель и сопло — Реактивная тяга"
+				},
+				{
+					"id": "ph_29",
+					"name": "Spring Pendulum (Hooke's Law)",
+					"name_key": "p_topic_29",
+					"title_ru": "Пружинный маятник — Закон Гука"
+				},
+				{
+					"id": "ph_30",
+					"name": "Transverse & Longitudinal Waves",
+					"name_key": "p_topic_30",
+					"title_ru": "Поперечные и продольные волны"
+				},
+				{
+					"id": "ph_31",
+					"name": "Reflection & Refraction at a Boundary",
+					"name_key": "p_topic_31",
+					"title_ru": "Отражение и преломление на границе сред"
+				},
+				{
+					"id": "ph_32",
+					"name": "Photoelectric Effect",
+					"name_key": "p_topic_32",
+					"title_ru": "Фотоэффект — Квантовая природа света"
+				},
+				{
+					"id": "ph_33",
+					"name": "Radioactive Decay (α, β, γ)",
+					"name_key": "p_topic_33",
+					"title_ru": "Радиоактивный распад — α, β, γ-излучение"
+				},
+				{
+					"id": "ph_34",
+					"name": "Double-Slit Experiment",
+					"name_key": "p_topic_34",
+					"title_ru": "Опыт Юнга — Интерференция на двух щелях"
+				},
+				{
+					"id": "ph_35",
+					"name": "Electric Field Lines (Point Charges)",
+					"name_key": "p_topic_35",
+					"title_ru": "Силовые линии электрического поля"
+				},
+				{
+					"id": "ph_36",
+					"name": "Rocket Propulsion (Newton's 3rd Law)",
+					"name_key": "p_topic_36",
+					"title_ru": "Реактивное движение — 3-й закон Ньютона"
+				},
+				{
+					"id": "ph_37",
+					"name": "Bernoulli's Principle (Airplane Wing)",
+					"name_key": "p_topic_37",
+					"title_ru": "Принцип Бернулли — Подъёмная сила крыла"
+				},
+				{
+					"id": "ph_38",
+					"name": "Satellite Orbits (Kepler's Laws)",
+					"name_key": "p_topic_38",
+					"title_ru": "Орбита спутника — Законы Кеплера"
+				},
+				{
+					"id": "ph_39",
+					"name": "Standing Waves (String / Pipe)",
+					"name_key": "p_topic_39",
+					"title_ru": "Стоячие волны — Струна и труба"
+				},
+				{
+					"id": "ph_40",
+					"name": "Transformer (Electromagnetic Induction)",
+					"name_key": "p_topic_40",
+					"title_ru": "Трансформатор — Электромагнитная индукция"
+				},
+				{
+					"id": "ph_41",
+					"name": "Projectile Motion",
+					"name_key": "p_topic_41",
+					"title_ru": "Движение под углом к горизонту"
+				}
+			]
+		},
+		{
+			"id": "STEM",
+			"name_key": "stem_robotics",
+			"icon": "🤖",
+			"is_language_subject": false,
+			"topics": [
+				{
+					"id": "st_1",
+					"name": "Gear Transmission",
+					"name_key": "st_topic_1",
+					"title_ru": "Зубчатая передача"
+				},
+				{
+					"id": "st_2",
+					"name": "Mechanical Transmissions: gears, belts, chains",
+					"name_key": "st_topic_2",
+					"title_ru": "Типы механических передач"
+				},
+				{
+					"id": "st_3",
+					"name": "Pulleys and Block-and-Tackle",
+					"name_key": "st_topic_3",
+					"title_ru": "Блоки и полиспасты"
+				},
+				{
+					"id": "st_4",
+					"name": "DC Electric Motor",
+					"name_key": "st_topic_4",
+					"title_ru": "Электродвигатель постоянного тока"
+				},
+				{
+					"id": "st_5",
+					"name": "Internal Combustion Engine (4-stroke)",
+					"name_key": "st_topic_5",
+					"title_ru": "Двигатель внутреннего сгорания (4 такта)"
+				},
+				{
+					"id": "st_6",
+					"name": "Seismic Resistance (TMD)",
+					"name_key": "st_topic_6",
+					"title_ru": "Сейсмостойкость (гаситель колебаний)"
+				},
+				{
+					"id": "st_7",
+					"name": "Hydraulic Press (Pascal's Law)",
+					"name_key": "st_topic_7",
+					"title_ru": "Гидравлический пресс (закон Паскаля)"
+				},
+				{
+					"id": "st_8",
+					"name": "Wind Turbine",
+					"name_key": "st_topic_8",
+					"title_ru": "Ветряная турбина"
+				},
+				{
+					"id": "st_9",
+					"name": "Mobile Robot Anatomy",
+					"name_key": "st_topic_9",
+					"title_ru": "Анатомия мобильного робота"
+				},
+				{
+					"id": "st_10",
+					"name": "Robot Power Supply",
+					"name_key": "st_topic_10",
+					"title_ru": "Система питания робота"
+				},
+				{
+					"id": "st_11",
+					"name": "Robot Manipulator (Arm)",
+					"name_key": "st_topic_11",
+					"title_ru": "Робот-манипулятор"
+				},
+				{
+					"id": "st_12",
+					"name": "Sensors in Robotics",
+					"name_key": "st_topic_12",
+					"title_ru": "Датчики роботов"
+				},
+				{
+					"id": "st_13",
+					"name": "Robot and Environment",
+					"name_key": "st_topic_13",
+					"title_ru": "Робот и среда"
+				},
+				{
+					"id": "st_14",
+					"name": "Robot Control Algorithm",
+					"name_key": "st_topic_14",
+					"title_ru": "Алгоритм робота"
+				},
+				{
+					"id": "st_15",
+					"name": "Line Following Robot",
+					"name_key": "st_topic_15",
+					"title_ru": "Робот: следование по линии"
+				},
+				{
+					"id": "st_16",
+					"name": "ISS Docking Simulator",
+					"name_key": "st_topic_16",
+					"title_ru": "Стыковка с МКС"
+				},
+				{
+					"id": "st_17",
+					"name": "Bridge: Types of Constructions",
+					"name_key": "st_topic_17",
+					"title_ru": "Мост: типы конструкций"
+				},
+				{
+					"id": "st_18",
+					"name": "Heat Pump: Refrigeration Cycle",
+					"name_key": "st_topic_18",
+					"title_ru": "Тепловой насос: холодильный цикл"
+				},
+				{
+					"id": "st_19",
+					"name": "Servo Drive: Structure and Operation",
+					"name_key": "st_topic_19",
+					"title_ru": "Сервопривод: устройство и работа"
+				},
+				{
+					"id": "st_20",
+					"name": "Crank-Slider Mechanism",
+					"name_key": "st_topic_20",
+					"title_ru": "Кривошипно-шатунный механизм"
+				},
+				{
+					"id": "st_21",
+					"name": "Stepper Motor",
+					"name_key": "st_topic_21",
+					"title_ru": "Шаговый двигатель"
+				},
+				{
+					"id": "st_22",
+					"name": "Cam Mechanism",
+					"name_key": "st_topic_22",
+					"title_ru": "Кулачковый механизм"
+				},
+				{
+					"id": "st_23",
+					"name": "Pneumatic Cylinder",
+					"name_key": "st_topic_23",
+					"title_ru": "Пневматический цилиндр"
+				},
+				{
+					"id": "st_24",
+					"name": "Worm Gear",
+					"name_key": "st_topic_24",
+					"title_ru": "Червячная передача"
+				},
+				{
+					"id": "st_25",
+					"name": "Ball Screw",
+					"name_key": "st_topic_25",
+					"title_ru": "Шарико-винтовая пара"
+				},
+				{
+					"id": "st_26",
+					"name": "Drone Anatomy",
+					"name_key": "st_topic_26",
+					"title_ru": "Анатомия дрона"
+				},
+				{
+					"id": "st_27",
+					"name": "3D Printer Mechanism",
+					"name_key": "st_topic_27",
+					"title_ru": "Механизм 3D-принтера"
+				},
+				{
+					"id": "st_28",
+					"name": "Photocell Structure",
+					"name_key": "st_topic_28",
+					"title_ru": "Строение фотоэлемента"
+				},
+				{
+					"id": "st_29",
+					"name": "Electric Generator",
+					"name_key": "st_topic_29",
+					"title_ru": "Электрогенератор"
+				},
+				{
+					"id": "st_30",
+					"name": "Steam Turbine",
+					"name_key": "st_topic_30",
+					"title_ru": "Паровая турбина"
+				},
+				{
+					"id": "st_31",
+					"name": "Flywheel Energy Storage",
+					"name_key": "st_topic_31",
+					"title_ru": "Маховик — накопление энергии"
+				},
+				{
+					"id": "st_32",
+					"name": "Arch Bridge",
+					"name_key": "st_topic_32",
+					"title_ru": "Арочный мост"
+				},
+				{
+					"id": "st_33",
+					"name": "Ultrasonic Sensor",
+					"name_key": "st_topic_33",
+					"title_ru": "Ультразвуковой датчик"
+				},
+				{
+					"id": "st_34",
+					"name": "LiDAR",
+					"name_key": "st_topic_34",
+					"title_ru": "Лидар (LiDAR)"
+				},
+				{
+					"id": "st_35",
+					"name": "Logic Gates",
+					"name_key": "st_topic_35",
+					"title_ru": "Логические вентили"
+				},
+				{
+					"id": "st_36",
+					"name": "Neural Network",
+					"name_key": "st_topic_36",
+					"title_ru": "Нейронная сеть"
+				},
+				{
+					"id": "st_37",
+					"name": "Hydraulic Excavator",
+					"name_key": "st_topic_37",
+					"title_ru": "Гидравлический экскаватор"
+				},
+				{
+					"id": "st_38",
+					"name": "Microcontroller / Arduino",
+					"name_key": "st_topic_38",
+					"title_ru": "Микроконтроллер / Arduino"
+				}
+			]
+		},
+		{
+			"id": "mathematics",
+			"name_key": "mathematics",
+			"icon": "📐",
+			"is_language_subject": false,
+			"topics": [
+				{
+					"id": "ma_1",
+					"name": "Cube",
+					"name_key": "m_topic_1",
+					"title_ru": "Куб — площадь, объём, диагонали"
+				},
+				{
+					"id": "ma_2",
+					"name": "Rectangular Cuboid",
+					"name_key": "m_topic_2",
+					"title_ru": "Прямоугольный параллелепипед"
+				},
+				{
+					"id": "ma_3",
+					"name": "Sphere",
+					"name_key": "m_topic_3",
+					"title_ru": "Шар — площадь поверхности и объём"
+				},
+				{
+					"id": "ma_4",
+					"name": "Cylinder",
+					"name_key": "m_topic_4",
+					"title_ru": "Цилиндр — площадь и объём"
+				},
+				{
+					"id": "ma_5",
+					"name": "Cone",
+					"name_key": "m_topic_5",
+					"title_ru": "Конус — образующая, объём, площадь"
+				},
+				{
+					"id": "ma_6",
+					"name": "Regular Pyramid",
+					"name_key": "m_topic_6",
+					"title_ru": "Правильная пирамида"
+				},
+				{
+					"id": "ma_7",
+					"name": "Pythagorean Theorem",
+					"name_key": "m_topic_7",
+					"title_ru": "Теорема Пифагора — 3D-доказательство"
+				},
+				{
+					"id": "ma_8",
+					"name": "Trigonometry — Unit Circle",
+					"name_key": "m_topic_8",
+					"title_ru": "Тригонометрия — единичная окружность"
+				},
+				{
+					"id": "ma_9",
+					"name": "Quadratic Function — Parabola",
+					"name_key": "m_topic_9",
+					"title_ru": "График квадратичной функции — парабола"
+				},
+				{
+					"id": "ma_10",
+					"name": "Vectors in Space",
+					"name_key": "m_topic_10",
+					"title_ru": "Векторы в пространстве"
+				},
+				{
+					"id": "ma_11",
+					"name": "Linear Function — y = kx + b",
+					"name_key": "m_topic_11",
+					"title_ru": "Линейная функция — y = kx + b"
+				},
+				{
+					"id": "ma_12",
+					"name": "Regular Triangular Prism",
+					"name_key": "m_topic_12",
+					"title_ru": "Правильная треугольная призма"
+				},
+				{
+					"id": "ma_13",
+					"name": "Inscribed and Central Angle",
+					"name_key": "m_topic_13",
+					"title_ru": "Вписанный и центральный угол"
+				},
+				{
+					"id": "ma_14",
+					"name": "Systems of Linear Equations — Graphical Method",
+					"name_key": "m_topic_14",
+					"title_ru": "Графический способ решения систем"
+				},
+				{
+					"id": "ma_15",
+					"name": "Law of Sines and Cosines",
+					"name_key": "m_topic_15",
+					"title_ru": "Теорема синусов и косинусов"
+				},
+				{
+					"id": "ma_16",
+					"name": "Mean, Median, Mode",
+					"name_key": "m_topic_16",
+					"title_ru": "Среднее, медиана, мода"
+				},
+				{
+					"id": "ma_17",
+					"name": "Areas of Plane Figures",
+					"name_key": "m_topic_17",
+					"title_ru": "Площади плоских фигур"
+				},
+				{
+					"id": "ma_18",
+					"name": "Symmetry",
+					"name_key": "m_topic_18",
+					"title_ru": "Симметрия"
+				},
+				{
+					"id": "ma_19",
+					"name": "Direct and Inverse Proportionality",
+					"name_key": "m_topic_19",
+					"title_ru": "Прямая и обратная пропорциональность"
+				},
+				{
+					"id": "ma_20",
+					"name": "Graph Transformations",
+					"name_key": "m_topic_20",
+					"title_ru": "Преобразования графиков функций"
+				}
+			]
+		}
+	]
+}

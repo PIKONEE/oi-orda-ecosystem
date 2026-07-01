@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="page_title">Теорема синусов и косинусов</title>
+<style>
+
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#f2f3f6;--surface:rgba(255,255,255,0.94);--border:rgba(20,30,55,0.08);
+  --text:#161e2c;--muted:#5e6a7a;--faint:#9aa6b4;
+  --a:#2563eb;--b:#16a34a;--c:#ea580c;
+  --accent:#0e7490;--accent-dim:rgba(14,116,144,0.10);--circ:#7c3aed;
+  --shadow:0 2px 22px rgba(20,30,60,0.07);--shadow-lg:0 18px 56px rgba(20,30,70,0.15);
+}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);overflow:hidden;height:100vh;}
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(1200px 760px at 70% 30%, rgba(14,116,144,0.10), transparent 60%),radial-gradient(820px 560px at 16% 84%, rgba(234,88,12,0.05), transparent 55%);}
+#canvas-container{position:fixed;inset:0;z-index:1;}
+#labels-layer{position:fixed;inset:0;z-index:40;pointer-events:none;overflow:hidden;}
+.dim-label{position:absolute;transform:translate(-50%,-50%);font-family:'Roboto Mono',monospace;font-size:13.5px;font-weight:700;padding:3px 8px;border-radius:9px;white-space:nowrap;letter-spacing:-0.3px;background:rgba(255,255,255,0.97);box-shadow:0 3px 12px rgba(20,30,60,0.13);transition:opacity 0.18s;}
+.dim-label.hidden{opacity:0;}
+.dim-label.la{color:var(--a);border:1px solid rgba(37,99,235,0.3);}
+.dim-label.lb{color:var(--b);border:1px solid rgba(22,163,74,0.3);}
+.dim-label.lc{color:var(--c);border:1px solid rgba(234,88,12,0.3);}
+.dim-label.lv{font-weight:800;color:#fff;border:none;padding:2px 8px;font-size:14px;}
+.dim-label.lvA{background:var(--a);} .dim-label.lvB{background:var(--b);} .dim-label.lvC{background:var(--c);}
+.dim-label.lang{color:var(--text);border:1px solid rgba(20,30,55,0.18);}
+.header{position:fixed;top:0;left:0;right:0;z-index:200;background:var(--surface);border-bottom:1px solid var(--border);padding:0 38px;height:84px;display:flex;align-items:center;gap:15px;box-shadow:var(--shadow);}
+.h-badge{width:46px;height:46px;border-radius:14px;flex-shrink:0;background:linear-gradient(135deg,#0e7490,#22d3ee);display:flex;align-items:center;justify-content:center;box-shadow:0 7px 20px rgba(14,116,144,0.36);}
+.h-badge svg{width:25px;height:25px;}
+.header-title{font-size:23px;font-weight:800;letter-spacing:-0.5px;}
+.header-tag{font-family:'Roboto Mono',monospace;font-size:13px;color:var(--accent);background:var(--accent-dim);padding:4px 11px;border-radius:8px;}
+.header-sub{font-size:14px;color:var(--muted);margin-left:auto;text-align:right;line-height:1.45;}
+.eq-banner{position:fixed;top:96px;left:50%;transform:translateX(-50%);z-index:150;background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-lg);padding:10px 22px;font-family:'Roboto Mono',monospace;font-size:16px;font-weight:700;pointer-events:none;}
+.eq-banner .ea{color:var(--a);} .eq-banner .eb{color:var(--b);} .eq-banner .ec{color:var(--c);}
+.panel{position:fixed;z-index:100;background:var(--surface);border:1px solid var(--border);border-radius:22px;box-shadow:var(--shadow-lg);}
+.panel h3{font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;color:var(--faint);}
+.panel-left{left:22px;top:98px;width:330px;padding:18px 18px;overflow:hidden;min-height:420px;}
+.ld-list,.ld-detail{transition:transform 0.4s cubic-bezier(0.4,0,0.2,1),opacity 0.28s;}
+.ld-list h3{margin-bottom:10px;padding-left:4px;}
+.ld-detail{position:absolute;inset:18px 18px;transform:translateX(26px);opacity:0;pointer-events:none;overflow-y:auto;}
+.panel-left.detail .ld-list{transform:translateX(-26px);opacity:0;pointer-events:none;}
+.panel-left.detail .ld-detail{transform:translateX(0);opacity:1;pointer-events:auto;}
+.metric{display:flex;align-items:center;gap:11px;padding:9px 11px;border-radius:13px;cursor:pointer;border:1px solid transparent;transition:all 0.15s;margin-bottom:1px;}
+.metric:hover{background:rgba(20,30,60,0.04);}
+.metric.active{background:var(--accent-dim);border-color:rgba(14,116,144,0.22);}
+.metric-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.metric-main{display:flex;flex-direction:column;gap:1px;min-width:0;flex:1;}
+.metric-name{font-size:14.5px;font-weight:700;line-height:1.15;}
+.metric-sub{font-family:'Roboto Mono',monospace;font-size:12.5px;color:var(--muted);}
+.metric-val{font-family:'Roboto Mono',monospace;font-size:18px;font-weight:500;color:var(--accent);letter-spacing:-0.5px;flex-shrink:0;}
+.ld-back{display:inline-flex;align-items:center;gap:5px;cursor:pointer;border:none;background:none;font-family:'Inter',sans-serif;font-size:14px;font-weight:700;color:var(--accent);padding:4px 6px 4px 0;margin-bottom:12px;}
+.d-tag{display:inline-block;padding:4px 12px;border-radius:99px;font-size:13px;font-weight:700;margin-bottom:10px;background:var(--accent-dim);color:var(--accent);}
+.d-title{font-size:22px;font-weight:800;letter-spacing:-0.4px;line-height:1.15;margin-bottom:14px;}
+.d-bigval{display:flex;align-items:baseline;gap:9px;margin-bottom:4px;}
+.d-bigval b{font-family:'Roboto Mono',monospace;font-size:35px;font-weight:500;color:var(--accent);letter-spacing:-1px;line-height:1;}
+.d-bigval span{font-size:14px;color:var(--muted);font-weight:600;}
+.d-formula{margin:13px 0 4px;padding:13px 15px;border-radius:13px;background:linear-gradient(135deg,rgba(34,211,238,0.12),rgba(14,116,144,0.05));border:1px solid rgba(14,116,144,0.16);font-family:'Roboto Mono',monospace;font-size:13.5px;color:#0e7490;font-weight:500;line-height:1.95;white-space:pre-line;}
+.d-para{font-size:15px;line-height:1.62;color:#2c3744;margin-top:13px;}
+.panel-right{right:22px;top:98px;width:296px;padding:18px;}
+.pr-hint{font-size:14px;color:var(--muted);line-height:1.5;background:rgba(20,30,60,0.035);border-radius:14px;padding:13px 15px;margin-bottom:14px;}
+.pr-hint b{color:var(--text);}
+.show-label{font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;color:var(--faint);margin:4px 0 11px 2px;}
+.show-chip{display:flex;align-items:center;gap:12px;width:100%;padding:13px 15px;margin-bottom:9px;border-radius:14px;cursor:pointer;background:rgba(20,30,60,0.035);border:1.5px solid transparent;transition:all 0.16s;}
+.show-chip:hover{background:rgba(20,30,60,0.06);}
+.show-chip.on{background:var(--accent-dim);border-color:rgba(14,116,144,0.30);}
+.chip-ico{width:34px;height:34px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:16px;font-family:'Roboto Mono',monospace;font-weight:700;color:#fff;}
+.chip-ico.ic-sin{background:var(--circ);} .chip-ico.ic-cos{background:var(--c);}
+.chip-text{flex:1;min-width:0;}.chip-name{font-size:14.5px;font-weight:700;}.chip-sub{font-size:12.5px;color:var(--muted);font-family:'Roboto Mono',monospace;}
+.chip-state{width:21px;height:21px;border-radius:50%;flex-shrink:0;border:2px solid rgba(20,30,60,0.16);display:flex;align-items:center;justify-content:center;transition:all 0.16s;}
+.show-chip.on .chip-state{background:var(--accent);border-color:var(--accent);}
+.show-chip.on .chip-state::after{content:'✓';color:#fff;font-size:13px;font-weight:700;}
+.hint-bar{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:100;background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:9px 22px;font-size:13.5px;color:var(--muted);box-shadow:var(--shadow);white-space:nowrap;display:flex;align-items:center;gap:9px;}
+.hint-grab{color:var(--accent);font-weight:700;}.hint-dot{color:var(--faint);}
+@media (max-width:1180px){.panel-left{width:296px;}.panel-right{width:270px;}}
+</style>
+</head>
+<body>
+<div id="canvas-container"><canvas id="c"></canvas></div>
+<div id="labels-layer"></div>
+<header class="header">
+  <div class="h-badge"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.7" stroke-linejoin="round"><path d="M4 19 L11 5 L20 16 Z"/></svg></div>
+  <div class="header-title" data-i18n="header_title">Теорема синусов и косинусов</div>
+  <div class="header-tag">a/sinA = 2R</div>
+  <div class="header-sub" data-i18n-html="header_sub">Любой треугольник: связь сторон и углов<br>тяните вершины A, B, C</div>
+</header>
+<div class="eq-banner" id="eq-banner"></div>
+<div class="panel panel-left" id="panel-left">
+  <div class="ld-list"><h3 data-i18n="props_title">Стороны и углы</h3><div id="metrics"></div></div>
+  <div class="ld-detail"><button class="ld-back" onclick="window.showList()"><span>‹</span> <span data-i18n="back">Назад</span></button><div id="detail-content"></div></div>
+</div>
+<div class="panel panel-right">
+  <div class="pr-hint" data-i18n-html="pr_hint">Тяните вершины <b>A</b>, <b>B</b>, <b>C</b> — стороны и углы пересчитываются. Сумма углов всегда <b>180°</b>.</div>
+  <div class="show-label" data-i18n="show_title">Показать</div>
+  <div class="show-chip" id="chip-sin" onclick="window.toggleSin()"><div class="chip-ico ic-sin">∿</div><div class="chip-text"><span class="chip-name" data-i18n="ch_sin">Теорема синусов</span><span class="chip-sub">a/sinA = 2R</span></div><div class="chip-state"></div></div>
+  <div class="show-chip" id="chip-cos" onclick="window.toggleCos()"><div class="chip-ico ic-cos">c²</div><div class="chip-text"><span class="chip-name" data-i18n="ch_cos">Теорема косинусов</span><span class="chip-sub">c²=a²+b²−2ab·cosC</span></div><div class="chip-state"></div></div>
+</div>
+<div class="hint-bar" data-i18n-html="hint"><span class="hint-grab">Тяните вершины</span><span class="hint-dot">·</span><span>фон — поворот</span><span class="hint-dot">·</span><span>клик по строке — пояснение</span></div>
+
+<script>
+const I18N={
+ru:{page_title:'Теорема синусов и косинусов',header_title:'Теорема синусов и косинусов',header_sub:'Любой треугольник: связь сторон и углов<br>тяните вершины A, B, C',
+  props_title:'Стороны и углы',back:'Назад',show_title:'Показать',
+  pr_hint:'Тяните вершины <b>A</b>, <b>B</b>, <b>C</b> — стороны и углы пересчитываются. Сумма углов всегда <b>180°</b>.',
+  ch_sin:'Теорема синусов',ch_cos:'Теорема косинусов',
+  hint:'<span class="hint-grab">Тяните вершины</span><span class="hint-dot">·</span><span>фон — поворот</span><span class="hint-dot">·</span><span>клик по строке — пояснение</span>',
+  m_a:'Сторона a (BC)',m_b:'Сторона b (CA)',m_c:'Сторона c (AB)',m_A:'Угол A',m_B:'Угол B',m_C:'Угол C',
+  sub_a:'против угла A',sub_b:'против угла B',sub_c:'против угла C',sub_A:'при вершине A',sub_B:'при вершине B',sub_C:'при вершине C',
+  u_len:'ед.',u_deg:'°'},
+kz:{page_title:'Синустар және косинустар теоремасы',header_title:'Синустар және косинустар теоремасы',header_sub:'Кез келген үшбұрыш: қабырғалар мен бұрыштар<br>A, B, C төбелерін сүйреңіз',
+  props_title:'Қабырғалар мен бұрыштар',back:'Артқа',show_title:'Көрсету',
+  pr_hint:'<b>A</b>, <b>B</b>, <b>C</b> төбелерін сүйреңіз — қабырғалар мен бұрыштар қайта есептеледі. Бұрыштар қосындысы әрқашан <b>180°</b>.',
+  ch_sin:'Синустар теоремасы',ch_cos:'Косинустар теоремасы',
+  hint:'<span class="hint-grab">Төбелерді сүйреңіз</span><span class="hint-dot">·</span><span>фон — бұру</span><span class="hint-dot">·</span><span>жолды басу — түсіндірме</span>',
+  m_a:'Қабырға a (BC)',m_b:'Қабырға b (CA)',m_c:'Қабырға c (AB)',m_A:'A бұрышы',m_B:'B бұрышы',m_C:'C бұрышы',
+  sub_a:'A бұрышына қарсы',sub_b:'B бұрышына қарсы',sub_c:'C бұрышына қарсы',sub_A:'A төбесінде',sub_B:'B төбесінде',sub_C:'C төбесінде',
+  u_len:'бір.',u_deg:'°'},
+en:{page_title:'Law of Sines and Cosines',header_title:'Law of Sines and Cosines',header_sub:'Any triangle: sides and angles linked<br>drag the vertices A, B, C',
+  props_title:'Sides and angles',back:'Back',show_title:'Show',
+  pr_hint:'Drag the vertices <b>A</b>, <b>B</b>, <b>C</b> — sides and angles update. The angles always sum to <b>180°</b>.',
+  ch_sin:'Law of sines',ch_cos:'Law of cosines',
+  hint:'<span class="hint-grab">Drag the vertices</span><span class="hint-dot">·</span><span>background — rotate</span><span class="hint-dot">·</span><span>click a row — explanation</span>',
+  m_a:'Side a (BC)',m_b:'Side b (CA)',m_c:'Side c (AB)',m_A:'Angle A',m_B:'Angle B',m_C:'Angle C',
+  sub_a:'opposite angle A',sub_b:'opposite angle B',sub_c:'opposite angle C',sub_A:'at vertex A',sub_B:'at vertex B',sub_C:'at vertex C',
+  u_len:'u',u_deg:'°'}
+};
+const LANG=(()=>{const q=new URLSearchParams(location.search).get('lang');return(q&&I18N[q])?q:'ru';})();
+const tr=key=>(I18N[LANG]&&I18N[LANG][key])!==undefined?I18N[LANG][key]:I18N.ru[key];
+function applyStaticI18N(){document.documentElement.lang=LANG;const tv=tr('page_title');if(tv)document.title=tv;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{const v=tr(el.getAttribute('data-i18n'));if(v!==undefined)el.textContent=v;});
+  document.querySelectorAll('[data-i18n-html]').forEach(el=>{const v=tr(el.getAttribute('data-i18n-html'));if(v!==undefined)el.innerHTML=v;});}
+applyStaticI18N();
+const f1=x=>x.toFixed(1);
+const dist=(p,q)=>Math.hypot(p[0]-q[0],p[1]-q[1]);
+window.A={A:[-6,-3],B:[6,-3],C:[0,6]};
+const sa=()=>dist(window.A.B,window.A.C); // a opposite A
+const sb=()=>dist(window.A.C,window.A.A);
+const sc=()=>dist(window.A.A,window.A.B);
+function angAt(opp,s1,s2){const c=(s1*s1+s2*s2-opp*opp)/(2*s1*s2);return Math.acos(Math.max(-1,Math.min(1,c)))*180/Math.PI;}
+const angA=()=>angAt(sa(),sb(),sc());
+const angB=()=>angAt(sb(),sa(),sc());
+const angC=()=>angAt(sc(),sa(),sb());
+const METRICS=[
+  {key:'a',dot:'var(--a)',i:'m_a',fmt:()=>f1(sa()),sub:()=>tr('sub_a'),u:'u_len'},
+  {key:'b',dot:'var(--b)',i:'m_b',fmt:()=>f1(sb()),sub:()=>tr('sub_b'),u:'u_len'},
+  {key:'c',dot:'var(--c)',i:'m_c',fmt:()=>f1(sc()),sub:()=>tr('sub_c'),u:'u_len'},
+  {key:'A',dot:'var(--a)',i:'m_A',fmt:()=>f1(angA()),sub:()=>tr('sub_A'),u:'u_deg'},
+  {key:'B',dot:'var(--b)',i:'m_B',fmt:()=>f1(angB()),sub:()=>tr('sub_B'),u:'u_deg'},
+  {key:'C',dot:'var(--c)',i:'m_C',fmt:()=>f1(angC()),sub:()=>tr('sub_C'),u:'u_deg'},
+];
+function renderMetrics(){document.getElementById('metrics').innerHTML=METRICS.map(m=>`
+  <div class="metric" data-key="${m.key}" onclick="window.openDetail('${m.key}')"><div class="metric-dot" style="background:${m.dot}"></div>
+  <div class="metric-main"><span class="metric-name">${tr(m.i)}</span><span class="metric-sub" id="ms-${m.key}"></span></div>
+  <span class="metric-val" id="mv-${m.key}">—</span></div>`).join('');}
+function updateMetricValues(){METRICS.forEach(m=>{const v=document.getElementById('mv-'+m.key);if(v)v.textContent=m.fmt()+(m.u==='u_deg'?'°':'');const s=document.getElementById('ms-'+m.key);if(s)s.textContent=m.sub();});
+  document.getElementById('eq-banner').innerHTML=`<span class="ea">A ${f1(angA())}°</span> + <span class="eb">B ${f1(angB())}°</span> + <span class="ec">C ${f1(angC())}°</span> = ${f1(angA()+angB()+angC())}°`;}
+renderMetrics();
+</script>
+<script type="importmap">{"imports":{"three":"../../libs/vendor/three-0.160.0/three.module.js"}}</script>
+<script type="module">
+import * as THREE from 'three';
+const canvas=document.getElementById('c');
+const renderer=new THREE.WebGLRenderer({canvas,antialias: true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);renderer.outputColorSpace=THREE.SRGBColorSpace;
+const W=11;
+const scene=new THREE.Scene();scene.background=null;
+const camera=new THREE.PerspectiveCamera(42,innerWidth/innerHeight,0.1,8000);
+const CAM_DIR=new THREE.Vector3(0.18,0.14,1).normalize();
+let camDist=40,camDistTarget=40,userZoom=1.0;let showSin=false,showCos=false;
+const PI=Math.PI;
+const f1=x=>x.toFixed(1);
+function computeCamTarget(){const R0=W*1.4*1.1;const fovy=camera.fov*PI/180;const dV=R0/Math.sin(fovy/2);const usableW=Math.max(420,innerWidth-660);const fovx=2*Math.atan(Math.tan(fovy/2)*usableW/innerHeight);const dH=R0/Math.sin(fovx/2);return Math.max(dV,dH)*userZoom;}
+function applyCamera(){camera.position.copy(CAM_DIR).multiplyScalar(camDist);camera.lookAt(0,0,0);}
+scene.add(new THREE.AmbientLight(0xffffff,0.84));
+const kL=new THREE.DirectionalLight(0xffffff,0.78);kL.position.set(4,8,12);scene.add(kL);
+const fL=new THREE.DirectionalLight(0x99e6da,0.3);fL.position.set(-8,-3,4);scene.add(fL);
+const V=(x,y,z)=>new THREE.Vector3(x,y,z);
+const root=new THREE.Group();scene.add(root);const obj=new THREE.Group();root.add(obj);
+const COL={a:0x2563eb,b:0x16a34a,c:0xea580c,fill:0x64748b,circ:0x7c3aed};
+const tR=W*0.011;
+const VA=p=>V(p[0],p[1],0);
+function cyl(from,to,rr,mat){const dir=new THREE.Vector3().subVectors(to,from),len=dir.length();const m=new THREE.Mesh(new THREE.CylinderGeometry(rr,rr,len,10),mat);m.position.addVectors(from,to).multiplyScalar(0.5);if(len>1e-6)m.quaternion.setFromUnitVectors(V(0,1,0),dir.normalize());return m;}
+function sphere(r,mat){return new THREE.Mesh(new THREE.SphereGeometry(r,20,16),mat);}
+function line2(pts,col){return new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:col}));}
+function quad(p1,p2,p3,mat){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute([p1.x,p1.y,0,p2.x,p2.y,0,p3.x,p3.y,0],3));g.computeVertexNormals();return new THREE.Mesh(g,mat);}
+// coordinate grid (always on)
+(function(){const GW=15,step=3;const gMat=new THREE.MeshBasicMaterial({color:0xccd3de,transparent:true,opacity:0.55});const aMat=new THREE.MeshBasicMaterial({color:0xaab4c2,transparent:true,opacity:0.85});const gg=new THREE.Group();obj.add(gg);
+  for(let i=-GW;i<=GW;i+=step){const ax=(i===0);const m=ax?aMat:gMat;gg.add(cyl(V(i,-GW,-0.1),V(i,GW,-0.1),tR*(ax?0.5:0.3),m));gg.add(cyl(V(-GW,i,-0.1),V(GW,i,-0.1),tR*(ax?0.5:0.3),m));}
+})();
+const dynG=new THREE.Group();obj.add(dynG);
+function disposeDyn(){while(dynG.children.length){const o=dynG.children[0];o.traverse(x=>{if(x.geometry)x.geometry.dispose();});dynG.remove(o);}}
+let hiKey=null;const ptMesh={A:null,B:null,C:null};let ptProxies=[];
+const dist=(p,q)=>Math.hypot(p[0]-q[0],p[1]-q[1]);
+const sa=()=>dist(window.A.B,window.A.C),sb=()=>dist(window.A.C,window.A.A),sc=()=>dist(window.A.A,window.A.B);
+function angAt(opp,s1,s2){const c=(s1*s1+s2*s2-opp*opp)/(2*s1*s2);return Math.acos(Math.max(-1,Math.min(1,c)))*180/PI;}
+function circum(){const [ax,ay]=window.A.A,[bx,by]=window.A.B,[cx,cy]=window.A.C;
+  const d=2*(ax*(by-cy)+bx*(cy-ay)+cx*(ay-by));if(Math.abs(d)<1e-6)return null;
+  const a2=ax*ax+ay*ay,b2=bx*bx+by*by,c2=cx*cx+cy*cy;
+  const ox=(a2*(by-cy)+b2*(cy-ay)+c2*(ay-by))/d, oy=(a2*(cx-bx)+b2*(ax-cx)+c2*(bx-ax))/d;
+  return {o:[ox,oy],R:Math.hypot(ax-ox,ay-oy)};}
+function angleArc(P,Q1,Q2,r,col){let a1=Math.atan2(Q1.y-P.y,Q1.x-P.x),a2=Math.atan2(Q2.y-P.y,Q2.x-P.x);
+  let da=a2-a1;while(da>PI)da-=2*PI;while(da<-PI)da+=2*PI;const pts=[];for(let i=0;i<=16;i++){const a=a1+da*i/16;pts.push(V(P.x+r*Math.cos(a),P.y+r*Math.sin(a),0.05));}return line2(pts,col);}
+function buildDyn(){
+  disposeDyn();const A=VA(window.A.A),B=VA(window.A.B),C=VA(window.A.C);
+  // fill
+  dynG.add(quad(A,B,C,new THREE.MeshStandardMaterial({color:COL.fill,roughness:0.6,transparent:true,opacity:0.12,side:THREE.DoubleSide})));
+  // sides: a=BC (blue), b=CA (green), c=AB (orange)
+  const mk=(col,hi)=>new THREE.MeshStandardMaterial({color:col,roughness:0.3,metalness:0.1,emissive:hi?col:0,emissiveIntensity:hi?0.4:0});
+  dynG.add(cyl(B.clone().setZ(0.04),C.clone().setZ(0.04),tR*(hiKey==='a'?1.7:1.2),mk(COL.a,hiKey==='a')));
+  dynG.add(cyl(C.clone().setZ(0.04),A.clone().setZ(0.04),tR*(hiKey==='b'?1.7:1.2),mk(COL.b,hiKey==='b')));
+  dynG.add(cyl(A.clone().setZ(0.04),B.clone().setZ(0.04),tR*(hiKey==='c'?1.7:1.2),mk(COL.c,hiKey==='c')));
+  // angle arcs (radius scales with smallest adjacent side)
+  const ar=Math.min(W*0.16, Math.min(sb(),sc())*0.3);
+  dynG.add(angleArc(A,B,C,Math.min(ar,Math.min(sb(),sc())*0.3),hiKey==='A'?0x1e3a8a:COL.a));
+  dynG.add(angleArc(B,A,C,Math.min(ar,Math.min(sa(),sc())*0.3),hiKey==='B'?0x14532d:COL.b));
+  dynG.add(angleArc(C,A,B,Math.min(ar,Math.min(sa(),sb())*0.3),hiKey==='C'?0x7c2d12:COL.c));
+  // circumscribed circle (law of sines)
+  if(showSin){const cc=circum();if(cc){const pts=[];for(let i=0;i<=80;i++){const a=2*PI*i/80;pts.push(V(cc.o[0]+cc.R*Math.cos(a),cc.o[1]+cc.R*Math.sin(a),0.02));}
+    dynG.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),100,tR*0.6,6,true),new THREE.MeshStandardMaterial({color:COL.circ,roughness:0.4,transparent:true,opacity:0.7})));
+    dynG.add(sphere(tR*1.4,new THREE.MeshStandardMaterial({color:COL.circ,roughness:0.4})).translateX(cc.o[0]).translateY(cc.o[1]).translateZ(0.05));}}
+  // cosine law: highlight angle C with thicker arc
+  if(showCos){dynG.add(angleArc(C,A,B,Math.min(W*0.22,Math.min(sa(),sb())*0.4),COL.c));}
+  // vertices + proxies
+  [['A',A,COL.a],['B',B,COL.b],['C',C,COL.c]].forEach(([k,p,col])=>{
+    const s=sphere(tR*2.3,new THREE.MeshStandardMaterial({color:col,roughness:0.25,metalness:0.3,emissive:col,emissiveIntensity:0.25}));s.position.copy(p).setZ(0.1);s.userData.pt=k;ptMesh[k]=s;dynG.add(s);});
+  ptProxies=[];[['A',A],['B',B],['C',C]].forEach(([k,p])=>{const pr=sphere(tR*6,new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false}));pr.position.copy(p).setZ(0.13);pr.userData.pt=k;ptProxies.push(pr);dynG.add(pr);});
+  updateLabelAnchors();
+}
+const layer=document.getElementById('labels-layer');
+function mkLabel(cls){const d=document.createElement('div');d.className='dim-label '+cls;layer.appendChild(d);return d;}
+const L_a=mkLabel('la'),L_b=mkLabel('lb'),L_c=mkLabel('lc'),L_A=mkLabel('lv lvA'),L_B=mkLabel('lv lvB'),L_C=mkLabel('lv lvC');
+const anc={a:V(),b:V(),c:V(),A:V(),B:V(),C:V()};
+function updateLabelAnchors(){const A=VA(window.A.A),B=VA(window.A.B),C=VA(window.A.C);const cen=A.clone().add(B).add(C).multiplyScalar(1/3);
+  const off=(mid)=>mid.clone().add(mid.clone().sub(cen).normalize().multiplyScalar(W*0.06));
+  anc.a.copy(off(B.clone().add(C).multiplyScalar(0.5)));anc.b.copy(off(C.clone().add(A).multiplyScalar(0.5)));anc.c.copy(off(A.clone().add(B).multiplyScalar(0.5)));
+  anc.A.copy(A.clone().add(A.clone().sub(cen).normalize().multiplyScalar(W*0.07)));anc.B.copy(B.clone().add(B.clone().sub(cen).normalize().multiplyScalar(W*0.07)));anc.C.copy(C.clone().add(C.clone().sub(cen).normalize().multiplyScalar(W*0.07)));
+  L_a.textContent='a='+f1(sa());L_b.textContent='b='+f1(sb());L_c.textContent='c='+f1(sc());
+  L_A.textContent='A '+f1(angAt(sa(),sb(),sc()))+'°';L_B.textContent='B '+f1(angAt(sb(),sa(),sc()))+'°';L_C.textContent='C '+f1(angAt(sc(),sa(),sb()))+'°';}
+function project(localVec){const w=localVec.clone().applyMatrix4(obj.matrixWorld).project(camera);return {x:(w.x*0.5+0.5)*innerWidth,y:(-w.y*0.5+0.5)*innerHeight,behind:w.z>1};}
+function place(el,v){const s=project(v);if(s.behind){el.classList.add('hidden');return;}el.classList.remove('hidden');el.style.left=s.x+'px';el.style.top=s.y+'px';}
+function updateLabels(){place(L_a,anc.a);place(L_b,anc.b);place(L_c,anc.c);place(L_A,anc.A);place(L_B,anc.B);place(L_C,anc.C);}
+const DETAIL_ALL={
+ru:{
+  a:{tag:'Сторона',p:'Сторона a лежит против угла A (это отрезок BC). По теореме синусов отношение стороны к синусу противолежащего угла одинаково для всех сторон: a/sinA = b/sinB = c/sinC = 2R, где R — радиус описанной окружности.'},
+  b:{tag:'Сторона',p:'Сторона b лежит против угла B (отрезок CA). По теореме косинусов её можно найти через две другие стороны и угол между ними: b² = a² + c² − 2ac·cosB.'},
+  c:{tag:'Сторона',p:'Сторона c лежит против угла C (отрезок AB). Теорема косинусов: c² = a² + b² − 2ab·cosC. Если угол C = 90°, cosC = 0, и формула превращается в теорему Пифагора c² = a² + b².'},
+  A:{tag:'Угол',p:'Угол A — при вершине A, против стороны a. Сумма всех трёх углов треугольника всегда равна 180°. Зная две стороны и угол, остальное находят по теоремам синусов и косинусов.'},
+  B:{tag:'Угол',p:'Угол B при вершине B, против стороны b. По теореме синусов sinB = b·sinA/a, поэтому, зная одну пару (сторона, противолежащий угол), можно найти остальные.'},
+  C:{tag:'Угол',p:'Угол C при вершине C, против стороны c. По теореме косинусов cosC = (a²+b²−c²)/(2ab) — так находят угол, зная все три стороны. Включите «Теорему косинусов».'},
+},
+kz:{
+  a:{tag:'Қабырға',p:'a қабырғасы A бұрышына қарсы жатыр (BC кесіндісі). Синустар теоремасы бойынша қабырғаның қарсы бұрыш синусына қатынасы барлық қабырға үшін бірдей: a/sinA = b/sinB = c/sinC = 2R.'},
+  b:{tag:'Қабырға',p:'b қабырғасы B бұрышына қарсы (CA). Косинустар теоремасы: b² = a² + c² − 2ac·cosB.'},
+  c:{tag:'Қабырға',p:'c қабырғасы C бұрышына қарсы (AB). Косинустар теоремасы: c² = a² + b² − 2ab·cosC. C = 90° болса, Пифагор теоремасына айналады.'},
+  A:{tag:'Бұрыш',p:'A бұрышы — A төбесінде, a қабырғасына қарсы. Үшбұрыш бұрыштарының қосындысы әрқашан 180°.'},
+  B:{tag:'Бұрыш',p:'B бұрышы B төбесінде. Синустар теоремасы: sinB = b·sinA/a.'},
+  C:{tag:'Бұрыш',p:'C бұрышы C төбесінде. cosC = (a²+b²−c²)/(2ab) — үш қабырға арқылы бұрышты табады. «Косинустар теоремасын» қосыңыз.'},
+},
+en:{
+  a:{tag:'Side',p:'Side a is opposite angle A (segment BC). By the law of sines, the ratio of a side to the sine of its opposite angle is the same for all sides: a/sinA = b/sinB = c/sinC = 2R, where R is the circumradius.'},
+  b:{tag:'Side',p:'Side b is opposite angle B (segment CA). By the law of cosines: b² = a² + c² − 2ac·cosB.'},
+  c:{tag:'Side',p:'Side c is opposite angle C (segment AB). Law of cosines: c² = a² + b² − 2ab·cosC. If C = 90°, cosC = 0 and it becomes the Pythagorean theorem c² = a² + b².'},
+  A:{tag:'Angle',p:'Angle A is at vertex A, opposite side a. The three angles of a triangle always sum to 180°.'},
+  B:{tag:'Angle',p:'Angle B at vertex B, opposite side b. By the law of sines sinB = b·sinA/a.'},
+  C:{tag:'Angle',p:'Angle C at vertex C, opposite side c. cosC = (a²+b²−c²)/(2ab) — this finds an angle from all three sides. Turn on "Law of cosines".'},
+}
+};
+const DETAIL=DETAIL_ALL[LANG]||DETAIL_ALL.ru;
+function openDetail(key){const d=DETAIL[key];if(!d)return;const m=METRICS.find(x=>x.key===key);
+  document.querySelectorAll('.metric').forEach(el=>el.classList.toggle('active',el.dataset.key===key));
+  hiKey=key;if((key==='a'||key==='b'||key==='c'||key==='A'||key==='B'||key==='C')&&!showSin&&!showCos){}buildDyn();
+  const a=sa(),b=sb(),c=sc(),AA=angAt(a,b,c),BB=angAt(b,a,c),CC=angAt(c,a,b),cc=circum();
+  const calc={
+    a:`a/sinA = ${f1(a)}/sin${f1(AA)}° = ${cc?f1(2*cc.R):'—'}\n(= 2R)`,
+    b:`b² = a²+c²−2ac·cosB\n  = ${f1(b*b)}`,
+    c:`c² = a²+b²−2ab·cosC\n  = ${f1(c*c)}`,
+    A:`A = ${f1(AA)}°  (A+B+C=180°)`,
+    B:`B = ${f1(BB)}°`,
+    C:`cosC = (a²+b²−c²)/(2ab)\n  → C = ${f1(CC)}°`}[key];
+  document.getElementById('detail-content').innerHTML=`<div class="d-tag">${d.tag}</div><div class="d-title">${tr(m.i)}</div>
+    <div class="d-bigval"><b>${m.fmt()}${m.u==='u_deg'?'°':''}</b><span>${tr(m.u)}</span></div><div class="d-formula">${calc}</div><div class="d-para">${d.p}</div>`;
+  document.getElementById('panel-left').classList.add('detail');currentDetail=key;markInteract();}
+let currentDetail=null;window.openDetail=openDetail;
+window.showList=function(){document.getElementById('panel-left').classList.remove('detail');currentDetail=null;
+  document.querySelectorAll('.metric').forEach(m=>m.classList.remove('active'));hiKey=null;buildDyn();};
+window.toggleSin=function(){showSin=!showSin;document.getElementById('chip-sin').classList.toggle('on',showSin);buildDyn();markInteract();};
+window.toggleCos=function(){showCos=!showCos;document.getElementById('chip-cos').classList.toggle('on',showCos);buildDyn();markInteract();};
+const ray=new THREE.Raycaster(),m2=new THREE.Vector2();
+function pick(e,objs){m2.x=(e.clientX/innerWidth)*2-1;m2.y=-(e.clientY/innerHeight)*2+1;ray.setFromCamera(m2,camera);return ray.intersectObjects(objs,false);}
+function planePt(e){m2.x=(e.clientX/innerWidth)*2-1;m2.y=-(e.clientY/innerHeight)*2+1;ray.setFromCamera(m2,camera);
+  const normal=new THREE.Vector3(0,0,1).transformDirection(obj.matrixWorld);const plane=new THREE.Plane().setFromNormalAndCoplanarPoint(normal,V(0,0,0));
+  const hit=new THREE.Vector3();if(!ray.ray.intersectPlane(plane,hit))return null;hit.applyMatrix4(new THREE.Matrix4().copy(obj.matrixWorld).invert());
+  return [Math.max(-9.5,Math.min(9.5,hit.x)),Math.max(-9.5,Math.min(9.5,hit.y))];}
+let mode=null,dragPt=null,last={x:0,y:0},dd=0,isDragging=false,rotX=0.0;
+let lastInteract=performance.now()-16000,autoSpeed=0;const AUTO_TARGET=0.0010,IDLE_MS=15000;
+function markInteract(){lastInteract=performance.now();}
+canvas.addEventListener('mousedown',e=>{markInteract();const h=pick(e,ptProxies);
+  if(h.length>0){mode='pt';dragPt=h[0].object.userData.pt;canvas.style.cursor='grabbing';return;}
+  mode='rotate';last={x:e.clientX,y:e.clientY};isDragging=false;dd=0;});
+canvas.addEventListener('mousemove',e=>{
+  if(mode==='pt'){const p=planePt(e);if(p){window.A[dragPt]=p;buildDyn();updateMetricValues();if(currentDetail)openDetail(currentDetail);}markInteract();return;}
+  if(mode==='rotate'){dd=Math.hypot(e.clientX-last.x,e.clientY-last.y);if(dd>4)isDragging=true;
+    if(isDragging){root.rotation.y+=(e.clientX-last.x)*0.008;rotX=Math.max(-1.0,Math.min(1.0,rotX+(e.clientY-last.y)*0.006));root.rotation.x=rotX;markInteract();}last={x:e.clientX,y:e.clientY};return;}
+  const h=pick(e,ptProxies);canvas.style.cursor=h.length>0?'grab':'default';});
+window.addEventListener('mouseup',()=>{if(mode==='pt')canvas.style.cursor='default';mode=null;dragPt=null;});
+canvas.addEventListener('wheel',e=>{e.preventDefault();userZoom=Math.max(0.6,Math.min(1.7,userZoom+e.deltaY*0.0015));markInteract();},{passive:false});
+window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+let t=0;
+function animate(){requestAnimationFrame(animate);t+=0.016;const idle=performance.now()-lastInteract;
+  if(idle>IDLE_MS)autoSpeed+=(AUTO_TARGET-autoSpeed)*0.025;else autoSpeed+=(0-autoSpeed)*0.18;
+  root.rotation.y+=autoSpeed;root.rotation.x=rotX;camDistTarget=computeCamTarget();camDist+=(camDistTarget-camDist)*0.18;applyCamera();
+  renderer.render(scene,camera);obj.updateWorldMatrix(true,false);updateLabels();}
+buildDyn();updateMetricValues();camDistTarget=computeCamTarget();camDist=camDistTarget;applyCamera();animate();
+</script>
+</body>
+</html>

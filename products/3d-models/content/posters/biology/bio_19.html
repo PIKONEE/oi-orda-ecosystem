@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="page_title">Бабочка-монарх — анатомическая модель</title>
+    <link rel="stylesheet" href="_poster.css">
+</head>
+<body>
+<div id="canvas-container"></div>
+<div id="header">
+    <h1 data-i18n="header_title">Бабочка-монарх</h1>
+    <p data-i18n="header_subtitle">Интерактивная модель — 6 анатомических зон</p>
+</div>
+<div id="hint" data-i18n="hint">Кликните по любой части тела, чтобы узнать больше</div>
+<button id="reset-btn" data-i18n="reset_btn" data-i18n-title="reset_btn_title" title="Сбросить вид">↺ Сбросить вид</button>
+<div id="info-panel" aria-hidden="true"></div>
+<div id="legend"></div>
+<div id="hover-label"></div>
+<div id="loading"><div class="spinner"></div><div id="loading-text" data-i18n="loading">Загрузка модели…</div></div>
+
+<script type="importmap">
+    { "imports": { "three": "../../libs/vendor/three-0.160.0/three.module.js", "three/addons/": "../../libs/vendor/three-0.160.0/addons/" } }
+</script>
+
+<script type="module">
+    import { initPoster } from './_poster_lib.js';
+
+    const I18N = {
+        ru: {
+            page_title: 'Бабочка-монарх — анатомическая модель',
+            header_title: 'Бабочка-монарх',
+            header_subtitle: 'Интерактивная модель — 6 анатомических зон',
+            hint: 'Кликните по любой части тела, чтобы узнать больше',
+            reset_btn: '↺ Сбросить вид', reset_btn_title: 'Сбросить вид', close_btn_label: 'Закрыть',
+            loading: 'Загрузка модели…', error_load: 'Не удалось загрузить butterfly.glb', error_no_mesh: 'В модели нет меша',
+            facts_label: 'Интересный факт',
+            zones: {
+                head: { title: 'Голова', desc: 'Содержит крупные сложные (фасеточные) глаза из тысяч омматидиев, дающие почти 360°-обзор. На голове — пара длинных усиков-антенн для обоняния и ориентации, и хоботок — длинная свёрнутая в спираль трубка для питания нектаром.', facts: 'Глаза бабочки видят ультрафиолетовый свет — цветы для них выглядят совсем иначе, чем для нас, с яркими «посадочными метками» для опылителей.' },
+                thorax: { title: 'Грудь (торакс)', desc: 'Средняя часть тела, состоящая из 3 сегментов. К груди прикрепляются 6 ног и 2 пары крыльев. Внутри грудного отдела расположены мощные мышцы, приводящие крылья в движение во время полёта.', facts: 'Мышцы груди составляют до 65% массы летающих насекомых и могут совершать до 1000 сокращений в секунду у некоторых видов.' },
+                abdomen: { title: 'Брюшко', desc: 'Задняя часть тела из 10 сегментов. Содержит внутренние органы: сердце (трубчатое, тянется вдоль спины), пищеварительную систему, репродуктивные органы. По бокам — дыхальца (стигмы), через которые воздух поступает в трахеи.', facts: 'У бабочек нет лёгких — они дышат через дыхальца, а кислород разносится прямо по трахеям ко всем клеткам.' },
+                forewings: { title: 'Передние крылья', desc: 'Крупные верхние крылья, покрытые миллионами микроскопических чешуек (видоизменённых волосков). Чешуйки создают характерный оранжево-чёрный узор и обеспечивают аэродинамику. Жилкование крыла поддерживает его форму.', facts: 'Оранжевые цвета монарха предупреждают хищников о ядовитости — гусеницы питаются ваточником и накапливают токсичные карденолиды.' },
+                hindwings: { title: 'Задние крылья', desc: 'Меньше передних, работают синхронно с ними во время полёта. У монарха задние крылья закрывают часть брюшка. Благодаря крыльям монархи совершают рекордные миграции — до 4000 км из Канады в Мексику.', facts: 'Стая монархов, мигрирующих на зимовку, может насчитывать миллионы особей — это одно из величайших миграционных явлений в природе.' },
+                legs: { title: 'Ноги', desc: '6 ног (3 пары), прикреплённых к груди. Каждая нога состоит из 5 сегментов и заканчивается коготками. На лапках расположены вкусовые рецепторы — бабочка «пробует» растение, наступая на него.', facts: 'Бабочки в 200 раз чувствительнее к сладкому, чем человек — они определяют сахар, просто наступая на лист, прежде чем развернуть хоботок.' }
+            }
+        },
+        kz: {
+            page_title: 'Монарх көбелек — анатомиялық модель',
+            header_title: 'Монарх көбелек',
+            header_subtitle: 'Интерактивті модель — 6 анатомиялық аймақ',
+            hint: 'Толығырақ білу үшін дененің кез келген бөлігіне басыңыз',
+            reset_btn: '↺ Көріністі қалпына келтіру', reset_btn_title: 'Көріністі қалпына келтіру', close_btn_label: 'Жабу',
+            loading: 'Модель жүктелуде…', error_load: 'butterfly.glb файлын жүктеу мүмкін болмады', error_no_mesh: 'Модельде меш табылмады',
+            facts_label: 'Қызықты факт',
+            zones: {
+                head: { title: 'Бас', desc: 'Мыңдаған омматидийден тұратын, 360°-қа жуық шолу беретін ірі фасеталық көздер бар. Басында жұп ұзын мұртша және нектармен қоректенуге арналған спираль тәрізді хоботок бар.', facts: 'Көбелек көздері ультракүлгін сәулені көреді — гүлдер олар үшін тозаңдандырғыштарға арналған жарық "қону белгілерімен" мүлдем басқаша көрінеді.' },
+                thorax: { title: 'Кеуде (торакс)', desc: '3 сегменттен тұратын дененің ортаңғы бөлігі. Кеудеге 6 аяқ пен 2 жұп қанат бекіді. Кеуде ішінде қанаттарды қозғалысқа келтіретін қуатты бұлшықеттер орналасқан.', facts: 'Ұшатын жәндіктердің кеуде бұлшықеттері дене салмағының 65%-ына дейін жетеді.' },
+                abdomen: { title: 'Құрсақ', desc: '10 сегменттен тұратын дененің артқы бөлігі. Ішкі ағзаларды қамтиды: жүрек (түтікше тәрізді, арқа бойымен созылған), ас қорыту жүйесі, көбею ағзалары. Бүйірлерінде ауа трахеяға енетін стигмалар орналасқан.', facts: 'Көбелектерде өкпе жоқ — олар стигмалар арқылы тыныс алады, ал оттегі трахеялар бойынша тікелей барлық жасушаларға таралады.' },
+                forewings: { title: 'Алдыңғы қанаттар', desc: 'Миллиондаған микроскопиялық қабыршақтармен жабылған ірі жоғарғы қанаттар. Қабыршақтар тән сарғылт-қара өрнек жасайды және аэродинамиканы қамтамасыз етеді.', facts: 'Монархтың сарғылт түсі жыртқыштарды улылық туралы ескертеді — жұлдызқұрттар уытты карденолидтерді жинақтайды.' },
+                hindwings: { title: 'Артқы қанаттар', desc: 'Алдыңғыдан кішірек, ұшу кезінде олармен синхронды жұмыс істейді. Қанаттардың арқасында монархтар Канададан Мексикаға дейінгі 4000 км-ге жететін рекордтық қоныс аударуды жүзеге асырады.', facts: 'Қыстауға қоныс аударатын монархтар тобы миллиондаған дарақтан тұруы мүмкін.' },
+                legs: { title: 'Аяқтар', desc: 'Кеудеге бекітілген 6 аяқ (3 жұп). Әр аяқ 5 сегменттен тұрады және тырнақтармен аяқталады. Табандарында дәм рецепторлары орналасқан — көбелек өсімдікке басып, оның дәмін «көреді».', facts: 'Көбелектер тәттіге адамнан 200 есе сезімтал — олар жапырақтың үстіне басып, қантты анықтайды.' }
+            }
+        },
+        en: {
+            page_title: 'Monarch Butterfly — Anatomical Model',
+            header_title: 'Monarch Butterfly',
+            header_subtitle: 'Interactive model — 6 anatomical zones',
+            hint: 'Click any part of the body to learn more',
+            reset_btn: '↺ Reset view', reset_btn_title: 'Reset view', close_btn_label: 'Close',
+            loading: 'Loading model…', error_load: 'Failed to load butterfly.glb', error_no_mesh: 'No mesh found in the model',
+            facts_label: 'Did you know?',
+            zones: {
+                head: { title: 'Head', desc: 'Contains large compound eyes made of thousands of ommatidia, giving nearly 360° vision. Bears a pair of long antennae for smell and orientation, and a coiled proboscis for nectar feeding.', facts: 'Butterfly eyes see UV light — flowers look completely different to them, with bright "landing marks" for pollinators.' },
+                thorax: { title: 'Thorax', desc: 'The middle body region of 3 segments. The 6 legs and 2 pairs of wings attach here. Powerful flight muscles fill the thorax interior.', facts: 'Flight muscles make up to 65% of body mass in flying insects, beating up to 1000 times per second in some species.' },
+                abdomen: { title: 'Abdomen', desc: 'The posterior body region of 10 segments. Contains internal organs: tubular heart, digestive system, reproductive organs. Spiracles on the sides allow air into the tracheal system.', facts: 'Butterflies have no lungs — they breathe through spiracles, and oxygen reaches every cell directly via tracheae.' },
+                forewings: { title: 'Forewings', desc: 'Large upper wings covered with millions of microscopic scales (modified hairs). Scales create the characteristic orange-and-black pattern and provide aerodynamics.', facts: 'The orange color warns predators of toxicity — caterpillars feed on milkweed and accumulate cardenolide toxins.' },
+                hindwings: { title: 'Hindwings', desc: 'Smaller than the forewings, working in sync during flight. Thanks to the wings, monarchs make record migrations of up to 4,000 km from Canada to Mexico.', facts: 'A migrating monarch swarm can number in the millions — one of the greatest migration phenomena in nature.' },
+                legs: { title: 'Legs', desc: '6 legs (3 pairs) attached to the thorax. Each leg has 5 segments ending in claws. Taste receptors on the feet let the butterfly "taste" a plant by stepping on it.', facts: 'Butterflies are 200 times more sensitive to sweetness than humans — they detect sugar just by standing on a leaf.' }
+            }
+        }
+    };
+
+    const ZONES = [
+        { id: 'head',      subtitle: 'Caput',           color: 0xff6b6b },
+        { id: 'thorax',    subtitle: 'Thorax',          color: 0xffd93d },
+        { id: 'abdomen',   subtitle: 'Abdomen',         color: 0x6bcb77 },
+        { id: 'forewings', subtitle: 'Alae anteriores', color: 0xff9f45 },
+        { id: 'hindwings', subtitle: 'Alae posteriores', color: 0xc77dff },
+        { id: 'legs',      subtitle: 'Pedes',           color: 0x4d96ff }
+    ];
+    const SEEDS = {
+    "head": [
+        [-1.092, 0.501, 0.554],
+        [-0.802, 0.332, 0.58],
+        [-0.528, 0.181, 0.517],
+        [-0.281, 0.082, 0.511],
+        [0.228, 0.082, 0.59],
+        [0.444, 0.132, 0.481],
+        [0.729, 0.291, 0.566],
+        [1.051, 0.479, 0.57]
+    ],
+    "thorax": [
+        [-0.323, 0.04, 0.286],
+        [-0.204, -0.018, 0.279],
+        [-0.251, -0.043, 0.068],
+        [-0.079, -0.077, 0.212],
+        [0.019, -0.06, 0.347],
+        [0.121, -0.071, 0.182],
+        [0.276, 0.013, 0.282],
+        [0.314, -0.028, 0.055]
+    ],
+    "abdomen": [
+        [-0.717, -0.283, -0.646],
+        [-0.604, -0.168, -0.411],
+        [-0.408, -0.457, -0.67],
+        [-0.182, -0.424, -0.397],
+        [0.102, -0.475, -0.414],
+        [0.394, -0.269, -0.415],
+        [0.461, -0.438, -0.685],
+        [0.728, -0.22, -0.563]
+    ],
+    "forewings": [
+        [-1.039, 0.414, 0.249],
+        [-0.898, 0.242, 0.033],
+        [-0.602, 0.157, 0.272],
+        [-0.524, 0.04, -0.018],
+        [0.563, 0.134, 0.256],
+        [0.527, 0.037, -0.02],
+        [0.851, 0.207, 0.014],
+        [1.022, 0.393, 0.231]
+    ],
+    "hindwings": [
+        [-0.872, 0.12, -0.173],
+        [-0.75, -0.003, -0.242],
+        [-0.637, 0.008, -0.161],
+        [-0.408, -0.132, -0.206],
+        [0.381, -0.16, -0.225],
+        [0.593, 0.001, -0.133],
+        [0.696, 0, -0.208],
+        [0.859, 0.113, -0.172]
+    ],
+    "legs": [
+        [-0.141, -0.206, -0.079],
+        [-0.1, -0.394, -0.117],
+        [-0.003, -0.444, 0.233],
+        [-0.07, -0.177, 0.172],
+        [0.053, -0.172, 0.21],
+        [0.09, -0.395, -0.145],
+        [0.056, -0.279, 0.042],
+        [0.158, -0.201, -0.101]
+    ]
+};
+
+    initPoster({ modelFile: 'butterfly.glb', zones: ZONES, seeds: SEEDS, i18n: I18N });
+</script>
+</body>
+</html>

@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Кривошипно-шатунный механизм</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #eef2f7; overflow: hidden; width: 100vw; height: 100vh; color: #1e293b; }
+        #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+
+        .header { position: absolute; top: 0; left: 0; right: 0; padding: 22px 36px; background: linear-gradient(180deg, rgba(255,255,255,0.97) 0%, rgba(255,255,255,0) 100%); z-index: 10; pointer-events: none; }
+        .header h1 { color: #1e40af; font-size: 32px; font-weight: 800; margin: 0; }
+        .header p { color: #64748b; font-size: 17px; margin-top: 4px; }
+
+        #lang-switcher { position: absolute; top: 22px; right: 24px; display: flex; gap: 6px; z-index: 20; background: rgba(255,255,255,0.9); padding: 5px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 2px 10px rgba(0,0,0,0.06); }
+        #lang-switcher button { border: none; background: transparent; padding: 7px 13px; border-radius: 8px; font-size: 14px; font-weight: 700; color: #64748b; cursor: pointer; transition: all 0.15s; }
+        #lang-switcher button:hover { background: #eff6ff; color: #3b82f6; }
+        #lang-switcher button.active { background: #3b82f6; color: #fff; }
+
+        .control-panel { position: absolute; top: 100px; left: 24px; width: 340px; background: rgba(255,255,255,0.96);  border-radius: 18px; padding: 24px; z-index: 10; border: 1px solid #e2e8f0; box-shadow: 0 4px 24px rgba(0,0,0,0.08); max-height: calc(100vh - 130px); overflow-y: auto; }
+        .control-panel::-webkit-scrollbar { width: 4px; }
+        .control-panel::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+        .section-label { color: #64748b; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px; margin: 18px 0 10px; }
+        .section-label:first-child { margin-top: 0; }
+
+        .param-group { background: #f8fafc; border-radius: 12px; padding: 16px; border: 1px solid #e2e8f0; margin-bottom: 10px; }
+        .param-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .param-name { color: #475569; font-size: 15px; font-weight: 600; }
+        .param-value { color: #1d4ed8; font-size: 20px; font-weight: 700; font-family: 'Consolas', monospace; }
+        .param-hint { text-align: right; font-size: 12px; color: #94a3b8; margin-top: 4px; }
+
+        input[type="range"] { width: 100%; height: 8px; border-radius: 4px; -webkit-appearance: none; appearance: none; background: #e2e8f0; cursor: pointer; }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 24px; height: 24px; border-radius: 50%; background: #3b82f6; cursor: pointer; box-shadow: 0 2px 8px rgba(59,130,246,0.4); }
+
+        .checkbox-item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; margin-bottom: 8px; cursor: pointer; transition: background 0.2s; }
+        .checkbox-item:hover { background: #eff6ff; }
+        .checkbox-item input { accent-color: #3b82f6; cursor: pointer; width: 18px; height: 18px; }
+        .checkbox-item label { cursor: pointer; font-size: 14px; color: #334155; font-weight: 500; flex: 1; }
+
+        .info-panel { position: absolute; top: 100px; right: 24px; width: 330px; background: rgba(255,255,255,0.96);  border-radius: 18px; padding: 24px; z-index: 10; border: 1px solid #e2e8f0; box-shadow: 0 4px 24px rgba(0,0,0,0.08); max-height: calc(100vh - 130px); overflow-y: auto; }
+        .info-panel::-webkit-scrollbar { width: 4px; }
+        .info-panel::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .info-panel h3 { color: #1e40af; font-size: 20px; font-weight: 800; margin: 0 0 16px; }
+        .stat-row { display: flex; justify-content: space-between; margin-bottom: 11px; align-items: center; gap: 10px; }
+        .stat-label { color: #64748b; font-size: 14px; font-weight: 500; }
+        .stat-value { color: #1e293b; font-weight: 700; font-family: 'Consolas', monospace; font-size: 15px; text-align: right; }
+
+        .graph-wrap { margin-top: 8px; background: #f8fafc; border-radius: 12px; padding: 12px 12px 8px; border: 1px solid #e2e8f0; }
+        .graph-title { font-size: 12px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
+        #graph { width: 100%; height: 120px; display: block; }
+        .graph-legend { display: flex; gap: 16px; margin-top: 6px; justify-content: center; }
+        .graph-legend span { font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 5px; color: #64748b; }
+        .gl-line { width: 16px; height: 3px; border-radius: 2px; }
+
+        .phase-badge { display: inline-block; padding: 5px 12px; border-radius: 999px; font-size: 13px; font-weight: 700; color: #fff; white-space: nowrap; }
+
+        .desc-box { margin-top: 14px; background: #eff6ff; border-radius: 12px; padding: 14px 16px; border: 1px solid #dbeafe; }
+        .desc-box p { font-size: 13px; color: #1e40af; line-height: 1.6; margin: 0; }
+
+        .legend { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 20px; background: rgba(255,255,255,0.95); padding: 14px 30px; border-radius: 14px; z-index: 10; border: 1px solid #e2e8f0; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+        .legend-item { display: flex; align-items: center; gap: 6px; font-size: 15px; color: #475569; font-weight: 600; }
+        .legend-dot { width: 14px; height: 14px; border-radius: 50%; }
+
+        .btn-row { display: flex; gap: 8px; }
+        .btn { flex: 1; padding: 10px; border: 1px solid #e2e8f0; background: #f8fafc; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 600; color: #334155; transition: all 0.15s; }
+        .btn:hover { background: #eff6ff; border-color: #bfdbfe; }
+        .btn.active { background: #3b82f6; color: #fff; border-color: #3b82f6; }
+    </style>
+</head>
+<body>
+
+<div id="canvas-container"></div>
+
+<div id="lang-switcher">
+    <button data-lang="ru">RU</button>
+    <button data-lang="kz">KZ</button>
+    <button data-lang="en">EN</button>
+</div>
+
+<div class="header">
+    <h1 data-i18n="title">Кривошипно-шатунный механизм</h1>
+    <p data-i18n="subtitle">Преобразование вращательного движения в возвратно-поступательное</p>
+</div>
+
+<div class="control-panel">
+    <div class="section-label" data-i18n="ctrl">Управление</div>
+
+    <div class="param-group">
+        <div class="param-header">
+            <span class="param-name" data-i18n="rpm">Частота вращения</span>
+            <span class="param-value" id="val-rpm">30</span>
+        </div>
+        <input type="range" id="input-rpm" min="0" max="300" step="5" value="30">
+        <div class="param-hint" data-i18n="rpmUnit">об/мин</div>
+    </div>
+
+    <div class="param-group">
+        <div class="param-header">
+            <span class="param-name" data-i18n="crankAngle">Угол кривошипа</span>
+            <span class="param-value" id="val-angle">0°</span>
+        </div>
+        <input type="range" id="input-angle" min="0" max="360" step="1" value="0">
+    </div>
+
+    <div class="btn-row" style="margin-bottom:10px;">
+        <button class="btn active" id="btn-play" data-i18n="pause">⏸ Пауза</button>
+        <button class="btn" id="btn-step" data-i18n="step">Шаг +15°</button>
+    </div>
+
+    <div class="section-label" data-i18n="geometry">Геометрия</div>
+
+    <div class="param-group">
+        <div class="param-header">
+            <span class="param-name" data-i18n="crankRadius">Радиус кривошипа R</span>
+            <span class="param-value" id="val-r">3.0</span>
+        </div>
+        <input type="range" id="input-r" min="1.5" max="4.5" step="0.1" value="3.0">
+        <div class="param-hint" data-i18n="strokeHint">см · ход = 2R</div>
+    </div>
+
+    <div class="param-group">
+        <div class="param-header">
+            <span class="param-name" data-i18n="rodLength">Длина шатуна L</span>
+            <span class="param-value" id="val-l">9.0</span>
+        </div>
+        <input type="range" id="input-l" min="6.0" max="14.0" step="0.1" value="9.0">
+        <div class="param-hint" data-i18n="lambdaHint">см · λ = R/L</div>
+    </div>
+
+    <div class="section-label" data-i18n="visualization">Визуализация</div>
+    <div class="checkbox-item">
+        <input type="checkbox" id="check-trace" checked>
+        <label for="check-trace" data-i18n="vCircle">Окружность кривошипа и линия хода</label>
+    </div>
+    <div class="checkbox-item">
+        <input type="checkbox" id="check-vel" checked>
+        <label for="check-vel" data-i18n="vVel">Вектор скорости ползуна</label>
+    </div>
+    <div class="checkbox-item">
+        <input type="checkbox" id="check-cylinder">
+        <label for="check-cylinder" data-i18n="vCyl">Цилиндр вокруг ползуна</label>
+    </div>
+</div>
+
+<div class="info-panel">
+    <h3 data-i18n="state">Состояние механизма</h3>
+    <div class="stat-row">
+        <span class="stat-label" data-i18n="posLabel">Положение:</span>
+        <span class="phase-badge" id="stat-phase" style="background:#3b82f6">—</span>
+    </div>
+    <div class="stat-row">
+        <span class="stat-label" data-i18n="angleLabel">Угол кривошипа φ:</span>
+        <span class="stat-value" id="stat-angle">0°</span>
+    </div>
+    <div class="stat-row">
+        <span class="stat-label" data-i18n="dispLabel">Перемещение ползуна s:</span>
+        <span class="stat-value" id="stat-disp">0.0</span>
+    </div>
+    <div class="stat-row">
+        <span class="stat-label" data-i18n="velLabel">Скорость ползуна v:</span>
+        <span class="stat-value" id="stat-vel">0.0</span>
+    </div>
+    <div class="stat-row">
+        <span class="stat-label" data-i18n="betaLabel">Угол шатуна β:</span>
+        <span class="stat-value" id="stat-beta">0.0°</span>
+    </div>
+    <div class="stat-row">
+        <span class="stat-label" data-i18n="strokeLabel">Полный ход H:</span>
+        <span class="stat-value" id="stat-stroke">6.0</span>
+    </div>
+
+    <div class="graph-wrap">
+        <div class="graph-title" data-i18n="graphTitle">Перемещение и скорость за оборот</div>
+        <canvas id="graph"></canvas>
+        <div class="graph-legend">
+            <span><span class="gl-line" style="background:#3b82f6"></span><span data-i18n="glDisp">перемещение s</span></span>
+            <span><span class="gl-line" style="background:#f59e0b"></span><span data-i18n="glVel">скорость v</span></span>
+        </div>
+    </div>
+
+    <div class="desc-box">
+        <p data-i18n="descText">Кривошип вращается равномерно, а ползун движется неравномерно: у мёртвых точек он останавливается и меняет направление. Скорость максимальна в средней части хода.</p>
+    </div>
+</div>
+
+<div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#475569"></div><span data-i18n="legCrank">Кривошип</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:#64748b"></div><span data-i18n="legRod">Шатун</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div><span data-i18n="legSlider">Ползун</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:#daa520"></div><span data-i18n="legJoint">Шарниры</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:#94a3b8"></div><span data-i18n="legGuide">Направляющая</span></div>
+</div>
+
+<script type="importmap">
+    {
+        "imports": {
+            "three": "../../libs/vendor/three-0.160.0/three.module.js",
+            "three/addons/": "../../libs/vendor/three-0.160.0/addons/"
+        }
+    }
+</script>
+
+<script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    // ============================ ЛОКАЛИЗАЦИЯ ============================
+    const I18N = {
+        ru: {
+            title: 'Кривошипно-шатунный механизм',
+            subtitle: 'Преобразование вращательного движения в возвратно-поступательное',
+            ctrl: 'Управление', rpm: 'Частота вращения', rpmUnit: 'об/мин',
+            crankAngle: 'Угол кривошипа', play: '▶ Пуск', pause: '⏸ Пауза', step: 'Шаг +15°',
+            geometry: 'Геометрия', crankRadius: 'Радиус кривошипа R', strokeHint: 'см · ход = 2R',
+            rodLength: 'Длина шатуна L', lambdaHint: 'см · λ = R/L',
+            visualization: 'Визуализация', vCircle: 'Окружность кривошипа и линия хода',
+            vVel: 'Вектор скорости ползуна', vCyl: 'Цилиндр вокруг ползуна',
+            state: 'Состояние механизма', posLabel: 'Положение:', angleLabel: 'Угол кривошипа φ:',
+            dispLabel: 'Перемещение ползуна s:', velLabel: 'Скорость ползуна v:',
+            betaLabel: 'Угол шатуна β:', strokeLabel: 'Полный ход H:',
+            graphTitle: 'Перемещение и скорость за оборот', glDisp: 'перемещение s', glVel: 'скорость v',
+            descText: 'Кривошип вращается равномерно, а ползун движется неравномерно: у мёртвых точек он останавливается и меняет направление. Скорость максимальна в средней части хода.',
+            legCrank: 'Кривошип', legRod: 'Шатун', legSlider: 'Ползун', legJoint: 'Шарниры', legGuide: 'Направляющая',
+            cm: 'см', cmS: 'см/с',
+            phaseFar: 'Дальняя мёртвая точка', phaseNear: 'Ближняя мёртвая точка',
+            phaseTo: 'Ход к кривошипу ◄', phaseFrom: 'Ход от кривошипа ►',
+            dcFar: 'М.Т.1', dcNear: 'М.Т.2'
+        },
+        kz: {
+            title: 'Иінбіл-бұлғақ механизмі',
+            subtitle: 'Айналмалы қозғалысты ілгерілемелі-қайтымды қозғалысқа түрлендіру',
+            ctrl: 'Басқару', rpm: 'Айналу жиілігі', rpmUnit: 'айн/мин',
+            crankAngle: 'Иінбіл бұрышы', play: '▶ Бастау', pause: '⏸ Кідіріс', step: 'Қадам +15°',
+            geometry: 'Геометрия', crankRadius: 'Иінбіл радиусы R', strokeHint: 'см · жүріс = 2R',
+            rodLength: 'Бұлғақ ұзындығы L', lambdaHint: 'см · λ = R/L',
+            visualization: 'Көрнекілік', vCircle: 'Иінбіл шеңбері және жүріс сызығы',
+            vVel: 'Сырғытпа жылдамдық векторы', vCyl: 'Сырғытпа айналасындағы цилиндр',
+            state: 'Механизм күйі', posLabel: 'Орналасуы:', angleLabel: 'Иінбіл бұрышы φ:',
+            dispLabel: 'Сырғытпа орын ауыстыруы s:', velLabel: 'Сырғытпа жылдамдығы v:',
+            betaLabel: 'Бұлғақ бұрышы β:', strokeLabel: 'Толық жүріс H:',
+            graphTitle: 'Бір айналымдағы орын ауыстыру мен жылдамдық', glDisp: 'орын ауыстыру s', glVel: 'жылдамдық v',
+            descText: 'Иінбіл бірқалыпты айналады, ал сырғытпа бірқалыпсыз қозғалады: өлі нүктелерде ол тоқтап, бағытын өзгертеді. Жылдамдық жүрістің орта тұсында ең үлкен болады.',
+            legCrank: 'Иінбіл', legRod: 'Бұлғақ', legSlider: 'Сырғытпа', legJoint: 'Топсалар', legGuide: 'Бағыттауыш',
+            cm: 'см', cmS: 'см/с',
+            phaseFar: 'Алыс өлі нүкте', phaseNear: 'Жақын өлі нүкте',
+            phaseTo: 'Иінбілге қарай жүріс ◄', phaseFrom: 'Иінбілден әрі жүріс ►',
+            dcFar: 'Ө.Н.1', dcNear: 'Ө.Н.2'
+        },
+        en: {
+            title: 'Crank-Slider Mechanism',
+            subtitle: 'Converting rotary motion into reciprocating motion',
+            ctrl: 'Controls', rpm: 'Rotation speed', rpmUnit: 'rpm',
+            crankAngle: 'Crank angle', play: '▶ Play', pause: '⏸ Pause', step: 'Step +15°',
+            geometry: 'Geometry', crankRadius: 'Crank radius R', strokeHint: 'cm · stroke = 2R',
+            rodLength: 'Connecting rod length L', lambdaHint: 'cm · λ = R/L',
+            visualization: 'Visualization', vCircle: 'Crank circle and stroke line',
+            vVel: 'Slider velocity vector', vCyl: 'Cylinder around the slider',
+            state: 'Mechanism state', posLabel: 'Position:', angleLabel: 'Crank angle φ:',
+            dispLabel: 'Slider displacement s:', velLabel: 'Slider velocity v:',
+            betaLabel: 'Rod angle β:', strokeLabel: 'Full stroke H:',
+            graphTitle: 'Displacement and velocity per revolution', glDisp: 'displacement s', glVel: 'velocity v',
+            descText: 'The crank rotates uniformly, but the slider moves non-uniformly: at the dead centers it stops and reverses direction. The velocity is greatest in the middle of the stroke.',
+            legCrank: 'Crank', legRod: 'Connecting rod', legSlider: 'Slider', legJoint: 'Joints', legGuide: 'Guide',
+            cm: 'cm', cmS: 'cm/s',
+            phaseFar: 'Far dead center', phaseNear: 'Near dead center',
+            phaseTo: 'Stroke toward crank ◄', phaseFrom: 'Stroke away from crank ►',
+            dcFar: 'DC 1', dcNear: 'DC 2'
+        }
+    };
+
+    let lang = (new URLSearchParams(location.search).get('lang') || 'ru').toLowerCase();
+    if (!I18N[lang]) lang = 'ru';
+    let T = I18N[lang];
+
+    // --- Параметры механизма (сцена в сантиметрах) ---
+    // Кривошип вращается в плоскости crankZ, шатун/ползун/направляющие — в плоскости rodZ (вынесены вперёд, чтобы детали не пересекались).
+    const P = { R: 3.0, L: 9.0, depth: 0.7, crankZ: -0.7, rodZ: 0.6 };
+    let rpm = 30, angleDeg = 0, isPlaying = true;
+
+    let scene, camera, renderer, controls;
+    let crankGroup, crankWeb, crankPin, counterWeight, rodMesh, sliderMesh, cylinderMesh;
+    let traceRing, traceLine, velArrow;
+    let dcSprites = [];
+
+    const matCrank   = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.85, roughness: 0.28 });
+    const matCounter = new THREE.MeshStandardMaterial({ color: 0x3a4759, metalness: 0.85, roughness: 0.3 });
+    const matRod     = new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.7, roughness: 0.35 });
+    const matSlider  = new THREE.MeshStandardMaterial({ color: 0xe0a92e, metalness: 0.55, roughness: 0.32 });
+    const matPin     = new THREE.MeshStandardMaterial({ color: 0xdaa520, metalness: 0.8, roughness: 0.25 });
+    const matGuide   = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.35, roughness: 0.6 });
+    const matFrame   = new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.4, roughness: 0.55 });
+
+    function init() {
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xeef2f7);
+
+        camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 400);
+        camera.position.set(6, 13, 40);
+
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = false;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.85));
+        const dir = new THREE.DirectionalLight(0xffffff, 1.0);
+        dir.position.set(12, 24, 18); dir.castShadow = true;
+        dir.shadow.mapSize.set(2048, 2048);
+        dir.shadow.camera.left = -24; dir.shadow.camera.right = 24;
+        dir.shadow.camera.top = 24; dir.shadow.camera.bottom = -24;
+        scene.add(dir);
+        const back = new THREE.DirectionalLight(0xffffff, 0.35);
+        back.position.set(-14, 10, -12); scene.add(back);
+
+        const grid = new THREE.GridHelper(70, 35, 0xd1d5db, 0xe5e7eb);
+        grid.position.y = -6; scene.add(grid);
+        const floor = new THREE.Mesh(new THREE.PlaneGeometry(140, 140), new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.95 }));
+        floor.rotation.x = -Math.PI / 2; floor.position.y = -6.01; floor.receiveShadow = true; scene.add(floor);
+
+        controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true; controls.dampingFactor = 0.08;
+        controls.target.set(5, 2.5, 0);
+        controls.minDistance = 18; controls.maxDistance = 95;
+
+        buildScene();
+        setupGraph();
+        setupUI();
+        applyGeometry();
+        applyLang();
+        animate();
+
+        window.addEventListener('resize', onResize);
+    }
+
+    function onResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        sizeGraph();
+    }
+
+    function buildScene() {
+        const cz = P.crankZ, rz = P.rodZ;
+
+        // === Опора кривошипа (рама + подшипник) — позади плоскости кривошипа ===
+        const pillar = new THREE.Mesh(new THREE.BoxGeometry(3, 8, 2.4), matFrame);
+        pillar.position.set(0, -2, cz - 1.9); pillar.castShadow = true; pillar.receiveShadow = true;
+        scene.add(pillar);
+        const bearing = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 1.2, 28), matGuide);
+        bearing.rotation.x = Math.PI / 2; bearing.position.set(0, 0, cz - 1.0); scene.add(bearing);
+
+        // Главный вал (вдоль Z, от подшипника к кривошипу)
+        const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 2.4, 24), matCrank);
+        shaft.rotation.x = Math.PI / 2; shaft.position.set(0, 0, cz - 0.9); scene.add(shaft);
+
+        // === Кривошип (вращается вокруг Z) в плоскости cz ===
+        crankGroup = new THREE.Group();
+        crankGroup.position.set(0, 0, cz);
+        scene.add(crankGroup);
+
+        const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.85, P.depth + 0.3, 28), matCrank);
+        hub.rotation.x = Math.PI / 2; crankGroup.add(hub);
+
+        // Щека кривошипа (плечо радиуса R) — масштабируется по X в applyGeometry
+        crankWeb = new THREE.Mesh(new THREE.BoxGeometry(1, 1.5, P.depth), matCrank);
+        crankWeb.castShadow = true; crankGroup.add(crankWeb);
+
+        // Противовес (полудиск с противоположной от пальца стороны)
+        counterWeight = new THREE.Mesh(new THREE.CylinderGeometry(1.7, 1.7, P.depth, 32, 1, false, 0, Math.PI), matCounter);
+        counterWeight.rotation.set(Math.PI / 2, 0, Math.PI / 2); counterWeight.castShadow = true;
+        crankGroup.add(counterWeight);
+
+        // Шатунная шейка (палец кривошипа) — выходит из плоскости cz вперёд к плоскости rz
+        const pinLen = (rz - cz) + 0.8;
+        crankPin = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, pinLen, 20), matPin);
+        crankPin.rotation.x = Math.PI / 2; crankGroup.add(crankPin); // позиция в applyGeometry
+
+        // === Шатун === (в плоскости rz)
+        rodMesh = new THREE.Mesh(new THREE.BoxGeometry(1, 0.85, 0.5), matRod);
+        rodMesh.castShadow = true; scene.add(rodMesh);
+        const big = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.18, 14, 28), matRod);
+        big.name = 'bigEnd'; scene.add(big);
+        const small = new THREE.Mesh(new THREE.TorusGeometry(0.48, 0.16, 14, 28), matRod);
+        small.name = 'smallEnd'; scene.add(small);
+        rodMesh.userData.big = big; rodMesh.userData.small = small;
+
+        // === Ползун (крейцкопф) === — глубокий, чтобы доставать до задних направляющих
+        sliderMesh = new THREE.Mesh(new THREE.BoxGeometry(2.4, 2.4, 2.6), matSlider);
+        sliderMesh.castShadow = true; scene.add(sliderMesh);
+        const wpin = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.38, 3.0, 18), matPin);
+        wpin.rotation.x = Math.PI / 2; sliderMesh.add(wpin);
+
+        // === Направляющая (две рейки вдоль X) — в задней Z-плоскости, чтобы шатун всегда проходил перед ними ===
+        for (const sgn of [1, -1]) {
+            const rail = new THREE.Mesh(new THREE.BoxGeometry(1, 0.5, 0.9), matGuide);
+            rail.name = 'rail'; rail.userData.sgn = sgn;
+            rail.position.set(0, sgn * 1.45, rz - 0.85); rail.receiveShadow = true; rail.castShadow = true;
+            rail.userData.isRail = true; scene.add(rail);
+        }
+        const bed = new THREE.Mesh(new THREE.BoxGeometry(1, 0.6, 2.6), matFrame);
+        bed.name = 'bed'; bed.position.set(0, -2.0, rz - 0.45); bed.receiveShadow = true; scene.add(bed);
+
+        // Прозрачный цилиндр вокруг ползуна (выкл. по умолчанию)
+        cylinderMesh = new THREE.Mesh(
+            new THREE.CylinderGeometry(1.6, 1.6, 1, 32, 1, true),
+            new THREE.MeshPhysicalMaterial({ color: 0xbcd4ee, metalness: 0, roughness: 0.12, transparent: true, opacity: 0.0, side: THREE.DoubleSide, depthWrite: false })
+        );
+        cylinderMesh.rotation.z = Math.PI / 2; cylinderMesh.position.z = rz;
+        cylinderMesh.visible = false; scene.add(cylinderMesh);
+
+        // === Окружность кривошипа (в плоскости cz) + линия хода (в плоскости rz) ===
+        traceRing = new THREE.Mesh(new THREE.TorusGeometry(P.R, 0.05, 8, 64), new THREE.MeshBasicMaterial({ color: 0x3b82f6 }));
+        traceRing.position.set(0, 0, cz + P.depth / 2 + 0.05); scene.add(traceRing);
+
+        traceLine = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineDashedMaterial({ color: 0xf59e0b, dashSize: 0.4, gapSize: 0.25 }));
+        scene.add(traceLine);
+
+        velArrow = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 0, 0), 2, 0xf59e0b, 0.7, 0.45);
+        scene.add(velArrow);
+
+        // Метки мёртвых точек (текст ставится в applyLang)
+        dcSprites = [makeSprite(rz), makeSprite(rz)];
+        dcSprites.forEach(s => scene.add(s));
+    }
+
+    function makeSprite(z) {
+        const sp = new THREE.Sprite(new THREE.SpriteMaterial({ depthTest: false }));
+        sp.position.z = z; sp.scale.set(2.6, 0.85, 1);
+        return sp;
+    }
+    function setSpriteText(sp, text) {
+        const c = document.createElement('canvas'); c.width = 200; c.height = 64;
+        const g = c.getContext('2d');
+        g.fillStyle = 'rgba(255,255,255,0.92)'; g.beginPath(); g.roundRect(0, 0, 200, 64, 12); g.fill();
+        g.strokeStyle = '#94a3b8'; g.lineWidth = 2; g.beginPath(); g.roundRect(1, 1, 198, 62, 12); g.stroke();
+        g.fillStyle = '#475569'; g.font = 'bold 30px Segoe UI, Arial'; g.textAlign = 'center'; g.textBaseline = 'middle';
+        g.fillText(text, 100, 34);
+        if (sp.material.map) sp.material.map.dispose();
+        sp.material.map = new THREE.CanvasTexture(c); sp.material.needsUpdate = true;
+    }
+
+    // === Кинематика кривошипно-шатунного механизма ===
+    function kinematics(phiRad) {
+        const R = P.R, L = P.L;
+        const ax = R * Math.cos(phiRad);
+        const ay = R * Math.sin(phiRad);
+        const root = Math.sqrt(Math.max(L * L - ay * ay, 1e-6));   // √(L² − R²sin²φ)
+        const bx = ax + root;                                       // положение ползуна по X
+        const beta = Math.asin(ay / L);                             // угол шатуна
+        const s = bx - (L - R);                                     // перемещение от ближней М.Т., s∈[0;2R]
+        const dxdphi = -ay - (ax * ay) / root;                      // ds/dφ (см/рад)
+        return { ax, ay, bx, root, beta, s, dxdphi };
+    }
+
+    function applyGeometry() {
+        const R = P.R, L = P.L, cz = P.crankZ, rz = P.rodZ;
+        crankWeb.scale.x = R; crankWeb.position.set(R / 2, 0, 0);
+        crankPin.position.set(R, 0, (rz - cz) / 2);   // от плоскости cz до rz
+        rodMesh.scale.x = L;
+
+        traceRing.geometry.dispose();
+        traceRing.geometry = new THREE.TorusGeometry(R, 0.05, 8, 64);
+
+        traceLine.geometry.dispose();
+        traceLine.geometry = new THREE.BufferGeometry().setFromPoints([
+            new THREE.Vector3(L - R, 0, rz + 1.2), new THREE.Vector3(L + R, 0, rz + 1.2)
+        ]);
+        traceLine.computeLineDistances();
+
+        // Направляющие рейки и основание: вдоль хода ползуна
+        const railLen = 2 * R + 5, railCx = L;
+        scene.traverse(o => {
+            if (o.userData && o.userData.isRail) { o.scale.x = railLen; o.position.x = railCx; }
+            if (o.name === 'bed') { o.scale.x = railLen + 2; o.position.x = railCx; }
+        });
+
+        cylinderMesh.scale.y = 2 * R + 3; cylinderMesh.position.x = L;
+
+        if (dcSprites[0]) dcSprites[0].position.set(L + R, 3.6, rz + 1.2);
+        if (dcSprites[1]) dcSprites[1].position.set(L - R, 3.6, rz + 1.2);
+
+        drawGraph(angleDeg);
+        document.getElementById('val-r').textContent = R.toFixed(1);
+        document.getElementById('val-l').textContent = L.toFixed(1);
+        document.getElementById('stat-stroke').textContent = (2 * R).toFixed(1) + ' ' + T.cm;
+    }
+
+    function updateMechanism(dt) {
+        if (isPlaying && rpm > 0) {
+            angleDeg += (rpm * 360 / 60) * dt;
+            angleDeg = ((angleDeg % 360) + 360) % 360;
+            document.getElementById('input-angle').value = Math.round(angleDeg);
+        }
+        const phi = THREE.MathUtils.degToRad(angleDeg);
+        const k = kinematics(phi);
+        const rz = P.rodZ;
+
+        crankGroup.rotation.z = phi;
+
+        const A = new THREE.Vector3(k.ax, k.ay, rz);   // палец кривошипа (в плоскости шатуна)
+        const B = new THREE.Vector3(k.bx, 0, rz);      // ось ползуна
+
+        const mid = A.clone().add(B).multiplyScalar(0.5);
+        rodMesh.position.copy(mid);
+        rodMesh.rotation.z = Math.atan2(B.y - A.y, B.x - A.x);
+        rodMesh.userData.big.position.copy(A); rodMesh.userData.big.rotation.y = Math.PI / 2;
+        rodMesh.userData.small.position.copy(B); rodMesh.userData.small.rotation.y = Math.PI / 2;
+
+        sliderMesh.position.set(k.bx, 0, rz);
+
+        const omega = rpm * 2 * Math.PI / 60;          // рад/с
+        const vLinear = omega * k.dxdphi;              // см/с
+
+        if (velArrow.visible) {
+            const sign = Math.sign(k.dxdphi) || 1;
+            const mag = Math.min(Math.abs(k.dxdphi) * 0.9 + 0.001, P.R * 1.3);
+            velArrow.position.set(k.bx, 2.6, rz);
+            velArrow.setDirection(new THREE.Vector3(sign, 0, 0));
+            velArrow.setLength(Math.max(mag, 0.15), 0.55, 0.4);
+        }
+
+        cylinderMesh.material.opacity = document.getElementById('check-cylinder').checked ? 0.22 : 0.0;
+
+        // === UI ===
+        const betaDeg = THREE.MathUtils.radToDeg(k.beta);
+        document.getElementById('val-angle').textContent = Math.round(angleDeg) + '°';
+        document.getElementById('stat-angle').textContent = Math.round(angleDeg) + '°';
+        document.getElementById('stat-disp').textContent = k.s.toFixed(2) + ' ' + T.cm;
+        document.getElementById('stat-vel').textContent = (rpm > 0 ? (Math.abs(vLinear) < 0.05 ? 0 : vLinear).toFixed(1) : '0.0') + ' ' + T.cmS;
+        document.getElementById('stat-beta').textContent = betaDeg.toFixed(1) + '°';
+
+        const phase = document.getElementById('stat-phase');
+        const near = (a, b) => Math.abs((((a - b + 180) % 360) + 360) % 360 - 180) < 5;
+        if (near(angleDeg, 0)) { phase.textContent = T.phaseFar; phase.style.background = '#ef4444'; }
+        else if (near(angleDeg, 180)) { phase.textContent = T.phaseNear; phase.style.background = '#ef4444'; }
+        else if (vLinear < 0) { phase.textContent = T.phaseTo; phase.style.background = '#3b82f6'; }
+        else { phase.textContent = T.phaseFrom; phase.style.background = '#10b981'; }
+
+        drawGraph(angleDeg);
+    }
+
+    // === График перемещения и скорости ===
+    let gctx, gcanvas;
+    function setupGraph() { gcanvas = document.getElementById('graph'); gctx = gcanvas.getContext('2d'); sizeGraph(); }
+    function sizeGraph() {
+        if (!gcanvas) return;
+        const ratio = window.devicePixelRatio || 1, w = gcanvas.clientWidth, h = 120;
+        gcanvas.width = w * ratio; gcanvas.height = h * ratio;
+        gctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+        drawGraph(angleDeg);
+    }
+    function drawGraph(curDeg) {
+        if (!gctx) return;
+        const w = gcanvas.clientWidth, h = 120, pad = 8, R = P.R, L = P.L;
+        gctx.clearRect(0, 0, w, h);
+        gctx.strokeStyle = '#e2e8f0'; gctx.lineWidth = 1;
+        gctx.beginPath(); gctx.moveTo(pad, h / 2); gctx.lineTo(w - pad, h / 2); gctx.stroke();
+
+        let vmax = 0;
+        for (let d = 0; d <= 360; d += 2) {
+            const ph = THREE.MathUtils.degToRad(d), ay = R * Math.sin(ph), ax = R * Math.cos(ph);
+            const root = Math.sqrt(Math.max(L * L - ay * ay, 1e-6));
+            const v = Math.abs(-ay - (ax * ay) / root); if (v > vmax) vmax = v;
+        }
+        const sX = d => pad + (d / 360) * (w - 2 * pad);
+        const sYpos = s => h - pad - (s / (2 * R)) * (h - 2 * pad);
+        const sYvel = v => h / 2 - (v / vmax) * (h / 2 - pad);
+
+        gctx.strokeStyle = '#3b82f6'; gctx.lineWidth = 2.2; gctx.beginPath();
+        for (let d = 0; d <= 360; d += 2) { const k = kinematics(THREE.MathUtils.degToRad(d)); const x = sX(d), y = sYpos(k.s); d === 0 ? gctx.moveTo(x, y) : gctx.lineTo(x, y); }
+        gctx.stroke();
+
+        gctx.strokeStyle = '#f59e0b'; gctx.lineWidth = 2.2; gctx.beginPath();
+        for (let d = 0; d <= 360; d += 2) {
+            const ph = THREE.MathUtils.degToRad(d), ay = R * Math.sin(ph), ax = R * Math.cos(ph);
+            const root = Math.sqrt(Math.max(L * L - ay * ay, 1e-6)), v = -ay - (ax * ay) / root;
+            const x = sX(d), y = sYvel(v); d === 0 ? gctx.moveTo(x, y) : gctx.lineTo(x, y);
+        }
+        gctx.stroke();
+
+        const cx = sX(curDeg);
+        gctx.strokeStyle = '#94a3b8'; gctx.lineWidth = 1; gctx.setLineDash([3, 3]);
+        gctx.beginPath(); gctx.moveTo(cx, pad); gctx.lineTo(cx, h - pad); gctx.stroke(); gctx.setLineDash([]);
+        const kc = kinematics(THREE.MathUtils.degToRad(curDeg));
+        gctx.fillStyle = '#3b82f6'; gctx.beginPath(); gctx.arc(cx, sYpos(kc.s), 3.5, 0, 7); gctx.fill();
+    }
+
+    // === Локализация ===
+    function applyLang() {
+        T = I18N[lang];
+        document.documentElement.lang = lang;
+        document.title = T.title;
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const k = el.getAttribute('data-i18n');
+            if (T[k] != null) el.textContent = T[k];
+        });
+        // кнопка Play/Pause зависит от состояния
+        document.getElementById('btn-play').textContent = isPlaying ? T.pause : T.play;
+        // активная кнопка языка
+        document.querySelectorAll('#lang-switcher button').forEach(b => b.classList.toggle('active', b.dataset.lang === lang));
+        // метки мёртвых точек в 3D
+        if (dcSprites[0]) setSpriteText(dcSprites[0], T.dcFar);
+        if (dcSprites[1]) setSpriteText(dcSprites[1], T.dcNear);
+        // обновим динамические строки
+        updateMechanism(0);
+    }
+
+    function setupUI() {
+        const rpmEl = document.getElementById('input-rpm');
+        const angEl = document.getElementById('input-angle');
+        const btnPlay = document.getElementById('btn-play');
+
+        rpmEl.addEventListener('input', e => { rpm = parseInt(e.target.value); document.getElementById('val-rpm').textContent = rpm; });
+        angEl.addEventListener('input', e => {
+            isPlaying = false; btnPlay.classList.remove('active'); btnPlay.textContent = T.play;
+            angleDeg = parseFloat(e.target.value); updateMechanism(0);
+        });
+        btnPlay.addEventListener('click', () => {
+            isPlaying = !isPlaying; btnPlay.classList.toggle('active', isPlaying);
+            btnPlay.textContent = isPlaying ? T.pause : T.play;
+        });
+        document.getElementById('btn-step').addEventListener('click', () => {
+            isPlaying = false; btnPlay.classList.remove('active'); btnPlay.textContent = T.play;
+            angleDeg = (angleDeg + 15) % 360; angEl.value = Math.round(angleDeg); updateMechanism(0);
+        });
+
+        document.getElementById('input-r').addEventListener('input', e => {
+            P.R = parseFloat(e.target.value);
+            if (P.L <= P.R + 1) { P.L = P.R + 1; document.getElementById('input-l').value = P.L; }
+            applyGeometry(); updateMechanism(0);
+        });
+        document.getElementById('input-l').addEventListener('input', e => {
+            P.L = parseFloat(e.target.value);
+            if (P.L <= P.R + 1) { P.L = P.R + 1; e.target.value = P.L; }
+            applyGeometry(); updateMechanism(0);
+        });
+
+        document.getElementById('check-trace').addEventListener('change', e => {
+            traceRing.visible = e.target.checked; traceLine.visible = e.target.checked;
+            dcSprites.forEach(s => s.visible = e.target.checked);
+        });
+        document.getElementById('check-vel').addEventListener('change', e => { velArrow.visible = e.target.checked; });
+        document.getElementById('check-cylinder').addEventListener('change', e => { cylinderMesh.visible = e.target.checked; });
+
+        document.querySelectorAll('#lang-switcher button').forEach(b => {
+            b.addEventListener('click', () => { lang = b.dataset.lang; applyLang(); });
+        });
+    }
+
+    let lastTime = 0;
+    function animate(time) {
+        requestAnimationFrame(animate);
+        const dt = Math.min((time - lastTime) / 1000 || 0, 0.05); lastTime = time;
+        updateMechanism(dt); controls.update(); renderer.render(scene, camera);
+    }
+
+    init();
+</script>
+</body>
+</html>

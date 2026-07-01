@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Арочный мост</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { width: 100%; height: 100%; overflow: hidden; }
+        body { font-family: 'Segoe UI','Inter',system-ui,sans-serif; background: linear-gradient(135deg,#eaf2fb 0%,#dfeaf6 100%); color:#16233f; }
+        #canvas-container { position: absolute; inset: 0; }
+        #labels { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+        .label3d { position: absolute; transform: translate(-50%,-50%); font-size: 12px; font-weight: 800; padding: 2px 9px; border-radius: 7px; background: rgba(255,255,255,0.93); border: 1.5px solid rgba(150,170,205,0.6); box-shadow: 0 2px 8px rgba(40,60,110,0.16); white-space: nowrap; }
+        .label3d.thr { color:#dc2626; border-color:#f3a3a3; } .label3d.rec { color:#2563eb; border-color:#a3c0f5; }
+
+        .header { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); text-align: center; z-index: 6; pointer-events: none; width: 92%; }
+        .header h1 { font-size: 25px; font-weight: 800; color:#1b2a4a; text-shadow: 0 1px 0 rgba(255,255,255,0.7); }
+        .header p { font-size: 13.5px; color:#5a6b8c; margin-top: 4px; font-weight: 600; }
+
+        .panel { position: absolute; z-index: 7; background: rgba(255,255,255,0.82);   border: 1px solid rgba(150,170,205,0.5); border-radius: 16px; box-shadow: 0 10px 34px rgba(40,60,110,0.14); }
+        .control-panel { top: 88px; left: 22px; width: 314px; padding: 16px 18px; }
+        .info-panel { top: 88px; right: 22px; width: 296px; padding: 16px 18px; }
+
+        .param-group { margin-bottom: 13px; }
+        .param-label { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+        .param-name { font-size: 13px; font-weight: 700; color:#33405e; display: flex; align-items: center; gap: 6px; }
+        .param-value { font-size: 15px; font-weight: 800; color:#b45309; font-variant-numeric: tabular-nums; }
+
+        input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; border-radius: 6px; outline: none; cursor: pointer; background: linear-gradient(90deg,#e8d4bf,#d6b896); }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; border-radius: 50%; background:#fff; border: 3px solid #b45309; box-shadow: 0 2px 7px rgba(180,83,9,0.4); cursor: pointer; }
+
+        .toggle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
+        .toggle-btn { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 9px 6px; border-radius: 10px; border: 1.5px solid rgba(150,170,205,0.6); background: rgba(255,255,255,0.55); color:#44537a; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.16s; }
+        .toggle-btn .dot { width: 9px; height: 9px; border-radius: 50%; background:#b7c2d8; transition: all 0.16s; }
+        .toggle-btn.active { background: rgba(180,83,9,0.12); border-color:#b45309; color:#1b2a4a; }
+        .toggle-btn.active .dot { background:#b45309; box-shadow: 0 0 7px rgba(180,83,9,0.8); }
+
+        .action-row { display: flex; gap: 8px; margin-top: 11px; }
+        .btn { flex: 1; padding: 9px; border: none; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.16s; color:#fff; }
+        .btn-play { background: linear-gradient(135deg,#16a34a,#15803d); } .btn-reset { background: linear-gradient(135deg,#64748b,#475569); }
+        .btn:hover { filter: brightness(1.07); transform: translateY(-1px); }
+
+        .info-title { font-size: 15px; font-weight: 800; color:#1b2a4a; margin-bottom: 10px; display: flex; align-items: center; gap: 7px; }
+        .readout { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px dashed rgba(150,170,205,0.45); font-size: 13px; }
+        .readout:last-child { border-bottom: none; }
+        .ro-name { color:#5a6b8c; font-weight: 600; } .ro-name b { color:#16233f; font-style:italic; font-family:'Times New Roman',serif; }
+        .ro-val { font-weight: 800; color:#1b2a4a; font-variant-numeric: tabular-nums; }
+        .thr-bar { height: 10px; border-radius: 5px; background:#e3e9f2; overflow:hidden; margin-top:7px; }
+        .thr-bar > div { height:100%; width:0%; background: linear-gradient(90deg,#f59e0b,#dc2626); transition: width 0.15s; }
+        .legend { display:flex; align-items:center; gap:8px; margin-top:11px; font-size:11.5px; color:#5a6b8c; }
+        .legend .grad { flex:1; height:10px; border-radius:5px; background: linear-gradient(90deg,#2563eb,#22c55e,#eab308,#dc2626); }
+
+        .formula-panel { position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 7; background: rgba(27,42,74,0.93); color:#eaf0fb; padding: 10px 22px; border-radius: 13px; box-shadow: 0 10px 30px rgba(20,35,70,0.34); text-align: center; max-width: 76%; }
+        .formula { font-size: 16px; font-weight: 600; } .formula b.h { color:#ff9a8a; } .formula b.f { color:#7fe0a8; }
+        .formula-note { font-size: 12px; color:#9fb2d8; margin-top: 4px; }
+        .hint { position: absolute; bottom: 16px; left: 22px; z-index: 7; font-size: 12px; color:#5a6b8c; background: rgba(255,255,255,0.72); padding: 7px 13px; border-radius: 9px; border: 1px solid rgba(150,170,205,0.45); }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div id="labels"></div>
+
+    <div class="header">
+        <h1>🌉 Арочный мост</h1>
+        <p><span id="h-sub">Арка работает на сжатие • нагрузка → распор на опоры</span></p>
+    </div>
+
+    <div class="panel control-panel">
+        <div class="param-group">
+            <div class="param-label"><span class="param-name">🚚 <span data-i18n="loadLabel">Вес нагрузки</span></span><span class="param-value" id="load-value">400 кН</span></div>
+            <input type="range" id="load-slider" min="0" max="800" step="10" value="400">
+        </div>
+        <div class="param-group">
+            <div class="param-label"><span class="param-name">📐 <span data-i18n="riseLabel">Высота арки (стрела)</span></span><span class="param-value" id="rise-value">9 м</span></div>
+            <input type="range" id="rise-slider" min="3" max="15" step="0.5" value="9">
+        </div>
+        <div class="param-group">
+            <div class="param-label"><span class="param-name">📍 <span data-i18n="posLabel">Положение нагрузки</span></span><span class="param-value" id="pos-value">центр</span></div>
+            <input type="range" id="pos-slider" min="0" max="100" value="50">
+        </div>
+
+        <div class="toggle-grid">
+            <button class="toggle-btn active" id="t-stress"><span class="dot"></span><span data-i18n="tStress">Сжатие (цвет)</span></button>
+            <button class="toggle-btn active" id="t-thrust"><span class="dot"></span><span data-i18n="tThrust">Распор и реакции</span></button>
+            <button class="toggle-btn active" id="t-cols"><span class="dot"></span><span data-i18n="tCols">Стойки и линии сил</span></button>
+            <button class="toggle-btn active" id="t-labels"><span class="dot"></span><span data-i18n="tLabels">Подписи</span></button>
+        </div>
+
+        <div class="action-row">
+            <button class="btn btn-play" id="btn-drive" data-i18n="drive">▶ Авто-проезд</button>
+            <button class="btn btn-reset" id="btn-reset" data-i18n="reset">↺ Вид</button>
+        </div>
+    </div>
+
+    <div class="panel info-panel">
+        <div class="info-title">📊 <span data-i18n="infoTitle">Усилия в конструкции</span></div>
+        <div class="readout"><span class="ro-name"><span data-i18n="roSpan">Пролёт</span>, <b>L</b></span><span class="ro-val" id="ro-span">60 м</span></div>
+        <div class="readout"><span class="ro-name"><span data-i18n="roThrust">Горизонт. распор</span>, <b>H</b></span><span class="ro-val" id="ro-thrust" style="color:#dc2626">— кН</span></div>
+        <div class="thr-bar"><div id="thr-fill"></div></div>
+        <div class="readout"><span class="ro-name"><span data-i18n="roRl">Реакция левой опоры</span></span><span class="ro-val" id="ro-rl" style="color:#2563eb">— кН</span></div>
+        <div class="readout"><span class="ro-name"><span data-i18n="roRr">Реакция правой опоры</span></span><span class="ro-val" id="ro-rr" style="color:#2563eb">— кН</span></div>
+        <div class="readout"><span class="ro-name"><span data-i18n="roMax">Макс. сжатие в арке</span></span><span class="ro-val" id="ro-max">— кН</span></div>
+        <div class="legend"><span data-i18n="legLow">мало</span><span class="grad"></span><span data-i18n="legHigh">сильно</span></div>
+    </div>
+
+    <div class="formula-panel">
+        <div class="formula"><b class="h">H</b> = P·a·b / (L·<b class="f">f</b>) &nbsp;|&nbsp; <span data-i18n="fNote">меньше стрела f → больше распор H</span></div>
+        <div class="formula-note" data-i18n="note">Арка передаёт нагрузку на опоры сжатием; пологая арка сильнее «распирает» опоры в стороны</div>
+    </div>
+
+    <div class="hint"><span data-i18n="hint">ЛКМ — вращение • ПКМ — перемещение • Колесо — зум</span></div>
+
+    <script src="../../libs/vendor/three-r128/three.min.js"></script>
+    <script>
+    const LANG = (new URLSearchParams(window.location.search).get('lang')) || 'ru';
+    const I18N = {
+        ru: { headH:'🌉 Арочный мост', headS:'Арка работает на сжатие • нагрузка → распор на опоры',
+              loadLabel:'Вес нагрузки', riseLabel:'Высота арки (стрела)', posLabel:'Положение нагрузки',
+              tStress:'Сжатие (цвет)', tThrust:'Распор и реакции', tCols:'Стойки и линии сил', tLabels:'Подписи',
+              drive:'▶ Авто-проезд', stop:'⏸ Стоп', reset:'↺ Вид', infoTitle:'Усилия в конструкции',
+              roSpan:'Пролёт', roThrust:'Горизонт. распор', roRl:'Реакция левой опоры', roRr:'Реакция правой опоры', roMax:'Макс. сжатие в арке',
+              legLow:'мало', legHigh:'сильно', fNote:'меньше стрела f → больше распор H',
+              note:'Арка передаёт нагрузку на опоры сжатием; пологая арка сильнее «распирает» опоры в стороны',
+              hint:'ЛКМ — вращение • ПКМ — перемещение • Колесо — зум',
+              lArch:'Арка (сжатие)', lDeck:'Проезжая часть', lCol:'Стойки', lAbL:'Опора (абатмент)', lAbR:'Опора (абатмент)', lThrust:'Распор H', lLoad:'Нагрузка P',
+              center:'центр', uKN:' кН', uM:' м' },
+        kz: { headH:'🌉 Доғалы көпір', headS:'Доға сығылуға жұмыс істейді • жүктеме → тіректерге үлкею',
+              loadLabel:'Жүктеме салмағы', riseLabel:'Доға биіктігі (көтерілім)', posLabel:'Жүктеме орны',
+              tStress:'Сығылу (түс)', tThrust:'Үлкею мен реакциялар', tCols:'Тіректер мен күш сызықтары', tLabels:'Жазулар',
+              drive:'▶ Авто-өту', stop:'⏸ Тоқта', reset:'↺ Көрініс', infoTitle:'Конструкциядағы күштер',
+              roSpan:'Аралық', roThrust:'Көлденең үлкею', roRl:'Сол тірек реакциясы', roRr:'Оң тірек реакциясы', roMax:'Доғадағы макс. сығылу',
+              legLow:'аз', legHigh:'күшті', fNote:'көтерілім f аз → үлкею H көп',
+              note:'Доға жүктемені тіректерге сығылу арқылы береді; жайпақ доға тіректерді қатты «итереді»',
+              hint:'СБ — айналдыру • ОБ — жылжыту • Дөңгелек — масштаб',
+              lArch:'Доға (сығылу)', lDeck:'Жүру бөлігі', lCol:'Тіректер', lAbL:'Тірек (абатмент)', lAbR:'Тірек (абатмент)', lThrust:'Үлкею H', lLoad:'Жүктеме P',
+              center:'орталық', uKN:' кН', uM:' м' },
+        en: { headH:'🌉 Arch Bridge', headS:'The arch works in compression • load → thrust onto supports',
+              loadLabel:'Load weight', riseLabel:'Arch rise', posLabel:'Load position',
+              tStress:'Compression (colour)', tThrust:'Thrust & reactions', tCols:'Columns & force lines', tLabels:'Labels',
+              drive:'▶ Auto-drive', stop:'⏸ Stop', reset:'↺ View', infoTitle:'Internal forces',
+              roSpan:'Span', roThrust:'Horizontal thrust', roRl:'Left support reaction', roRr:'Right support reaction', roMax:'Max arch compression',
+              legLow:'low', legHigh:'high', fNote:'smaller rise f → larger thrust H',
+              note:'The arch carries load to the supports by compression; a flatter arch pushes the supports outward more',
+              hint:'LMB — rotate • RMB — pan • Wheel — zoom',
+              lArch:'Arch (compression)', lDeck:'Roadway deck', lCol:'Spandrel columns', lAbL:'Abutment', lAbR:'Abutment', lThrust:'Thrust H', lLoad:'Load P',
+              center:'center', uKN:' kN', uM:' m' },
+    };
+    const L = I18N[LANG] || I18N.ru;
+
+    const SPAN = 12, SPAN_M = 60, DECK_Y = 6.2, NSEG = 26, SCALE_M = SPAN_M/SPAN;
+    let loadP = 400, riseM = 9, posPct = 50, driving = false;
+    let showStress = true, showThrust = true, showCols = true, showLabels = true;
+    let archSegs = [], columns = [], deckMesh, truck, archGroup;
+    let thrustArrowL, thrustArrowR, reacArrowL, reacArrowR, loadArrow;
+    let H = 0, RL = 0, RR = 0, Nmax = 0, riseU = 3;
+
+    let scene, camera, renderer, root;
+    const labelDefs = [];
+    const clock = new THREE.Clock();
+    const container = document.getElementById('canvas-container');
+    const labelLayer = document.getElementById('labels');
+
+    let camTheta = 0.62, camPhi = 1.18, camRadius = 22;
+    const camTarget = new THREE.Vector3(0, 2.2, 0);
+    let dragMode = 0, lastX = 0, lastY = 0;
+
+    function archY(x){ return riseU * (1 - Math.pow(2*x/SPAN, 2)); }   // parabola, crown at x=0
+    function archSlope(x){ return -riseU * 8 * x / (SPAN*SPAN); }       // dy/dx
+
+    function init() {
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xeaf2fb);
+        scene.fog = new THREE.Fog(0xeaf2fb, 30, 70);
+        camera = new THREE.PerspectiveCamera(46, window.innerWidth/window.innerHeight, 0.1, 200);
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        container.appendChild(renderer.domElement);
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+        const key = new THREE.DirectionalLight(0xffffff, 0.6); key.position.set(8,16,10); scene.add(key);
+        const fill = new THREE.DirectionalLight(0xbcd4ff, 0.3); fill.position.set(-9,6,-7); scene.add(fill);
+
+        root = new THREE.Group(); scene.add(root);
+        buildScenery();
+        buildArchAndDeck();
+        buildTruck();
+        buildArrows();
+        makeLabels();
+        applyI18N();
+        setupControls();
+        rebuildGeometry();
+        recompute();
+        updateCamera();
+        animate();
+    }
+
+    function mat(c,m,r,o){ return new THREE.MeshStandardMaterial(Object.assign({color:c,metalness:m,roughness:r},o||{})); }
+
+    function buildScenery() {
+        // river
+        // riverbed under the water for the piers to rest on
+        const bed = new THREE.Mesh(new THREE.BoxGeometry(40, 1.6, 10), mat(0x4a5a3a,0.1,0.95));
+        bed.position.set(0,-5.4,0); root.add(bed);
+        const river = new THREE.Mesh(new THREE.BoxGeometry(40, 0.1, 10), mat(0x3b82c4,0.2,0.4,{transparent:true,opacity:0.82,emissive:0x0a2540,emissiveIntensity:0.1}));
+        river.position.set(0,-2.4,0); root.add(river);
+        // banks raised so their tops are flush with the bridge deck — approach roads connect seamlessly
+        const bankMat = mat(0x6f7d52,0.2,0.85);
+        const bankH = DECK_Y + 4.2;   // top at DECK_Y
+        [-9.5,9.5].forEach(x=>{ const b=new THREE.Mesh(new THREE.BoxGeometry(11, bankH, 11), bankMat); b.position.set(x*1.7, (DECK_Y-4.2)/2, 0); root.add(b); });
+    }
+
+    function buildArchAndDeck() {
+        archGroup = new THREE.Group(); root.add(archGroup);
+        // arch segments (rebuilt on rise change)
+        for (let i=0;i<NSEG;i++){ const m = new THREE.Mesh(new THREE.BoxGeometry(1,0.45,1.2), mat(0x888,0.3,0.6)); archGroup.add(m); archSegs.push(m); }
+        // columns
+        for (let i=0;i<9;i++){ const c=new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.12,1,12), mat(0xb7bfc9,0.5,0.5)); root.add(c); columns.push(c); }
+        // deck
+        deckMesh = new THREE.Mesh(new THREE.BoxGeometry(SPAN+3.4, 0.4, 3.4), mat(0x44505f,0.4,0.6));
+        deckMesh.position.set(0, DECK_Y, 0); root.add(deckMesh);
+        // road markings
+        const line = new THREE.Mesh(new THREE.BoxGeometry(SPAN+3, 0.02, 0.12), mat(0xf4d35e,0.1,0.7)); line.position.set(0,DECK_Y+0.21,0); root.add(line);
+        // abutments — extend from riverbed all the way up to deck level so the bridge sits on them
+        const abMat = mat(0x8a7f6b,0.2,0.8);
+        const abH = DECK_Y + 5.0;     // bottom at -5.0, top at DECK_Y
+        [-1,1].forEach(s=>{ const ab=new THREE.Mesh(new THREE.BoxGeometry(2.4, abH, 4.0), abMat); ab.position.set(s*(SPAN/2+0.4), (DECK_Y-5.0)/2, 0); root.add(ab);
+            const foot=new THREE.Mesh(new THREE.BoxGeometry(3.2,1.0,4.8), mat(0x756a58,0.2,0.85)); foot.position.set(s*(SPAN/2+0.4),-5.0,0); root.add(foot); });
+        // approach roads — flat deck segments bridging gap between deck ends and bank tops
+        const apprMat = mat(0x44505f,0.4,0.6);
+        const deckHalf = (SPAN+3.4)/2;            // 7.7
+        const bankInner = 9.5*1.7 - 11/2;         // 10.65
+        const apprW = bankInner - deckHalf;        // 2.95
+        const apprCx = deckHalf + apprW/2;         // 9.175
+        [-1,1].forEach(s=>{
+            const appr = new THREE.Mesh(new THREE.BoxGeometry(apprW+0.1, 0.4, 3.4), apprMat);
+            appr.position.set(s*apprCx, DECK_Y, 0); root.add(appr);
+            const ln = new THREE.Mesh(new THREE.BoxGeometry(apprW, 0.02, 0.12), mat(0xf4d35e,0.1,0.7));
+            ln.position.set(s*apprCx, DECK_Y+0.21, 0); root.add(ln);
+        });
+        labelDefs.push({ key:'lArch', pos:new THREE.Vector3(0, 1.5, 1.0) });
+        labelDefs.push({ key:'lDeck', pos:new THREE.Vector3(-2.5, DECK_Y+0.6, 1.6) });
+        labelDefs.push({ key:'lCol', pos:new THREE.Vector3(3.0, DECK_Y-1.4, 1.0) });
+        labelDefs.push({ key:'lAbL', pos:new THREE.Vector3(-(SPAN/2+0.4), DECK_Y-2.0, 2.2) });
+        labelDefs.push({ key:'lAbR', pos:new THREE.Vector3((SPAN/2+0.4), DECK_Y-2.0, 2.2) });
+    }
+
+    function buildTruck() {
+        truck = new THREE.Group(); root.add(truck);
+        const body = new THREE.Mesh(new THREE.BoxGeometry(2.2,0.9,1.6), mat(0xd64545,0.3,0.5)); body.position.y=0.85; truck.add(body);
+        const cab = new THREE.Mesh(new THREE.BoxGeometry(0.9,0.8,1.5), mat(0xe8e8ee,0.3,0.4)); cab.position.set(1.3,0.8,0); truck.add(cab);
+        const wmat = mat(0x1c1f26,0.3,0.6);
+        [[-0.7,1],[-0.7,-1],[0.7,1],[0.7,-1],[1.4,1],[1.4,-1]].forEach(p=>{ const w=new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.3,0.25,16), wmat); w.rotation.x=Math.PI/2; w.position.set(p[0],0.3,p[1]*0.7); truck.add(w); });
+        labelDefs.push({ key:'lLoad', cls:'rec', pos:new THREE.Vector3(0,0,0), follow:'truck' });
+    }
+
+    function arrow(color, thick){
+        const g = new THREE.Group();
+        const sh = new THREE.Mesh(new THREE.CylinderGeometry(thick||0.1,thick||0.1,1,10), new THREE.MeshBasicMaterial({color})); sh.position.y=0.5; g.add(sh);
+        const hd = new THREE.Mesh(new THREE.ConeGeometry((thick||0.1)*2.2,0.4,12), new THREE.MeshBasicMaterial({color})); hd.position.y=1.05; g.add(hd);
+        g.userData.shaft = sh; g.userData.head = hd; root.add(g); return g;
+    }
+    function buildArrows() {
+        thrustArrowL = arrow(0xdc2626,0.13); thrustArrowR = arrow(0xdc2626,0.13);
+        reacArrowL = arrow(0x2563eb,0.12); reacArrowR = arrow(0x2563eb,0.12);
+        loadArrow = arrow(0x16233f,0.12);
+        labelDefs.push({ key:'lThrust', cls:'thr', pos:new THREE.Vector3(-(SPAN/2+1.8),0.1,0) });
+    }
+
+    function makeLabels(){ labelDefs.forEach(d=>{ const el=document.createElement('div'); el.className='label3d'+(d.cls?(' '+d.cls):''); labelLayer.appendChild(el); d.el=el; }); }
+    function updateLabels(){
+        labelDefs.forEach(d=>{
+            const txt=L[d.key]||d.key; if(d.el.textContent!==txt) d.el.textContent=txt;
+            if(!showLabels){ d.el.style.display='none'; return; }
+            let p = d.pos.clone(); if (d.follow==='truck') p = truck.position.clone().add(new THREE.Vector3(0,1.8,0));
+            const v=p.project(camera); if(v.z>1){ d.el.style.display='none'; return; }
+            d.el.style.display='block'; d.el.style.left=(v.x*0.5+0.5)*window.innerWidth+'px'; d.el.style.top=(-v.y*0.5+0.5)*window.innerHeight+'px';
+        });
+    }
+
+    function stressColor(t){ // 0..1 -> blue→green→yellow→red
+        t = Math.max(0, Math.min(1, t));
+        const c = new THREE.Color();
+        if (t < 0.33) c.setRGB(0.15+t/0.33*0.0, 0.4+t/0.33*0.5, 1-t/0.33*0.4);
+        else if (t < 0.66) { const u=(t-0.33)/0.33; c.setRGB(0.1+u*0.8, 0.85, 0.5-u*0.4); }
+        else { const u=(t-0.66)/0.34; c.setRGB(0.9, 0.85-u*0.6, 0.1); }
+        return c;
+    }
+
+    function rebuildGeometry() {
+        riseU = riseM / SCALE_M;   // metres → world units
+        // place arch segments along parabola
+        for (let i=0;i<NSEG;i++){
+            const x0 = -SPAN/2 + (i/NSEG)*SPAN;
+            const x1 = -SPAN/2 + ((i+1)/NSEG)*SPAN;
+            const y0 = archY(x0), y1 = archY(x1);
+            const mx=(x0+x1)/2, my=(y0+y1)/2;
+            const dx=x1-x0, dy=y1-y0, len=Math.hypot(dx,dy);
+            const seg = archSegs[i];
+            seg.scale.set(len/1.0, 1, 1);
+            seg.position.set(mx, my, 0);
+            seg.rotation.z = Math.atan2(dy,dx);
+        }
+        // columns from arch up to deck at sampled x
+        for (let i=0;i<columns.length;i++){
+            const x = -SPAN/2 + (i/(columns.length-1))*SPAN;
+            const yA = archY(x); const h = Math.max(0.05, DECK_Y - yA);
+            const c = columns[i]; c.scale.set(1,h,1); c.position.set(x, yA + h/2, 0);
+        }
+    }
+
+    function recompute() {
+        const a_m = (posPct/100)*SPAN_M;          // distance from left support
+        const b_m = SPAN_M - a_m;
+        const fM = riseM;
+        H = (loadP * a_m * b_m) / (SPAN_M * fM);   // 3-hinged parabolic arch thrust (kN)
+        RL = loadP * b_m / SPAN_M;
+        RR = loadP * a_m / SPAN_M;
+        // max arch compression ~ thrust amplified near steep supports
+        const slopeSup = Math.abs(archSlope(-SPAN/2));
+        Nmax = H * Math.sqrt(1 + slopeSup*slopeSup) + Math.max(RL,RR)*0.4;
+
+        document.getElementById('load-value').textContent = loadP + L.uKN;
+        document.getElementById('rise-value').textContent = riseM + L.uM;
+        document.getElementById('pos-value').textContent = (posPct===50? L.center : (posPct<50? (Math.round((50-posPct)*1.2)+'% '+(LANG==='en'?'left':'влево')) : (Math.round((posPct-50)*1.2)+'% '+(LANG==='en'?'right':'вправо'))));
+        document.getElementById('ro-span').textContent = SPAN_M + L.uM;
+        document.getElementById('ro-thrust').textContent = Math.round(H) + L.uKN;
+        document.getElementById('ro-rl').textContent = Math.round(RL) + L.uKN;
+        document.getElementById('ro-rr').textContent = Math.round(RR) + L.uKN;
+        document.getElementById('ro-max').textContent = Math.round(Nmax) + L.uKN;
+        const Href = 3000; document.getElementById('thr-fill').style.width = Math.min(100, H/Href*100) + '%';
+        colorArch();
+    }
+
+    function colorArch() {
+        for (let i=0;i<NSEG;i++){
+            const x = -SPAN/2 + ((i+0.5)/NSEG)*SPAN;
+            const slope = Math.abs(archSlope(x));
+            const Nseg = H * Math.sqrt(1+slope*slope);        // axial compression along arch
+            const t = Nmax>0 ? Nseg/(Nmax) : 0;
+            archSegs[i].material.color.copy(showStress ? stressColor(t) : new THREE.Color(0x9aa3ad));
+        }
+    }
+
+    function placeArrows() {
+        const aL = -SPAN/2, aR = SPAN/2;
+        // horizontal thrust at supports (outward): left points -X, right +X
+        const hScale = Math.min(3.2, H/700);
+        thrustArrowL.visible = showThrust; thrustArrowR.visible = showThrust;
+        thrustArrowL.position.set(aL-0.4, 0.0, 0); thrustArrowL.rotation.z = Math.PI/2; thrustArrowL.scale.set(1, Math.max(0.3,hScale),1);
+        thrustArrowR.position.set(aR+0.4, 0.0, 0); thrustArrowR.rotation.z = -Math.PI/2; thrustArrowR.scale.set(1, Math.max(0.3,hScale),1);
+        // vertical reactions (upward) at supports
+        const rScale = v => Math.min(3.0, v/300);
+        reacArrowL.visible = showThrust; reacArrowR.visible = showThrust;
+        reacArrowL.position.set(aL, -2.2, 0); reacArrowL.rotation.z = 0; reacArrowL.scale.set(1, Math.max(0.3,rScale(RL)),1);
+        reacArrowR.position.set(aR, -2.2, 0); reacArrowR.rotation.z = 0; reacArrowR.scale.set(1, Math.max(0.3,rScale(RR)),1);
+        // load arrow (down) at truck
+        const xL = -SPAN/2 + (posPct/100)*SPAN;
+        loadArrow.visible = loadP>0;
+        loadArrow.position.set(xL, DECK_Y+2.2, 0); loadArrow.rotation.z = Math.PI; loadArrow.scale.set(1, Math.max(0.3, loadP/300),1);
+    }
+
+    function setupControls() {
+        document.getElementById('load-slider').addEventListener('input', e=>{ loadP=+e.target.value; recompute(); });
+        document.getElementById('rise-slider').addEventListener('input', e=>{ riseM=+e.target.value; rebuildGeometry(); recompute(); });
+        document.getElementById('pos-slider').addEventListener('input', e=>{ posPct=+e.target.value; driving=false; syncDriveBtn(); recompute(); });
+        const tog=(id,fn)=>{ const el=document.getElementById(id); el.addEventListener('click',()=>{ el.classList.toggle('active'); fn(el.classList.contains('active')); }); };
+        tog('t-stress', v=>{ showStress=v; colorArch(); });
+        tog('t-thrust', v=>showThrust=v);
+        tog('t-cols', v=>{ showCols=v; columns.forEach(c=>c.visible=v); });
+        tog('t-labels', v=>showLabels=v);
+        document.getElementById('btn-drive').addEventListener('click', ()=>{ driving=!driving; syncDriveBtn(); });
+        document.getElementById('btn-reset').addEventListener('click', ()=>{ camTheta=0.62; camPhi=1.18; camRadius=22; camTarget.set(0,2.2,0); updateCamera(); });
+
+        const el=renderer.domElement;
+        el.addEventListener('contextmenu', e=>e.preventDefault());
+        el.addEventListener('mousedown', e=>{ dragMode=(e.button===2||e.shiftKey)?2:1; lastX=e.clientX; lastY=e.clientY; });
+        window.addEventListener('mousemove', e=>{ if(!dragMode)return; const dx=e.clientX-lastX,dy=e.clientY-lastY; lastX=e.clientX; lastY=e.clientY; if(dragMode===1){camTheta-=dx*0.005; camPhi=Math.max(0.16,Math.min(Math.PI-0.16,camPhi-dy*0.005));} else {const ps=camRadius*0.0016; const right=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,0); const up=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,1); camTarget.addScaledVector(right,-dx*ps); camTarget.addScaledVector(up,dy*ps);} updateCamera(); });
+        window.addEventListener('mouseup', ()=>dragMode=0);
+        el.addEventListener('wheel', e=>{ e.preventDefault(); camRadius=Math.max(12,Math.min(45,camRadius+e.deltaY*0.016)); updateCamera(); }, {passive:false});
+        el.addEventListener('touchstart', e=>{ const t=e.touches[0]; dragMode=1; lastX=t.clientX; lastY=t.clientY; }, {passive:true});
+        el.addEventListener('touchmove', e=>{ if(!dragMode)return; const t=e.touches[0]; const dx=t.clientX-lastX,dy=t.clientY-lastY; lastX=t.clientX; lastY=t.clientY; camTheta-=dx*0.006; camPhi=Math.max(0.16,Math.min(Math.PI-0.16,camPhi-dy*0.006)); updateCamera(); e.preventDefault(); }, {passive:false});
+        window.addEventListener('touchend', ()=>dragMode=0);
+        window.addEventListener('resize', ()=>{ camera.aspect=window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+    }
+    function syncDriveBtn(){ document.getElementById('btn-drive').textContent = driving ? L.stop : L.drive; }
+
+    function updateCamera(){ const sp=Math.sin(camPhi),cp=Math.cos(camPhi),st=Math.sin(camTheta),ct=Math.cos(camTheta); camera.position.set(camTarget.x+camRadius*sp*ct, camTarget.y+camRadius*cp, camTarget.z+camRadius*sp*st); camera.lookAt(camTarget); camera.updateMatrixWorld(true); }
+
+    function applyI18N(){
+        document.querySelectorAll('[data-i18n]').forEach(el=>{ const k=el.getAttribute('data-i18n'); if(L[k]!=null) el.textContent=L[k]; });
+        document.querySelector('.header h1').textContent=L.headH;
+        document.getElementById('h-sub').textContent=L.headS;
+        document.title=L.headH.replace(/^[^\wА-Яа-яЁё]+/, ''); document.documentElement.lang=LANG;
+    }
+
+    let driveDir = 1;
+    function animate(){
+        requestAnimationFrame(animate);
+        const dt = Math.min(clock.getDelta(), 0.05);
+        if (driving) {
+            posPct += driveDir * dt * 22;
+            if (posPct >= 100) { posPct = 100; driveDir = -1; }
+            if (posPct <= 0) { posPct = 0; driveDir = 1; }
+            document.getElementById('pos-slider').value = posPct;
+            recompute();
+        }
+        // place truck on deck
+        const xL = -SPAN/2 + (posPct/100)*SPAN;
+        truck.position.set(xL, DECK_Y+0.2, 0);
+        truck.rotation.y = 0;
+        placeArrows();
+        // subtle deck deflection bob under load
+        const sag = -loadP/800 * 0.12 * Math.cos((posPct/100-0.5)*Math.PI);
+        deckMesh.position.y = DECK_Y + sag;
+        updateLabels();
+        renderer.render(scene, camera);
+    }
+
+    init();
+    </script>
+</body>
+</html>

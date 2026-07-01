@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="page_title">Двойная спираль ДНК — 3D-модель</title>
+    <link rel="stylesheet" href="_poster.css">
+</head>
+<body>
+<div id="canvas-container"></div>
+<div id="header">
+    <h1 data-i18n="header_title">Двойная спираль ДНК</h1>
+    <p data-i18n="header_subtitle">Интерактивная модель структуры ДНК</p>
+</div>
+<div id="hint" data-i18n="hint">Кликните по любой части спирали, чтобы узнать больше</div>
+<button id="reset-btn" data-i18n="reset_btn" data-i18n-title="reset_btn_title" title="Сбросить вид">↺ Сбросить вид</button>
+<div id="info-panel" aria-hidden="true"></div>
+<div id="legend"></div>
+<div id="hover-label"></div>
+<div id="loading"><div class="spinner"></div><div id="loading-text" data-i18n="loading">Загрузка модели…</div></div>
+
+<script type="importmap">
+    { "imports": { "three": "../../libs/vendor/three-0.160.0/three.module.js", "three/addons/": "../../libs/vendor/three-0.160.0/addons/" } }
+</script>
+
+<script type="module">
+    import { initPoster } from './_poster_lib.js';
+
+    const I18N = {
+        ru: {
+            page_title: 'Двойная спираль ДНК — 3D-модель',
+            header_title: 'Двойная спираль ДНК',
+            header_subtitle: 'Интерактивная модель структуры ДНК — 5 ключевых компонентов',
+            hint: 'Кликните по любой части спирали, чтобы узнать больше',
+            reset_btn: '↺ Сбросить вид', reset_btn_title: 'Сбросить вид', close_btn_label: 'Закрыть',
+            loading: 'Загрузка модели…', error_load: 'Не удалось загрузить dna.glb', error_no_mesh: 'В модели нет меша',
+            facts_label: 'Интересный факт',
+            zones: {
+                Adenine: { title: 'Аденин (A)', desc: 'Пуриновое азотистое основание. В двойной спирали ДНК аденин всегда образует строго комплементарную связь с тимином (T) через две водородные связи. Является ключевым компонентом не только ДНК, но и АТФ — универсального источника энергии клетки.', facts: 'Аденин в составе АТФ ресинтезируется в организме человека около 1000 раз в сутки — его суммарная масса за день равна весу тела.' },
+                Thymine: { title: 'Тимин (T)', desc: 'Пиримидиновое азотистое основание. Встречается исключительно в ДНК (в РНК его место занимает урацил). Образует две водородные связи с аденином. Ошибки в спаривании тимина могут приводить к мутациям.', facts: 'Под воздействием ультрафиолетовых лучей соседние молекулы тимина в цепи ДНК могут прочно связываться между собой, образуя димеры тимина. Это главная причина повреждения ДНК солнцем.' },
+                Guanine: { title: 'Гуанин (G)', desc: 'Пуриновое азотистое основание. В молекуле ДНК образует прочную тройную водородную связь с цитозином. Из-за наличия трех связей, участки ДНК с высоким содержанием G-C пар более стабильны и устойчивы к нагреванию.', facts: 'Впервые гуанин был выделен из гуано — высохшего помета морских птиц, откуда он и получил свое название.' },
+                Cytosine: { title: 'Цитозин (C)', desc: 'Пиримидиновое азотистое основание. Комплементарен гуанину (G), связываясь с ним тремя водородными связями. Цитозин часто подвергается ферментативному метилированию, что регулирует активность генов.', facts: 'Метилирование цитозина лежит в основе эпигенетики — науки о том, как образ жизни и среда могут включать и выключать гены без изменения самой последовательности ДНК.' },
+                Backbone: { title: 'Сахаро-фосфатный остов', desc: 'Внешний каркас двойной спирали. Состоит из чередующихся остатков дезоксирибозы (пятиуглеродного сахара) и фосфатных групп. Остов заряжен отрицательно, что придает ДНК кислотные свойства.', facts: 'Отрицательный заряд сахаро-фосфатного остова позволяет ДНК связываться со специальными щелочными белками — гистонами, которые упаковывают двухметровую нить ДНК в микроскопическое ядро клетки.' }
+            }
+        },
+        kz: {
+            page_title: 'ДНҚ қос шиыршығы — 3D-модель',
+            header_title: 'ДНҚ қос шиыршығы',
+            header_subtitle: 'ДНҚ құрылымының интерактивті моделі — 5 негізгі компонент',
+            hint: 'Толығырақ білу үшін шиыршықтың кез келген бөлігіне басыңыз',
+            reset_btn: '↺ Көріністі қалпына келтіру', reset_btn_title: 'Көріністі қалпына келтіру', close_btn_label: 'Жабу',
+            loading: 'Модель жүктелуде…', error_load: 'dna.glb файлын жүктеу мүмкін болмады', error_no_mesh: 'Модельде меш табылмады',
+            facts_label: 'Қызықты факт',
+            zones: {
+                Adenine: { title: 'Аденин (A)', desc: 'Пуриндік азотты негіз. ДНҚ қос шиыршығында аденин әрқашан тиминмен (Т) екі сутегі байланысы арқылы қатаң комплементарлы байланыс түзеді. Ол тек ДНҚ-ның ғана емес, сонымен қатар жасушадағы әмбебап энергия көзі АТФ-тың да маңызды құрамдас бөлігі болып табылады.', facts: 'АТФ құрамындағы аденин адам ағзасында күніне шамамен 1000 рет қайта синтезделеді — оның бір күндік жалпы массасы дене салмағына тең.' },
+                Thymine: { title: 'Тимин (T)', desc: 'Пиримидиндік азотты негіз. Тек ДНҚ-да кездеседі (РНҚ-да оның орнын урацил басады). Аденинмен екі сутегі байланысын құрайды. Тиминнің жұптасуындағы қателіктер мутацияға әкелуі мүмкін.', facts: 'Ультракүлгін сәулелердің әсерінен ДНҚ тізбегіндегі көршілес тимин молекулалары өзара тығыз байланысып, димерлер түзуі мүмкін. Бұл күн сәулесінен ДНҚ зақымдануының басты себебі.' },
+                Guanine: { title: 'Гуанин (G)', desc: 'Пуриндік азотты негіз. ДНҚ молекуласында цитозинмен берік үштік сутегі байланысын құрайды. Үш байланыстың болуына байланысты, G-C жұптары көп ДНҚ аймақтары тұрақтырақ және қызуға төзімді келеді.', facts: 'Гуанин алғаш рет теңіз құстарының кепкен саңғырығынан (гуано) бөлініп алынған, оның атауы да осыдан шыққан.' },
+                Cytosine: { title: 'Цитозин (C)', desc: 'Пиримидиндік азотты негіз. Гуанинге (G) комплементарлы, онымен үш сутегі байланысы арқылы қосылады. Цитозин жиі ферментативті метилденуге ұшырайды, бұл гендердің белсенділігін реттейді.', facts: 'Цитозиннің метилденуі эпигенетиканың — өмір салты мен қоршаған ортаның ДНҚ тізбегін өзгертпестен гендерді қалай қосып-өшіретінін зерттейтін ғылымның негізі болып табылады.' },
+                Backbone: { title: 'Қант-фосфатты қаңқа', desc: 'Қос шиыршықтың сыртқы қаңқасы. Кезектесіп келетін дезоксирибоза (бес көміртекті қант) мен фосфат топтарының қалдықтарынан тұрады. Қаңқа теріс зарядталған, бұл ДНҚ-ға қышқылдық қасиет береді.', facts: 'Қант-фосфатты қаңқаның теріс заряды ДНҚ-ның арнайы сілтілі белоктармен — гистондармен байланысуына мүмкіндік береді, олар екі метрлік ДНҚ жіпшесін жасушаның микроскопиялық ядросына жинақтап қаптайды.' }
+            }
+        },
+        en: {
+            page_title: 'DNA Double Helix — 3D Model',
+            header_title: 'DNA Double Helix',
+            header_subtitle: 'Interactive DNA structure model — 5 key components',
+            hint: 'Click any part of the helix to learn more',
+            reset_btn: '↺ Reset view', reset_btn_title: 'Reset view', close_btn_label: 'Close',
+            loading: 'Loading model…', error_load: 'Failed to load dna.glb', error_no_mesh: 'No mesh found in the model',
+            facts_label: 'Did you know?',
+            zones: {
+                Adenine: { title: 'Adenine (A)', desc: 'A purine nitrogenous base. In the DNA double helix, adenine always forms a strictly complementary bond with thymine (T) via two hydrogen bonds. It is a key component not only of DNA, but also of ATP — the universal cellular energy carrier.', facts: 'The adenine within ATP in the human body is resynthesized about 1,000 times a day — its cumulative daily mass is roughly equal to a person\'s body weight.' },
+                Thymine: { title: 'Thymine (T)', desc: 'A pyrimidine nitrogenous base. It is found almost exclusively in DNA (replaced by uracil in RNA). It forms two hydrogen bonds with adenine. Errors in thymine pairing can lead to mutations.', facts: 'Under ultraviolet light, neighboring thymine molecules in a DNA strand can bind tightly to each other, forming thymine dimers. This is the primary cause of sun-induced DNA damage.' },
+                Guanine: { title: 'Guanine (G)', desc: 'A purine nitrogenous base. In the DNA molecule, it forms a strong triple hydrogen bond with cytosine. Due to these three bonds, DNA segments rich in G-C pairs are more stable and heat-resistant.', facts: 'Guanine was first isolated from guano — the accumulated excrement of seabirds, which is where its name originates.' },
+                Cytosine: { title: 'Cytosine (C)', desc: 'A pyrimidine nitrogenous base. It is complementary to guanine (G), bonding with it via three hydrogen bonds. Cytosine often undergoes enzymatic methylation, which plays a major role in regulating gene activity.', facts: 'Cytosine methylation is a cornerstone of epigenetics — the study of how environment and lifestyle can switch genes on and off without altering the genetic sequence itself.' },
+                Backbone: { title: 'Sugar-phosphate backbone', desc: 'The outer framework of the double helix. It consists of alternating deoxyribose (a five-carbon sugar) and phosphate group residues. The backbone carries a negative charge, giving DNA its acidic properties.', facts: 'The negative charge of the sugar-phosphate backbone allows DNA to bind tightly with alkaline proteins called histones, which pack the two-meter-long DNA strand into the microscopic cell nucleus.' }
+            }
+        }
+    };
+
+    const ZONES = [
+        { id: 'Adenine',  subtitle: 'Adeninum',  color: 0x50e3c2 },
+        { id: 'Thymine',  subtitle: 'Thyminum',  color: 0xff5f5f },
+        { id: 'Guanine',  subtitle: 'Guaninum',  color: 0xf5a623 },
+        { id: 'Cytosine', subtitle: 'Cytosinum', color: 0x4a90e2 },
+        { id: 'Backbone', subtitle: 'Sceletum saccharo-phosphaticum', color: 0xe0e0e0 }
+    ];
+
+    function classify(x, y, z) {
+        // Ось спирали направлена вдоль Z (после нормализации ~[-1.2, 1.2]).
+        // Радиус считаем в плоскости поперечного сечения (XY).
+        const r = Math.sqrt(x*x + y*y);
+        if (r > 0.11) {
+            return 4; // Сахаро-фосфатный остов (внешние нити)
+        }
+        // Азотистые основания-«ступеньки» чередуются вдоль оси Z
+        const segment = Math.floor((z + 1.2) / 0.18);
+        return ((segment % 4) + 4) % 4; // 0: Аденин, 1: Тимин, 2: Гуанин, 3: Цитозин
+    }
+
+    initPoster({ modelFile: 'dna.glb', zones: ZONES, classify, i18n: I18N, modelScale: 1.0, modelRotation: [Math.PI / 2, 0, 0] });
+</script>
+</body>
+</html>

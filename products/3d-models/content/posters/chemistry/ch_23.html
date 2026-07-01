@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="page_title">Водородная связь — H₂O</title>
+<style>
+
+
+*{margin:0;padding:0;box-sizing:border-box;}
+
+:root{
+  --bg:#f5f4f0;
+  --surface:rgba(255,255,255,0.90);
+  --border:rgba(0,0,0,0.08);
+  --text:#1c1917;
+  --muted:#78716c;
+  --o-red:#ef4444;
+  --h-gray:#e2e8f0;
+  --hb-cyan:#67e8f9;
+  --s-yellow:#eab308;
+  --lp-indigo:#818cf8;
+  --shadow:0 2px 20px rgba(0,0,0,0.07);
+  --shadow-lg:0 8px 44px rgba(0,0,0,0.11);
+}
+
+body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);overflow:hidden;height:100vh;}
+
+body::before{
+  content:'';position:fixed;inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='%23f5f4f0'/%3E%3Ccircle cx='1' cy='1' r='0.6' fill='rgba(0,0,0,0.025)'/%3E%3C/svg%3E");
+  pointer-events:none;z-index:0;
+}
+
+#canvas-container{position:fixed;inset:0;z-index:1;}
+
+/* ── HEADER ── */
+.header{
+  position:fixed;top:0;left:0;right:0;z-index:200;
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  padding:0 48px;height:92px;
+  display:flex;align-items:center;gap:14px;
+  box-shadow:var(--shadow);
+}
+.h-formula{font-family:'DM Mono',monospace;font-size:26px;font-weight:500;letter-spacing:-0.5px;}
+.h-o{color:var(--o-red);}
+.h-h{color:#94a3b8;}
+.header-title{font-size:26px;font-weight:700;margin-left:10px;}
+.header-sub{font-size:15px;color:var(--muted);margin-left:auto;text-align:right;line-height:1.4;}
+
+/* ── LEFT PANEL (props) ── */
+.panel-left{
+  position:fixed;left:24px;top:108px;z-index:100;
+  width:320px;
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:24px;
+  padding:20px 22px;
+  box-shadow:var(--shadow-lg);
+}
+.panel-left h3{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:14px;}
+
+.compare-table{width:100%;border-collapse:collapse;font-size:14px;}
+.compare-table th{font-family:'DM Mono',monospace;font-size:13px;font-weight:500;padding:5px 8px;text-align:center;border-bottom:2px solid var(--border);}
+.compare-table th:nth-child(2){color:var(--o-red);}
+.compare-table th:nth-child(3){color:var(--s-yellow);}
+.compare-table td{padding:6px 8px;border-bottom:1px solid rgba(0,0,0,0.05);font-size:13.5px;line-height:1.35;}
+.compare-table td:nth-child(1){color:var(--muted);font-size:12.5px;}
+.compare-table td:nth-child(2){text-align:center;color:var(--o-red);font-family:'DM Mono',monospace;}
+.compare-table td:nth-child(3){text-align:center;color:#a16207;font-family:'DM Mono',monospace;}
+.compare-table .bp td:nth-child(2),.compare-table .bp td:nth-child(3){font-weight:700;}
+.compare-table tr.hb-row{cursor:pointer;}
+.compare-table tr.hb-row:hover td{background:rgba(103,232,249,0.08);}
+
+/* ── RIGHT PANEL (controls) ── */
+.panel-right{
+  position:fixed;right:24px;top:108px;z-index:100;
+  width:285px;
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:24px;
+  padding:20px 22px;
+  box-shadow:var(--shadow-lg);
+}
+.panel-right h3{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:14px;}
+
+.ctrl-btn{
+  width:100%;padding:11px 16px;margin-bottom:10px;
+  background:rgba(0,0,0,0.04);border:1.5px solid var(--border);border-radius:14px;
+  font-family:'Syne',sans-serif;font-size:14px;font-weight:600;
+  color:var(--text);cursor:pointer;text-align:left;
+  transition:all 0.2s;display:flex;align-items:center;gap:8px;
+}
+.ctrl-btn:hover{background:rgba(0,0,0,0.07);transform:translateY(-1px);}
+.ctrl-btn.active{background:rgba(99,102,241,0.10);border-color:rgba(99,102,241,0.4);color:#4f46e5;}
+.ctrl-btn.active-yellow{background:rgba(234,179,8,0.12);border-color:rgba(234,179,8,0.5);color:#92400e;}
+
+/* ── LEGEND ── */
+.panel-legend{
+  position:fixed;left:24px;bottom:64px;z-index:100;
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:20px;
+  padding:14px 18px;
+  box-shadow:var(--shadow);
+  display:flex;flex-direction:column;gap:8px;
+}
+.leg-item{
+  display:flex;align-items:center;gap:9px;
+  font-size:13px;cursor:pointer;padding:3px 6px;border-radius:8px;
+  transition:background 0.15s;
+}
+.leg-item:hover{background:rgba(0,0,0,0.05);}
+.leg-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0;}
+
+/* ── BOTTOM HINT ── */
+.hint-bar{
+  position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:100;
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:99px;
+  padding:9px 24px;font-size:13px;color:var(--muted);
+  box-shadow:var(--shadow);white-space:nowrap;
+}
+
+/* ── NO H-BOND BADGE ── */
+#no-hbond-badge{
+  position:fixed;bottom:64px;right:24px;z-index:200;
+  background:rgba(239,68,68,0.92);color:#fff;
+  border-radius:16px;padding:12px 18px;
+  font-size:14px;font-weight:700;line-height:1.5;
+  box-shadow:0 4px 20px rgba(239,68,68,0.4);
+  opacity:0;transform:translateY(16px);
+  transition:all 0.35s cubic-bezier(0.34,1.56,0.64,1);
+  pointer-events:none;
+}
+#no-hbond-badge.visible{opacity:1;transform:translateY(0);}
+
+/* ── INFO PANEL ── */
+#info-panel{
+  position:fixed;right:-460px;top:0;bottom:0;z-index:300;
+  width:420px;
+  background:rgba(255,255,255,0.97);
+  border-left:1px solid var(--border);
+  padding:32px 28px;overflow-y:auto;
+  box-shadow:-4px 0 40px rgba(0,0,0,0.10);
+  transition:right 0.38s cubic-bezier(0.4,0,0.2,1);
+}
+#info-panel.open{right:0;}
+#info-close{
+  position:absolute;top:20px;right:20px;
+  width:36px;height:36px;border-radius:50%;
+  background:rgba(0,0,0,0.07);border:none;cursor:pointer;
+  font-size:18px;display:flex;align-items:center;justify-content:center;
+  transition:background 0.15s;
+}
+#info-close:hover{background:rgba(0,0,0,0.13);}
+.info-tag{
+  display:inline-block;padding:4px 10px;border-radius:99px;
+  font-size:12px;font-weight:600;letter-spacing:0.5px;
+  background:rgba(103,232,249,0.18);color:#0891b2;
+  margin-bottom:16px;
+}
+.info-title{font-size:22px;font-weight:800;margin-bottom:6px;line-height:1.2;}
+.info-section{margin-top:18px;}
+.info-section h4{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:6px;}
+.info-section p{font-size:14.5px;line-height:1.65;color:#292524;}
+
+</style>
+</head>
+<body>
+
+<!-- Canvas -->
+<div id="canvas-container"><canvas id="c"></canvas></div>
+
+<!-- Header -->
+<header class="header">
+  <div class="h-formula"><span class="h-h">H</span><span class="h-o">O</span><span class="h-h">H</span></div>
+  <div class="header-title" data-i18n="header_title">Водородная связь</div>
+  <div class="header-sub" data-i18n-html="header_sub">Межмолекулярное взаимодействие<br>кликните на молекулу или связь</div>
+</header>
+
+<!-- Left panel -->
+<div class="panel-left">
+  <h3 data-i18n="compare_title">Сравнение свойств</h3>
+  <table class="compare-table">
+    <thead>
+      <tr><th>Свойство</th><th>H₂O</th><th>H₂S</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Формула</td><td>H₂O</td><td>H₂S</td></tr>
+      <tr><td>Угол X–O/S–X</td><td>104.5°</td><td>92.1°</td></tr>
+      <tr><td>Длина X–H (Å)</td><td>0.96</td><td>1.34</td></tr>
+      <tr><td>Диполь μ (Д)</td><td>1.85</td><td>0.97</td></tr>
+      <tr class="bp"><td>Т. кипения</td><td>+100 °C</td><td>−60 °C</td></tr>
+      <tr><td>Т. плавления</td><td>0 °C</td><td>−86 °C</td></tr>
+      <tr class="hb-row" onclick="openInfo('hbond_row')"><td>Вод. связь</td><td>✓ сильная</td><td>✗ слабая</td></tr>
+      <tr><td>Энергия св.</td><td>20 кДж/моль</td><td>~5 кДж/моль</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- Right panel -->
+<div class="panel-right">
+  <h3 data-i18n="ctrl_title">Управление</h3>
+  <button class="ctrl-btn" id="btn-pause" onclick="togglePause()"><span data-i18n="btn_pause">⏸ Пауза</span></button>
+  <button class="ctrl-btn" id="btn-lp" onclick="toggleLP()"><span data-i18n="btn_lp">🔵 Неподелённые пары</span></button>
+  <button class="ctrl-btn" id="btn-dipole" onclick="toggleDipoles()"><span data-i18n="btn_dipole">⚡ Диполи</span></button>
+  <button class="ctrl-btn" id="btn-h2s" onclick="toggleH2S()"><span data-i18n="btn_h2s">⚗️ H₂S сравнение</span></button>
+</div>
+
+<!-- Legend -->
+<div class="panel-legend">
+  <div class="leg-item" onclick="highlightType('oxygen')">
+    <div class="leg-dot" style="background:#ef4444;"></div>
+    <span data-i18n="leg_o">Кислород (O) × 5</span>
+  </div>
+  <div class="leg-item" onclick="highlightType('hydrogen')">
+    <div class="leg-dot" style="background:#94a3b8;border:1.5px solid #cbd5e1;"></div>
+    <span data-i18n="leg_h">Водород (H) × 10</span>
+  </div>
+  <div class="leg-item" onclick="highlightType('hbond')">
+    <div class="leg-dot" style="background:#67e8f9;"></div>
+    <span data-i18n="leg_hb">Водородная связь × 4</span>
+  </div>
+</div>
+
+<!-- Bottom hint -->
+<div class="hint-bar" data-i18n="hint">Перетащите — вращение · Колесо — масштаб · Клик — информация</div>
+
+<!-- No H-bond badge -->
+<div id="no-hbond-badge">❌ Без водородных связей!<br><small>Т. кип. = −60 °C</small></div>
+
+<!-- Info panel -->
+<div id="info-panel">
+  <button id="info-close" onclick="closeInfo()">✕</button>
+  <div class="info-tag" id="info-tag"></div>
+  <div class="info-title" id="info-title"></div>
+  <div id="info-body"></div>
+</div>
+
+<script>
+const I18N={
+ru:{
+page_title:'Водородная связь — H₂O',header_title:'Водородная связь',header_sub:'Межмолекулярное взаимодействие<br>кликните на молекулу или связь',
+compare_title:'Сравнение свойств',ctrl_title:'Управление',
+btn_pause:'⏸ Пауза',btn_resume:'▶ Продолжить',btn_lp:'🔵 Неподелённые пары',btn_dipole:'⚡ Диполи',btn_h2s:'⚗️ H₂S сравнение',
+leg_o:'Кислород (O) × 5',leg_h:'Водород (H) × 10',leg_hb:'Водородная связь × 4',
+hint:'Перетащите — вращение · Колесо — масштаб · Клик — информация'
+},
+kz:{
+page_title:'Сутектік байланыс — H₂O',header_title:'Сутектік байланыс',header_sub:'Молекулааралық өзара әрекет<br>молекуланы немесе байланысты басыңыз',
+compare_title:'Қасиеттерді салыстыру',ctrl_title:'Басқару',
+btn_pause:'⏸ Кідірту',btn_resume:'▶ Жалғастыру',btn_lp:'🔵 Бөлінбеген жұптар',btn_dipole:'⚡ Дипольдер',btn_h2s:'⚗️ H₂S салыстыру',
+leg_o:'Оттек (O) × 5',leg_h:'Сутек (H) × 10',leg_hb:'Сутектік байланыс × 4',
+hint:'Сүйреңіз — айналдыру · Дөңгелек — масштаб · Басу — ақпарат'
+},
+en:{
+page_title:'Hydrogen Bond — H₂O',header_title:'Hydrogen Bond',header_sub:'Intermolecular interaction<br>click on a molecule or bond',
+compare_title:'Property comparison',ctrl_title:'Controls',
+btn_pause:'⏸ Pause',btn_resume:'▶ Resume',btn_lp:'🔵 Lone pairs',btn_dipole:'⚡ Dipoles',btn_h2s:'⚗️ H₂S comparison',
+leg_o:'Oxygen (O) × 5',leg_h:'Hydrogen (H) × 10',leg_hb:'Hydrogen bond × 4',
+hint:'Drag — rotate · Scroll — zoom · Click — info'
+}
+};
+const LANG=(()=>{const q=new URLSearchParams(location.search).get('lang');return(q&&I18N[q])?q:'ru';})();
+const t=(key)=>(I18N[LANG]&&I18N[LANG][key])??(I18N.ru[key]);
+function applyStaticI18N(){
+  document.documentElement.lang=LANG;
+  const tv=t('page_title');if(tv)document.title=tv;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{const v=t(el.getAttribute('data-i18n'));if(v)el.textContent=v;});
+  document.querySelectorAll('[data-i18n-html]').forEach(el=>{const v=t(el.getAttribute('data-i18n-html'));if(v)el.innerHTML=v;});
+}
+applyStaticI18N();
+</script>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "../../libs/vendor/three-0.160.0/three.module.js",
+    "three/addons/": "../../libs/vendor/three-0.160.0/addons/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+/* ────────────────────────────────────────────────
+   SCENE SETUP
+──────────────────────────────────────────────── */
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = false;
+
+const scene = new THREE.Scene();
+scene.background = null;
+
+const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 200);
+camera.position.set(0, 2, 18);
+camera.lookAt(0, 0.5, 0);
+
+// Lights
+scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+const dLight = new THREE.DirectionalLight(0xffffff, 1.1);
+dLight.position.set(8, 12, 10);
+scene.add(dLight);
+const dLight2 = new THREE.DirectionalLight(0x67e8f9, 0.25);
+dLight2.position.set(-8, -4, -6);
+scene.add(dLight2);
+
+/* ────────────────────────────────────────────────
+   GEOMETRY HELPERS
+──────────────────────────────────────────────── */
+function makeSphere(r, color, opacity=1, transparent=false){
+  const g = new THREE.SphereGeometry(r, 32, 24);
+  const m = new THREE.MeshPhongMaterial({
+    color, opacity, transparent,
+    shininess: 90,
+    specular: new THREE.Color(0xffffff)
+  });
+  return new THREE.Mesh(g, m);
+}
+
+function makeCylinder(from, to, radius, color, opacity=1, transparent=false){
+  const dir = new THREE.Vector3().subVectors(to, from);
+  const len = dir.length();
+  const g = new THREE.CylinderGeometry(radius, radius, len, 12, 1);
+  const m = new THREE.MeshPhongMaterial({
+    color, opacity, transparent, shininess: 60
+  });
+  const mesh = new THREE.Mesh(g, m);
+  const mid = new THREE.Vector3().addVectors(from, to).multiplyScalar(0.5);
+  mesh.position.copy(mid);
+  mesh.quaternion.setFromUnitVectors(
+    new THREE.Vector3(0,1,0),
+    dir.clone().normalize()
+  );
+  return mesh;
+}
+
+/* ────────────────────────────────────────────────
+   DATA
+──────────────────────────────────────────────── */
+const V = (x,y,z)=>new THREE.Vector3(x,y,z);
+
+const molData = [
+  { O: V(0,0,0),       H1: V(1.18,-0.92,0),    H2: V(-1.18,-0.92,0)   },
+  { O: V(5.0,0.2,0),   H1: V(6.1,-0.7,0.5),    H2: V(5.8,1.1,-0.5)   },
+  { O: V(-5.0,0.2,0),  H1: V(-6.1,-0.7,0.5),   H2: V(-5.8,1.1,-0.5)  },
+  { O: V(0.4,3.8,3.1), H1: V(-0.3,2.6,2.1),    H2: V(1.5,4.9,2.4)    },
+  { O: V(-0.4,3.8,-3.1),H1:V(0.3,2.6,-2.1),    H2: V(-1.5,4.9,-2.4)  }
+];
+
+// H2S H positions (mol0 exact, others scaled by 1.4 from O)
+const h2sH1 = [
+  V(1.50,-1.45,0), V(0,0,0), V(0,0,0), V(0,0,0), V(0,0,0)
+];
+const h2sH2 = [
+  V(-1.50,-1.45,0), V(0,0,0), V(0,0,0), V(0,0,0), V(0,0,0)
+];
+for(let i=1;i<5;i++){
+  const md = molData[i];
+  h2sH1[i] = md.O.clone().add(md.H1.clone().sub(md.O).multiplyScalar(1.4));
+  h2sH2[i] = md.O.clone().add(md.H2.clone().sub(md.O).multiplyScalar(1.4));
+}
+
+const hbondData = [
+  { from: V(1.18,-0.92,0),  to: V(5.0,0.2,0)    },
+  { from: V(-1.18,-0.92,0), to: V(-5.0,0.2,0)   },
+  { from: V(-0.3,2.6,2.1),  to: V(0,0,0)         },
+  { from: V(0.3,2.6,-2.1),  to: V(0,0,0)         }
+];
+
+// Lone pair positions per molecule (2 per O, relative to O)
+const lpOffsets = [
+  [V(0.8,0.9,0), V(-0.8,0.9,0)],
+  [V(-0.9,0.7,0.1), V(-0.5,0.8,0.6)],
+  [V(0.9,0.7,0.1), V(0.5,0.8,0.6)],
+  [V(0.7,-0.2,0.9), V(-0.7,-0.2,0.9)],
+  [V(0.7,-0.2,-0.9), V(-0.7,-0.2,-0.9)]
+];
+
+/* ────────────────────────────────────────────────
+   BUILD SCENE
+──────────────────────────────────────────────── */
+const mainGroup = new THREE.Group();
+scene.add(mainGroup);
+
+const clickables = [];
+const oSpheres = [];    // O atom meshes
+const hSpheres = [];    // H atom meshes (flat list)
+const ohBonds = [];     // O-H bond cylinders
+const hbondMeshes = []; // H-bond cyan cylinders
+const lpMeshes = [];    // lone pair blobs
+const dipoleArrows = [];
+
+// Build molecules
+molData.forEach((md, mi)=>{
+  // O sphere
+  const oS = makeSphere(0.38, 0xef4444);
+  oS.position.copy(md.O);
+  oS.userData = { type:'water', molIndex:mi, atomType:'O' };
+  mainGroup.add(oS);
+  oSpheres.push(oS);
+  clickables.push(oS);
+
+  // H spheres
+  [md.H1, md.H2].forEach((hp, hi)=>{
+    const hS = makeSphere(0.22, 0xe2e8f0);
+    hS.position.copy(hp);
+    hS.userData = { type:'water', molIndex:mi, atomType:'H' };
+    mainGroup.add(hS);
+    hSpheres.push(hS);
+    clickables.push(hS);
+
+    // O-H bond
+    const bond = makeCylinder(md.O, hp, 0.08, 0xfca5a5);
+    mainGroup.add(bond);
+    ohBonds.push({ mesh: bond, mi, hi, fromO: md.O.clone(), toH: hp.clone() });
+  });
+
+  // Lone pairs
+  const lpPair = [];
+  lpOffsets[mi].forEach(offset=>{
+    const lp = makeSphere(0.28, 0x818cf8, 0.45, true);
+    lp.position.copy(md.O.clone().add(offset));
+    lp.visible = false;
+    mainGroup.add(lp);
+    lpPair.push(lp);
+    lpMeshes.push(lp);
+  });
+
+  // Dipole arrow: from O toward direction opposite H-H midpoint
+  const midHH = new THREE.Vector3().addVectors(md.H1, md.H2).multiplyScalar(0.5);
+  const dipDir = new THREE.Vector3().subVectors(md.O, midHH).normalize();
+  const arrow = new THREE.ArrowHelper(dipDir, md.O.clone(), 2.0, 0xf59e0b, 0.5, 0.3);
+  arrow.visible = false;
+  mainGroup.add(arrow);
+  dipoleArrows.push(arrow);
+});
+
+// Build H-bond cylinders
+hbondData.forEach((hbd, i)=>{
+  const mesh = makeCylinder(hbd.from, hbd.to, 0.05, 0x67e8f9, 0.7, true);
+  mesh.userData = { type:'hbond', hbIndex:i };
+  mainGroup.add(mesh);
+  hbondMeshes.push(mesh);
+  clickables.push(mesh);
+});
+
+/* ────────────────────────────────────────────────
+   STATE
+──────────────────────────────────────────────── */
+let paused = false;
+let showLP = false;
+let showDipoles = false;
+let h2sMode = false;
+let compareT = 0; // 0=H2O, 1=H2S
+
+let t = 0; // animation time
+let dragStart = null;
+let isDragging = false;
+let rotY = 0, rotX = 0.12;
+
+/* ────────────────────────────────────────────────
+   ANIMATION LOOP
+──────────────────────────────────────────────── */
+function animate(){
+  requestAnimationFrame(animate);
+
+  if(!paused){
+    t += 0.016;
+    mainGroup.rotation.y += 0.0016;
+    mainGroup.rotation.x = rotX;
+
+    // H-bond pulse
+    hbondMeshes.forEach((hb, i)=>{
+      hb.material.opacity = 0.35 + 0.5*(0.5 + 0.5*Math.sin(t*1.8 + i*1.2));
+    });
+
+    // compareT transition
+    if(h2sMode && compareT < 1) compareT = Math.min(1, compareT+0.04);
+    if(!h2sMode && compareT > 0) compareT = Math.max(0, compareT-0.04);
+
+    applyCompare();
+  }
+
+  renderer.render(scene, camera);
+}
+
+/* ────────────────────────────────────────────────
+   COMPARE ANIMATION
+──────────────────────────────────────────────── */
+const C_O = new THREE.Color(0xef4444);
+const C_S = new THREE.Color(0xeab308);
+
+function lerp(a,b,t){ return a+(b-a)*t; }
+function lerpV3(a,b,t){ return new THREE.Vector3(lerp(a.x,b.x,t),lerp(a.y,b.y,t),lerp(a.z,b.z,t)); }
+
+function applyCompare(){
+  const ct = compareT;
+
+  // O spheres color & size
+  const col = new THREE.Color().lerpColors(C_O, C_S, ct);
+  const rad = lerp(0.38, 0.62, ct);
+  oSpheres.forEach(os=>{
+    os.material.color.copy(col);
+    os.scale.setScalar(rad/0.38);
+  });
+
+  // H positions + O-H bonds
+  ohBonds.forEach(bd=>{
+    const {mesh, mi, hi, fromO} = bd;
+    const h2oPos = hi===0 ? molData[mi].H1 : molData[mi].H2;
+    const h2sPos = hi===0 ? h2sH1[mi] : h2sH2[mi];
+    const targetH = lerpV3(h2oPos, h2sPos, ct);
+
+    // Move H sphere
+    const hIdx = mi*2 + hi;
+    hSpheres[hIdx].position.copy(targetH);
+
+    // Rebuild O-H bond (update position/rotation)
+    rebuildCylinder(mesh, fromO, targetH);
+  });
+
+  // H-bond fade
+  hbondMeshes.forEach(hb=>{
+    // base opacity modulated by pulse, but fade out with ct
+    const baseOpacity = hb.material.opacity; // already set by pulse
+    hb.material.opacity = baseOpacity * (1 - ct*0.95);
+  });
+
+  // Badge
+  const badge = document.getElementById('no-hbond-badge');
+  if(ct > 0.5) badge.classList.add('visible');
+  else badge.classList.remove('visible');
+}
+
+function rebuildCylinder(mesh, from, to){
+  const dir = new THREE.Vector3().subVectors(to, from);
+  const len = dir.length();
+  mesh.scale.y = len / mesh.geometry.parameters.height;
+  const mid = new THREE.Vector3().addVectors(from, to).multiplyScalar(0.5);
+  mesh.position.copy(mid);
+  mesh.quaternion.setFromUnitVectors(
+    new THREE.Vector3(0,1,0),
+    dir.clone().normalize()
+  );
+}
+
+/* ────────────────────────────────────────────────
+   CONTROLS
+──────────────────────────────────────────────── */
+window.togglePause = function(){
+  paused = !paused;
+  const btn = document.getElementById('btn-pause');
+  btn.textContent = paused ? '▶ Продолжить' : '⏸ Пауза';
+  btn.classList.toggle('active', paused);
+};
+
+window.toggleLP = function(){
+  showLP = !showLP;
+  lpMeshes.forEach(lp=>{ lp.visible = showLP; });
+  document.getElementById('btn-lp').classList.toggle('active', showLP);
+};
+
+window.toggleDipoles = function(){
+  showDipoles = !showDipoles;
+  dipoleArrows.forEach(a=>{ a.visible = showDipoles; });
+  document.getElementById('btn-dipole').classList.toggle('active', showDipoles);
+};
+
+window.toggleH2S = function(){
+  h2sMode = !h2sMode;
+  const btn = document.getElementById('btn-h2s');
+  btn.classList.toggle('active-yellow', h2sMode);
+};
+
+/* ────────────────────────────────────────────────
+   HIGHLIGHT
+──────────────────────────────────────────────── */
+window.highlightType = function(type){
+  // flash emissive
+  if(type==='oxygen'){
+    oSpheres.forEach(os=>{
+      os.material.emissive.setHex(0xef4444);
+      setTimeout(()=>os.material.emissive.setHex(0x000000), 600);
+    });
+    openInfo('water');
+  } else if(type==='hydrogen'){
+    hSpheres.forEach(hs=>{
+      hs.material.emissive.setHex(0x94a3b8);
+      setTimeout(()=>hs.material.emissive.setHex(0x000000), 600);
+    });
+    openInfo('water');
+  } else if(type==='hbond'){
+    hbondMeshes.forEach(hb=>{
+      hb.material.emissive.setHex(0x67e8f9);
+      setTimeout(()=>hb.material.emissive.setHex(0x000000), 600);
+    });
+    openInfo('hbond');
+  }
+};
+
+/* ────────────────────────────────────────────────
+   INFO PANEL
+──────────────────────────────────────────────── */
+const infoDB_ALL = {
+  ru: {
+    water: { tag:'Полярная · sp³ · угловая', title:'Молекула воды H₂O', sections:[{h:'Строение и полярность',p:'H₂O: sp³-гибридизация O, 2 связи + 2 неподелённые пары. Угол 104.5°. Диполь μ = 1.85 Д — сильно полярна.'},{h:'Почему bp = 100 °C?',p:'H₂S (M=34) кипит при −60°C. Без H-связей вода кипела бы при ~−80°C. Аномально высокая Т.кип. — следствие H-связей.'},{h:'Аномальные свойства',p:'Лёд легче воды (d=0.917 vs 1.000). Высокая теплоёмкость (4.18 Дж/г·К). Высокое поверхностное натяжение (72 мН/м).'}] },
+    hbond: { tag:'Межмолекулярная · ~20 кДж/моль', title:'Водородная связь O–H···O', sections:[{h:'Что такое H-связь',p:'Притяжение δ⁺-водорода (связан с N, O, F) к неподелённой паре акцептора. Энергия 10–40 кДж/моль.'},{h:'Геометрия',p:'Угол Д–H···A ≈ 180°. O···O ≈ 2.72 Å. В воде каждая молекула образует ~3.4 H-связи.'},{h:'Динамика',p:'H-связи живут ~1–20 пс, постоянно разрываются и образуются → текучесть воды.'}] },
+    hbond_row: { tag:'Межмолекулярная · ~20 кДж/моль', title:'Водородная связь O–H···O', sections:[{h:'Что такое H-связь',p:'Притяжение δ⁺-водорода к неподелённой паре акцептора. Энергия 10–40 кДж/моль.'},{h:'Геометрия',p:'Угол ≈ 180°. O···O ≈ 2.72 Å. ~3.4 H-связи на молекулу воды.'},{h:'Динамика',p:'H-связи живут ~1–20 пс, обеспечивая текучесть при сохранении структуры.'}] },
+    molecule: { tag:'Универсальный растворитель', title:'Вода — основа жизни', sections:[{h:'Полярность и растворение',p:'Полярные H₂O ориентируются вокруг ионов, разрушая ионные решётки.'},{h:'Биологическое значение',p:'60–70% массы клетки. Транспорт, терморегуляция, биохимия. ДНК, белки — всё зависит от воды.'},{h:'H-связи в природе',p:'ДНК: A=T (2), G≡C (3). Белки: α-спираль, β-лист. Целлюлоза: прочность дерева.'}] }
+  },
+  kz: {
+    water: { tag:'Полярлы · sp³ · бұрыштық', title:'Су молекуласы H₂O', sections:[{h:'Құрылымы мен полярлығы',p:'H₂O: O-ның sp³-гибридизациясы, 2 байланыс + 2 бөлінбеген жұп. Бұрышы 104.5°. Дипольі μ = 1.85 Д.'},{h:'Неліктен қайнау т. = 100°C?',p:'H₂S (M=34) −60°C-де қайнайды. H-байланыссыз су ~−80°C-де қайнар еді. Жоғары Т.қайн. — H-байланыс салдары.'},{h:'Аномалды қасиеттер',p:'Мұз судан жеңіл (d=0.917 vs 1.000). Жоғары жылу сыйымдылық (4.18 Дж/г·К). Жоғары беттік керілу (72 мН/м).'}] },
+    hbond: { tag:'Молекулааралық · ~20 кДж/моль', title:'Сутектік байланыс O–H···O', sections:[{h:'H-байланыс дегеніміз',p:'δ⁺-сутектің (N, O, F-ке байланысқан) акцептордың бөлінбеген жұбына тартылуы. Энергиясы 10–40 кДж/моль.'},{h:'Геометриясы',p:'Д–H···A бұрышы ≈ 180°. O···O ≈ 2.72 Å. Суда әр молекула ~3.4 H-байланыс түзеді.'},{h:'Динамикасы',p:'H-байланыстар ~1–20 пс өмір сүреді, үнемі үзіліп, қайта түзіледі → судың аққыштығы.'}] },
+    hbond_row: { tag:'Молекулааралық · ~20 кДж/моль', title:'Сутектік байланыс O–H···O', sections:[{h:'H-байланыс дегеніміз',p:'δ⁺-сутектің акцептордың бөлінбеген жұбына тартылуы. 10–40 кДж/моль.'},{h:'Геометриясы',p:'Бұрышы ≈ 180°. O···O ≈ 2.72 Å. Бір молекулаға ~3.4 H-байланыс.'},{h:'Динамикасы',p:'H-байланыстар ~1–20 пс, құрылымды сақтай отырып аққыштықты қамтамасыз етеді.'}] },
+    molecule: { tag:'Әмбебап еріткіш', title:'Су — тіршілік негізі', sections:[{h:'Полярлық және еру',p:'Полярлы H₂O иондар айналасында бағдарланып, иондық торларды бұзады.'},{h:'Биологиялық маңызы',p:'Жасуша массасының 60–70%-ы. Тасымал, жылу реттеу, биохимия.'},{h:'Табиғаттағы H-байланыстар',p:'ДНК: A=T (2), G≡C (3). Ақуыздар: α-спираль, β-парақ. Целлюлоза: ағаштың беріктігі.'}] }
+  },
+  en: {
+    water: { tag:'Polar · sp³ · angular', title:'Water Molecule H₂O', sections:[{h:'Structure & polarity',p:'H₂O: sp³ hybridized O, 2 bonds + 2 lone pairs. Angle 104.5°. Dipole μ = 1.85 D — strongly polar.'},{h:'Why bp = 100°C?',p:'H₂S (M=34) boils at −60°C. Without H-bonds water would boil at ~−80°C. Anomalously high bp is due to H-bonds.'},{h:'Anomalous properties',p:'Ice is lighter than water (d=0.917 vs 1.000). High heat capacity (4.18 J/g·K). High surface tension (72 mN/m).'}] },
+    hbond: { tag:'Intermolecular · ~20 kJ/mol', title:'Hydrogen Bond O–H···O', sections:[{h:'What is H-bond',p:'Attraction of δ⁺-hydrogen (bonded to N, O, F) to acceptor lone pair. Energy 10–40 kJ/mol.'},{h:'Geometry',p:'D–H···A angle ≈ 180°. O···O ≈ 2.72 Å. Each water molecule forms ~3.4 H-bonds.'},{h:'Dynamics',p:'H-bonds last ~1–20 ps, constantly breaking and forming → fluidity of water.'}] },
+    hbond_row: { tag:'Intermolecular · ~20 kJ/mol', title:'Hydrogen Bond O–H···O', sections:[{h:'What is H-bond',p:'Attraction of δ⁺-hydrogen to acceptor lone pair. 10–40 kJ/mol.'},{h:'Geometry',p:'Angle ≈ 180°. O···O ≈ 2.72 Å. ~3.4 H-bonds per molecule.'},{h:'Dynamics',p:'H-bonds last ~1–20 ps, providing fluidity while maintaining structure.'}] },
+    molecule: { tag:'Universal solvent', title:'Water — Basis of Life', sections:[{h:'Polarity & dissolution',p:'Polar H₂O molecules orient around ions, breaking ionic lattices.'},{h:'Biological significance',p:'60–70% of cell mass. Transport, thermoregulation, biochemistry.'},{h:'H-bonds in nature',p:'DNA: A=T (2), G≡C (3). Proteins: α-helix, β-sheet. Cellulose: wood strength.'}] }
+  }
+};
+const infoDB = infoDB_ALL[LANG] || infoDB_ALL.ru;
+
+window.openInfo = function(type){
+  const data = infoDB[type];
+  if(!data) return;
+  document.getElementById('info-tag').textContent = data.tag;
+  document.getElementById('info-title').textContent = data.title;
+  const body = document.getElementById('info-body');
+  body.innerHTML = data.sections.map(s=>`
+    <div class="info-section">
+      <h4>${s.h}</h4>
+      <p>${s.p}</p>
+    </div>
+  `).join('');
+  document.getElementById('info-panel').classList.add('open');
+};
+
+window.closeInfo = function(){
+  document.getElementById('info-panel').classList.remove('open');
+};
+
+/* ────────────────────────────────────────────────
+   RAYCASTER
+──────────────────────────────────────────────── */
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+
+canvas.addEventListener('click', e=>{
+  if(isDragging) return;
+  mouse.x = (e.clientX/innerWidth)*2 - 1;
+  mouse.y = -(e.clientY/innerHeight)*2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+  const hits = raycaster.intersectObjects(clickables);
+  if(hits.length > 0){
+    const ud = hits[0].object.userData;
+    if(ud.type==='hbond') openInfo('hbond');
+    else if(ud.type==='water') openInfo('water');
+  } else {
+    openInfo('molecule');
+  }
+});
+
+/* ────────────────────────────────────────────────
+   MOUSE DRAG ROTATE
+──────────────────────────────────────────────── */
+let lastMouse = {x:0, y:0};
+let manualRotY = 0;
+let dragDelta = 0;
+
+canvas.addEventListener('mousedown', e=>{
+  dragStart = {x:e.clientX, y:e.clientY};
+  lastMouse = {x:e.clientX, y:e.clientY};
+  isDragging = false;
+  dragDelta = 0;
+});
+
+canvas.addEventListener('mousemove', e=>{
+  if(dragStart===null) return;
+  const dx = e.clientX - dragStart.x;
+  const dy = e.clientY - dragStart.y;
+  dragDelta = Math.sqrt(dx*dx+dy*dy);
+  if(dragDelta > 4) isDragging = true;
+
+  if(isDragging){
+    const mdx = e.clientX - lastMouse.x;
+    const mdy = e.clientY - lastMouse.y;
+    mainGroup.rotation.y += mdx * 0.012;
+    rotX = Math.max(-0.8, Math.min(0.8, rotX + mdy*0.010));
+    mainGroup.rotation.x = rotX;
+  }
+  lastMouse = {x:e.clientX, y:e.clientY};
+});
+
+canvas.addEventListener('mouseup', ()=>{ dragStart = null; });
+canvas.addEventListener('mouseleave', ()=>{ dragStart = null; isDragging = false; });
+
+/* ────────────────────────────────────────────────
+   SCROLL ZOOM
+──────────────────────────────────────────────── */
+canvas.addEventListener('wheel', e=>{
+  e.preventDefault();
+  camera.position.z = Math.max(8, Math.min(28, camera.position.z + e.deltaY*0.03));
+}, { passive: false });
+
+/* ────────────────────────────────────────────────
+   RESIZE
+──────────────────────────────────────────────── */
+window.addEventListener('resize', ()=>{
+  camera.aspect = innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+/* ────────────────────────────────────────────────
+   START
+──────────────────────────────────────────────── */
+animate();
+</script>
+</body>
+</html>

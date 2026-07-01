@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Орбита спутника — Законы Кеплера</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { width: 100%; height: 100%; overflow: hidden; }
+        body {
+            font-family: 'Segoe UI', 'Inter', system-ui, sans-serif;
+            background: radial-gradient(circle at 50% 35%, #101a33 0%, #0a1020 70%);
+            color: #e7eefb;
+        }
+        #canvas-container { position: absolute; inset: 0; }
+        #labels { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+        .label3d {
+            position: absolute; transform: translate(-50%, -50%);
+            font-size: 12.5px; font-weight: 800; padding: 2px 8px; border-radius: 7px;
+            background: rgba(18,28,52,0.86); border: 1px solid rgba(120,150,210,0.5);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.4); white-space: nowrap;
+        }
+        .label3d.sun { color: #fbbf24; } .label3d.sat { color: #38bdf8; } .label3d.ap { color: #f87171; } .label3d.pe { color: #34d399; }
+
+        .header {
+            position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+            text-align: center; z-index: 6; pointer-events: none; width: 92%;
+        }
+        .header h1 { font-size: 26px; font-weight: 800; color: #f4f8ff; text-shadow: 0 2px 8px rgba(0,0,0,0.5); }
+        .header p { font-size: 14px; color: #9fb2d8; margin-top: 4px; font-weight: 600; }
+
+        .panel {
+            position: absolute; z-index: 7; background: rgba(16,25,48,0.82);
+             
+            border: 1px solid rgba(120,150,210,0.32); border-radius: 16px;
+            box-shadow: 0 10px 34px rgba(0,0,0,0.4);
+        }
+        .control-panel { top: 92px; left: 22px; width: 318px; padding: 15px 18px; }
+        .info-panel { top: 92px; right: 22px; width: 300px; padding: 15px 18px; }
+
+        .param-group { margin-bottom: 12px; }
+        .param-label { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+        .param-name { font-size: 13px; font-weight: 700; color: #c4d2ec; display: flex; align-items: center; gap: 6px; }
+        .param-icon { font-size: 15px; }
+        .param-value { font-size: 15px; font-weight: 800; color: #60a5fa; font-variant-numeric: tabular-nums; }
+
+        input[type=range] {
+            -webkit-appearance: none; appearance: none; width: 100%; height: 6px;
+            border-radius: 6px; outline: none; cursor: pointer;
+            background: linear-gradient(90deg, #2a3a5e, #3a4f7e);
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none; width: 18px; height: 18px;
+            border-radius: 50%; background: #fff; border: 3px solid #3b82f6;
+            box-shadow: 0 2px 7px rgba(59,130,246,0.5); cursor: pointer;
+        }
+
+        .toggle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
+        .toggle-btn {
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+            padding: 9px 6px; border-radius: 10px; border: 1.5px solid rgba(120,150,210,0.32);
+            background: rgba(30,44,76,0.55); color: #aebfe0; font-size: 12px; font-weight: 700;
+            cursor: pointer; transition: all 0.16s;
+        }
+        .toggle-btn .dot { width: 9px; height: 9px; border-radius: 50%; background: #56688c; transition: all 0.16s; }
+        .toggle-btn.active { background: rgba(59,130,246,0.22); border-color: #3b82f6; color: #f4f8ff; }
+        .toggle-btn.active .dot { background: #60a5fa; box-shadow: 0 0 7px rgba(96,165,250,0.9); }
+
+        .action-row { display: flex; gap: 8px; margin-top: 11px; }
+        .btn { flex: 1; padding: 9px; border: none; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.16s; color: #fff; }
+        .btn-play { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+        .btn-reset { background: linear-gradient(135deg, #64748b, #475569); }
+        .btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
+
+        .info-title { font-size: 15px; font-weight: 800; color: #f4f8ff; margin: 4px 0 9px; display: flex; align-items: center; gap: 7px; }
+        .readout { display: flex; justify-content: space-between; align-items: center; padding: 5.5px 0; border-bottom: 1px dashed rgba(120,150,210,0.25); font-size: 13px; }
+        .ro-name { color: #9fb2d8; font-weight: 600; }
+        .ro-val { font-weight: 800; color: #eaf0fb; font-variant-numeric: tabular-nums; }
+        .ro-val.pe { color: #34d399; } .ro-val.ap { color: #f87171; } .ro-val.v { color: #38bdf8; }
+
+        .law-box { margin-top: 10px; padding: 8px 11px; border-radius: 10px; background: rgba(59,130,246,0.12); border: 1px solid rgba(96,165,250,0.3); font-size: 12px; color: #cfe0ff; line-height: 1.45; }
+        .law-box b { color: #93c5fd; }
+
+        .formula-panel {
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 7;
+            background: rgba(8,14,28,0.92); color: #eaf0fb; padding: 11px 22px; border-radius: 14px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.45); text-align: center; max-width: 74%; border: 1px solid rgba(120,150,210,0.25);
+        }
+        .formula { font-family: 'Cambria Math','Times New Roman', serif; font-size: 18px; font-weight: 600; }
+        .formula .sep { color: #56688c; margin: 0 12px; }
+        .formula-note { font-size: 12.5px; color: #9fb2d8; margin-top: 5px; }
+
+        .hint {
+            position: absolute; bottom: 18px; left: 22px; z-index: 7; font-size: 12px; color: #9fb2d8;
+            background: rgba(16,25,48,0.7); padding: 7px 13px; border-radius: 9px;
+            border: 1px solid rgba(120,150,210,0.25);
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div id="labels"></div>
+
+    <div class="header">
+        <h1>🛰️ Орбита спутника — Законы Кеплера</h1>
+        <p><span>Эллиптическая орбита • равные площади • T² ∝ a³</span></p>
+    </div>
+
+    <div class="panel control-panel">
+        <div class="param-group">
+            <div class="param-label">
+                <span class="param-name"><span class="param-icon">🥚</span><span data-i18n="eccLabel">Эксцентриситет e</span></span>
+                <span class="param-value" id="ecc-value">0.50</span>
+            </div>
+            <input type="range" id="ecc" min="0" max="0.85" step="0.01" value="0.5">
+        </div>
+        <div class="param-group">
+            <div class="param-label">
+                <span class="param-name"><span class="param-icon">📏</span><span data-i18n="aLabel">Большая полуось a</span></span>
+                <span class="param-value" id="a-value">6.0</span>
+            </div>
+            <input type="range" id="semi" min="4" max="9" step="0.1" value="6">
+        </div>
+        <div class="param-group">
+            <div class="param-label">
+                <span class="param-name"><span class="param-icon">⏩</span><span data-i18n="speedLabel">Скорость анимации</span></span>
+                <span class="param-value" id="speed-value">1.0×</span>
+            </div>
+            <input type="range" id="speed" min="0.2" max="3" step="0.1" value="1">
+        </div>
+
+        <div class="toggle-grid">
+            <button class="toggle-btn active" id="t-orbit"><span class="dot"></span><span data-i18n="tOrbit">Орбита</span></button>
+            <button class="toggle-btn active" id="t-area"><span class="dot"></span><span data-i18n="tArea">Секторы (2-й з.)</span></button>
+            <button class="toggle-btn active" id="t-vel"><span class="dot"></span><span data-i18n="tVel">Вектор v</span></button>
+            <button class="toggle-btn active" id="t-lbl"><span class="dot"></span><span data-i18n="tLbl">Подписи</span></button>
+        </div>
+
+        <div class="action-row">
+            <button class="btn btn-play" id="btn-play" data-i18n="pause">⏸ Пауза</button>
+            <button class="btn btn-reset" id="btn-reset" data-i18n="reset">↺ Сброс</button>
+        </div>
+
+        <div class="law-box" id="law-box"></div>
+    </div>
+
+    <div class="panel info-panel">
+        <div class="info-title">📊 <span data-i18n="infoTitle">Параметры</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roPeri">Перигей r_min = a(1−e)</span><span class="ro-val pe" id="ro-peri">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roApo">Апогей r_max = a(1+e)</span><span class="ro-val ap" id="ro-apo">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roR">Текущее r</span><span class="ro-val" id="ro-r">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roV">Скорость v (vis-viva)</span><span class="ro-val v" id="ro-v">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roT">Период T ∝ a^(3/2)</span><span class="ro-val" id="ro-t">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roPhase">Фаза орбиты</span><span class="ro-val" id="ro-phase">—</span></div>
+    </div>
+
+    <div class="formula-panel">
+        <div class="formula">
+            r·v⊥ = const
+            <span class="sep">|</span>
+            v = √(GM(2∕r − 1∕a))
+            <span class="sep">|</span>
+            T² ∕ a³ = const
+        </div>
+        <div class="formula-note" data-i18n="note">1-й закон: орбита — эллипс, звезда в фокусе. 2-й: радиус-вектор за равные времена заметает равные площади (быстрее у перигея). 3-й: T² пропорционально a³.</div>
+    </div>
+
+    <div class="hint"><span data-i18n="hint">ЛКМ — вращение • ПКМ — перемещение • Колесо — зум</span></div>
+
+    <script src="../../libs/vendor/three-r128/three.min.js"></script>
+    <script>
+    const LANG = (new URLSearchParams(window.location.search).get('lang')) || 'ru';
+    const I18N = {
+        ru: { headH:'🛰️ Орбита спутника — Законы Кеплера', headS:'Эллиптическая орбита • равные площади • T² ∝ a³',
+              eccLabel:'Эксцентриситет e', aLabel:'Большая полуось a', speedLabel:'Скорость анимации',
+              tOrbit:'Орбита', tArea:'Секторы (2-й з.)', tVel:'Вектор v', tLbl:'Подписи',
+              play:'▶ Пуск', pause:'⏸ Пауза', reset:'↺ Сброс', infoTitle:'Параметры',
+              roPeri:'Перигей r_min = a(1−e)', roApo:'Апогей r_max = a(1+e)', roR:'Текущее r', roV:'Скорость v (vis-viva)', roT:'Период T ∝ a^(3/2)', roPhase:'Фаза орбиты',
+              note:'1-й закон: орбита — эллипс, звезда в фокусе. 2-й: радиус-вектор за равные времена заметает равные площади (быстрее у перигея). 3-й: T² пропорционально a³.',
+              hint:'ЛКМ — вращение • ПКМ — перемещение • Колесо — зум',
+              lSun:'звезда (фокус)', lSat:'спутник', lAp:'апогей', lPe:'перигей',
+              law1:'<b>Закон 1:</b> орбита — эллипс, звезда в одном из фокусов.', phPeri:'у перигея (быстро)', phApo:'у апогея (медленно)', phMid:'переход' },
+        kz: { headH:'🛰️ Серік орбитасы — Кеплер заңдары', headS:'Эллипстік орбита • тең аудандар • T² ∝ a³',
+              eccLabel:'Эксцентриситет e', aLabel:'Үлкен жарты ось a', speedLabel:'Анимация жылдамдығы',
+              tOrbit:'Орбита', tArea:'Секторлар (2-заң)', tVel:'v векторы', tLbl:'Жазулар',
+              play:'▶ Қосу', pause:'⏸ Тоқтату', reset:'↺ Қайтару', infoTitle:'Параметрлер',
+              roPeri:'Перигей r_min = a(1−e)', roApo:'Апогей r_max = a(1+e)', roR:'Ағымдағы r', roV:'Жылдамдық v (vis-viva)', roT:'Период T ∝ a^(3/2)', roPhase:'Орбита фазасы',
+              note:'1-заң: орбита — эллипс, жұлдыз фокуста. 2-заң: радиус-вектор тең уақытта тең аудандарды сызады (перигейде жылдам). 3-заң: T² ∝ a³.',
+              hint:'СБ — айналдыру • ОБ — жылжыту • Дөңгелек — масштаб',
+              lSun:'жұлдыз (фокус)', lSat:'серік', lAp:'апогей', lPe:'перигей',
+              law1:'<b>1-заң:</b> орбита — эллипс, жұлдыз бір фокуста.', phPeri:'перигейде (жылдам)', phApo:'апогейде (баяу)', phMid:'өту' },
+        en: { headH:'🛰️ Satellite Orbits — Kepler\'s Laws', headS:'Elliptical orbit • equal areas • T² ∝ a³',
+              eccLabel:'Eccentricity e', aLabel:'Semi-major axis a', speedLabel:'Animation speed',
+              tOrbit:'Orbit', tArea:'Sectors (2nd law)', tVel:'Velocity v', tLbl:'Labels',
+              play:'▶ Play', pause:'⏸ Pause', reset:'↺ Reset', infoTitle:'Parameters',
+              roPeri:'Perigee r_min = a(1−e)', roApo:'Apogee r_max = a(1+e)', roR:'Current r', roV:'Speed v (vis-viva)', roT:'Period T ∝ a^(3/2)', roPhase:'Orbit phase',
+              note:'1st law: the orbit is an ellipse with the star at a focus. 2nd: the radius vector sweeps equal areas in equal times (faster at perigee). 3rd: T² ∝ a³.',
+              hint:'LMB — rotate • RMB — pan • Wheel — zoom',
+              lSun:'star (focus)', lSat:'satellite', lAp:'apogee', lPe:'perigee',
+              law1:'<b>Law 1:</b> the orbit is an ellipse with the star at one focus.', phPeri:'near perigee (fast)', phApo:'near apogee (slow)', phMid:'transition' }
+    };
+    const L = I18N[LANG] || I18N.ru;
+
+    // ---- physics ----
+    const GM = 60;             // gravitational parameter (units chosen for nice motion)
+    let ecc = 0.5;
+    let semiA = 6.0;
+    let animSpeed = 1.0;
+    let showOrbit = true, showArea = true, showVel = true, showLbl = true;
+    let playing = true;
+
+    // orbit state via true anomaly integration (dθ/dt = h / r²)
+    let theta = 0;             // true anomaly
+    function semiB() { return semiA * Math.sqrt(1 - ecc * ecc); }
+    function focusC() { return semiA * ecc; }           // distance center->focus
+    function rAt(th) { return semiA * (1 - ecc * ecc) / (1 + ecc * Math.cos(th)); }
+    function periR() { return semiA * (1 - ecc); }
+    function apoR() { return semiA * (1 + ecc); }
+    function angMom() { return Math.sqrt(GM * semiA * (1 - ecc * ecc)); }  // specific ang. momentum h
+    function speedAt(r) { return Math.sqrt(GM * (2 / r - 1 / semiA)); }    // vis-viva
+    function periodT() { return 2 * Math.PI * Math.sqrt(Math.pow(semiA, 3) / GM); }
+
+    // satellite position in orbital plane (focus at origin = star)
+    function satPos(th) {
+        const r = rAt(th);
+        return new THREE.Vector3(r * Math.cos(th), 0, r * Math.sin(th));
+    }
+
+    // ---- three.js ----
+    let scene, camera, renderer, root, star, satellite, orbitLine, velArrow, sweepMesh;
+    let stars, sweepSectors = [];
+    const clock = new THREE.Clock();
+    const container = document.getElementById('canvas-container');
+    const labelLayer = document.getElementById('labels');
+
+    let camTheta = 0.9, camPhi = 0.72, camRadius = 22;
+    const camTarget = new THREE.Vector3(0, 0, 0);
+    let dragMode = 0, lastX = 0, lastY = 0;
+
+    function init() {
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0a1020);
+
+        camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 400);
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        container.appendChild(renderer.domElement);
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+        const sunLight = new THREE.PointLight(0xfff0c0, 2.2, 200); sunLight.position.set(0, 0, 0); scene.add(sunLight);
+
+        root = new THREE.Group(); scene.add(root);
+        buildStarfield();
+        buildStar();
+        buildSatellite();
+        orbitLine = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0x60a5fa, transparent: true, opacity: 0.6 }));
+        root.add(orbitLine);
+        sweepMesh = new THREE.Group(); root.add(sweepMesh);
+        velArrow = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 0, 0), 2.5, 0x38bdf8, 0.6, 0.4);
+        root.add(velArrow);
+
+        makeLabels();
+        applyI18N();
+        setupControls();
+        rebuildOrbit();
+        updateCamera();
+        animate();
+    }
+
+    function buildStarfield() {
+        const g = new THREE.BufferGeometry(); const n = 700; const arr = new Float32Array(n * 3);
+        for (let i = 0; i < n; i++) { const r = 80 + Math.random() * 120; const u = Math.random() * Math.PI * 2, v = Math.acos(2 * Math.random() - 1); arr[i * 3] = r * Math.sin(v) * Math.cos(u); arr[i * 3 + 1] = r * Math.cos(v); arr[i * 3 + 2] = r * Math.sin(v) * Math.sin(u); }
+        g.setAttribute('position', new THREE.BufferAttribute(arr, 3));
+        stars = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xaab8d8, size: 0.6, sizeAttenuation: true }));
+        scene.add(stars);
+    }
+
+    function buildStar() {
+        star = new THREE.Mesh(new THREE.SphereGeometry(1.1, 28, 22),
+            new THREE.MeshStandardMaterial({ color: 0xfbbf24, emissive: 0xf59e0b, emissiveIntensity: 0.9 }));
+        root.add(star);
+        const glow = new THREE.Mesh(new THREE.SphereGeometry(1.7, 24, 18),
+            new THREE.MeshBasicMaterial({ color: 0xfcd34d, transparent: true, opacity: 0.18 }));
+        star.add(glow);
+    }
+
+    function buildSatellite() {
+        satellite = new THREE.Group(); root.add(satellite);
+        const body = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5),
+            new THREE.MeshStandardMaterial({ color: 0xcbd5e1, metalness: 0.6, roughness: 0.3 }));
+        satellite.add(body);
+        const panelMat = new THREE.MeshStandardMaterial({ color: 0x1e3a8a, metalness: 0.4, roughness: 0.4, emissive: 0x1e3a8a, emissiveIntensity: 0.3 });
+        const p1 = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.05, 0.4), panelMat); p1.position.x = 0.8; satellite.add(p1);
+        const p2 = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.05, 0.4), panelMat); p2.position.x = -0.8; satellite.add(p2);
+    }
+
+    function rebuildOrbit() {
+        // orbit ellipse centered so that focus (star) is at origin: center at (-c, 0)
+        const pts = [];
+        const c = focusC();
+        for (let i = 0; i <= 180; i++) {
+            const th = i / 180 * Math.PI * 2;
+            const r = rAt(th);
+            pts.push(new THREE.Vector3(r * Math.cos(th), 0, r * Math.sin(th)));
+        }
+        orbitLine.geometry.dispose(); orbitLine.geometry = new THREE.BufferGeometry().setFromPoints(pts);
+        orbitLine.visible = showOrbit;
+        recalcStatic();
+    }
+
+    function recalcStatic() {
+        setTxt('ro-peri', periR().toFixed(2));
+        setTxt('ro-apo', apoR().toFixed(2));
+        setTxt('ro-t', periodT().toFixed(1));
+        document.getElementById('law-box').innerHTML = L.law1;
+    }
+
+    function setTxt(id, v) { const el = document.getElementById(id); if (el) el.textContent = v; }
+
+    // ---- 2nd law sectors: shade equal-time wedges ----
+    let lastSweepTime = 0, sweepAccum = 0;
+    function addSector(th0, th1) {
+        const seg = 10; const shape = [];
+        shape.push(new THREE.Vector3(0, 0, 0));
+        for (let i = 0; i <= seg; i++) {
+            const th = th0 + (th1 - th0) * i / seg; const r = rAt(th);
+            shape.push(new THREE.Vector3(r * Math.cos(th), 0, r * Math.sin(th)));
+        }
+        const geo = new THREE.BufferGeometry().setFromPoints(shape);
+        // build triangle fan indices
+        const idx = []; for (let i = 1; i < shape.length - 1; i++) idx.push(0, i, i + 1);
+        geo.setIndex(idx); geo.computeVertexNormals();
+        const hue = 0.55 + Math.random() * 0.1;
+        const col = new THREE.Color().setHSL(hue, 0.6, 0.55);
+        const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.28, side: THREE.DoubleSide }));
+        mesh.userData.born = performance.now();
+        sweepMesh.add(mesh); sweepSectors.push(mesh);
+        if (sweepSectors.length > 8) { const old = sweepSectors.shift(); old.geometry.dispose(); sweepMesh.remove(old); }
+    }
+
+    // ---- labels ----
+    let lblSun, lblSat, lblAp, lblPe;
+    function makeLabels() {
+        const mk = (cls) => { const d = document.createElement('div'); d.className = 'label3d ' + cls; labelLayer.appendChild(d); return d; };
+        lblSun = mk('sun'); lblSat = mk('sat'); lblAp = mk('ap'); lblPe = mk('pe');
+    }
+    function proj(el, p, show, text) {
+        if (!show) { el.style.display = 'none'; return; }
+        const v = p.clone().project(camera);
+        if (v.z > 1) { el.style.display = 'none'; return; }
+        el.style.display = 'block'; if (text != null) el.textContent = text;
+        el.style.left = (v.x * 0.5 + 0.5) * window.innerWidth + 'px';
+        el.style.top = (-v.y * 0.5 + 0.5) * window.innerHeight + 'px';
+    }
+    function updateLabels() {
+        proj(lblSun, new THREE.Vector3(0, 1.6, 0), showLbl, L.lSun);
+        proj(lblSat, satellite.position.clone().add(new THREE.Vector3(0, 1.0, 0)), showLbl, L.lSat);
+        // perigee at θ=0 (closest, +x), apogee at θ=π (-x)
+        proj(lblPe, new THREE.Vector3(periR(), 0.2, 0), showLbl && showOrbit, L.lPe);
+        proj(lblAp, new THREE.Vector3(-apoR(), 0.2, 0), showLbl && showOrbit, L.lAp);
+    }
+
+    function updateCamera() {
+        const sp = Math.sin(camPhi), cp = Math.cos(camPhi), st = Math.sin(camTheta), ct = Math.cos(camTheta);
+        camera.position.set(camTarget.x + camRadius * sp * ct, camTarget.y + camRadius * cp, camTarget.z + camRadius * sp * st);
+        camera.lookAt(camTarget);
+    }
+
+    function setupControls() {
+        document.getElementById('ecc').addEventListener('input', e => { ecc = +e.target.value; setTxt('ecc-value', ecc.toFixed(2)); clearSectors(); rebuildOrbit(); });
+        document.getElementById('semi').addEventListener('input', e => { semiA = +e.target.value; setTxt('a-value', semiA.toFixed(1)); clearSectors(); rebuildOrbit(); });
+        document.getElementById('speed').addEventListener('input', e => { animSpeed = +e.target.value; setTxt('speed-value', animSpeed.toFixed(1) + '×'); });
+
+        const tog = (id, fn) => { const el = document.getElementById(id); el.addEventListener('click', () => { el.classList.toggle('active'); fn(el.classList.contains('active')); }); };
+        tog('t-orbit', v => { showOrbit = v; orbitLine.visible = v; });
+        tog('t-area', v => { showArea = v; sweepMesh.visible = v; });
+        tog('t-vel', v => { showVel = v; velArrow.visible = v; });
+        tog('t-lbl', v => showLbl = v);
+
+        document.getElementById('btn-play').addEventListener('click', () => {
+            playing = !playing; document.getElementById('btn-play').textContent = playing ? L.pause : L.play;
+        });
+        document.getElementById('btn-reset').addEventListener('click', () => {
+            ecc = 0.5; semiA = 6.0; animSpeed = 1.0; theta = 0; playing = true; showOrbit = showArea = showVel = showLbl = true;
+            document.getElementById('ecc').value = 0.5; document.getElementById('semi').value = 6; document.getElementById('speed').value = 1;
+            setTxt('ecc-value', '0.50'); setTxt('a-value', '6.0'); setTxt('speed-value', '1.0×');
+            ['t-orbit', 't-area', 't-vel', 't-lbl'].forEach(id => document.getElementById(id).classList.add('active'));
+            document.getElementById('btn-play').textContent = L.pause; sweepMesh.visible = true;
+            clearSectors();
+            camTheta = 0.9; camPhi = 0.72; camRadius = 22; camTarget.set(0, 0, 0);
+            rebuildOrbit(); updateCamera();
+        });
+
+        const el = renderer.domElement;
+        el.addEventListener('contextmenu', e => e.preventDefault());
+        el.addEventListener('mousedown', e => { dragMode = (e.button === 2 || e.shiftKey) ? 2 : 1; lastX = e.clientX; lastY = e.clientY; });
+        window.addEventListener('mousemove', e => {
+            if (!dragMode) return;
+            const dx = e.clientX - lastX, dy = e.clientY - lastY; lastX = e.clientX; lastY = e.clientY;
+            if (dragMode === 1) { camTheta -= dx * 0.005; camPhi = Math.max(0.12, Math.min(Math.PI - 0.12, camPhi - dy * 0.005)); }
+            else { const ps = camRadius * 0.0016; const right = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0); const up = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 1); camTarget.addScaledVector(right, -dx * ps); camTarget.addScaledVector(up, dy * ps); }
+            updateCamera();
+        });
+        window.addEventListener('mouseup', () => dragMode = 0);
+        el.addEventListener('wheel', e => { e.preventDefault(); camRadius = Math.max(10, Math.min(60, camRadius + e.deltaY * 0.02)); updateCamera(); }, { passive: false });
+        el.addEventListener('touchstart', e => { const t = e.touches[0]; dragMode = 1; lastX = t.clientX; lastY = t.clientY; }, { passive: true });
+        el.addEventListener('touchmove', e => { if (!dragMode) return; const t = e.touches[0]; const dx = t.clientX - lastX, dy = t.clientY - lastY; lastX = t.clientX; lastY = t.clientY; camTheta -= dx * 0.006; camPhi = Math.max(0.12, Math.min(Math.PI - 0.12, camPhi - dy * 0.006)); updateCamera(); e.preventDefault(); }, { passive: false });
+        window.addEventListener('touchend', () => dragMode = 0);
+        window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+    }
+
+    function clearSectors() { sweepSectors.forEach(s => { s.geometry.dispose(); sweepMesh.remove(s); }); sweepSectors = []; sweepAccum = 0; }
+
+    function applyI18N() {
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const k = el.getAttribute('data-i18n');
+            if (L[k] != null) { if (k === 'note') el.innerHTML = L[k]; else el.textContent = L[k]; }
+        });
+        document.querySelector('.header h1').textContent = L.headH;
+        document.querySelector('.header p span').textContent = L.headS;
+        setTxt('ecc-value', ecc.toFixed(2)); setTxt('a-value', semiA.toFixed(1)); setTxt('speed-value', animSpeed.toFixed(1) + '×');
+        document.title = L.headH.replace(/^[^\wА-Яа-яЁё]+/, '');
+        document.documentElement.lang = LANG;
+    }
+
+    let sectorStartTheta = 0, sectorTimer = 0;
+    function animate() {
+        requestAnimationFrame(animate);
+        const dt = Math.min(clock.getDelta(), 0.05);
+
+        if (playing) {
+            // Kepler's 2nd law: dθ/dt = h / r²  → faster near perigee
+            const r = rAt(theta);
+            const dtheta = (angMom() / (r * r)) * dt * animSpeed * 0.9;
+            theta = (theta + dtheta) % (Math.PI * 2);
+
+            // 2nd-law equal-time sectors
+            if (showArea) {
+                sectorTimer += dt * animSpeed;
+                const interval = periodT() / 8 / 0.9;   // 8 sectors per orbit
+                if (sectorTimer >= interval) { addSector(sectorStartTheta, theta); sectorStartTheta = theta; sectorTimer = 0; }
+            }
+        }
+        sweepMesh.visible = showArea;
+
+        // place satellite
+        const r = rAt(theta);
+        satellite.position.copy(satPos(theta));
+        satellite.rotation.y = -theta;
+
+        // velocity direction: derivative of position w.r.t theta, scaled by speed
+        const dpos = new THREE.Vector3(
+            -Math.sin(theta) * r + Math.cos(theta) * dr_dtheta(theta), 0,
+            Math.cos(theta) * r + Math.sin(theta) * dr_dtheta(theta)).normalize();
+        const v = speedAt(r);
+        if (showVel) {
+            velArrow.visible = true;
+            velArrow.position.copy(satellite.position);
+            velArrow.setDirection(dpos);
+            velArrow.setLength(Math.max(0.8, Math.min(4, v * 0.7)), 0.5, 0.35);
+        }
+
+        // readouts
+        setTxt('ro-r', r.toFixed(2));
+        setTxt('ro-v', v.toFixed(2));
+        const near = Math.cos(theta); // +1 perigee, -1 apogee
+        setTxt('ro-phase', near > 0.5 ? L.phPeri : near < -0.5 ? L.phApo : L.phMid);
+
+        star.rotation.y += dt * 0.2;
+        if (stars) stars.rotation.y += dt * 0.005;
+        updateLabels();
+        renderer.render(scene, camera);
+    }
+
+    function dr_dtheta(th) {
+        // d/dθ [ a(1-e²)/(1+e cosθ) ] = a(1-e²) e sinθ / (1+e cosθ)²
+        const p = semiA * (1 - ecc * ecc); const denom = 1 + ecc * Math.cos(th);
+        return p * ecc * Math.sin(th) / (denom * denom);
+    }
+
+    init();
+    </script>
+</body>
+</html>

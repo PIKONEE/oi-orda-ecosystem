@@ -1,0 +1,1195 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Теория столкновений и энергия активации</title>
+<style>
+
+
+*{margin:0;padding:0;box-sizing:border-box;}
+
+:root{
+  --bg:#f5f4f0;
+  --surface:rgba(255,255,255,0.90);
+  --border:rgba(0,0,0,0.08);
+  --text:#1c1917;
+  --muted:#78716c;
+  --indigo:#4f46e5;
+  --indigo-light:#e0e7ff;
+  --shadow:0 2px 20px rgba(0,0,0,0.07);
+  --shadow-lg:0 8px 44px rgba(0,0,0,0.11);
+  --reactA:#3b82f6;
+  --reactB:#d97706;
+  --product:#16a34a;
+  --hot:#dc2626;
+}
+
+body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);overflow:hidden;height:100vh;}
+
+body::before{
+  content:'';position:fixed;inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='%23f5f4f0'/%3E%3Ccircle cx='1' cy='1' r='0.6' fill='rgba(0,0,0,0.025)'/%3E%3C/svg%3E");
+  pointer-events:none;z-index:0;
+}
+
+#canvas-container{position:fixed;inset:0;z-index:1;}
+
+/* ── HEADER ── */
+.header{
+  position:fixed;top:0;left:0;right:0;z-index:200;
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  padding:0 48px;height:92px;
+  display:flex;align-items:center;gap:14px;
+  box-shadow:var(--shadow);
+}
+.h-formula{font-family:'DM Mono',monospace;font-size:32px;font-weight:500;letter-spacing:-0.5px;color:var(--indigo);}
+.h-formula sub{font-size:20px;}
+.header-title{font-size:26px;font-weight:800;letter-spacing:-0.5px;margin-left:10px;}
+.header-sub{font-size:14px;color:var(--muted);margin-left:auto;text-align:right;line-height:1.5;}
+.header-sub b{color:var(--text);font-weight:600;}
+
+/* ── LEFT PANEL ── */
+.panel-left{
+  position:fixed;left:24px;top:108px;z-index:100;
+  width:315px;
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:24px;
+  padding:18px 20px;
+  box-shadow:var(--shadow-lg);
+  max-height:calc(100vh - 128px);overflow-y:auto;
+}
+.panel-left::-webkit-scrollbar{width:4px;}
+.panel-left::-webkit-scrollbar-track{background:transparent;}
+.panel-left::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.12);border-radius:4px;}
+.panel-left h3{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.1px;color:var(--muted);margin-bottom:10px;}
+
+/* live stats */
+.stat-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:9px 12px;border-radius:13px;margin-bottom:7px;
+  background:rgba(255,255,255,0.55);border:1.5px solid var(--border);
+}
+.stat-row .stat-label{font-size:12.5px;color:var(--muted);line-height:1.25;}
+.stat-row .stat-val{font-family:'DM Mono',monospace;font-size:16px;font-weight:600;color:var(--text);white-space:nowrap;}
+.stat-row .stat-val.hot{color:var(--hot);}
+.stat-row .stat-val.eff{color:var(--product);}
+
+.temp-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle;}
+
+.divider{height:1px;background:var(--border);margin:12px 0;}
+
+/* legend */
+.legend-row{display:flex;align-items:center;gap:9px;font-size:12.5px;color:#374151;margin-bottom:6px;line-height:1.3;}
+.legend-dot{width:15px;height:15px;border-radius:50%;flex-shrink:0;box-shadow:0 1px 3px rgba(0,0,0,0.15);}
+
+.explain{font-size:12.5px;line-height:1.55;color:#374151;margin-top:4px;}
+.explain b{color:var(--text);font-weight:700;}
+.explain .cond{
+  display:block;background:rgba(79,70,229,0.07);border-radius:8px;
+  padding:7px 10px;margin-top:7px;font-size:12px;line-height:1.5;
+}
+.explain .cond .num{font-family:'DM Mono',monospace;font-weight:600;color:var(--indigo);}
+
+/* ── RIGHT PANEL ── */
+.panel-right{
+  position:fixed;right:24px;top:108px;z-index:100;
+  width:290px;
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:24px;
+  padding:20px 20px;
+  box-shadow:var(--shadow-lg);
+  display:flex;flex-direction:column;gap:9px;
+  max-height:calc(100vh - 128px);overflow-y:auto;
+}
+.panel-right::-webkit-scrollbar{width:4px;}
+.panel-right::-webkit-scrollbar-track{background:transparent;}
+.panel-right::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.12);border-radius:4px;}
+.panel-right h3{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.1px;color:var(--muted);margin-bottom:3px;}
+
+.btn-group{display:flex;gap:7px;}
+.btn-group .btn{flex:1;padding:10px 6px;font-size:14px;}
+
+.btn{
+  width:100%;padding:11px 14px;border-radius:14px;
+  font-family:'Syne',sans-serif;font-size:15px;font-weight:600;
+  border:none;cursor:pointer;transition:all .18s;text-align:center;
+}
+.btn-primary{background:linear-gradient(135deg,#4f46e5,#818cf8);color:#fff;box-shadow:0 4px 14px rgba(79,70,229,0.28);}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(79,70,229,0.38);}
+.btn-secondary{background:rgba(79,70,229,0.09);color:var(--indigo);}
+.btn-secondary:hover{background:rgba(79,70,229,0.16);}
+.btn-secondary.active{background:var(--indigo);color:#fff;}
+.btn-ghost{background:rgba(0,0,0,0.05);color:var(--text);}
+.btn-ghost:hover{background:rgba(0,0,0,0.09);}
+.btn-ghost.active{background:rgba(79,70,229,0.12);color:var(--indigo);}
+.sep{height:1px;background:var(--border);margin:2px 0;}
+.note-small{font-size:11.5px;color:var(--muted);text-align:center;line-height:1.4;}
+
+/* ── ENERGY PROFILE PANEL (bottom-center) ── */
+.energy-panel{
+  position:fixed;bottom:80px;left:50%;transform:translateX(-50%);
+  z-index:120;width:560px;
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:22px;
+  padding:10px 20px 8px;
+  box-shadow:var(--shadow-lg);
+}
+.energy-panel .ep-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px;}
+.energy-panel .ep-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);}
+.energy-panel .ep-vals{display:flex;gap:16px;font-size:12.5px;}
+.energy-panel .ep-vals .ev{display:flex;align-items:center;gap:5px;}
+.energy-panel .ep-vals .ev .swatch{width:18px;height:3px;border-radius:2px;}
+.energy-panel .ep-vals .ev .num{font-family:'DM Mono',monospace;font-weight:600;}
+.ea-cat-color{color:var(--product);}
+.ea-orig-color{color:var(--indigo);}
+
+/* ── INFO PANEL ── */
+.info-panel{
+  position:fixed;right:24px;top:108px;z-index:300;
+  width:425px;max-height:calc(100vh - 140px);
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:26px;
+  padding:24px 26px;
+  box-shadow:var(--shadow-lg);overflow-y:auto;
+  transform:translateX(470px);
+  transition:transform .38s cubic-bezier(.22,1,.36,1);
+}
+.info-panel.open{transform:translateX(0);}
+.info-panel::-webkit-scrollbar{width:4px;}
+.info-panel::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.13);border-radius:4px;}
+.info-close{
+  position:absolute;top:16px;right:18px;
+  width:30px;height:30px;border-radius:50%;
+  background:rgba(0,0,0,0.07);border:none;cursor:pointer;
+  font-size:16px;color:var(--muted);
+  display:flex;align-items:center;justify-content:center;
+}
+.info-close:hover{background:rgba(0,0,0,0.13);}
+.info-tag{display:inline-block;border-radius:10px;padding:3px 10px;font-size:12px;font-weight:600;margin-bottom:12px;background:var(--indigo-light);color:var(--indigo);}
+.info-panel h2{font-size:19px;font-weight:700;margin-bottom:6px;}
+.info-section{margin-top:12px;}
+.info-section h4{font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--indigo);margin-bottom:6px;}
+.info-section p{font-size:14px;line-height:1.65;color:#374151;}
+.info-mono{font-family:'DM Mono',monospace;font-size:13px;background:rgba(79,70,229,0.07);border-radius:6px;padding:7px 11px;margin-top:6px;color:var(--text);line-height:1.7;}
+
+/* ── HINT BAR ── */
+.hint-bar{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);z-index:150;display:flex;gap:16px;}
+.hint-pill{
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:20px;
+  padding:7px 18px;font-size:13px;color:var(--muted);
+  box-shadow:var(--shadow);white-space:nowrap;
+}
+.hint-pill span{color:var(--text);font-weight:600;}
+
+/* ── LOADING ── */
+#loading{
+  position:fixed;inset:0;z-index:500;background:var(--bg);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;
+}
+.spinner{
+  width:48px;height:48px;border-radius:50%;
+  border:4px solid rgba(79,70,229,0.15);border-top-color:var(--indigo);
+  animation:spin .9s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+#loading p{font-size:15px;color:var(--muted);}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loading">
+  <div class="spinner"></div>
+  <p>Запускаем молекулы в сосуд…</p>
+</div>
+
+<!-- CANVAS -->
+<div id="canvas-container"></div>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="h-formula">E<sub>а</sub></div>
+  <div class="header-title" data-i18n="header_title">Теория столкновений</div>
+  <div class="header-sub" data-i18n-html="header_sub">
+    Скорость реакции · энергия активации · <b>9–10 класс</b><br>
+    <span style="font-family:'DM Mono',monospace;font-size:13px;">k = A·e<sup>−Eₐ/RT</sup></span>
+  </div>
+</header>
+
+<!-- LEFT PANEL: live stats -->
+<div class="panel-left">
+  <h3 data-i18n="stats_title">Параметры реакции</h3>
+
+  <div class="stat-row">
+    <div class="stat-label"><span class="temp-dot" id="temp-dot" style="background:#f59e0b;"></span><span data-i18n="stat_temp_label">Температура</span></div>
+    <div class="stat-val hot" id="stat-temp">Средняя</div>
+  </div>
+  <div class="stat-row">
+    <div class="stat-label" data-i18n="stat_speed_label">Скорость молекул</div>
+    <div class="stat-val" id="stat-speed">×1.0</div>
+  </div>
+  <div class="stat-row">
+    <div class="stat-label" data-i18n-html="stat_freq_label">Частота столкновений<br><span style="font-size:10.5px;">столкн./сек</span></div>
+    <div class="stat-val" id="stat-freq">0</div>
+  </div>
+  <div class="stat-row">
+    <div class="stat-label" data-i18n-html="stat_eff_label">Эффективных<br><span style="font-size:10.5px;">E ≥ Eₐ и ориентация</span></div>
+    <div class="stat-val eff" id="stat-eff">0%</div>
+  </div>
+
+  <div class="divider"></div>
+
+  <h3 data-i18n="legend_title">Молекулы</h3>
+  <div class="legend-row"><span class="legend-dot" style="background:#3b82f6;"></span><span data-i18n="leg_react_a">Реагент A</span></div>
+  <div class="legend-row"><span class="legend-dot" style="background:#d97706;"></span><span data-i18n="leg_react_b">Реагент B</span></div>
+  <div class="legend-row"><span class="legend-dot" style="background:#16a34a;"></span><span data-i18n="leg_prod">Продукт AB (вспышка при результативном ударе)</span></div>
+
+  <div class="divider"></div>
+
+  <h3 data-i18n="explain_title">Почему не каждый удар срабатывает?</h3>
+  <div class="explain" data-i18n-html="explain_desc">
+    Реакция идёт лишь при <b>результативном столкновении</b>. Для этого нужно выполнить
+    <b>два условия одновременно:</b>
+    <span class="cond"><span class="num">①</span> энергия удара ≥ Eₐ (энергии активации) — частицы движутся достаточно быстро;</span>
+    <span class="cond"><span class="num">②</span> правильная взаимная ориентация — частицы сталкиваются «нужными» сторонами.</span>
+    Большинство ударов слишком слабые или «неудобные» — они упругие и реакции не дают.
+  </div>
+</div>
+
+<!-- RIGHT PANEL: controls -->
+<div class="panel-right">
+  <h3 data-i18n="ctrl_temp_title">Температура</h3>
+  <div class="btn-group">
+    <button class="btn btn-secondary" id="btn-t-low" onclick="setTemp('low')" data-i18n="btn_temp_low">Низкая</button>
+    <button class="btn btn-secondary active" id="btn-t-mid" onclick="setTemp('mid')" data-i18n="btn_temp_mid">Средняя</button>
+    <button class="btn btn-secondary" id="btn-t-high" onclick="setTemp('high')" data-i18n="btn_temp_high">Высокая</button>
+  </div>
+  <div class="note-small" data-i18n="note_temp">Выше T → быстрее молекулы → больше результативных столкновений</div>
+
+  <div class="sep"></div>
+  <h3 data-i18n="ctrl_cat_title">Катализатор</h3>
+  <button class="btn btn-secondary" id="btn-cat" onclick="toggleCatalyst()">Катализатор выкл.</button>
+  <div class="note-small" data-i18n="note_cat">Снижает барьер Eₐ — реакция ускоряется</div>
+
+  <div class="sep"></div>
+  <h3 data-i18n="display_title">Отображение</h3>
+  <button class="btn btn-ghost active" id="btn-trails" onclick="toggleTrails()">Траектории вкл.</button>
+  <button class="btn btn-ghost active" id="btn-rotate" onclick="toggleRotate()">Вращение вкл.</button>
+
+  <div class="sep"></div>
+  <h3 data-i18n="more_title">Подробнее</h3>
+  <button class="btn btn-primary" onclick="openInfo('collision')" data-i18n="btn_coll">Теория столкновений</button>
+  <button class="btn btn-secondary" onclick="openInfo('ea')" data-i18n="btn_ea">Энергия активации Eₐ</button>
+  <button class="btn btn-secondary" onclick="openInfo('temp')" data-i18n="btn_temp_desc">Влияние температуры</button>
+  <button class="btn btn-secondary" onclick="openInfo('catalyst')" data-i18n="btn_cat_desc">Катализатор</button>
+</div>
+
+<!-- ENERGY PROFILE PANEL -->
+<div class="energy-panel">
+  <div class="ep-head">
+    <div class="ep-title" data-i18n="ep_title">Энергетический профиль реакции</div>
+    <div class="ep-vals">
+      <div class="ev"><span class="swatch" style="background:#4f46e5;"></span>Eₐ <span class="num ea-orig-color" id="ea-val">100</span> <span data-i18n="unit_energy">кДж/моль</span></div>
+      <div class="ev"><span class="swatch ea-cat-color" style="background:#16a34a;" id="ea-cat-swatch"></span><span id="ea-cat-label" style="color:#16a34a;">Eₐ (кат.) <span class="num ea-cat-color" id="ea-cat-val">45</span></span></div>
+      <div class="ev">ΔH <span class="num" id="dh-val">−60</span> <span data-i18n="unit_energy">кДж/моль</span></div>
+    </div>
+  </div>
+  <svg id="energy-svg" viewBox="0 0 560 180" width="100%" height="125" style="display:block;">
+    <!-- axes -->
+    <line x1="44" y1="14" x2="44" y2="150" stroke="rgba(0,0,0,0.25)" stroke-width="1.5"/>
+    <line x1="44" y1="150" x2="540" y2="150" stroke="rgba(0,0,0,0.25)" stroke-width="1.5"/>
+    <!-- axis labels -->
+    <text x="10" y="20" font-family="DM Mono, monospace" font-size="11" fill="#78716c">E</text>
+    <text id="lbl-coord" x="492" y="166" font-family="DM Mono, monospace" font-size="11" fill="#78716c">коорд. реакции</text>
+    <!-- original (no catalyst) curve - solid initially -->
+    <path id="path-orig" d="" fill="none" stroke="#4f46e5" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- catalyzed curve - hidden until catalyst on -->
+    <path id="path-cat" d="" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="0" opacity="0"/>
+    <!-- level guide lines -->
+    <line id="line-react" x1="44" y1="0" x2="160" y2="0" stroke="rgba(0,0,0,0.15)" stroke-width="1" stroke-dasharray="3 3"/>
+    <line id="line-prod" x1="400" y1="0" x2="540" y2="0" stroke="rgba(0,0,0,0.15)" stroke-width="1" stroke-dasharray="3 3"/>
+    <!-- Ea bracket (orig) -->
+    <line id="ea-bracket" x1="270" y1="0" x2="270" y2="0" stroke="#4f46e5" stroke-width="1.3" stroke-dasharray="2 2"/>
+    <text id="ea-bracket-text" x="278" y="0" font-family="DM Mono, monospace" font-size="11" fill="#4f46e5">Eₐ</text>
+    <!-- transition state markers -->
+    <circle id="ts-orig" cx="0" cy="0" r="4" fill="#4f46e5"/>
+    <circle id="ts-cat" cx="0" cy="0" r="4" fill="#16a34a" opacity="0"/>
+    <!-- labels -->
+    <text id="lbl-react" x="0" y="0" font-family="Syne, sans-serif" font-size="11" font-weight="600" fill="#1c1917">Реагенты A+B</text>
+    <text id="lbl-prod" x="0" y="0" font-family="Syne, sans-serif" font-size="11" font-weight="600" fill="#1c1917">Продукт AB</text>
+    <text id="lbl-ts" x="0" y="0" font-family="Syne, sans-serif" font-size="10.5" font-weight="600" fill="#78716c" text-anchor="middle">переходное состояние</text>
+  </svg>
+</div>
+
+<!-- INFO PANEL -->
+<div class="info-panel" id="info-panel">
+  <button class="info-close" onclick="closeInfo()">✕</button>
+  <div id="info-content"></div>
+</div>
+
+<!-- HINTS -->
+<div class="hint-bar">
+  <div class="hint-pill"><span data-i18n="hint_drag_label">Drag</span> — <span data-i18n="hint_drag">вращение</span></div>
+  <div class="hint-pill"><span data-i18n="hint_zoom_label">Scroll</span> — <span data-i18n="hint_zoom">зум</span></div>
+  <div class="hint-pill"><span data-i18n="hint_btns_label">Кнопки</span> — <span data-i18n="hint_btns">T и катализатор</span></div>
+</div>
+
+<script>
+const I18N = {
+  ru: {
+    page_title: "Теория столкновений и энергия активации",
+    header_title: "Теория столкновений",
+    header_sub: "Скорость реакции · энергия активации · <b>9–10 класс</b><br><span style=\"font-family:'DM Mono',monospace;font-size:13px;\">k = A·e<sup>−Eₐ/RT</sup></span>",
+    stats_title: "Параметры реакции",
+    stat_temp_label: "Температура",
+    stat_speed_label: "Скорость молекул",
+    stat_freq_label: "Частота столкновений<br><span style=\"font-size:10.5px;\">столкн./сек</span>",
+    stat_eff_label: "Эффективных<br><span style=\"font-size:10.5px;\">E ≥ Eₐ и ориентация</span>",
+    legend_title: "Молекулы",
+    leg_react_a: "Реагент A",
+    leg_react_b: "Реагент B",
+    leg_prod: "Продукт AB (вспышка при результативном ударе)",
+    explain_title: "Почему не каждый удар срабатывает?",
+    explain_desc: "Реакция идёт лишь при <b>результативном столкновении</b>. Для этого нужно выполнить <b>два условия одновременно:</b><span class=\"cond\"><span class=\"num\">①</span> энергия удара ≥ Eₐ (энергии активации) — частицы движутся достаточно быстро;</span><span class=\"cond\"><span class=\"num\">②</span> правильная взаимная ориентация — частицы сталкиваются «нужными» сторонами.</span>Большинство ударов слишком слабые или «неудобные» — они упругие и реакции не дают.",
+    ctrl_temp_title: "Температура",
+    btn_temp_low: "Низкая",
+    btn_temp_mid: "Средняя",
+    btn_temp_high: "Высокая",
+    note_temp: "Выше T → быстрее молекулы → больше результативных столкновений",
+    ctrl_cat_title: "Катализатор",
+    btn_cat_on: "Катализатор вкл.",
+    btn_cat_off: "Катализатор выкл.",
+    note_cat: "Снижает барьер Eₐ — реакция ускоряется",
+    display_title: "Отображение",
+    btn_trails_on: "Траектории вкл.",
+    btn_trails_off: "Траектории выкл.",
+    btn_rot_on: "Вращение вкл.",
+    btn_rot_off: "Вращение выкл.",
+    more_title: "Подробнее",
+    btn_coll: "Теория столкновений",
+    btn_ea: "Энергия активации Eₐ",
+    btn_temp_desc: "Влияние температуры",
+    btn_cat_desc: "Катализатор",
+    ep_title: "Энергетический профиль реакции",
+    unit_energy: "кДж/моль",
+    hint_drag: "вращение",
+    hint_zoom: "зум",
+    hint_btns: "T и катализатор",
+    hint_drag_label: "Drag",
+    hint_zoom_label: "Scroll",
+    hint_btns_label: "Кнопки",
+    temp_low: "Низкая",
+    temp_mid: "Средняя",
+    temp_high: "Высокая",
+    lbl_react: "Реагенты A+B",
+    lbl_prod: "Продукт AB",
+    lbl_ts: "переходное состояние",
+    lbl_coord: "коорд. реакции",
+    tag_coll: "ТЕОРИЯ СТОЛКНОВЕНИЙ"
+  },
+  kz: {
+    page_title: "Соқтығысу теориясы және белсендіру энергиясы",
+    header_title: "Соқтығысу теориясы",
+    header_sub: "Реакция жылдамдығы · белсендіру энергиясы · <b>9–10 сынып</b><br><span style=\"font-family:'DM Mono',monospace;font-size:13px;\">k = A·e<sup>−Eₐ/RT</sup></span>",
+    stats_title: "Реакция параметрлері",
+    stat_temp_label: "Температура",
+    stat_speed_label: "Молекулалар жылдамдығы",
+    stat_freq_label: "Соқтығысу жиілігі<br><span style=\"font-size:10.5px;\">соқтығысу/сек</span>",
+    stat_eff_label: "Тиімді соқтығысулар<br><span style=\"font-size:10.5px;\">E ≥ Eₐ және бағытталуы</span>",
+    legend_title: "Молекулалар",
+    leg_react_a: "Реагент A",
+    leg_react_b: "Реагент B",
+    leg_prod: "Өнім AB (тиімді соқтығысу кезіндегі жарқыл)",
+    explain_title: "Неліктен әрбір соқтығысу реакцияға әкелмейді?",
+    explain_desc: "Реакция тек <b>тиімді соқтығысу</b> кезінде ғана жүреді. Ол үшін <b>бір мезгілде екі шарт</b> орындалуы керек:<span class=\"cond\"><span class=\"num\">①</span> соқтығысу энергиясы ≥ Eₐ (белсендіру энергиясы) — бөлшектер жеткілікті жылдам қозғалады;</span><span class=\"cond\"><span class=\"num\">②</span> дұрыс бағытталу — бөлшектер бір-бірімен «дұрыс» жақтарымен соқтығысады.</span>Соқтығысулардың көбі тым әлсіз немесе қолайсыз бағытта болады — олар серпімді және реакцияға әкелмейді.",
+    ctrl_temp_title: "Температура",
+    btn_temp_low: "Төмен",
+    btn_temp_mid: "Орташа",
+    btn_temp_high: "Жоғары",
+    note_temp: "Температура жоғарылағанда → молекулалар жылдамырақ қозғалады → тиімді соқтығысулар көбейеді",
+    ctrl_cat_title: "Катализатор",
+    btn_cat_on: "Катализатор қосулы",
+    btn_cat_off: "Катализатор өшірулі",
+    note_cat: "Eₐ барьерін төмендетеді — реакция жылдамдайды",
+    display_title: "Бейнелеу",
+    btn_trails_on: "Траекториялар қосулы",
+    btn_trails_off: "Траекториялар өшірулі",
+    btn_rot_on: "Айналу қосулы",
+    btn_rot_off: "Айналу өшірулі",
+    more_title: "Толығырақ",
+    btn_coll: "Соқтығысу теориясы",
+    btn_ea: "Белсендіру энергиясы Eₐ",
+    btn_temp_desc: "Температура әсері",
+    btn_cat_desc: "Катализатор",
+    ep_title: "Реакцияның энергетикалық профилі",
+    unit_energy: "кДж/моль",
+    hint_drag: "айналдыру",
+    hint_zoom: "масштаб",
+    hint_btns: "T және катализатор",
+    hint_drag_label: "Тарту",
+    hint_zoom_label: "Дөңгелек",
+    hint_btns_label: "Батырмалар",
+    temp_low: "Төмен",
+    temp_mid: "Орташа",
+    temp_high: "Жоғары",
+    lbl_react: "Реагенттер A+B",
+    lbl_prod: "Өнім AB",
+    lbl_ts: "ауыспалы күй",
+    lbl_coord: "реакция коорд.",
+    tag_coll: "СОҚТЫҒЫСУ ТЕОРИЯСЫ"
+  },
+  en: {
+    page_title: "Collision Theory and Activation Energy",
+    header_title: "Collision Theory",
+    header_sub: "Reaction rate · activation energy · <b>Grades 9–10</b><br><span style=\"font-family:'DM Mono',monospace;font-size:13px;\">k = A·e<sup>−Eₐ/RT</sup></span>",
+    stats_title: "Reaction Parameters",
+    stat_temp_label: "Temperature",
+    stat_speed_label: "Molecular speed",
+    stat_freq_label: "Collision frequency<br><span style=\"font-size:10.5px;\">collisions/sec</span>",
+    stat_eff_label: "Effective<br><span style=\"font-size:10.5px;\">E ≥ Eₐ and orientation</span>",
+    legend_title: "Molecules",
+    leg_react_a: "Reactant A",
+    leg_react_b: "Reactant B",
+    leg_prod: "Product AB (flash on effective collision)",
+    explain_title: "Why doesn't every collision work?",
+    explain_desc: "A reaction occurs only during an <b>effective collision</b>. Two conditions must be met <b>simultaneously:</b><span class=\"cond\"><span class=\"num\">①</span> collision energy ≥ Eₐ (activation energy) — particles move fast enough;</span><span class=\"cond\"><span class=\"num\">②</span> correct mutual orientation — particles collide with the \"right\" sides.</span>Most collisions are too weak or \"awkward\" — they are elastic and do not lead to a reaction.",
+    ctrl_temp_title: "Temperature",
+    btn_temp_low: "Low",
+    btn_temp_mid: "Medium",
+    btn_temp_high: "High",
+    note_temp: "Higher T → faster molecules → more effective collisions",
+    ctrl_cat_title: "Catalyst",
+    btn_cat_on: "Catalyst on",
+    btn_cat_off: "Catalyst off",
+    note_cat: "Lowers the Eₐ barrier — reaction accelerates",
+    display_title: "Display",
+    btn_trails_on: "Trajectories on",
+    btn_trails_off: "Trajectories off",
+    btn_rot_on: "Rotation on",
+    btn_rot_off: "Rotation off",
+    more_title: "Details",
+    btn_coll: "Collision Theory",
+    btn_ea: "Activation Energy Eₐ",
+    btn_temp_desc: "Temperature Effect",
+    btn_cat_desc: "Catalyst",
+    ep_title: "Reaction Energy Profile",
+    unit_energy: "kJ/mol",
+    hint_drag: "rotate",
+    hint_zoom: "zoom",
+    hint_btns: "T and catalyst",
+    hint_drag_label: "Drag",
+    hint_zoom_label: "Scroll",
+    hint_btns_label: "Buttons",
+    temp_low: "Low",
+    temp_mid: "Medium",
+    temp_high: "High",
+    lbl_react: "Reactants A+B",
+    lbl_prod: "Product AB",
+    lbl_ts: "transition state",
+    lbl_coord: "reaction coord.",
+    tag_coll: "COLLISION THEORY"
+  }
+};
+
+const LANG = (() => {
+  const q = new URLSearchParams(location.search).get('lang');
+  return (q && I18N[q]) ? q : 'ru';
+})();
+
+const tr = (key) => (I18N[LANG] && I18N[LANG][key]) ?? (I18N.ru[key]);
+
+function applyStaticI18N() {
+  document.documentElement.lang = LANG;
+  const tv = tr('page_title');
+  if (tv) document.title = tv;
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const v = tr(el.getAttribute('data-i18n'));
+    if (v) el.textContent = v;
+  });
+  document.querySelectorAll('[data-i18n-html]').forEach(el => {
+    const v = tr(el.getAttribute('data-i18n-html'));
+    if (v) el.innerHTML = v;
+  });
+}
+applyStaticI18N();
+</script>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "../../libs/vendor/three-0.160.0/three.module.js",
+    "three/addons/": "../../libs/vendor/three-0.160.0/addons/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ── RENDERER ─────────────────────────────────────────────────────────────────
+const W = () => window.innerWidth, H = () => window.innerHeight;
+const renderer = new THREE.WebGLRenderer({antialias: true, alpha:true});
+renderer.setSize(W(), H());
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, W()/H(), 0.1, 200);
+camera.position.set(0, 5.2, 24);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 10;
+controls.maxDistance = 34;
+controls.target.set(0, 2.4, 0);
+
+// ── LIGHTING ─────────────────────────────────────────────────────────────────
+scene.add(new THREE.AmbientLight(0xffffff, 0.85));
+const dir1 = new THREE.DirectionalLight(0xfff8f0, 1.15);
+dir1.position.set(8, 12, 9);
+scene.add(dir1);
+const dir2 = new THREE.DirectionalLight(0xeef2ff, 0.45);
+dir2.position.set(-9, -3, -7);
+scene.add(dir2);
+
+// showcase group (slow rotation) — molecule physics live in WORLD-space box independent of this
+const showcaseGroup = new THREE.Group();
+showcaseGroup.position.y = 2.4;
+scene.add(showcaseGroup);
+
+// ── REACTION VESSEL (bounding box) ─────────────────────────────────────────────
+const BOX = { x: 12, y: 8, z: 8 };
+const HX = BOX.x / 2, HY = BOX.y / 2, HZ = BOX.z / 2;
+
+const vessel = new THREE.Group();
+showcaseGroup.add(vessel);
+
+// faint translucent box faces
+const faceMat = new THREE.MeshStandardMaterial({
+  color:0xc7d2fe, transparent:true, opacity:0.05,
+  side:THREE.DoubleSide, depthWrite:false, roughness:0.4
+});
+const faceBox = new THREE.Mesh(new THREE.BoxGeometry(BOX.x, BOX.y, BOX.z), faceMat);
+vessel.add(faceBox);
+
+// 12 edge cylinders for a crisp wireframe look
+const edgeMat = new THREE.MeshStandardMaterial({color:0x818cf8, roughness:0.4, metalness:0.1});
+function edgeCyl(p1, p2, r){
+  const dir = new THREE.Vector3().subVectors(p2, p1);
+  const len = dir.length();
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, len, 8), edgeMat);
+  const mid = new THREE.Vector3().addVectors(p1, p2).multiplyScalar(0.5);
+  m.position.copy(mid);
+  m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), dir.normalize());
+  return m;
+}
+(function buildEdges(){
+  const c = [
+    [-HX,-HY,-HZ],[ HX,-HY,-HZ],[ HX, HY,-HZ],[-HX, HY,-HZ],
+    [-HX,-HY, HZ],[ HX,-HY, HZ],[ HX, HY, HZ],[-HX, HY, HZ],
+  ].map(v => new THREE.Vector3(...v));
+  const E = [[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]];
+  E.forEach(([a,b]) => vessel.add(edgeCyl(c[a], c[b], 0.045)));
+  // corner spheres
+  const cornMat = new THREE.MeshStandardMaterial({color:0x4f46e5, roughness:0.3});
+  c.forEach(p => {
+    const s = new THREE.Mesh(new THREE.SphereGeometry(0.085, 12, 12), cornMat);
+    s.position.copy(p); vessel.add(s);
+  });
+})();
+
+// ── MOLECULES ───────────────────────────────────────────────────────────────
+const matA = new THREE.MeshStandardMaterial({color:0x3b82f6, roughness:0.35, metalness:0.1, emissive:0x1d4ed8, emissiveIntensity:0.0});
+const matB = new THREE.MeshStandardMaterial({color:0xd97706, roughness:0.35, metalness:0.1, emissive:0xb45309, emissiveIntensity:0.0});
+
+const RA = 0.5, RB = 0.55;
+const N_A = 9, N_B = 8;
+const molecules = [];
+
+function rand(min, max){ return min + Math.random()*(max-min); }
+
+function spawnMolecule(type){
+  const r = type === 'A' ? RA : RB;
+  const mat = (type === 'A' ? matA : matB).clone();
+  const mesh = new THREE.Mesh(new THREE.SphereGeometry(r, 22, 18), mat);
+  // small orientation marker (a little nub) to imply orientation matters
+  const nub = new THREE.Mesh(
+    new THREE.SphereGeometry(r*0.32, 12, 10),
+    new THREE.MeshStandardMaterial({color: type==='A'?0xbfdbfe:0xfde68a, roughness:0.5})
+  );
+  nub.position.set(0, 0, r*0.95);
+  mesh.add(nub);
+
+  // position inside box, away from walls
+  mesh.position.set(
+    rand(-HX + r + 0.3, HX - r - 0.3),
+    rand(-HY + r + 0.3, HY - r - 0.3),
+    rand(-HZ + r + 0.3, HZ - r - 0.3)
+  );
+  // velocity direction (unit-ish), magnitude scaled later by speedFactor
+  const v = new THREE.Vector3(rand(-1,1), rand(-1,1), rand(-1,1)).normalize().multiplyScalar(rand(0.6,1.0));
+  mesh.userData = {
+    type, r, vel:v, baseMat:mat, nub,
+    flash:0,            // emissive glow timer
+    spin: new THREE.Vector3(rand(-1,1),rand(-1,1),rand(-1,1)).multiplyScalar(0.02)
+  };
+  vessel.add(mesh);
+  molecules.push(mesh);
+  return mesh;
+}
+
+for (let i=0;i<N_A;i++) spawnMolecule('A');
+for (let i=0;i<N_B;i++) spawnMolecule('B');
+
+// ── PRODUCT FLASHES (green merged indicators) ───────────────────────────────
+const productFlashes = [];
+const flashGeom = new THREE.SphereGeometry(0.7, 18, 14);
+function spawnProductFlash(pos){
+  const mat = new THREE.MeshStandardMaterial({
+    color:0x16a34a, emissive:0x22c55e, emissiveIntensity:1.0,
+    transparent:true, opacity:0.9, roughness:0.3
+  });
+  const m = new THREE.Mesh(flashGeom, mat);
+  m.position.copy(pos);
+  m.userData = { life:1.0 };
+  vessel.add(m);
+  productFlashes.push(m);
+}
+
+// ── TRAILS ──────────────────────────────────────────────────────────────────
+let showTrails = true;
+const TRAIL_LEN = 16;
+const trailGroup = new THREE.Group();
+vessel.add(trailGroup);
+molecules.forEach(mol => {
+  const positions = new Float32Array(TRAIL_LEN * 3);
+  const geom = new THREE.BufferGeometry();
+  geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  const colorHex = mol.userData.type === 'A' ? 0x93c5fd : 0xfcd34d;
+  const mat = new THREE.LineBasicMaterial({color:colorHex, transparent:true, opacity:0.35});
+  const line = new THREE.Line(geom, mat);
+  line.frustumCulled = false;
+  trailGroup.add(line);
+  mol.userData.trail = line;
+  mol.userData.trailHist = [];
+});
+
+// ── STATE ───────────────────────────────────────────────────────────────────
+const TEMPS = {
+  low:  { speed:0.5, dot:'#60a5fa', threshold:0.95 },
+  mid:  { speed:1.0, dot:'#f59e0b', threshold:0.95 },
+  high: { speed:1.8, dot:'#dc2626', threshold:0.95 },
+};
+let currentTemp = 'mid';
+let speedFactor = TEMPS.mid.speed;
+let catalystOn = false;
+let rotating = true;
+
+// Collision energy threshold: relative speed needed for an "effective" collision.
+// Catalyst lowers the threshold (lower Ea). Base threshold tuned to speedFactor regime.
+function effThreshold(){
+  // relative-speed threshold; lower => easier reaction
+  return catalystOn ? 0.62 : 1.05;
+}
+
+// counters (windowed rate)
+let totalCollisions = 0;
+let effectiveCollisions = 0;
+let frameCount = 0;
+let recentTotal = 0;      // collisions in current 1s window
+let recentEff = 0;
+let displayFreq = 0;
+let displayEffPct = 0;
+
+// ── PHYSICS STEP ────────────────────────────────────────────────────────────
+const tmp = new THREE.Vector3();
+const rel = new THREE.Vector3();
+const STEP = 0.06; // base movement per frame multiplier
+
+function physicsStep(){
+  // move + wall bounce
+  for (const mol of molecules){
+    const u = mol.userData;
+    mol.position.addScaledVector(u.vel, STEP * speedFactor);
+
+    // wall reflections (invert velocity component, clamp inside)
+    if (mol.position.x >  HX - u.r){ mol.position.x =  HX - u.r; u.vel.x = -Math.abs(u.vel.x); }
+    if (mol.position.x < -HX + u.r){ mol.position.x = -HX + u.r; u.vel.x =  Math.abs(u.vel.x); }
+    if (mol.position.y >  HY - u.r){ mol.position.y =  HY - u.r; u.vel.y = -Math.abs(u.vel.y); }
+    if (mol.position.y < -HY + u.r){ mol.position.y = -HY + u.r; u.vel.y =  Math.abs(u.vel.y); }
+    if (mol.position.z >  HZ - u.r){ mol.position.z =  HZ - u.r; u.vel.z = -Math.abs(u.vel.z); }
+    if (mol.position.z < -HZ + u.r){ mol.position.z = -HZ + u.r; u.vel.z =  Math.abs(u.vel.z); }
+
+    // spin (orientation visual)
+    mol.rotation.x += u.spin.x;
+    mol.rotation.y += u.spin.y;
+    mol.rotation.z += u.spin.z;
+
+    // decay emissive flash
+    if (u.flash > 0){
+      u.flash -= 0.045;
+      if (u.flash < 0) u.flash = 0;
+      u.baseMat.emissiveIntensity = u.flash * 1.6;
+    }
+  }
+
+  // pairwise collisions
+  const thr = effThreshold();
+  for (let i=0;i<molecules.length;i++){
+    for (let j=i+1;j<molecules.length;j++){
+      const a = molecules[i], b = molecules[j];
+      tmp.subVectors(b.position, a.position);
+      const dist = tmp.length();
+      const minD = a.userData.r + b.userData.r;
+      if (dist < minD && dist > 1e-4){
+        // elastic-ish response: separate and reflect along collision normal
+        const n = tmp.multiplyScalar(1/dist); // normal a→b
+        const overlap = minD - dist;
+        a.position.addScaledVector(n, -overlap*0.5);
+        b.position.addScaledVector(n,  overlap*0.5);
+
+        rel.subVectors(a.userData.vel, b.userData.vel);
+        const vn = rel.dot(n);
+        if (vn < 0){
+          // approaching — reflect velocities along normal (equal mass)
+          a.userData.vel.addScaledVector(n, -vn);
+          b.userData.vel.addScaledVector(n,  vn);
+        }
+
+        // relative kinetic energy proxy = relative speed * speedFactor
+        const relSpeed = rel.length() * speedFactor;
+
+        // orientation favorability: nub-facing alignment (dot of nub world-dir vs normal)
+        const orient = orientationFavorable(a, b, n);
+
+        // Only A–B pairs can react (different reactant types)
+        const reactivePair = (a.userData.type !== b.userData.type);
+
+        totalCollisions++; recentTotal++;
+        if (reactivePair && relSpeed >= thr && orient){
+          effectiveCollisions++; recentEff++;
+          // flash both molecules
+          a.userData.flash = 1.0; b.userData.flash = 1.0;
+          // spawn product indicator at midpoint
+          tmp.addVectors(a.position, b.position).multiplyScalar(0.5);
+          spawnProductFlash(tmp);
+          // give them a small kick apart (product "released")
+          a.userData.vel.addScaledVector(n, -0.15);
+          b.userData.vel.addScaledVector(n,  0.15);
+        }
+      }
+    }
+  }
+}
+
+const nubWorldA = new THREE.Vector3();
+const nubWorldB = new THREE.Vector3();
+function orientationFavorable(a, b, normal){
+  // world position of each nub, direction from center to nub
+  a.userData.nub.getWorldPosition(nubWorldA);
+  b.userData.nub.getWorldPosition(nubWorldB);
+  const dirA = tmp.copy(nubWorldA).sub(a.position).normalize();
+  const dirB = nubWorldB.clone().sub(b.position).normalize();
+  // favorable when A's nub faces toward B (dirA·normal > 0.1) and B's nub faces A
+  const fa = dirA.dot(normal);      // normal points a→b
+  const fb = dirB.dot(normal);      // want B's nub pointing back at A => negative
+  // relax with catalyst (easier orientation)
+  const need = catalystOn ? -0.35 : 0.05;
+  return fa > need && fb < -need;
+}
+
+// ── PRODUCT FLASH UPDATE ──────────────────────────────────────────────────────
+function updateFlashes(){
+  for (let i=productFlashes.length-1;i>=0;i--){
+    const f = productFlashes[i];
+    f.userData.life -= 0.05;
+    const l = f.userData.life;
+    if (l <= 0){
+      vessel.remove(f);
+      f.material.dispose();
+      productFlashes.splice(i,1);
+      continue;
+    }
+    f.material.opacity = l * 0.9;
+    f.material.emissiveIntensity = l * 1.4;
+    const s = 0.6 + (1 - l) * 1.4;
+    f.scale.setScalar(s);
+  }
+}
+
+// ── TRAILS UPDATE ─────────────────────────────────────────────────────────────
+function updateTrails(){
+  for (const mol of molecules){
+    const hist = mol.userData.trailHist;
+    hist.push(mol.position.clone());
+    if (hist.length > TRAIL_LEN) hist.shift();
+    const arr = mol.userData.trail.geometry.attributes.position.array;
+    for (let i=0;i<TRAIL_LEN;i++){
+      const p = hist[i] || hist[0] || mol.position;
+      arr[i*3] = p.x; arr[i*3+1] = p.y; arr[i*3+2] = p.z;
+    }
+    mol.userData.trail.geometry.attributes.position.needsUpdate = true;
+    mol.userData.trail.geometry.setDrawRange(0, hist.length);
+    mol.userData.trail.visible = showTrails;
+  }
+}
+
+// ── ENERGY PROFILE (SVG) ──────────────────────────────────────────────────────
+// Geometry: x from 60 (reactant plateau) → 270 (peak) → 500 (product plateau)
+// y: baseline 150 (bottom). Higher energy = smaller y.
+const SVG = {
+  reactX:[60,150], prodX:[400,500],
+  reactY:120,            // reactant level (y px)
+  prodY:138,             // product level (lower => more exothermic)
+  peakX:265,
+  peakYorig:36,          // peak of original Ea
+  peakYcat:84,           // peak with catalyst (lower barrier)
+};
+const EA_ORIG = 100, EA_CAT = 45, DH = -60; // kJ/mol displayed
+
+// animated peak Y (morphs between orig and catalyzed)
+let peakYcur = SVG.peakYorig;
+let peakYtarget = SVG.peakYorig;
+
+function curvePath(peakY){
+  const r0 = SVG.reactY, p0 = SVG.prodY;
+  const rx1 = SVG.reactX[1], px0 = SVG.prodX[0], peakX = SVG.peakX;
+  // reactant plateau, smooth rise to peak, smooth fall to product plateau
+  return `M ${SVG.reactX[0]} ${r0}`
+    + ` L ${rx1} ${r0}`
+    + ` C ${rx1+40} ${r0}, ${peakX-40} ${peakY}, ${peakX} ${peakY}`
+    + ` C ${peakX+40} ${peakY}, ${px0-40} ${p0}, ${px0} ${p0}`
+    + ` L ${SVG.prodX[1]} ${p0}`;
+}
+
+const elPathOrig = document.getElementById('path-orig');
+const elPathCat  = document.getElementById('path-cat');
+const elTsOrig   = document.getElementById('ts-orig');
+const elTsCat    = document.getElementById('ts-cat');
+const elEaBracket= document.getElementById('ea-bracket');
+const elEaBrkTxt = document.getElementById('ea-bracket-text');
+const elLineReact= document.getElementById('line-react');
+const elLineProd = document.getElementById('line-prod');
+const elLblReact = document.getElementById('lbl-react');
+const elLblProd  = document.getElementById('lbl-prod');
+const elLblTs    = document.getElementById('lbl-ts');
+
+function initSvgStatic(){
+  // The "orig" path always shows the no-catalyst barrier (dashed when catalyst active).
+  elPathOrig.setAttribute('d', curvePath(SVG.peakYorig));
+  elTsOrig.setAttribute('cx', SVG.peakX);
+  elTsOrig.setAttribute('cy', SVG.peakYorig);
+  // guide lines at reactant & product levels
+  elLineReact.setAttribute('y1', SVG.reactY); elLineReact.setAttribute('y2', SVG.reactY);
+  elLineReact.setAttribute('x2', 540);
+  elLineProd.setAttribute('y1', SVG.prodY); elLineProd.setAttribute('y2', SVG.prodY);
+  // Ea bracket: from reactant level up to peak
+  elEaBracket.setAttribute('x1', SVG.peakX+95);
+  elEaBracket.setAttribute('x2', SVG.peakX+95);
+  // labels
+  elLblReact.setAttribute('x', 50); elLblReact.setAttribute('y', SVG.reactY - 8);
+  elLblProd.setAttribute('x', 455); elLblProd.setAttribute('y', SVG.prodY + 16);
+  elLblProd.setAttribute('text-anchor','middle');
+  elLblTs.setAttribute('x', SVG.peakX);
+}
+initSvgStatic();
+
+function updateSvgAnimated(){
+  // catalyzed path morph toward target
+  peakYcur += (peakYtarget - peakYcur) * 0.12;
+
+  if (catalystOn){
+    // original becomes dashed reference, catalyzed solid visible
+    elPathOrig.setAttribute('stroke-dasharray', '6 5');
+    elPathOrig.setAttribute('opacity', '0.45');
+    elPathCat.setAttribute('opacity', '1');
+    elTsCat.setAttribute('opacity', '1');
+  } else {
+    elPathOrig.setAttribute('stroke-dasharray', '0');
+    elPathOrig.setAttribute('opacity', '1');
+    elPathCat.setAttribute('opacity', Math.max(0, (peakYcur - SVG.peakYorig) / (SVG.peakYcat - SVG.peakYorig)) );
+    if (peakYcur < SVG.peakYorig + 1.5) elTsCat.setAttribute('opacity', '0');
+  }
+  elPathCat.setAttribute('d', curvePath(peakYcur));
+  elTsCat.setAttribute('cx', SVG.peakX);
+  elTsCat.setAttribute('cy', peakYcur);
+
+  // Ea bracket tracks the ACTIVE barrier (catalyzed if on, else orig)
+  const activePeak = catalystOn ? peakYcur : SVG.peakYorig;
+  const brkColor = catalystOn ? '#16a34a' : '#4f46e5';
+  elEaBracket.setAttribute('y1', SVG.reactY);
+  elEaBracket.setAttribute('y2', activePeak);
+  elEaBracket.setAttribute('stroke', brkColor);
+  elEaBrkTxt.setAttribute('x', SVG.peakX + 100);
+  elEaBrkTxt.setAttribute('y', (SVG.reactY + activePeak)/2 + 4);
+  elEaBrkTxt.setAttribute('fill', brkColor);
+  // TS label above the active (lowest visible) peak
+  elLblTs.setAttribute('y', activePeak - 8);
+}
+
+// ── UI: TEMPERATURE ───────────────────────────────────────────────────────────
+window.setTemp = function(key){
+  currentTemp = key;
+  const t = TEMPS[key];
+  speedFactor = t.speed;
+  document.querySelectorAll('#btn-t-low,#btn-t-mid,#btn-t-high').forEach(b=>b.classList.remove('active'));
+  document.getElementById('btn-t-'+key).classList.add('active');
+  document.getElementById('stat-temp').textContent = tr('temp_' + key);
+  document.getElementById('stat-speed').textContent = '×' + t.speed.toFixed(1);
+  document.getElementById('temp-dot').style.background = t.dot;
+  const tv = document.getElementById('stat-temp');
+  tv.className = 'stat-val' + (key==='high'?' hot':'');
+};
+
+// ── UI: CATALYST ────────────────────────────────────────────────────────────
+window.toggleCatalyst = function(){
+  catalystOn = !catalystOn;
+  peakYtarget = catalystOn ? SVG.peakYcat : SVG.peakYorig;
+  const b = document.getElementById('btn-cat');
+  b.textContent = catalystOn ? tr('btn_cat_on') : tr('btn_cat_off');
+  b.classList.toggle('active', catalystOn);
+  // update Ea readout
+  document.getElementById('ea-val').textContent = catalystOn ? EA_CAT : EA_ORIG;
+  document.getElementById('ea-cat-label').style.opacity = catalystOn ? '1' : '0.4';
+};
+
+// ── UI: TOGGLES ───────────────────────────────────────────────────────────────
+window.toggleTrails = function(){
+  showTrails = !showTrails;
+  const b = document.getElementById('btn-trails');
+  b.textContent = showTrails ? tr('btn_trails_on') : tr('btn_trails_off');
+  b.classList.toggle('active', showTrails);
+  trailGroup.visible = showTrails;
+};
+window.toggleRotate = function(){
+  rotating = !rotating;
+  const b = document.getElementById('btn-rotate');
+  b.textContent = rotating ? tr('btn_rot_on') : tr('btn_rot_off');
+  b.classList.toggle('active', rotating);
+};
+
+// ── INFO PANEL ────────────────────────────────────────────────────────────────
+const INFO_TRANS = {
+  ru: {
+    collision:{
+      tag:'ТЕОРИЯ СТОЛКНОВЕНИЙ',
+      title:'Теория столкновений',
+      sections:[
+        {h:'Основная идея', p:'Химическая реакция происходит только при непосредственном столкновении (соударении) реагирующих частиц — атомов, молекул, ионов. Чем чаще сталкиваются частицы, тем больше шансов на реакцию.'},
+        {h:'Не каждый удар результативен', p:'Подавляющее большинство столкновений упругие — частицы просто отскакивают друг от друга. К реакции приводят лишь немногие, «результативные» (эффективные) столкновения.'},
+        {h:'Два условия результативного удара', p:'Чтобы столкновение привело к реакции, нужно выполнить ОБА условия сразу:'},
+        {h:'', p:'', mono:'① E(удара) ≥ Eₐ  — достаточная энергия\n② правильная взаимная ориентация частиц'},
+        {h:'Скорость реакции', p:'Скорость реакции пропорциональна числу результативных столкновений в единицу времени. Поэтому на неё влияют концентрация, температура, давление (для газов), поверхность контакта и катализатор.'}
+      ]
+    },
+    ea:{
+      tag:'ЭНЕРГИЯ АКТИВАЦИИ',
+      title:'Энергия активации Eₐ',
+      sections:[
+        {h:'Определение', p:'Энергия активации Eₐ — минимальная избыточная энергия, которой должны обладать сталкивающиеся частицы, чтобы их столкновение стало результативным. Это «энергетический барьер» реакции.'},
+        {h:'Переходное состояние', p:'На вершине барьера образуется неустойчивый активированный комплекс (переходное состояние) — старые связи ещё не разорвались, а новые ещё не образовались. Он существует доли пикосекунды и распадается на продукты.'},
+        {h:'Уравнение Аррениуса', p:'Связь константы скорости k с энергией активации и температурой:', mono:'k = A · e^(−Eₐ / R·T)\nA — предэкспонента (частота)\nR = 8,314 Дж/(моль·К)\nT — температура, К'},
+        {h:'Чем выше барьер', p:'Чем больше Eₐ, тем меньше доля частиц, способных его преодолеть, и тем медленнее реакция. Высокая Eₐ — медленная реакция, низкая Eₐ — быстрая.'}
+      ]
+    },
+    temp:{
+      tag:'ВЛИЯНИЕ ТЕМПЕРАТУРЫ',
+      title:'Влияние температуры',
+      sections:[
+        {h:'Что меняет нагрев', p:'При повышении температуры растёт средняя кинетическая энергия частиц: они движутся быстрее, сталкиваются чаще и сильнее. Но главный эффект — резкий рост доли «быстрых» частиц.'},
+        {h:'Распределение Максвелла–Больцмана', p:'Скорости молекул распределены неравномерно. С ростом T «хвост» распределения сдвигается вправо, и доля частиц с энергией E ≥ Eₐ возрастает очень быстро (экспоненциально).'},
+        {h:'Правило Вант-Гоффа', p:'Эмпирическое правило для приближённых оценок:', mono:'при ΔT = +10 °C\nскорость растёт в 2–4 раза\nv₂ = v₁ · γ^(ΔT/10),  γ = 2…4'},
+        {h:'Вывод', p:'Небольшое повышение температуры даёт непропорционально большой рост числа результативных столкновений, поэтому скорость реакции увеличивается резко.'}
+      ]
+    },
+    catalyst:{
+      tag:'КАТАЛИЗАТОР',
+      title:'Катализатор',
+      sections:[
+        {h:'Что делает катализатор', p:'Катализатор — вещество, ускоряющее реакцию, но не расходующееся в ней. Он открывает новый путь реакции с меньшей энергией активации Eₐ.'},
+        {h:'Снижение барьера', p:'Образуя промежуточные соединения с реагентами, катализатор «обходит» высокий барьер. При меньшей Eₐ гораздо большая доля частиц способна прореагировать → скорость возрастает в десятки и тысячи раз.'},
+        {h:'Важные свойства', p:'', mono:'• Eₐ(кат.) < Eₐ\n• не расходуется (восстанавливается)\n• НЕ смещает равновесие\n• ускоряет и прямую, и обратную реакцию'},
+        {h:'Не меняет ΔH', p:'Катализатор снижает только высоту барьера, но НЕ изменяет тепловой эффект реакции ΔH: уровни энергии реагентов и продуктов остаются прежними.'},
+        {h:'Ферменты', p:'В живых организмах роль катализаторов выполняют ферменты — биокатализаторы белковой природы. Они ускоряют реакции в миллионы раз при температуре тела.'}
+      ]
+    }
+  },
+  kz: {
+    collision:{
+      tag:'СОҚТЫҒЫСУ ТЕОРИЯСЫ',
+      title:'Соқтығысу теориясы',
+      sections:[
+        {h:'Негізгі идеясы', p:'Химиялық реакция тек әрекеттесуші бөлшектердің — атомдардың, молекулалардың, иондардың тікелей соқтығысуы (соқтығысуы) кезінде ғана жүреді. Бөлшектер неғұрлым жиі соқтығысса, реакцияның жүру мүмкіндігі соғұрлым жоғары болады.'},
+        {h:'Әрбір соқтығысу реакцияға әкелмейді', p:'Соқтығысулардың басым көпшілігі серпімді болады — бөлшектер тек бір-бірінен серпіледі. Реакцияға бұрылыстар мен серпілістер емес, аздаған «тиімді» соқтығысулар ғана әкеледі.'},
+        {h:'Тиімді соқтығысудың екі шарты', p:'Соқтығысу реакцияға әкелуі үшін БІР МЕЗГІЛДЕ ЕКІ шарт орындалуы керек:'},
+        {h:'', p:'', mono:'① E(соқтығысу) ≥ Eₐ  — жеткілікті энергия\n② бөлшектердің дұрыс бағытталуы'},
+        {h:'Реакция жылдамдығы', p:'Реакция жылдамдығы уақыт бірлігіндегі тиімді соқтығысулар санына пропорционал. Сондықтан оған концентрация, температура, қысым (газдар үшін), жанасу бетінің ауданы және катализатор әсер етеді.'}
+      ]
+    },
+    ea:{
+      tag:'БЕЛСЕНДІРУ ЭНЕРГИЯСЫ',
+      title:'Белсендіру энергиясы Eₐ',
+      sections:[
+        {h:'Анықтамасы', p:'Белсендіру энергиясы Eₐ — соқтығысатын бөлшектердің соқтығысуы тиімді болуы үшін ие болуы керек ең аз артық энергия мөлшері. Бұл реакцияның «энергетикалық барьері».'},
+        {h:'Ауыспалы күй', p:'Барьердің шыңында тұрақсыз белсендірілген кешен (ауыспалы күй) түзіледі — ескі байланыстар әлі үзілмеген, ал жаңа байланыстар әлі түзілмеген. Ол пикосекундтың бір бөлігіндей ғана өмір сүріп, өнімдерге ыдырайды.'},
+        {h:'Аррениус теңдеуі', p:'Реакция жылдамдығы константасы k-ның белсендіру энергиясымен және температурамен байланысы:', mono:'k = A · e^(−Eₐ / R·T)\nA — предэкспонента (жиілік факторы)\nR = 8,314 Дж/(моль·К)\nT — абсолюттік температура, К'},
+        {h:'Барьер неғұрлым жоғары болса', p:'Eₐ неғұрлым жоғары болса, оны жеңе алатын бөлшектер үлесі соғұрлым аз болады және реакция баяу жүреді. Жоғары Eₐ — баяу реакция, төмен Eₐ — жылдам реакция.'}
+      ]
+    },
+    temp:{
+      tag:'ТЕМПЕРАТУРА ӘСЕРІ',
+      title:'Температураның әсері',
+      sections:[
+        {h:'Қыздыру нені өзгертеді', p:'Температура жоғарылағанда бөлшектердің орташа кинетикалық энергиясы артады: олар жылдамырақ қозғалады, жиірек және күштірек соқтығысады. Бірақ басты әсер — «жылдам» бөлшектер үлесінің шұғыл артуы.'},
+        {h:'Максвелл–Больцман үлестірілуі', p:'Молекулалар жылдамдығы біркелкі таралмаған. Т жоғарылағанда үлестірілу қисығы оңға қарай ығысады және энергиясы E ≥ Eₐ болатын бөлшектер үлесі өте жылдам (экспоненциалды) артады.'},
+        {h:'Вант-Гофф ережесі', p:'Жуықтап бағалауға арналған эмпирикалық ереже:', mono:'ΔT = +10 °C болғанда\nреакция жылдамдығы 2–4 есе артады\nv₂ = v₁ · γ^(ΔT/10),  γ = 2…4'},
+        {h:'Қорытынды', p:'Температураның аз ғана жоғарылауы тиімді соқтығысулар санының пропорционалды емес үлкен өсуіне әкеледі, сондықтан реакция жылдамдығы шұғыл артады.'}
+      ]
+    },
+    catalyst:{
+      tag:'КАТАЛИЗАТОР',
+      title:'Катализатор',
+      sections:[
+        {h:'Катализатор не істейді', p:'Катализатор — реакцияны жылдамдататын, бірақ оның барысында шығындалмайтын зат. Ол белсендіру энергиясы Eₐ төмен болатын реакцияның жаңа бағытын ашады.'},
+        {h:'Барьерді төмендету', p:'Реагенттермен аралық қосылыстар түзе отырып, катализатор жоғары барьерді айналып өтеді. Eₐ төмендегенде бөлшектердің әлдеқайда үлкен үлесі әрекеттесуге қабілетті болады → реакция жылдамдығы ондаған және мыңдаған есе артады.'},
+        {h:'Маңызды қасиеттері', p:'', mono:'• Eₐ(кат.) < Eₐ\n• шығындалмайды (қалпына келеді)\n• тепе-теңдікті ығыстырмайды\n• тура және кері реакцияларды бірдей жылдамдатады'},
+        {h:'ΔH мәнін өзгертпейді', p:'Катализатор негізінен тек барьердің биіктігін ғана төмендетеді, бірақ реакцияның жылу эффектісін ΔH өзгертпейді: реагенттер мен өнімдердің энергия деңгейлері өзгеріссіз қалады.'},
+        {h:'Ферменттер', p:'Тірі ағзаларда катализаторлар рөлін ферменттер — белок табиғатындағы биокатализаторлар атқарады. Олар реакцияларды дене температурасында миллиондаған есе жылдамдатады.'}
+      ]
+    }
+  },
+  en: {
+    collision:{
+      tag:'COLLISION THEORY',
+      title:'Collision Theory',
+      sections:[
+        {h:'Main Idea', p:'A chemical reaction occurs only upon direct collision of reacting particles — atoms, molecules, or ions. The more frequently particles collide, the greater the chances of reaction.'},
+        {h:'Not every hit is effective', p:'The vast majority of collisions are elastic — particles simply bounce off each other. Only a small fraction of "effective" collisions lead to a reaction.'},
+        {h:'Two conditions for an effective hit', p:'For a collision to result in a reaction, BOTH conditions must be met simultaneously:'},
+        {h:'', p:'', mono:'① E(collision) ≥ Eₐ  — sufficient energy\n② correct mutual orientation of particles'},
+        {h:'Reaction Rate', p:'The reaction rate is proportional to the number of effective collisions per unit of time. Therefore, it is influenced by concentration, temperature, pressure (for gases), contact surface area, and catalyst.'}
+      ]
+    },
+    ea:{
+      tag:'ACTIVATION ENERGY',
+      title:'Activation Energy Eₐ',
+      sections:[
+        {h:'Definition', p:'Activation energy Eₐ is the minimum excess energy that colliding particles must possess for their collision to be effective. It is the "energy barrier" of the reaction.'},
+        {h:'Transition State', p:'An unstable activated complex (transition state) forms at the peak of the barrier — old bonds are not yet broken, and new ones are not yet formed. It exists for fractions of a picosecond before breaking down into products.'},
+        {h:'Arrhenius Equation', p:'Relation of rate constant k with activation energy and temperature:', mono:'k = A · e^(−Eₐ / R·T)\nA — pre-exponential factor (frequency)\nR = 8.314 J/(mol·K)\nT — absolute temperature, K'},
+        {h:'The higher the barrier', p:'The larger the Eₐ, the smaller the fraction of particles capable of overcoming it, and the slower the reaction. High Eₐ means a slow reaction; low Eₐ means a fast one.'}
+      ]
+    },
+    temp:{
+      tag:'TEMPERATURE EFFECT',
+      title:'Influence of Temperature',
+      sections:[
+        {h:'What heating changes', p:'Increasing the temperature raises the average kinetic energy of particles: they move faster, collide more frequently, and with greater force. But the main effect is a sharp increase in the fraction of "fast" particles.'},
+        {h:'Maxwell–Boltzmann Distribution', p:'Molecular speeds are distributed non-uniformly. As T increases, the "tail" of the distribution shifts to the right, and the fraction of particles with energy E ≥ Eₐ increases very rapidly (exponentially).'},
+        {h:"Van 't Hoff Rule", p:'Empirical rule for rough estimates:', mono:'with ΔT = +10 °C\nthe rate increases by 2 to 4 times\nv₂ = v₁ · γ^(ΔT/10),  γ = 2…4'},
+        {h:'Conclusion', p:'A slight increase in temperature yields a disproportionately large increase in the number of effective collisions, which is why the reaction rate increases sharply.'}
+      ]
+    },
+    catalyst:{
+      tag:'CATALYST',
+      title:'Catalyst',
+      sections:[
+        {h:'What a catalyst does', p:'A catalyst is a substance that speeds up a reaction without being consumed in it. It opens a new reaction pathway with a lower activation energy Eₐ.'},
+        {h:'Lowering the barrier', p:'By forming intermediate compounds with the reactants, a catalyst "bypasses" the high barrier. At a lower Eₐ, a much larger fraction of particles is capable of reacting → the rate increases tens and thousands of times.'},
+        {h:'Key properties', p:'', mono:'• Eₐ(cat.) < Eₐ\n• not consumed (regenerates)\n• does NOT shift equilibrium\n• accelerates both forward and reverse reactions'},
+        {h:'Does not change ΔH', p:'A catalyst only lowers the barrier height but does NOT alter the reaction enthalpy change ΔH: the energy levels of reactants and products remain the same.'},
+        {h:'Enzymes', p:'In living organisms, the role of catalysts is performed by enzymes — protein biocatalysts. They accelerate reactions millions of times at body temperature.'}
+      ]
+    }
+  }
+};
+
+window.openInfo = function(key){
+  const d = (INFO_TRANS[LANG] || INFO_TRANS.ru)[key];
+  if (!d) return;
+  let html = `<div class="info-tag">${tr('tag_coll')}</div><h2>${d.title}</h2>`;
+  d.sections.forEach(s=>{
+    html += `<div class="info-section">`;
+    if (s.h) html += `<h4>${s.h}</h4>`;
+    if (s.p) html += `<p>${s.p}</p>`;
+    if (s.mono) html += `<div class="info-mono">${s.mono.replace(/\n/g,'<br>')}</div>`;
+    html += `</div>`;
+  });
+  document.getElementById('info-content').innerHTML = html;
+  document.getElementById('info-panel').classList.add('open');
+};
+window.closeInfo = function(){
+  document.getElementById('info-panel').classList.remove('open');
+};
+
+// Initialize buttons and SVG labels at start
+document.getElementById('btn-cat').textContent = catalystOn ? tr('btn_cat_on') : tr('btn_cat_off');
+document.getElementById('btn-trails').textContent = showTrails ? tr('btn_trails_on') : tr('btn_trails_off');
+document.getElementById('btn-rotate').textContent = rotating ? tr('btn_rot_on') : tr('btn_rot_off');
+
+document.getElementById('lbl-react').textContent = tr('lbl_react');
+document.getElementById('lbl-prod').textContent = tr('lbl_prod');
+document.getElementById('lbl-ts').textContent = tr('lbl_ts');
+document.getElementById('lbl-coord').textContent = tr('lbl_coord');
+
+document.querySelector('#loading p').textContent = (LANG === 'kz') ? 'Молекулаларды ыдысқа жіберудеміз…' : (LANG === 'en') ? 'Launching molecules into the vessel...' : 'Запускаем молекулы в сосуд…';
+
+// initialize UI
+setTemp('mid');
+document.getElementById('ea-cat-label').style.opacity = '0.4';
+
+// initialize UI
+setTemp('mid');
+document.getElementById('ea-cat-label').style.opacity = '0.4';
+
+// ── ANIMATION LOOP ────────────────────────────────────────────────────────────
+const statFreq = document.getElementById('stat-freq');
+const statEff  = document.getElementById('stat-eff');
+let lastSecond = performance.now();
+
+function animate(){
+  requestAnimationFrame(animate);
+  controls.update();
+
+  // slow showcase rotation (independent of physics — molecules live in vessel,
+  // but their motion is computed in vessel-local coords, so rotation is purely cosmetic)
+  if (rotating) showcaseGroup.rotation.y += 0.0014;
+
+  physicsStep();
+  updateFlashes();
+  updateTrails();
+  updateSvgAnimated();
+
+  // windowed counter: every ~1 second compute frequency + effective %
+  frameCount++;
+  const now = performance.now();
+  if (now - lastSecond >= 1000){
+    displayFreq = recentTotal;
+    displayEffPct = recentTotal > 0 ? Math.round((recentEff / recentTotal) * 100) : 0;
+    statFreq.textContent = displayFreq;
+    statEff.textContent = displayEffPct + '%';
+    recentTotal = 0; recentEff = 0;
+    lastSecond = now;
+  }
+
+  renderer.render(scene, camera);
+}
+
+// ── RESIZE ────────────────────────────────────────────────────────────────────
+window.addEventListener('resize', () => {
+  camera.aspect = W()/H();
+  camera.updateProjectionMatrix();
+  renderer.setSize(W(), H());
+});
+
+// ── START ──────────────────────────────────────────────────────────────────────
+document.getElementById('loading').style.display = 'none';
+animate();
+</script>
+</body>
+</html>

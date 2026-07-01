@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="page_title">Площади плоских фигур</title>
+<style>
+
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#f3f2f6;--surface:rgba(255,255,255,0.94);--border:rgba(30,20,55,0.08);
+  --text:#1b1525;--muted:#6b6377;--faint:#a59cb2;
+  --fig:#7c3aed;--fig-dim:rgba(124,58,237,0.12);--h:#ea580c;--diag:#0891b2;
+  --accent:#7c3aed;--accent-dim:rgba(124,58,237,0.10);
+  --shadow:0 2px 22px rgba(40,25,80,0.07);--shadow-lg:0 18px 56px rgba(45,28,90,0.15);
+}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);overflow:hidden;height:100vh;}
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(1200px 760px at 70% 30%, rgba(167,139,250,0.12), transparent 60%),radial-gradient(820px 560px at 16% 84%, rgba(234,88,12,0.05), transparent 55%);}
+#canvas-container{position:fixed;inset:0;z-index:1;}
+#labels-layer{position:fixed;inset:0;z-index:40;pointer-events:none;overflow:hidden;}
+.dim-label{position:absolute;transform:translate(-50%,-50%);font-family:'Roboto Mono',monospace;font-size:14px;font-weight:700;padding:2px 8px;border-radius:8px;white-space:nowrap;letter-spacing:-0.3px;background:rgba(255,255,255,0.97);box-shadow:0 3px 12px rgba(40,25,80,0.13);transition:opacity 0.18s;}
+.dim-label.hidden{opacity:0;}
+.dim-label.lh{background:var(--h);color:#fff;border:none;box-shadow:0 3px 12px rgba(234,88,12,0.4);}
+.dim-label.ld{background:var(--diag);color:#fff;border:none;box-shadow:0 3px 12px rgba(8,145,178,0.4);}
+.dim-label.lb{color:var(--fig);border:1px solid rgba(124,58,237,0.3);}
+.header{position:fixed;top:0;left:0;right:0;z-index:200;background:var(--surface);border-bottom:1px solid var(--border);padding:0 38px;height:84px;display:flex;align-items:center;gap:15px;box-shadow:var(--shadow);}
+.h-badge{width:46px;height:46px;border-radius:14px;flex-shrink:0;background:linear-gradient(135deg,#7c3aed,#a78bfa);display:flex;align-items:center;justify-content:center;box-shadow:0 7px 20px rgba(124,58,237,0.36);}
+.h-badge svg{width:25px;height:25px;}
+.header-title{font-size:24px;font-weight:800;letter-spacing:-0.5px;}
+.header-tag{font-family:'Roboto Mono',monospace;font-size:13px;color:var(--accent);background:var(--accent-dim);padding:4px 11px;border-radius:8px;}
+.header-sub{font-size:14px;color:var(--muted);margin-left:auto;text-align:right;line-height:1.45;}
+.eq-banner{position:fixed;top:96px;left:50%;transform:translateX(-50%);z-index:150;background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-lg);padding:10px 24px;font-family:'Roboto Mono',monospace;font-size:16px;font-weight:700;color:var(--text);pointer-events:none;}
+.eq-banner b{color:var(--accent);}
+.panel{position:fixed;z-index:100;background:var(--surface);border:1px solid var(--border);border-radius:22px;box-shadow:var(--shadow-lg);}
+.panel h3{font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;color:var(--faint);}
+.panel-left{left:22px;top:98px;width:330px;padding:18px 18px;overflow:hidden;min-height:300px;}
+.ld-list,.ld-detail{transition:transform 0.4s cubic-bezier(0.4,0,0.2,1),opacity 0.28s;}
+.ld-list h3{margin-bottom:12px;padding-left:4px;}
+.ld-detail{position:absolute;inset:18px 18px;transform:translateX(26px);opacity:0;pointer-events:none;overflow-y:auto;}
+.panel-left.detail .ld-list{transform:translateX(-26px);opacity:0;pointer-events:none;}
+.panel-left.detail .ld-detail{transform:translateX(0);opacity:1;pointer-events:auto;}
+.metric{display:flex;align-items:center;gap:12px;padding:13px 12px;border-radius:14px;cursor:pointer;border:1px solid transparent;transition:all 0.15s;margin-bottom:2px;}
+.metric:hover{background:rgba(40,25,80,0.04);}
+.metric.active{background:var(--accent-dim);border-color:rgba(124,58,237,0.22);}
+.metric-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0;}
+.metric-main{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;}
+.metric-name{font-size:15px;font-weight:700;line-height:1.15;}
+.metric-sub{font-family:'Roboto Mono',monospace;font-size:13px;color:var(--muted);}
+.metric-val{font-family:'Roboto Mono',monospace;font-size:21px;font-weight:500;color:var(--accent);letter-spacing:-1px;flex-shrink:0;}
+.ld-back{display:inline-flex;align-items:center;gap:5px;cursor:pointer;border:none;background:none;font-family:'Inter',sans-serif;font-size:14px;font-weight:700;color:var(--accent);padding:4px 6px 4px 0;margin-bottom:12px;}
+.d-tag{display:inline-block;padding:4px 12px;border-radius:99px;font-size:13px;font-weight:700;margin-bottom:10px;background:var(--accent-dim);color:var(--accent);}
+.d-title{font-size:22px;font-weight:800;letter-spacing:-0.4px;line-height:1.15;margin-bottom:14px;}
+.d-bigval{display:flex;align-items:baseline;gap:9px;margin-bottom:4px;}
+.d-bigval b{font-family:'Roboto Mono',monospace;font-size:35px;font-weight:500;color:var(--accent);letter-spacing:-1px;line-height:1;}
+.d-bigval span{font-size:14px;color:var(--muted);font-weight:600;}
+.d-formula{margin:13px 0 4px;padding:13px 15px;border-radius:13px;background:linear-gradient(135deg,rgba(167,139,250,0.12),rgba(124,58,237,0.05));border:1px solid rgba(124,58,237,0.16);font-family:'Roboto Mono',monospace;font-size:14px;color:#5b21b6;font-weight:500;line-height:1.95;white-space:pre-line;}
+.d-para{font-size:15px;line-height:1.62;color:#2c2735;margin-top:13px;}
+.panel-right{right:22px;top:98px;width:300px;padding:18px;}
+.mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:15px;}
+.mode-btn{padding:11px 6px;border-radius:13px;border:1.5px solid var(--border);background:rgba(255,255,255,0.7);font-family:'Inter',sans-serif;font-size:14px;font-weight:700;color:var(--text);cursor:pointer;transition:all 0.15s;display:flex;flex-direction:column;align-items:center;gap:4px;}
+.mode-btn svg{width:26px;height:20px;}
+.mode-btn:hover{border-color:var(--accent);}
+.mode-btn.sel{border-color:var(--accent);background:var(--accent-dim);color:var(--accent);}
+.sliders{margin-bottom:6px;}
+.sl-row{margin-bottom:11px;}
+.sl-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;}
+.sl-name{font-size:14px;font-weight:700;}.sl-name b{font-family:'Roboto Mono',monospace;font-style:italic;color:var(--accent);}
+.sl-val{font-family:'Roboto Mono',monospace;font-size:16px;font-weight:600;color:var(--accent);background:var(--accent-dim);padding:2px 9px;border-radius:8px;}
+.sliders input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:3px;background:linear-gradient(90deg,var(--accent) var(--fill,50%),rgba(124,58,237,0.16) var(--fill,50%));outline:none;cursor:pointer;}
+.sliders input::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:19px;height:19px;border-radius:50%;background:#fff;border:3px solid var(--accent);box-shadow:0 3px 10px rgba(124,58,237,0.4);cursor:pointer;transition:transform 0.12s;}
+.sliders input::-webkit-slider-thumb:hover{transform:scale(1.16);}
+.show-chip{display:flex;align-items:center;gap:11px;width:100%;padding:11px 14px;margin-top:6px;border-radius:14px;cursor:pointer;background:rgba(40,25,80,0.035);border:1.5px solid transparent;transition:all 0.16s;}
+.show-chip:hover{background:rgba(40,25,80,0.06);}
+.show-chip.on{background:var(--accent-dim);border-color:rgba(124,58,237,0.30);}
+.chip-ico{width:32px;height:32px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:16px;background:rgba(124,58,237,0.10);transition:all 0.16s;}
+.show-chip.on .chip-ico{background:var(--accent);}
+.chip-text{flex:1;min-width:0;}.chip-name{font-size:14.5px;font-weight:700;}.chip-sub{font-size:12.5px;color:var(--muted);font-family:'Roboto Mono',monospace;}
+.chip-state{width:21px;height:21px;border-radius:50%;flex-shrink:0;border:2px solid rgba(40,25,80,0.16);display:flex;align-items:center;justify-content:center;transition:all 0.16s;}
+.show-chip.on .chip-state{background:var(--accent);border-color:var(--accent);}
+.show-chip.on .chip-state::after{content:'✓';color:#fff;font-size:13px;font-weight:700;}
+.hint-bar{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:100;background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:9px 22px;font-size:13.5px;color:var(--muted);box-shadow:var(--shadow);white-space:nowrap;display:flex;align-items:center;gap:9px;}
+.hint-grab{color:var(--accent);font-weight:700;}.hint-dot{color:var(--faint);}
+@media (max-width:1180px){.panel-left{width:296px;}.panel-right{width:272px;}}
+</style>
+</head>
+<body>
+<div id="canvas-container"><canvas id="c"></canvas></div>
+<div id="labels-layer"></div>
+<header class="header">
+  <div class="h-badge"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.7" stroke-linejoin="round"><path d="M3 19 L9 5 L21 19 Z"/><path d="M9 5 L9 19"/></svg></div>
+  <div class="header-title" data-i18n="header_title">Площади плоских фигур</div>
+  <div class="header-tag" id="head-formula">S = ½·a·h</div>
+  <div class="header-sub" data-i18n-html="header_sub">Выберите фигуру и меняйте размеры<br>площадь пересчитывается по формуле</div>
+</header>
+<div class="eq-banner" id="eq-banner"></div>
+<div class="panel panel-left" id="panel-left">
+  <div class="ld-list"><h3 data-i18n="props_title">Характеристики</h3><div id="metrics"></div></div>
+  <div class="ld-detail"><button class="ld-back" onclick="window.showList()"><span>‹</span> <span data-i18n="back">Назад</span></button><div id="detail-content"></div></div>
+</div>
+<div class="panel panel-right">
+  <h3 data-i18n="fig_title" style="margin-bottom:12px;padding-left:2px;">Фигура</h3>
+  <div class="mode-grid" id="mode-grid"></div>
+  <div class="sliders" id="sliders"></div>
+  <div class="show-chip on" id="chip-grid" onclick="window.toggleGrid()"><div class="chip-ico">▦</div><div class="chip-text"><span class="chip-name" data-i18n="ch_grid">Сетка</span><span class="chip-sub" data-i18n="ch_grid_sub">координатная плоскость</span></div><div class="chip-state"></div></div>
+</div>
+<div class="hint-bar" data-i18n-html="hint"><span class="hint-grab">Меняйте размеры</span><span class="hint-dot">·</span><span>фон — поворот</span><span class="hint-dot">·</span><span>клик по строке — пояснение</span></div>
+
+<script>
+const MODES=['tri','par','trap','rhomb'];
+const ICONS={
+  tri:'<svg viewBox="0 0 28 22" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 19 L11 4 L25 19 Z"/></svg>',
+  par:'<svg viewBox="0 0 28 22" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 18 L9 5 L25 5 L19 18 Z"/></svg>',
+  trap:'<svg viewBox="0 0 28 22" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 18 L8 5 L20 5 L25 18 Z"/></svg>',
+  rhomb:'<svg viewBox="0 0 28 22" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 3 L24 11 L14 19 L4 11 Z"/></svg>'};
+const I18N={
+ru:{page_title:'Площади плоских фигур',header_title:'Площади плоских фигур',header_sub:'Выберите фигуру и меняйте размеры<br>площадь пересчитывается по формуле',
+  props_title:'Характеристики',back:'Назад',fig_title:'Фигура',ch_grid:'Сетка',ch_grid_sub:'координатная плоскость',
+  hint:'<span class="hint-grab">Меняйте размеры</span><span class="hint-dot">·</span><span>фон — поворот</span><span class="hint-dot">·</span><span>клик по строке — пояснение</span>',
+  fig_tri:'Треугольник',fig_par:'Параллелогр.',fig_trap:'Трапеция',fig_rhomb:'Ромб',
+  m_area:'Площадь S',m_perim:'Периметр P',m_h:'Высота h',m_base:'Основание',
+  sub_area:'формула фигуры',sub_perim:'сумма сторон',
+  s_a:'основание',s_b:'верхнее основание',s_h:'высота',s_shear:'сдвиг вершины',s_d1:'диагональ d₁',s_d2:'диагональ d₂',
+  about_tri:'Площадь треугольника = половина произведения основания на высоту: S = ½·a·h. Высота — перпендикуляр из вершины к основанию. Сдвигая вершину вдоль (ползунок «сдвиг»), вы меняете форму, но площадь не меняется — она зависит только от основания и высоты!',
+  about_par:'Площадь параллелограмма = основание × высоту: S = a·h. Высота — расстояние между параллельными сторонами (не длина боковой стороны!). При сдвиге верхней стороны площадь сохраняется.',
+  about_trap:'Площадь трапеции = полусумма оснований × высоту: S = ½·(a+b)·h, где a и b — параллельные стороны. По сути это среднее двух оснований, умноженное на высоту.',
+  about_rhomb:'Площадь ромба удобно считать через диагонали: S = ½·d₁·d₂. Диагонали ромба перпендикулярны и делят его на 4 равных прямоугольных треугольника.',
+},
+kz:{page_title:'Жазық фигуралар аудандары',header_title:'Жазық фигуралар аудандары',header_sub:'Фигураны таңдап, өлшемдерді өзгертіңіз<br>аудан формула бойынша қайта есептеледі',
+  props_title:'Сипаттамалар',back:'Артқа',fig_title:'Фигура',ch_grid:'Тор',ch_grid_sub:'координаталық жазықтық',
+  hint:'<span class="hint-grab">Өлшемдерді өзгертіңіз</span><span class="hint-dot">·</span><span>фон — бұру</span><span class="hint-dot">·</span><span>жолды басу — түсіндірме</span>',
+  fig_tri:'Үшбұрыш',fig_par:'Параллелогр.',fig_trap:'Трапеция',fig_rhomb:'Ромб',
+  m_area:'Аудан S',m_perim:'Периметр P',m_h:'Биіктік h',m_base:'Табан',
+  sub_area:'фигура формуласы',sub_perim:'қабырғалар қосындысы',
+  s_a:'табан',s_b:'жоғарғы табан',s_h:'биіктік',s_shear:'төбе ығысуы',s_d1:'диагональ d₁',s_d2:'диагональ d₂',
+  about_tri:'Үшбұрыш ауданы = табан мен биіктік көбейтіндісінің жартысы: S = ½·a·h. Биіктік — төбеден табанға перпендикуляр. Төбені жылжытсаңыз, форма өзгереді, бірақ аудан өзгермейді!',
+  about_par:'Параллелограмм ауданы = табан × биіктік: S = a·h. Биіктік — параллель қабырғалар арасы (бүйір қабырға емес!).',
+  about_trap:'Трапеция ауданы = табандар жартысының қосындысы × биіктік: S = ½·(a+b)·h.',
+  about_rhomb:'Ромб ауданын диагональдар арқылы санау ыңғайлы: S = ½·d₁·d₂. Диагональдар перпендикуляр.',
+},
+en:{page_title:'Areas of Plane Figures',header_title:'Areas of Plane Figures',header_sub:'Pick a figure and change its dimensions<br>the area is recomputed by its formula',
+  props_title:'Properties',back:'Back',fig_title:'Figure',ch_grid:'Grid',ch_grid_sub:'coordinate plane',
+  hint:'<span class="hint-grab">Change the dimensions</span><span class="hint-dot">·</span><span>background — rotate</span><span class="hint-dot">·</span><span>click a row — explanation</span>',
+  fig_tri:'Triangle',fig_par:'Parallelogram',fig_trap:'Trapezoid',fig_rhomb:'Rhombus',
+  m_area:'Area S',m_perim:'Perimeter P',m_h:'Height h',m_base:'Base',
+  sub_area:'formula of the figure',sub_perim:'sum of the sides',
+  s_a:'base',s_b:'top base',s_h:'height',s_shear:'shift of the apex',s_d1:'diagonal d₁',s_d2:'diagonal d₂',
+  about_tri:'Area of a triangle = half the base times the height: S = ½·a·h. The height is the perpendicular from a vertex to the base. Shearing the apex (the "shift" slider) changes the shape but NOT the area — it depends only on base and height!',
+  about_par:'Area of a parallelogram = base × height: S = a·h. The height is the distance between the parallel sides (not the slanted side!). Shearing the top keeps the area.',
+  about_trap:'Area of a trapezoid = half the sum of the bases times the height: S = ½·(a+b)·h, where a and b are the parallel sides.',
+  about_rhomb:'The area of a rhombus is easiest via the diagonals: S = ½·d₁·d₂. The diagonals are perpendicular and split it into 4 equal right triangles.',
+}
+};
+const LANG=(()=>{const q=new URLSearchParams(location.search).get('lang');return(q&&I18N[q])?q:'ru';})();
+const tr=key=>(I18N[LANG]&&I18N[LANG][key])!==undefined?I18N[LANG][key]:I18N.ru[key];
+function applyStaticI18N(){document.documentElement.lang=LANG;const tv=tr('page_title');if(tv)document.title=tv;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{const v=tr(el.getAttribute('data-i18n'));if(v!==undefined)el.textContent=v;});
+  document.querySelectorAll('[data-i18n-html]').forEach(el=>{const v=tr(el.getAttribute('data-i18n-html'));if(v!==undefined)el.innerHTML=v;});}
+applyStaticI18N();
+const f1=x=>x.toFixed(1);
+window.A={mode:'tri',a:12,b:6,h:8,d1:14,d2:10,shear:3};
+// slider config per mode
+const SL={tri:[['a','s_a',2,20,0.5],['h','s_h',2,16,0.5],['shear','s_shear',-8,8,0.5]],
+  par:[['a','s_a',2,20,0.5],['h','s_h',2,16,0.5],['shear','s_shear',-8,8,0.5]],
+  trap:[['a','s_a',2,20,0.5],['b','s_b',1,18,0.5],['h','s_h',2,16,0.5]],
+  rhomb:[['d1','s_d1',2,20,0.5],['d2','s_d2',2,20,0.5]]};
+function verts(m){const {a,b,h,d1,d2,shear}=window.A;
+  if(m==='tri')return [[-a/2,0],[a/2,0],[shear,h]];
+  if(m==='par')return [[-a/2,0],[a/2,0],[a/2+shear,h],[-a/2+shear,h]];
+  if(m==='trap')return [[-a/2,0],[a/2,0],[b/2,h],[-b/2,h]];
+  return [[0,d2/2],[d1/2,0],[0,-d2/2],[-d1/2,0]];}
+function area(){const v=verts(window.A.mode);let s=0;for(let i=0;i<v.length;i++){const j=(i+1)%v.length;s+=v[i][0]*v[j][1]-v[j][0]*v[i][1];}return Math.abs(s)/2;}
+function perim(){const v=verts(window.A.mode);let p=0;for(let i=0;i<v.length;i++){const j=(i+1)%v.length;p+=Math.hypot(v[i][0]-v[j][0],v[i][1]-v[j][1]);}return p;}
+function formulaStr(){const {a,b,h,d1,d2,mode}=window.A;
+  if(mode==='tri')return `S = ½·a·h = ½·${f1(a)}·${f1(h)} = ${f1(area())}`;
+  if(mode==='par')return `S = a·h = ${f1(a)}·${f1(h)} = ${f1(area())}`;
+  if(mode==='trap')return `S = ½·(a+b)·h = ½·(${f1(a)}+${f1(b)})·${f1(h)} = ${f1(area())}`;
+  return `S = ½·d₁·d₂ = ½·${f1(d1)}·${f1(d2)} = ${f1(area())}`;}
+function headFormula(){return {tri:'S = ½·a·h',par:'S = a·h',trap:'S = ½·(a+b)·h',rhomb:'S = ½·d₁·d₂'}[window.A.mode];}
+const METRICS=[
+  {key:'area',dot:'var(--fig)',i:'m_area',fmt:()=>f1(area()),sub:()=>tr('sub_area'),u:'ед²'},
+  {key:'perim',dot:'#64748b',i:'m_perim',fmt:()=>f1(perim()),sub:()=>tr('sub_perim'),u:'ед.'},
+];
+function renderMetrics(){document.getElementById('metrics').innerHTML=METRICS.map(m=>`
+  <div class="metric" data-key="${m.key}" onclick="window.openDetail('${m.key}')"><div class="metric-dot" style="background:${m.dot}"></div>
+  <div class="metric-main"><span class="metric-name">${tr(m.i)}</span><span class="metric-sub" id="ms-${m.key}"></span></div>
+  <span class="metric-val" id="mv-${m.key}">—</span></div>`).join('');}
+function renderModes(){document.getElementById('mode-grid').innerHTML=MODES.map(m=>`
+  <button class="mode-btn${m===window.A.mode?' sel':''}" data-m="${m}" onclick="window.setMode('${m}')">${ICONS[m]}<span>${tr('fig_'+m)}</span></button>`).join('');}
+function renderSliders(){const m=window.A.mode;document.getElementById('sliders').innerHTML=SL[m].map(([key,lab,min,max,step])=>`
+  <div class="sl-row"><div class="sl-top"><span class="sl-name"><b>${key.replace('1','₁').replace('2','₂')}</b> ${tr(lab)}</span><span class="sl-val" id="sv-${key}">${f1(window.A[key])}</span></div>
+  <input type="range" min="${min}" max="${max}" step="${step}" value="${window.A[key]}" id="slm-${key}" oninput="window.setDim('${key}',+this.value)"></div>`).join('');
+  SL[m].forEach(([key,,min,max])=>{document.getElementById('slm-'+key).style.setProperty('--fill',((window.A[key]-min)/(max-min)*100)+'%');});}
+function updateMetricValues(){METRICS.forEach(m=>{const v=document.getElementById('mv-'+m.key);if(v)v.textContent=m.fmt();const s=document.getElementById('ms-'+m.key);if(s)s.textContent=m.sub();});
+  SL[window.A.mode].forEach(([key,,min,max])=>{const sv=document.getElementById('sv-'+key);if(sv)sv.textContent=f1(window.A[key]);const sl=document.getElementById('slm-'+key);if(sl)sl.style.setProperty('--fill',((window.A[key]-min)/(max-min)*100)+'%');});
+  document.getElementById('head-formula').textContent=headFormula();
+  document.getElementById('eq-banner').innerHTML=formulaStr().replace(/= ([\d.]+)$/,'= <b>$1</b>');}
+renderMetrics();renderModes();renderSliders();updateMetricValues();
+</script>
+<script type="importmap">{"imports":{"three":"../../libs/vendor/three-0.160.0/three.module.js"}}</script>
+<script type="module">
+import * as THREE from 'three';
+const canvas=document.getElementById('c');
+const renderer=new THREE.WebGLRenderer({canvas,antialias: true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);renderer.outputColorSpace=THREE.SRGBColorSpace;
+const scene=new THREE.Scene();scene.background=null;
+const camera=new THREE.PerspectiveCamera(42,innerWidth/innerHeight,0.1,8000);
+const CAM_DIR=new THREE.Vector3(0.16,0.12,1).normalize();
+let camDist=44,camDistTarget=44,userZoom=1.0;let showGrid=true;
+const PI=Math.PI;
+const f1=x=>x.toFixed(1);
+let contentR=18;
+function computeCamTarget(){const R0=contentR*1.18;const fovy=camera.fov*PI/180;const dV=R0/Math.sin(fovy/2);const usableW=Math.max(420,innerWidth-660);const fovx=2*Math.atan(Math.tan(fovy/2)*usableW/innerHeight);const dH=R0/Math.sin(fovx/2);return Math.max(dV,dH)*userZoom;}
+function applyCamera(){camera.position.copy(CAM_DIR).multiplyScalar(camDist);camera.lookAt(0,0,0);}
+scene.add(new THREE.AmbientLight(0xffffff,0.84));
+const kL=new THREE.DirectionalLight(0xffffff,0.78);kL.position.set(4,8,12);scene.add(kL);
+const fL=new THREE.DirectionalLight(0xc4b5fd,0.3);fL.position.set(-8,-3,4);scene.add(fL);
+const V=(x,y,z)=>new THREE.Vector3(x,y,z);
+const root=new THREE.Group();scene.add(root);const obj=new THREE.Group();root.add(obj);
+const COL={fig:0x7c3aed,edge:0x5b21b6,h:0xea580c,diag:0x0891b2,grid:0xd8d3e4,axis:0x9c95ad};
+const tR=0.09;
+function cyl(from,to,rr,mat){const dir=new THREE.Vector3().subVectors(to,from),len=dir.length();const m=new THREE.Mesh(new THREE.CylinderGeometry(rr,rr,len,10),mat);m.position.addVectors(from,to).multiplyScalar(0.5);if(len>1e-6)m.quaternion.setFromUnitVectors(V(0,1,0),dir.normalize());return m;}
+function sphere(r,mat){return new THREE.Mesh(new THREE.SphereGeometry(r,16,12),mat);}
+function dashed(from,to,rr,col){const g=new THREE.Group();const n=18;for(let i=0;i<n;i+=2){const a=from.clone().lerp(to,i/n),b=from.clone().lerp(to,(i+1)/n);g.add(cyl(a,b,rr,new THREE.MeshBasicMaterial({color:col})));}return g;}
+function polyFill(pts2,mat){const g=new THREE.BufferGeometry();const arr=[];for(let i=1;i<pts2.length-1;i++){arr.push(pts2[0][0],pts2[0][1],0, pts2[i][0],pts2[i][1],0, pts2[i+1][0],pts2[i+1][1],0);}g.setAttribute('position',new THREE.Float32BufferAttribute(arr,3));g.computeVertexNormals();return new THREE.Mesh(g,mat);}
+const gridGroup=new THREE.Group();obj.add(gridGroup);
+(function(){const gMat=new THREE.MeshBasicMaterial({color:COL.grid,transparent:true,opacity:0.7});const GW=16;
+  for(let i=-GW;i<=GW;i+=2){gridGroup.add(cyl(V(i,-GW,-0.05),V(i,GW,-0.05),tR*0.28,gMat));gridGroup.add(cyl(V(-GW,i,-0.05),V(GW,i,-0.05),tR*0.28,gMat));}
+  gridGroup.visible=showGrid;})();
+const dynG=new THREE.Group();obj.add(dynG);
+function disposeDyn(){while(dynG.children.length){const o=dynG.children[0];o.traverse(x=>{if(x.geometry)x.geometry.dispose();});dynG.remove(o);}}
+let hiKey=null;
+const verts=window.__verts;
+function vertsM(){return window.__verts(window.A.mode);}
+function buildDyn(){
+  disposeDyn();
+  const vraw=vertsM();
+  // centre on centroid
+  let cx=0,cy=0;vraw.forEach(p=>{cx+=p[0];cy+=p[1];});cx/=vraw.length;cy/=vraw.length;
+  const P=(x,y,z)=>V(x-cx,y-cy,z||0);
+  const v=vraw.map(p=>P(p[0],p[1]));
+  contentR=Math.max(...v.map(p=>Math.hypot(p.x,p.y)))+2;
+  // fill
+  dynG.add(polyFill(vraw.map(p=>[p[0]-cx,p[1]-cy]),new THREE.MeshStandardMaterial({color:COL.fig,roughness:0.5,transparent:true,opacity:hiKey==='area'?0.32:0.2,side:THREE.DoubleSide})));
+  // edges
+  const eMat=new THREE.MeshStandardMaterial({color:COL.edge,roughness:0.35,metalness:0.1,emissive:hiKey==='perim'?COL.edge:0,emissiveIntensity:hiKey==='perim'?0.35:0});
+  for(let i=0;i<v.length;i++)dynG.add(cyl(v[i].clone().setZ(0.04),v[(i+1)%v.length].clone().setZ(0.04),tR*(hiKey==='perim'?1.4:1),eMat));
+  // height / diagonals
+  const m=window.A.mode,{a,b,h,d1,d2,shear}=window.A;
+  if(m==='tri'||m==='par'||m==='trap'){
+    const hx=(m==='tri')?shear:0;   // x where height drawn
+    const foot=P(hx,0),top=P(hx,h);
+    dynG.add(dashed(foot.clone().setZ(0.06),top.clone().setZ(0.06),tR*0.7,COL.h));
+    // right-angle marker at foot
+    const rm=Math.min(a,h)*0.06+0.4;dynG.add(cyl(P(hx+rm,0,0.06),P(hx+rm,rm,0.06),tR*0.4,new THREE.MeshBasicMaterial({color:COL.h})));dynG.add(cyl(P(hx+rm,rm,0.06),P(hx,rm,0.06),tR*0.4,new THREE.MeshBasicMaterial({color:COL.h})));
+  } else {
+    // rhomb diagonals
+    dynG.add(cyl(P(-d1/2,0,0.06),P(d1/2,0,0.06),tR*0.6,new THREE.MeshStandardMaterial({color:COL.diag,roughness:0.4})));
+    dynG.add(cyl(P(0,-d2/2,0.06),P(0,d2/2,0.06),tR*0.6,new THREE.MeshStandardMaterial({color:COL.diag,roughness:0.4})));
+  }
+  updateLabelAnchors(cx,cy);
+}
+const layer=document.getElementById('labels-layer');
+function mkLabel(cls){const d=document.createElement('div');d.className='dim-label '+cls;layer.appendChild(d);return d;}
+const L_h=mkLabel('lh'),L_d1=mkLabel('ld'),L_d2=mkLabel('ld'),L_a=mkLabel('lb'),L_b=mkLabel('lb');
+const anc={h:V(),d1:V(),d2:V(),a:V(),b:V()};let showA=false,showB=false,showH=false,showD=false;
+function updateLabelAnchors(cx,cy){const m=window.A.mode,{a,b,h,d1,d2,shear}=window.A;const P=(x,y)=>V(x-cx,y-cy,0);
+  showA=showB=showH=showD=false;
+  if(m==='tri'||m==='par'||m==='trap'){showH=true;showA=true;
+    const hx=(m==='tri')?shear:0;anc.h.copy(P(hx-1.0,h/2));L_h.textContent='h='+f1(h);
+    anc.a.copy(P(0,-1.2));L_a.textContent='a='+f1(a);
+    if(m==='trap'){showB=true;anc.b.copy(P(0,h+1.2));L_b.textContent='b='+f1(b);}
+  } else {showD=true;anc.d1.copy(P(d1*0.28,0.9));L_d1.textContent='d₁='+f1(d1);anc.d2.copy(P(0.9,d2*0.28));L_d2.textContent='d₂='+f1(d2);}
+}
+function project(localVec){const w=localVec.clone().applyMatrix4(obj.matrixWorld).project(camera);return {x:(w.x*0.5+0.5)*innerWidth,y:(-w.y*0.5+0.5)*innerHeight,behind:w.z>1};}
+function place(el,v,vis){if(!vis){el.classList.add('hidden');return;}const s=project(v);if(s.behind){el.classList.add('hidden');return;}el.classList.remove('hidden');el.style.left=s.x+'px';el.style.top=s.y+'px';}
+function updateLabels(){place(L_h,anc.h,showH);place(L_a,anc.a,showA);place(L_b,anc.b,showB);place(L_d1,anc.d1,showD);place(L_d2,anc.d2,showD);}
+const DETAIL_ALL={ru:{},kz:{},en:{}};
+function openDetail(key){const m=window.A.mode;const about=tr('about_'+m);const mm=window.__metrics.find(x=>x.key===key);
+  document.querySelectorAll('.metric').forEach(el=>el.classList.toggle('active',el.dataset.key===key));
+  hiKey=key;buildDyn();
+  const calc=key==='area'?window.__formula():`P = ${window.A.mode==='rhomb'?'4·сторона':'сумма сторон'} = ${f1(window.__perim())}`;
+  document.getElementById('detail-content').innerHTML=`<div class="d-tag">${tr('fig_'+m)}</div><div class="d-title">${tr(mm.i)}</div>
+    <div class="d-bigval"><b>${mm.fmt()}</b><span>${mm.u}</span></div><div class="d-formula">${calc}</div><div class="d-para">${key==='area'?about:tr('sub_perim')}</div>`;
+  document.getElementById('panel-left').classList.add('detail');currentDetail=key;markInteract();}
+let currentDetail=null;window.openDetail=openDetail;
+window.showList=function(){document.getElementById('panel-left').classList.remove('detail');currentDetail=null;document.querySelectorAll('.metric').forEach(m=>m.classList.remove('active'));hiKey=null;buildDyn();};
+window.setMode=function(mode){window.A.mode=mode;window.__renderModes();window.__renderSliders();buildDyn();window.__updateMetricValues();if(currentDetail)openDetail(currentDetail);markInteract();};
+window.setDim=function(k,val){window.A[k]=val;buildDyn();window.__updateMetricValues();if(currentDetail)openDetail(currentDetail);markInteract();};
+window.toggleGrid=function(){showGrid=!showGrid;document.getElementById('chip-grid').classList.toggle('on',showGrid);gridGroup.visible=showGrid;markInteract();};
+let mode=null,last={x:0,y:0},dd=0,isDragging=false,rotX=0.0;
+let lastInteract=performance.now()-16000,autoSpeed=0;const AUTO_TARGET=0.0010,IDLE_MS=15000;
+function markInteract(){lastInteract=performance.now();}
+canvas.addEventListener('mousedown',e=>{markInteract();mode='rotate';last={x:e.clientX,y:e.clientY};isDragging=false;dd=0;});
+canvas.addEventListener('mousemove',e=>{if(mode==='rotate'){dd=Math.hypot(e.clientX-last.x,e.clientY-last.y);if(dd>4)isDragging=true;
+  if(isDragging){root.rotation.y+=(e.clientX-last.x)*0.008;rotX=Math.max(-1.0,Math.min(1.0,rotX+(e.clientY-last.y)*0.006));root.rotation.x=rotX;markInteract();}last={x:e.clientX,y:e.clientY};}});
+window.addEventListener('mouseup',()=>{mode=null;});
+canvas.addEventListener('wheel',e=>{e.preventDefault();userZoom=Math.max(0.6,Math.min(1.7,userZoom+e.deltaY*0.0015));markInteract();},{passive:false});
+window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+let t=0;
+function animate(){requestAnimationFrame(animate);t+=0.016;const idle=performance.now()-lastInteract;
+  if(idle>IDLE_MS)autoSpeed+=(AUTO_TARGET-autoSpeed)*0.025;else autoSpeed+=(0-autoSpeed)*0.18;
+  root.rotation.y+=autoSpeed;root.rotation.x=rotX;camDistTarget=computeCamTarget();camDist+=(camDistTarget-camDist)*0.18;applyCamera();
+  renderer.render(scene,camera);obj.updateWorldMatrix(true,false);updateLabels();}
+buildDyn();camDistTarget=computeCamTarget();camDist=camDistTarget;applyCamera();animate();
+</script>
+<script>
+// expose top-script helpers to the module
+window.__verts=verts;window.__metrics=METRICS;window.__formula=formulaStr;window.__perim=perim;
+window.__renderModes=renderModes;window.__renderSliders=renderSliders;window.__updateMetricValues=updateMetricValues;
+</script>
+</body>
+</html>

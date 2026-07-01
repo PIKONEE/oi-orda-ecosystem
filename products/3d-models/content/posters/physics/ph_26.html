@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Плоский конденсатор</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { width: 100%; height: 100%; overflow: hidden; }
+        body {
+            font-family: 'Segoe UI', 'Inter', system-ui, sans-serif;
+            background: linear-gradient(135deg, #eef3fb 0%, #e6edf8 100%);
+            color: #16233f;
+        }
+        #canvas-container { position: absolute; inset: 0; }
+        #labels { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+        .label3d {
+            position: absolute; transform: translate(-50%, -50%);
+            font-size: 12.5px; font-weight: 800; padding: 2px 8px; border-radius: 7px;
+            background: rgba(255,255,255,0.92); border: 1px solid rgba(150,170,205,0.6);
+            box-shadow: 0 2px 8px rgba(40,60,110,0.16); white-space: nowrap;
+        }
+        .label3d.pos { color: #dc2626; } .label3d.neg { color: #2563eb; }
+        .label3d.e { color: #7c3aed; } .label3d.die { color: #15803d; }
+
+        .header {
+            position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+            text-align: center; z-index: 6; pointer-events: none; width: 92%;
+        }
+        .header h1 { font-size: 26px; font-weight: 800; color: #1b2a4a; text-shadow: 0 1px 0 rgba(255,255,255,0.7); }
+        .header p { font-size: 14px; color: #5a6b8c; margin-top: 4px; font-weight: 600; }
+
+        .panel {
+            position: absolute; z-index: 7; background: rgba(255,255,255,0.82);
+             
+            border: 1px solid rgba(150,170,205,0.5); border-radius: 16px;
+            box-shadow: 0 10px 34px rgba(40,60,110,0.14);
+        }
+        .control-panel { top: 92px; left: 22px; width: 320px; padding: 15px 18px; }
+        .info-panel { top: 92px; right: 22px; width: 300px; padding: 15px 18px; }
+
+        .param-group { margin-bottom: 12px; }
+        .param-label { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+        .param-name { font-size: 13px; font-weight: 700; color: #33405e; display: flex; align-items: center; gap: 6px; }
+        .param-icon { font-size: 15px; }
+        .param-value { font-size: 15px; font-weight: 800; color: #2563eb; font-variant-numeric: tabular-nums; }
+
+        input[type=range] {
+            -webkit-appearance: none; appearance: none; width: 100%; height: 6px;
+            border-radius: 6px; outline: none; cursor: pointer;
+            background: linear-gradient(90deg, #c4d2ec, #aebfe0);
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none; width: 18px; height: 18px;
+            border-radius: 50%; background: #fff; border: 3px solid #2563eb;
+            box-shadow: 0 2px 7px rgba(37,99,235,0.4); cursor: pointer;
+        }
+
+        .toggle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
+        .toggle-btn {
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+            padding: 9px 6px; border-radius: 10px; border: 1.5px solid rgba(150,170,205,0.6);
+            background: rgba(255,255,255,0.55); color: #44537a; font-size: 12.5px; font-weight: 700;
+            cursor: pointer; transition: all 0.16s;
+        }
+        .toggle-btn .dot { width: 9px; height: 9px; border-radius: 50%; background: #b7c2d8; transition: all 0.16s; }
+        .toggle-btn.active { background: rgba(37,99,235,0.12); border-color: #2563eb; color: #1b2a4a; }
+        .toggle-btn.active .dot { background: #2563eb; box-shadow: 0 0 7px rgba(37,99,235,0.8); }
+
+        .action-row { display: flex; gap: 8px; margin-top: 11px; }
+        .btn { flex: 1; padding: 9px; border: none; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.16s; color: #fff; }
+        .btn-reset { background: linear-gradient(135deg, #64748b, #475569); }
+        .btn:hover { filter: brightness(1.07); transform: translateY(-1px); }
+
+        .info-title { font-size: 15px; font-weight: 800; color: #1b2a4a; margin-bottom: 10px; display: flex; align-items: center; gap: 7px; }
+        .readout { display: flex; justify-content: space-between; align-items: center; padding: 5.5px 0; border-bottom: 1px dashed rgba(150,170,205,0.45); font-size: 13px; }
+        .ro-name { color: #5a6b8c; font-weight: 600; }
+        .ro-val { font-weight: 800; color: #1b2a4a; font-variant-numeric: tabular-nums; }
+        .ro-val.c { color: #15803d; } .ro-val.q { color: #dc2626; } .ro-val.e { color: #7c3aed; }
+
+        .formula-panel {
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 7;
+            background: rgba(27,42,74,0.93); color: #eaf0fb; padding: 11px 22px; border-radius: 14px;
+            box-shadow: 0 10px 30px rgba(20,35,70,0.34); text-align: center; max-width: 66%;
+        }
+        .formula { font-family: 'Cambria Math','Times New Roman', serif; font-size: 18px; font-weight: 600; }
+        .formula .sep { color: #6b7da6; margin: 0 12px; }
+        .formula-note { font-size: 12.5px; color: #9fb2d8; margin-top: 5px; }
+
+        .hint {
+            position: absolute; bottom: 18px; left: 22px; z-index: 7; font-size: 12px; color: #5a6b8c;
+            background: rgba(255,255,255,0.72); padding: 7px 13px; border-radius: 9px;
+            border: 1px solid rgba(150,170,205,0.45);
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div id="labels"></div>
+
+    <div class="header">
+        <h1>⚡ Плоский конденсатор</h1>
+        <p><span>Электрическое поле между пластинами • заряд • ёмкость • диэлектрик</span></p>
+    </div>
+
+    <div class="panel control-panel">
+        <div class="param-group">
+            <div class="param-label">
+                <span class="param-name"><span class="param-icon">🔋</span><span data-i18n="vLabel">Напряжение U</span></span>
+                <span class="param-value" id="v-value">100 В</span>
+            </div>
+            <input type="range" id="volt" min="0" max="300" step="5" value="100">
+        </div>
+        <div class="param-group">
+            <div class="param-label">
+                <span class="param-name"><span class="param-icon">↔️</span><span data-i18n="dLabel">Расстояние d</span></span>
+                <span class="param-value" id="d-value">4.0 мм</span>
+            </div>
+            <input type="range" id="dist" min="1" max="10" step="0.1" value="4">
+        </div>
+        <div class="param-group">
+            <div class="param-label">
+                <span class="param-name"><span class="param-icon">⬛</span><span data-i18n="aLabel">Площадь пластин A</span></span>
+                <span class="param-value" id="a-value">100 см²</span>
+            </div>
+            <input type="range" id="area" min="20" max="300" step="5" value="100">
+        </div>
+        <div class="param-group">
+            <div class="param-label">
+                <span class="param-name"><span class="param-icon">🟩</span><span data-i18n="epsLabel">Диэлектрик εᵣ</span></span>
+                <span class="param-value" id="eps-value">1.0 (вакуум)</span>
+            </div>
+            <input type="range" id="eps" min="1" max="10" step="0.1" value="1">
+        </div>
+
+        <div class="toggle-grid">
+            <button class="toggle-btn active" id="t-field"><span class="dot"></span><span data-i18n="tField">Поле E</span></button>
+            <button class="toggle-btn active" id="t-charge"><span class="dot"></span><span data-i18n="tCharge">Заряды</span></button>
+            <button class="toggle-btn" id="t-die"><span class="dot"></span><span data-i18n="tDie">Диэлектрик</span></button>
+            <button class="toggle-btn active" id="t-lbl"><span class="dot"></span><span data-i18n="tLbl">Подписи</span></button>
+        </div>
+
+        <div class="action-row">
+            <button class="btn btn-reset" id="btn-reset" data-i18n="reset">↺ Сброс</button>
+        </div>
+    </div>
+
+    <div class="panel info-panel">
+        <div class="info-title">📊 <span data-i18n="infoTitle">Параметры</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roC">Ёмкость C = εᵣε₀A/d</span><span class="ro-val c" id="ro-c">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roQ">Заряд Q = CU</span><span class="ro-val q" id="ro-q">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roE">Поле E = U/d</span><span class="ro-val e" id="ro-e">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roEnergy">Энергия W = ½CU²</span><span class="ro-val" id="ro-energy">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roSigma">Пов. плотность σ</span><span class="ro-val" id="ro-sigma">—</span></div>
+    </div>
+
+    <div class="formula-panel">
+        <div class="formula">
+            C = εᵣ·ε₀·A ∕ d
+            <span class="sep">|</span>
+            Q = C·U
+            <span class="sep">|</span>
+            E = U ∕ d
+        </div>
+        <div class="formula-note" data-i18n="note">Поле между пластинами однородно. Диэлектрик увеличивает ёмкость в εᵣ раз</div>
+    </div>
+
+    <div class="hint"><span data-i18n="hint">ЛКМ — вращение • ПКМ — перемещение • Колесо — зум</span></div>
+
+    <script src="../../libs/vendor/three-r128/three.min.js"></script>
+    <script>
+    const LANG = (new URLSearchParams(window.location.search).get('lang')) || 'ru';
+    const I18N = {
+        ru: { headH:'⚡ Плоский конденсатор', headS:'Электрическое поле между пластинами • заряд • ёмкость • диэлектрик',
+              vLabel:'Напряжение U', dLabel:'Расстояние d', aLabel:'Площадь пластин A', epsLabel:'Диэлектрик εᵣ',
+              tField:'Поле E', tCharge:'Заряды', tDie:'Диэлектрик', tLbl:'Подписи', reset:'↺ Сброс', infoTitle:'Параметры',
+              roC:'Ёмкость C = εᵣε₀A/d', roQ:'Заряд Q = CU', roE:'Поле E = U/d', roEnergy:'Энергия W = ½CU²', roSigma:'Пов. плотность σ',
+              note:'Поле между пластинами однородно. Диэлектрик увеличивает ёмкость в εᵣ раз',
+              hint:'ЛКМ — вращение • ПКМ — перемещение • Колесо — зум',
+              lPos:'+Q (анод)', lNeg:'−Q (катод)', lE:'E — поле', lDie:'Диэлектрик εᵣ', vac:'вакуум' },
+        kz: { headH:'⚡ Жазық конденсатор', headS:'Пластиналар арасындағы электр өрісі • заряд • сыйымдылық • диэлектрик',
+              vLabel:'Кернеу U', dLabel:'Қашықтық d', aLabel:'Пластина ауданы A', epsLabel:'Диэлектрик εᵣ',
+              tField:'Өріс E', tCharge:'Зарядтар', tDie:'Диэлектрик', tLbl:'Жазулар', reset:'↺ Қайтару', infoTitle:'Параметрлер',
+              roC:'Сыйымдылық C = εᵣε₀A/d', roQ:'Заряд Q = CU', roE:'Өріс E = U/d', roEnergy:'Энергия W = ½CU²', roSigma:'Беттік тығыздық σ',
+              note:'Пластиналар арасындағы өріс біртекті. Диэлектрик сыйымдылықты εᵣ есе арттырады',
+              hint:'СБ — айналдыру • ОБ — жылжыту • Дөңгелек — масштаб',
+              lPos:'+Q (анод)', lNeg:'−Q (катод)', lE:'E — өріс', lDie:'Диэлектрик εᵣ', vac:'вакуум' },
+        en: { headH:'⚡ Parallel-plate Capacitor', headS:'Electric field between plates • charge • capacitance • dielectric',
+              vLabel:'Voltage U', dLabel:'Separation d', aLabel:'Plate area A', epsLabel:'Dielectric εᵣ',
+              tField:'Field E', tCharge:'Charges', tDie:'Dielectric', tLbl:'Labels', reset:'↺ Reset', infoTitle:'Parameters',
+              roC:'Capacitance C = εᵣε₀A/d', roQ:'Charge Q = CU', roE:'Field E = U/d', roEnergy:'Energy W = ½CU²', roSigma:'Surface density σ',
+              note:'The field between the plates is uniform. A dielectric increases capacitance by εᵣ',
+              hint:'LMB — rotate • RMB — pan • Wheel — zoom',
+              lPos:'+Q (anode)', lNeg:'−Q (cathode)', lE:'E — field', lDie:'Dielectric εᵣ', vac:'vacuum' }
+    };
+    const L = I18N[LANG] || I18N.ru;
+
+    // ---- physics ----
+    const EPS0 = 8.854e-12;      // F/m
+    let volt = 100;              // V
+    let dist = 4;                // mm
+    let area = 100;              // cm²
+    let epsR = 1.0;
+    let showField = true, showCharge = true, showDie = false, showLbl = true;
+
+    function distM() { return dist / 1000; }            // m
+    function areaM() { return area / 10000; }           // m²
+    function capacitance() { return epsR * EPS0 * areaM() / distM(); }  // F
+    function charge() { return capacitance() * volt; }   // C
+    function fieldE() { return volt / distM(); }         // V/m
+    function energy() { return 0.5 * capacitance() * volt * volt; }      // J
+    function sigma() { return charge() / areaM(); }      // C/m²
+
+    // ---- three.js ----
+    let scene, camera, renderer, root;
+    let plateTop, plateBot, fieldGroup, chargeGroup, dielectric, capGroup;
+    const clock = new THREE.Clock();
+    const container = document.getElementById('canvas-container');
+    const labelLayer = document.getElementById('labels');
+
+    let camTheta = 0.6, camPhi = 1.1, camRadius = 13;
+    const camTarget = new THREE.Vector3(0, 0, 0);
+    let dragMode = 0, lastX = 0, lastY = 0;
+
+    // visual mapping: plate side from area, gap from d
+    function plateSide() { return 2.4 + (area - 20) / 280 * 3.0; }   // 2.4 .. 5.4
+    function gapVis() { return 0.8 + (dist - 1) / 9 * 4.0; }          // 0.8 .. 4.8
+    const flowSpeed = () => volt / 100;   // field-line animation speed ∝ U
+
+    function init() {
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xeef3fb);
+        scene.fog = new THREE.Fog(0xeef3fb, 22, 52);
+
+        camera = new THREE.PerspectiveCamera(47, window.innerWidth / window.innerHeight, 0.1, 200);
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        container.appendChild(renderer.domElement);
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+        const key = new THREE.DirectionalLight(0xffffff, 0.55); key.position.set(6, 11, 8); scene.add(key);
+        const fill = new THREE.DirectionalLight(0xbcd4ff, 0.3); fill.position.set(-8, 4, -6); scene.add(fill);
+
+        root = new THREE.Group(); scene.add(root);
+        const grid = new THREE.GridHelper(32, 16, 0xc2cee4, 0xdde5f1);
+        grid.position.y = -5; root.add(grid);
+
+        capGroup = new THREE.Group(); root.add(capGroup);
+        buildPlates();
+        buildDielectric();
+        fieldGroup = new THREE.Group(); capGroup.add(fieldGroup);
+        chargeGroup = new THREE.Group(); capGroup.add(chargeGroup);
+
+        makeLabels();
+        applyI18N();
+        setupControls();
+        rebuild();
+        updateCamera();
+        animate();
+    }
+
+    function buildPlates() {
+        const matPos = new THREE.MeshStandardMaterial({ color: 0xe06464, metalness: 0.6, roughness: 0.35 });
+        const matNeg = new THREE.MeshStandardMaterial({ color: 0x5b8fe0, metalness: 0.6, roughness: 0.35 });
+        plateTop = new THREE.Mesh(new THREE.BoxGeometry(1, 0.16, 1), matPos);
+        plateBot = new THREE.Mesh(new THREE.BoxGeometry(1, 0.16, 1), matNeg);
+        capGroup.add(plateTop); capGroup.add(plateBot);
+        // terminal wires + battery hint
+        const wireMat = new THREE.LineBasicMaterial({ color: 0x44537a });
+        plateTop.userData.wire = new THREE.Line(new THREE.BufferGeometry(), wireMat);
+        plateBot.userData.wire = new THREE.Line(new THREE.BufferGeometry(), wireMat);
+        capGroup.add(plateTop.userData.wire); capGroup.add(plateBot.userData.wire);
+    }
+
+    function buildDielectric() {
+        dielectric = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1),
+            new THREE.MeshStandardMaterial({ color: 0x4ade80, transparent: true, opacity: 0.3, roughness: 0.2, metalness: 0.1, side: THREE.DoubleSide }));
+        capGroup.add(dielectric);
+        const de = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1, 1, 1)), new THREE.LineBasicMaterial({ color: 0x15803d, transparent: true, opacity: 0.5 }));
+        dielectric.add(de);
+    }
+
+    function rebuild() {
+        const side = plateSide(), gap = gapVis();
+        const half = gap / 2;
+        plateTop.scale.set(side, 1, side); plateTop.position.set(0, half + 0.08, 0);
+        plateBot.scale.set(side, 1, side); plateBot.position.set(0, -half - 0.08, 0);
+        // wires
+        const setWire = (line, y, dir) => {
+            const pts = [new THREE.Vector3(side / 2, y, 0), new THREE.Vector3(side / 2 + 1.2, y, 0), new THREE.Vector3(side / 2 + 1.2, dir * (gap / 2 + 1.4), 0)];
+            line.geometry.dispose(); line.geometry = new THREE.BufferGeometry().setFromPoints(pts);
+        };
+        setWire(plateTop.userData.wire, half + 0.08, 1);
+        setWire(plateBot.userData.wire, -half - 0.08, -1);
+
+        dielectric.scale.set(side * 0.92, gap, side * 0.92); dielectric.position.set(0, 0, 0);
+        dielectric.visible = showDie;
+
+        buildField(); buildCharges();
+        updateReadouts();
+    }
+
+    function buildField() {
+        while (fieldGroup.children.length) fieldGroup.remove(fieldGroup.children[0]);
+        if (!showField || volt <= 0) { fieldGroup.visible = showField; return; }
+        fieldGroup.visible = true;
+        const side = plateSide(), gap = gapVis();
+        const half = gap / 2;
+        const n = 4;   // grid of lines
+        const mat = new THREE.MeshStandardMaterial({ color: 0x7c3aed, emissive: 0x7c3aed, emissiveIntensity: 0.3, metalness: 0.2, roughness: 0.5 });
+        const span = side * 0.7;
+        for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+            const x = (i / (n - 1) - 0.5) * span;
+            const z = (j / (n - 1) - 0.5) * span;
+            const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, gap * 0.96, 6), mat);
+            shaft.position.set(x, 0, z); fieldGroup.add(shaft);
+            // arrowhead points downward (E from + top plate to - bottom plate)
+            const head = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.26, 8), mat);
+            head.rotation.x = Math.PI; head.position.set(x, -half * 0.15, z);
+            head.userData.baseY = -half * 0.15; head.userData.x = x; head.userData.z = z;
+            fieldGroup.add(head);
+        }
+    }
+
+    function buildCharges() {
+        while (chargeGroup.children.length) chargeGroup.remove(chargeGroup.children[0]);
+        if (!showCharge || volt <= 0) { chargeGroup.visible = showCharge; return; }
+        chargeGroup.visible = true;
+        const side = plateSide(), gap = gapVis(), half = gap / 2;
+        // grid density of charge markers grows with stored charge (visual, capped)
+        const grid = Math.max(2, Math.min(4, Math.round(2 + Math.log10(charge() / 1e-9 + 1) * 1.2)));
+        const span = side * 0.62;
+        const mkSign = (plus, x, z, y) => {
+            const g = new THREE.Group();
+            const barMat = new THREE.MeshStandardMaterial({ color: plus ? 0xb91c1c : 0x1d4ed8, emissive: plus ? 0xb91c1c : 0x1d4ed8, emissiveIntensity: 0.35 });
+            const h = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.06, 0.06), barMat); g.add(h);
+            if (plus) { const v = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.28), barMat); g.add(v); }
+            g.position.set(x, y, z); return g;
+        };
+        for (let i = 0; i < grid; i++) for (let j = 0; j < grid; j++) {
+            const x = (i / (grid - 1) - 0.5) * span;
+            const z = (j / (grid - 1) - 0.5) * span;
+            chargeGroup.add(mkSign(true, x, z, half - 0.02));    // + on top plate inner face
+            chargeGroup.add(mkSign(false, x, z, -half + 0.02));  // − on bottom plate inner face
+        }
+    }
+
+    function updateReadouts() {
+        const C = capacitance();
+        setTxt('ro-c', fmtSI(C, 'Ф'));
+        setTxt('ro-q', fmtSI(charge(), 'Кл'));
+        setTxt('ro-e', fmtSI(fieldE(), 'В/м'));
+        setTxt('ro-energy', fmtSI(energy(), 'Дж'));
+        setTxt('ro-sigma', fmtSI(sigma(), 'Кл/м²'));
+    }
+    function fmtSI(x, unit) {
+        if (x === 0) return '0 ' + unit;
+        const a = Math.abs(x);
+        let p, s;
+        if (a >= 1e3) { p = x / 1e3; s = 'к'; }
+        else if (a >= 1) { p = x; s = ''; }
+        else if (a >= 1e-3) { p = x * 1e3; s = 'м'; }
+        else if (a >= 1e-6) { p = x * 1e6; s = 'мк'; }
+        else if (a >= 1e-9) { p = x * 1e9; s = 'н'; }
+        else { p = x * 1e12; s = 'п'; }
+        return p.toFixed(p >= 100 ? 0 : p >= 10 ? 1 : 2) + ' ' + s + unit;
+    }
+    function setTxt(id, v) { const el = document.getElementById(id); if (el) el.textContent = v; }
+
+    // ---- labels ----
+    let lblPos, lblNeg, lblE, lblDie;
+    function makeLabels() {
+        const mk = (cls) => { const d = document.createElement('div'); d.className = 'label3d ' + cls; labelLayer.appendChild(d); return d; };
+        lblPos = mk('pos'); lblNeg = mk('neg'); lblE = mk('e'); lblDie = mk('die');
+    }
+    function proj(el, pos, show, text) {
+        if (!show) { el.style.display = 'none'; return; }
+        const v = pos.clone().project(camera);
+        if (v.z > 1) { el.style.display = 'none'; return; }
+        el.style.display = 'block'; if (text != null) el.textContent = text;
+        el.style.left = (v.x * 0.5 + 0.5) * window.innerWidth + 'px';
+        el.style.top = (-v.y * 0.5 + 0.5) * window.innerHeight + 'px';
+    }
+    function updateLabels() {
+        const side = plateSide(), gap = gapVis(), half = gap / 2;
+        proj(lblPos, new THREE.Vector3(-side / 2 - 0.3, half + 0.2, 0), showLbl, L.lPos);
+        proj(lblNeg, new THREE.Vector3(-side / 2 - 0.3, -half - 0.2, 0), showLbl, L.lNeg);
+        proj(lblE, new THREE.Vector3(side * 0.36, 0, side * 0.36), showLbl && showField && volt > 0, L.lE);
+        proj(lblDie, new THREE.Vector3(0, 0, side / 2 * 0.92 + 0.3), showLbl && showDie, L.lDie);
+    }
+
+    // ---- camera ----
+    function updateCamera() {
+        const sp = Math.sin(camPhi), cp = Math.cos(camPhi), st = Math.sin(camTheta), ct = Math.cos(camTheta);
+        camera.position.set(camTarget.x + camRadius * sp * ct, camTarget.y + camRadius * cp, camTarget.z + camRadius * sp * st);
+        camera.lookAt(camTarget);
+    }
+
+    function setupControls() {
+        document.getElementById('volt').addEventListener('input', e => { volt = +e.target.value; setTxt('v-value', volt + ' В'); buildField(); buildCharges(); updateReadouts(); });
+        document.getElementById('dist').addEventListener('input', e => { dist = +e.target.value; setTxt('d-value', dist.toFixed(1) + ' мм'); rebuild(); });
+        document.getElementById('area').addEventListener('input', e => { area = +e.target.value; setTxt('a-value', area + ' см²'); rebuild(); });
+        document.getElementById('eps').addEventListener('input', e => { epsR = +e.target.value; setTxt('eps-value', epsR.toFixed(1) + (epsR <= 1.01 ? ' (' + L.vac + ')' : '')); buildCharges(); updateReadouts(); });
+
+        const tog = (id, fn) => { const el = document.getElementById(id); el.addEventListener('click', () => { el.classList.toggle('active'); fn(el.classList.contains('active')); }); };
+        tog('t-field', v => { showField = v; buildField(); });
+        tog('t-charge', v => { showCharge = v; buildCharges(); });
+        tog('t-die', v => { showDie = v; dielectric.visible = v; });
+        tog('t-lbl', v => showLbl = v);
+
+        document.getElementById('btn-reset').addEventListener('click', () => {
+            volt = 100; dist = 4; area = 100; epsR = 1; showField = true; showCharge = true; showDie = false; showLbl = true;
+            document.getElementById('volt').value = 100; document.getElementById('dist').value = 4; document.getElementById('area').value = 100; document.getElementById('eps').value = 1;
+            setTxt('v-value', '100 В'); setTxt('d-value', '4.0 мм'); setTxt('a-value', '100 см²'); setTxt('eps-value', '1.0 (' + L.vac + ')');
+            document.getElementById('t-field').classList.add('active'); document.getElementById('t-charge').classList.add('active');
+            document.getElementById('t-die').classList.remove('active'); document.getElementById('t-lbl').classList.add('active');
+            camTheta = 0.6; camPhi = 1.1; camRadius = 13; camTarget.set(0, 0, 0);
+            rebuild(); updateCamera();
+        });
+
+        const el = renderer.domElement;
+        el.addEventListener('contextmenu', e => e.preventDefault());
+        el.addEventListener('mousedown', e => { dragMode = (e.button === 2 || e.shiftKey) ? 2 : 1; lastX = e.clientX; lastY = e.clientY; });
+        window.addEventListener('mousemove', e => {
+            if (!dragMode) return;
+            const dx = e.clientX - lastX, dy = e.clientY - lastY; lastX = e.clientX; lastY = e.clientY;
+            if (dragMode === 1) { camTheta -= dx * 0.005; camPhi = Math.max(0.18, Math.min(Math.PI - 0.18, camPhi - dy * 0.005)); }
+            else { const ps = camRadius * 0.0016; const right = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0); const up = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 1); camTarget.addScaledVector(right, -dx * ps); camTarget.addScaledVector(up, dy * ps); }
+            updateCamera();
+        });
+        window.addEventListener('mouseup', () => dragMode = 0);
+        el.addEventListener('wheel', e => { e.preventDefault(); camRadius = Math.max(7, Math.min(32, camRadius + e.deltaY * 0.014)); updateCamera(); }, { passive: false });
+        el.addEventListener('touchstart', e => { const t = e.touches[0]; dragMode = 1; lastX = t.clientX; lastY = t.clientY; }, { passive: true });
+        el.addEventListener('touchmove', e => { if (!dragMode) return; const t = e.touches[0]; const dx = t.clientX - lastX, dy = t.clientY - lastY; lastX = t.clientX; lastY = t.clientY; camTheta -= dx * 0.006; camPhi = Math.max(0.18, Math.min(Math.PI - 0.18, camPhi - dy * 0.006)); updateCamera(); e.preventDefault(); }, { passive: false });
+        window.addEventListener('touchend', () => dragMode = 0);
+        window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+    }
+
+    function applyI18N() {
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const k = el.getAttribute('data-i18n');
+            if (L[k] != null) { if (k === 'note') el.innerHTML = L[k]; else el.textContent = L[k]; }
+        });
+        document.querySelector('.header h1').textContent = L.headH;
+        document.querySelector('.header p span').textContent = L.headS;
+        document.title = L.headH.replace(/^[^\wА-Яа-яЁё]+/, '');
+        document.documentElement.lang = LANG;
+    }
+
+    let flow = 0;
+    function animate() {
+        requestAnimationFrame(animate);
+        const dt = Math.min(clock.getDelta(), 0.05);
+        // animate field arrowheads drifting downward (charge motion sense)
+        if (fieldGroup.visible && volt > 0) {
+            flow = (flow + dt * flowSpeed() * 1.2) % 1;
+            const gap = gapVis(), amp = gap * 0.32;
+            fieldGroup.children.forEach(ch => {
+                if (ch.userData.baseY != null) {
+                    ch.position.y = ch.userData.baseY + (0.5 - flow) * amp;
+                }
+            });
+        }
+        updateLabels();
+        renderer.render(scene, camera);
+    }
+
+    init();
+    </script>
+</body>
+</html>

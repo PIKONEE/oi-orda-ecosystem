@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Пружинный маятник</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { width: 100%; height: 100%; overflow: hidden; }
+        body {
+            font-family: 'Segoe UI', 'Inter', system-ui, sans-serif;
+            background: linear-gradient(135deg, #eef3fb 0%, #e6edf8 100%);
+            color: #16233f;
+        }
+        #canvas-container { position: absolute; inset: 0; }
+        #labels { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+        .label3d {
+            position: absolute; transform: translate(-50%, -50%);
+            font-size: 12.5px; font-weight: 800; padding: 2px 8px; border-radius: 7px;
+            background: rgba(255,255,255,0.92); border: 1px solid rgba(150,170,205,0.6);
+            box-shadow: 0 2px 8px rgba(40,60,110,0.16); white-space: nowrap;
+        }
+        .label3d.mass { color: #b45309; } .label3d.spring { color: #2563eb; }
+        .label3d.eq { color: #15803d; }
+
+        .header {
+            position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+            text-align: center; z-index: 6; pointer-events: none; width: 92%;
+        }
+        .header h1 { font-size: 26px; font-weight: 800; color: #1b2a4a; text-shadow: 0 1px 0 rgba(255,255,255,0.7); }
+        .header p { font-size: 14px; color: #5a6b8c; margin-top: 4px; font-weight: 600; }
+
+        .panel {
+            position: absolute; z-index: 7; background: rgba(255,255,255,0.82);
+             
+            border: 1px solid rgba(150,170,205,0.5); border-radius: 16px;
+            box-shadow: 0 10px 34px rgba(40,60,110,0.14);
+        }
+        .control-panel { top: 92px; left: 22px; width: 320px; padding: 15px 18px; }
+        .info-panel { top: 92px; right: 22px; width: 300px; padding: 15px 18px; }
+
+        .param-group { margin-bottom: 12px; }
+        .param-label { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+        .param-name { font-size: 13px; font-weight: 700; color: #33405e; display: flex; align-items: center; gap: 6px; }
+        .param-icon { font-size: 15px; }
+        .param-value { font-size: 15px; font-weight: 800; color: #2563eb; font-variant-numeric: tabular-nums; }
+
+        input[type=range] {
+            -webkit-appearance: none; appearance: none; width: 100%; height: 6px;
+            border-radius: 6px; outline: none; cursor: pointer;
+            background: linear-gradient(90deg, #c4d2ec, #aebfe0);
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none; width: 18px; height: 18px;
+            border-radius: 50%; background: #fff; border: 3px solid #2563eb;
+            box-shadow: 0 2px 7px rgba(37,99,235,0.4); cursor: pointer;
+        }
+
+        .toggle-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 4px; }
+        .toggle-btn {
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+            padding: 9px 6px; border-radius: 10px; border: 1.5px solid rgba(150,170,205,0.6);
+            background: rgba(255,255,255,0.55); color: #44537a; font-size: 12.5px; font-weight: 700;
+            cursor: pointer; transition: all 0.16s;
+        }
+        .toggle-btn .dot { width: 9px; height: 9px; border-radius: 50%; background: #b7c2d8; transition: all 0.16s; }
+        .toggle-btn.active { background: rgba(37,99,235,0.12); border-color: #2563eb; color: #1b2a4a; }
+        .toggle-btn.active .dot { background: #2563eb; box-shadow: 0 0 7px rgba(37,99,235,0.8); }
+
+        .action-row { display: flex; gap: 8px; margin-top: 11px; }
+        .btn { flex: 1; padding: 9px; border: none; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.16s; color: #fff; }
+        .btn-play { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
+        .btn-reset { background: linear-gradient(135deg, #64748b, #475569); }
+        .btn:hover { filter: brightness(1.07); transform: translateY(-1px); }
+
+        .info-title { font-size: 15px; font-weight: 800; color: #1b2a4a; margin: 4px 0 9px; display: flex; align-items: center; gap: 7px; }
+        .readout { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px dashed rgba(150,170,205,0.45); font-size: 13px; }
+        .ro-name { color: #5a6b8c; font-weight: 600; }
+        .ro-val { font-weight: 800; color: #1b2a4a; font-variant-numeric: tabular-nums; }
+        .ro-val.t { color: #2563eb; } .ro-val.x { color: #b45309; } .ro-val.e { color: #15803d; }
+
+        .ebar { display: grid; grid-template-columns: 96px 1fr 60px; align-items: center; gap: 7px; margin: 7px 0; font-size: 12px; }
+        .ebar-lab { color: #5a6b8c; font-weight: 700; }
+        .ebar-track { height: 9px; border-radius: 6px; background: rgba(150,170,205,0.3); overflow: hidden; }
+        .ebar-fill { height: 100%; width: 0%; border-radius: 6px; transition: width 0.05s linear; }
+        .ebar-fill.ke { background: linear-gradient(90deg, #38bdf8, #2563eb); }
+        .ebar-fill.pe { background: linear-gradient(90deg, #fbbf24, #ea580c); }
+        .ebar-val { text-align: right; font-weight: 800; color: #1b2a4a; font-variant-numeric: tabular-nums; }
+
+        .formula-panel {
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 7;
+            background: rgba(27,42,74,0.93); color: #eaf0fb; padding: 11px 22px; border-radius: 14px;
+            box-shadow: 0 10px 30px rgba(20,35,70,0.34); text-align: center; max-width: 66%;
+        }
+        .formula { font-family: 'Cambria Math','Times New Roman', serif; font-size: 18px; font-weight: 600; }
+        .formula .sep { color: #6b7da6; margin: 0 12px; }
+        .formula-note { font-size: 12.5px; color: #9fb2d8; margin-top: 5px; }
+
+        .hint {
+            position: absolute; bottom: 18px; left: 22px; z-index: 7; font-size: 12px; color: #5a6b8c;
+            background: rgba(255,255,255,0.72); padding: 7px 13px; border-radius: 9px;
+            border: 1px solid rgba(150,170,205,0.45);
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div id="labels"></div>
+
+    <div class="header">
+        <h1>🪀 Пружинный маятник</h1>
+        <p><span>Закон Гука • гармонические колебания • период и энергия</span></p>
+    </div>
+
+    <div class="panel control-panel">
+        <div class="param-group">
+            <div class="param-label">
+                <span class="param-name"><span class="param-icon">⚖️</span><span data-i18n="mLabel">Масса m</span></span>
+                <span class="param-value" id="m-value">1.0 кг</span>
+            </div>
+            <input type="range" id="mass" min="0.2" max="2" step="0.1" value="1">
+        </div>
+        <div class="param-group">
+            <div class="param-label">
+                <span class="param-name"><span class="param-icon">🌀</span><span data-i18n="kLabel">Жёсткость k</span></span>
+                <span class="param-value" id="k-value">20 Н/м</span>
+            </div>
+            <input type="range" id="k" min="8" max="80" step="1" value="20">
+        </div>
+        <div class="param-group">
+            <div class="param-label">
+                <span class="param-name"><span class="param-icon">↕️</span><span data-i18n="aLabel">Амплитуда A</span></span>
+                <span class="param-value" id="a-value">25 см</span>
+            </div>
+            <input type="range" id="amp" min="0.05" max="0.5" step="0.01" value="0.25">
+        </div>
+        <div class="param-group">
+            <div class="param-label">
+                <span class="param-name"><span class="param-icon">💧</span><span data-i18n="dampLabel">Затухание b</span></span>
+                <span class="param-value" id="d-value">0.0 Н·с/м</span>
+            </div>
+            <input type="range" id="damp" min="0" max="6" step="0.1" value="0">
+        </div>
+
+        <div class="toggle-grid">
+            <button class="toggle-btn active" id="t-force"><span class="dot"></span><span data-i18n="tForce">Силы</span></button>
+            <button class="toggle-btn active" id="t-equil"><span class="dot"></span><span data-i18n="tEquil">Равновесие</span></button>
+            <button class="toggle-btn active" id="t-lbl"><span class="dot"></span><span data-i18n="tLbl">Подписи</span></button>
+        </div>
+
+        <div class="action-row">
+            <button class="btn btn-play" id="btn-play" data-i18n="pause">⏸ Пауза</button>
+            <button class="btn btn-reset" id="btn-reset" data-i18n="reset">↺ Сброс</button>
+        </div>
+    </div>
+
+    <div class="panel info-panel">
+        <div class="info-title">📊 <span data-i18n="infoTitle">Параметры</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roT">Период T = 2π√(m/k)</span><span class="ro-val t" id="ro-t">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roF">Частота f</span><span class="ro-val t" id="ro-f">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roW">Угловая частота ω₀</span><span class="ro-val" id="ro-w">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roXeq">Статич. растяжение x₀ = mg/k</span><span class="ro-val" id="ro-xeq">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roX">Смещение x(t)</span><span class="ro-val x" id="ro-x">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roV">Скорость v</span><span class="ro-val x" id="ro-v">—</span></div>
+
+        <div class="info-title" style="margin-top:12px">⚡ <span data-i18n="enTitle">Энергия</span></div>
+        <div class="ebar"><span class="ebar-lab" data-i18n="enKE">Кинетическая Eₖ</span><div class="ebar-track"><div class="ebar-fill ke" id="bar-ke"></div></div><span class="ebar-val" id="ro-ke">—</span></div>
+        <div class="ebar"><span class="ebar-lab" data-i18n="enPE">Потенциальная Eₚ</span><div class="ebar-track"><div class="ebar-fill pe" id="bar-pe"></div></div><span class="ebar-val" id="ro-pe">—</span></div>
+        <div class="readout" style="border-bottom:none"><span class="ro-name" data-i18n="enTot">Полная E = ½kA²</span><span class="ro-val e" id="ro-etot">—</span></div>
+    </div>
+
+    <div class="formula-panel">
+        <div class="formula">
+            F = −k·x
+            <span class="sep">|</span>
+            T = 2π√(m ∕ k)
+            <span class="sep">|</span>
+            E = ½·k·A²
+        </div>
+        <div class="formula-note" data-i18n="note">Возвращающая сила пропорциональна смещению (закон Гука). Колебания гармонические.</div>
+    </div>
+
+    <div class="hint"><span data-i18n="hint">ЛКМ — вращение • ПКМ — перемещение • Колесо — зум</span></div>
+
+    <script src="../../libs/vendor/three-r128/three.min.js"></script>
+    <script>
+    const LANG = (new URLSearchParams(window.location.search).get('lang')) || 'ru';
+    const I18N = {
+        ru: { headH:'🪀 Пружинный маятник', headS:'Закон Гука • гармонические колебания • период и энергия',
+              mLabel:'Масса m', kLabel:'Жёсткость k', aLabel:'Амплитуда A', dampLabel:'Затухание b',
+              tForce:'Силы', tEquil:'Равновесие', tLbl:'Подписи', play:'▶ Пуск', pause:'⏸ Пауза', reset:'↺ Сброс',
+              infoTitle:'Параметры', roT:'Период T = 2π√(m/k)', roF:'Частота f', roW:'Угловая частота ω₀',
+              roXeq:'Статич. растяжение x₀ = mg/k', roX:'Смещение x(t)', roV:'Скорость v',
+              enTitle:'Энергия', enKE:'Кинетическая Eₖ', enPE:'Потенциальная Eₚ', enTot:'Полная E = ½kA²',
+              note:'Возвращающая сила пропорциональна смещению (закон Гука). Колебания гармонические.',
+              hint:'ЛКМ — вращение • ПКМ — перемещение • Колесо — зум',
+              lMass:'m — груз', lSpring:'k — пружина', lEquil:'равновесие',
+              uKg:'кг', uM:'м', uNm:'Н/м', uNsm:'Н·с/м', uS:'с', uHz:'Гц', uJ:'Дж', uRad:'рад/с', uMs:'м/с', uCm:'см' },
+        kz: { headH:'🪀 Серіппелі маятник', headS:'Гук заңы • гармониялық тербелістер • период және энергия',
+              mLabel:'Масса m', kLabel:'Қатаңдық k', aLabel:'Амплитуда A', dampLabel:'Сөну b',
+              tForce:'Күштер', tEquil:'Тепе-теңдік', tLbl:'Жазулар', play:'▶ Қосу', pause:'⏸ Тоқтату', reset:'↺ Қайтару',
+              infoTitle:'Параметрлер', roT:'Период T = 2π√(m/k)', roF:'Жиілік f', roW:'Бұрыштық жиілік ω₀',
+              roXeq:'Статикалық созылу x₀ = mg/k', roX:'Ығысу x(t)', roV:'Жылдамдық v',
+              enTitle:'Энергия', enKE:'Кинетикалық Eₖ', enPE:'Потенциалдық Eₚ', enTot:'Толық E = ½kA²',
+              note:'Қайтаратын күш ығысуға пропорционал (Гук заңы). Тербеліс гармониялық.',
+              hint:'СБ — айналдыру • ОБ — жылжыту • Дөңгелек — масштаб',
+              lMass:'m — жүк', lSpring:'k — серіппе', lEquil:'тепе-теңдік',
+              uKg:'кг', uM:'м', uNm:'Н/м', uNsm:'Н·с/м', uS:'с', uHz:'Гц', uJ:'Дж', uRad:'рад/с', uMs:'м/с', uCm:'см' },
+        en: { headH:'🪀 Spring Pendulum', headS:"Hooke's law • simple harmonic motion • period & energy",
+              mLabel:'Mass m', kLabel:'Stiffness k', aLabel:'Amplitude A', dampLabel:'Damping b',
+              tForce:'Forces', tEquil:'Equilibrium', tLbl:'Labels', play:'▶ Play', pause:'⏸ Pause', reset:'↺ Reset',
+              infoTitle:'Parameters', roT:'Period T = 2π√(m/k)', roF:'Frequency f', roW:'Angular freq. ω₀',
+              roXeq:'Static stretch x₀ = mg/k', roX:'Displacement x(t)', roV:'Speed v',
+              enTitle:'Energy', enKE:'Kinetic Eₖ', enPE:'Potential Eₚ', enTot:'Total E = ½kA²',
+              note:"The restoring force is proportional to displacement (Hooke's law). The motion is simple harmonic.",
+              hint:'LMB — rotate • RMB — pan • Wheel — zoom',
+              lMass:'m — mass', lSpring:'k — spring', lEquil:'equilibrium',
+              uKg:'kg', uM:'m', uNm:'N/m', uNsm:'N·s/m', uS:'s', uHz:'Hz', uJ:'J', uRad:'rad/s', uMs:'m/s', uCm:'cm' }
+    };
+    const L = I18N[LANG] || I18N.ru;
+
+    // ---- physics state ----
+    const G = 9.8;
+    let mass = 1.0;     // kg
+    let kk = 20;        // N/m
+    let amp = 0.25;     // m (initial displacement from equilibrium)
+    let damp = 0;       // N·s/m (linear damping coefficient)
+    let showForce = true, showEquil = true, showLbl = true;
+    let playing = true;
+    let simT = 0;
+
+    function omega0() { return Math.sqrt(kk / mass); }      // rad/s
+    function gamma() { return damp / (2 * mass); }          // 1/s
+    function period() { return 2 * Math.PI / omega0(); }    // s
+    function freq() { return 1 / period(); }                // Hz
+    function xeq() { return mass * G / kk; }                // m (static gravity stretch)
+
+    // displacement from equilibrium, x(0)=A, v(0)=0; handles under/critical/overdamped
+    function pos(t) {
+        const w0 = omega0(), g = gamma();
+        if (g < w0 - 1e-9) { const wd = Math.sqrt(w0 * w0 - g * g); return amp * Math.exp(-g * t) * (Math.cos(wd * t) + (g / wd) * Math.sin(wd * t)); }
+        if (Math.abs(g - w0) <= 1e-9) { return amp * Math.exp(-g * t) * (1 + g * t); }
+        const b = Math.sqrt(g * g - w0 * w0); return amp * Math.exp(-g * t) * (Math.cosh(b * t) + (g / b) * Math.sinh(b * t));
+    }
+    function vel(t) { const h = 1e-3; return (pos(t + h) - pos(t - h)) / (2 * h); }
+
+    // ---- three.js ----
+    let scene, camera, renderer, root;
+    let springMesh, massMesh, beam, equilLine, ampTop, ampBot, gravArrow, springArrow;
+    const clock = new THREE.Clock();
+    const container = document.getElementById('canvas-container');
+    const labelLayer = document.getElementById('labels');
+
+    let camTheta = 0.62, camPhi = 1.15, camRadius = 12;
+    const camTarget = new THREE.Vector3(0, 1.0, 0);
+    let dragMode = 0, lastX = 0, lastY = 0;
+
+    // visual mapping
+    const SPRING_TOP_Y = 3.8;   // top attachment of the coil
+    const NAT_LEN = 1.4;        // visual unstretched length
+    const PX_PER_M = 1.5;       // visual units per metre of real extension
+    const L_MIN = 0.5, L_MAX = 5.0;
+    const COILS = 9, SEG_PER_COIL = 10, SPRING_R = 0.30, TUBE_R = 0.045;
+    const FORCE_SCALE = 0.09;   // units per Newton
+
+    // derived (set in recalc)
+    let L_eq = NAT_LEN, massSize = 0.72, eqCenterY = 0;
+
+    function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+    function init() {
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xeef3fb);
+        scene.fog = new THREE.Fog(0xeef3fb, 24, 60);
+
+        camera = new THREE.PerspectiveCamera(47, window.innerWidth / window.innerHeight, 0.1, 200);
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        container.appendChild(renderer.domElement);
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+        const key = new THREE.DirectionalLight(0xffffff, 0.55); key.position.set(6, 11, 8); scene.add(key);
+        const fill = new THREE.DirectionalLight(0xbcd4ff, 0.3); fill.position.set(-8, 4, -6); scene.add(fill);
+
+        root = new THREE.Group(); scene.add(root);
+        const grid = new THREE.GridHelper(34, 17, 0xc2cee4, 0xdde5f1);
+        grid.position.y = -2.8; root.add(grid);
+
+        buildSupport();
+        buildSpring();
+        buildMass();
+        buildGuides();
+        buildArrows();
+        makeLabels();
+
+        applyI18N();
+        setupControls();
+        recalc();
+        updateCamera();
+        animate();
+    }
+
+    function buildSupport() {
+        beam = new THREE.Group(); root.add(beam);
+        const slab = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.3, 1.3),
+            new THREE.MeshStandardMaterial({ color: 0x52617d, metalness: 0.4, roughness: 0.6 }));
+        slab.position.y = SPRING_TOP_Y + 0.2; beam.add(slab);
+        const hatch = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.06, 1.3),
+            new THREE.MeshStandardMaterial({ color: 0x3a4861, metalness: 0.3, roughness: 0.7 }));
+        hatch.position.y = SPRING_TOP_Y + 0.05; beam.add(hatch);
+        const hook = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.16, 12),
+            new THREE.MeshStandardMaterial({ color: 0x8a93a6, metalness: 0.7, roughness: 0.35 }));
+        hook.position.y = SPRING_TOP_Y + 0.08; beam.add(hook);
+    }
+
+    function buildSpring() {
+        springMesh = new THREE.Mesh(new THREE.BufferGeometry(),
+            new THREE.MeshStandardMaterial({ color: 0x8a93a6, metalness: 0.75, roughness: 0.32 }));
+        root.add(springMesh);
+    }
+    function helixPoints(len) {
+        const pts = [], segs = COILS * SEG_PER_COIL, edge = 0.10;
+        for (let i = 0; i <= segs; i++) {
+            const t = i / segs;
+            let r = SPRING_R;
+            if (t < edge) r = SPRING_R * (t / edge);
+            else if (t > 1 - edge) r = SPRING_R * ((1 - t) / edge);
+            const ang = t * COILS * Math.PI * 2;
+            pts.push(new THREE.Vector3(Math.cos(ang) * r, SPRING_TOP_Y - t * len, Math.sin(ang) * r));
+        }
+        return pts;
+    }
+    function updateSpring(len) {
+        const curve = new THREE.CatmullRomCurve3(helixPoints(len));
+        const geo = new THREE.TubeGeometry(curve, COILS * SEG_PER_COIL, TUBE_R, 6, false);
+        springMesh.geometry.dispose();
+        springMesh.geometry = geo;
+    }
+
+    function buildMass() {
+        massMesh = new THREE.Mesh(new THREE.BoxGeometry(massSize, massSize, massSize),
+            new THREE.MeshStandardMaterial({ color: 0xc98a3a, metalness: 0.55, roughness: 0.35 }));
+        root.add(massMesh);
+        const edges = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1, 1, 1)),
+            new THREE.LineBasicMaterial({ color: 0x7a4f17, transparent: true, opacity: 0.55 }));
+        massMesh.add(edges); massMesh.userData.edges = edges;
+    }
+    function rebuildMass() {
+        massMesh.geometry.dispose();
+        massMesh.geometry = new THREE.BoxGeometry(massSize, massSize, massSize);
+        massMesh.userData.edges.scale.set(massSize, massSize, massSize);
+    }
+
+    function mkDashLine(color) {
+        const g = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-1.4, 0, 0), new THREE.Vector3(1.4, 0, 0)]);
+        const m = new THREE.LineDashedMaterial({ color, dashSize: 0.13, gapSize: 0.09, transparent: true, opacity: 0.92 });
+        const l = new THREE.Line(g, m); l.computeLineDistances(); root.add(l); return l;
+    }
+    function buildGuides() {
+        equilLine = mkDashLine(0x15803d);
+        ampTop = mkDashLine(0x9aa7c2); ampTop.material.opacity = 0.5;
+        ampBot = mkDashLine(0x9aa7c2); ampBot.material.opacity = 0.5;
+    }
+
+    function buildArrows() {
+        gravArrow = new THREE.ArrowHelper(new THREE.Vector3(0, -1, 0), new THREE.Vector3(), 1, 0xdc2626, 0.24, 0.15);
+        springArrow = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(), 1, 0x2563eb, 0.24, 0.15);
+        root.add(gravArrow); root.add(springArrow);
+    }
+
+    // recompute everything that depends on m,k,A,b
+    function recalc() {
+        const newSize = 0.46 + (mass - 0.2) / 1.8 * 0.5;
+        if (Math.abs(newSize - massSize) > 1e-4) { massSize = newSize; rebuildMass(); }
+        L_eq = clamp(NAT_LEN + xeq() * PX_PER_M, L_MIN + 0.2, L_MAX - 0.4);
+        eqCenterY = SPRING_TOP_Y - L_eq - massSize / 2;
+        simT = 0;
+        // static readouts
+        setTxt('ro-t', period().toFixed(2) + ' ' + L.uS);
+        setTxt('ro-f', freq().toFixed(2) + ' ' + L.uHz);
+        setTxt('ro-w', omega0().toFixed(2) + ' ' + L.uRad);
+        setTxt('ro-xeq', (xeq() * 100).toFixed(1) + ' ' + L.uCm);
+        setTxt('ro-etot', (0.5 * kk * amp * amp).toFixed(3) + ' ' + L.uJ);
+        // guide lines
+        equilLine.position.y = eqCenterY;
+        const ad = amp * PX_PER_M;
+        ampTop.position.y = eqCenterY + ad;
+        ampBot.position.y = eqCenterY - ad;
+        equilLine.visible = showEquil; ampTop.visible = showEquil; ampBot.visible = showEquil;
+    }
+
+    function setTxt(id, v) { const el = document.getElementById(id); if (el) el.textContent = v; }
+
+    // ---- labels ----
+    let lblMass, lblSpring, lblEquil;
+    function makeLabels() {
+        const mk = (cls) => { const d = document.createElement('div'); d.className = 'label3d ' + cls; labelLayer.appendChild(d); return d; };
+        lblMass = mk('mass'); lblSpring = mk('spring'); lblEquil = mk('eq');
+    }
+    function proj(el, pos3, show, text) {
+        if (!show) { el.style.display = 'none'; return; }
+        const v = pos3.clone().project(camera);
+        if (v.z > 1) { el.style.display = 'none'; return; }
+        el.style.display = 'block'; if (text != null) el.textContent = text;
+        el.style.left = (v.x * 0.5 + 0.5) * window.innerWidth + 'px';
+        el.style.top = (-v.y * 0.5 + 0.5) * window.innerHeight + 'px';
+    }
+    function updateLabels(massY) {
+        proj(lblMass, new THREE.Vector3(massSize / 2 + 0.15, massY, 0), showLbl, L.lMass);
+        proj(lblSpring, new THREE.Vector3(SPRING_R + 0.25, (SPRING_TOP_Y + massY) / 2 + 0.4, 0), showLbl, L.lSpring);
+        proj(lblEquil, new THREE.Vector3(-1.5, eqCenterY, 0), showLbl && showEquil, L.lEquil);
+    }
+
+    // ---- camera ----
+    function updateCamera() {
+        const sp = Math.sin(camPhi), cp = Math.cos(camPhi), st = Math.sin(camTheta), ct = Math.cos(camTheta);
+        camera.position.set(camTarget.x + camRadius * sp * ct, camTarget.y + camRadius * cp, camTarget.z + camRadius * sp * st);
+        camera.lookAt(camTarget);
+    }
+
+    function setupControls() {
+        document.getElementById('mass').addEventListener('input', e => { mass = +e.target.value; setTxt('m-value', mass.toFixed(1) + ' ' + L.uKg); recalc(); });
+        document.getElementById('k').addEventListener('input', e => { kk = +e.target.value; setTxt('k-value', kk.toFixed(0) + ' ' + L.uNm); recalc(); });
+        document.getElementById('amp').addEventListener('input', e => { amp = +e.target.value; setTxt('a-value', (amp * 100).toFixed(0) + ' ' + L.uCm); recalc(); });
+        document.getElementById('damp').addEventListener('input', e => { damp = +e.target.value; setTxt('d-value', damp.toFixed(1) + ' ' + L.uNsm); recalc(); });
+
+        const tog = (id, fn) => { const el = document.getElementById(id); el.addEventListener('click', () => { el.classList.toggle('active'); fn(el.classList.contains('active')); }); };
+        tog('t-force', v => { showForce = v; gravArrow.visible = v; springArrow.visible = v; });
+        tog('t-equil', v => { showEquil = v; equilLine.visible = v; ampTop.visible = v; ampBot.visible = v; });
+        tog('t-lbl', v => showLbl = v);
+
+        document.getElementById('btn-play').addEventListener('click', () => {
+            playing = !playing;
+            document.getElementById('btn-play').textContent = playing ? L.pause : L.play;
+        });
+        document.getElementById('btn-reset').addEventListener('click', () => {
+            mass = 1.0; kk = 20; amp = 0.25; damp = 0; playing = true;
+            showForce = true; showEquil = true; showLbl = true;
+            document.getElementById('mass').value = 1; document.getElementById('k').value = 20;
+            document.getElementById('amp').value = 0.25; document.getElementById('damp').value = 0;
+            setTxt('m-value', '1.0 ' + L.uKg); setTxt('k-value', '20 ' + L.uNm);
+            setTxt('a-value', '25 ' + L.uCm); setTxt('d-value', '0.0 ' + L.uNsm);
+            ['t-force', 't-equil', 't-lbl'].forEach(id => document.getElementById(id).classList.add('active'));
+            document.getElementById('btn-play').textContent = L.pause;
+            gravArrow.visible = true; springArrow.visible = true;
+            camTheta = 0.62; camPhi = 1.15; camRadius = 12; camTarget.set(0, 1.0, 0);
+            recalc(); updateCamera();
+        });
+
+        const el = renderer.domElement;
+        el.addEventListener('contextmenu', e => e.preventDefault());
+        el.addEventListener('mousedown', e => { dragMode = (e.button === 2 || e.shiftKey) ? 2 : 1; lastX = e.clientX; lastY = e.clientY; });
+        window.addEventListener('mousemove', e => {
+            if (!dragMode) return;
+            const dx = e.clientX - lastX, dy = e.clientY - lastY; lastX = e.clientX; lastY = e.clientY;
+            if (dragMode === 1) { camTheta -= dx * 0.005; camPhi = Math.max(0.18, Math.min(Math.PI - 0.18, camPhi - dy * 0.005)); }
+            else { const ps = camRadius * 0.0016; const right = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0); const up = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 1); camTarget.addScaledVector(right, -dx * ps); camTarget.addScaledVector(up, dy * ps); }
+            updateCamera();
+        });
+        window.addEventListener('mouseup', () => dragMode = 0);
+        el.addEventListener('wheel', e => { e.preventDefault(); camRadius = Math.max(7, Math.min(34, camRadius + e.deltaY * 0.014)); updateCamera(); }, { passive: false });
+        el.addEventListener('touchstart', e => { const t = e.touches[0]; dragMode = 1; lastX = t.clientX; lastY = t.clientY; }, { passive: true });
+        el.addEventListener('touchmove', e => { if (!dragMode) return; const t = e.touches[0]; const dx = t.clientX - lastX, dy = t.clientY - lastY; lastX = t.clientX; lastY = t.clientY; camTheta -= dx * 0.006; camPhi = Math.max(0.18, Math.min(Math.PI - 0.18, camPhi - dy * 0.006)); updateCamera(); e.preventDefault(); }, { passive: false });
+        window.addEventListener('touchend', () => dragMode = 0);
+        window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+    }
+
+    function applyI18N() {
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const k = el.getAttribute('data-i18n');
+            if (L[k] != null) { if (k === 'note') el.innerHTML = L[k]; else el.textContent = L[k]; }
+        });
+        document.querySelector('.header h1').textContent = L.headH;
+        document.querySelector('.header p span').textContent = L.headS;
+        setTxt('m-value', mass.toFixed(1) + ' ' + L.uKg);
+        setTxt('k-value', kk.toFixed(0) + ' ' + L.uNm);
+        setTxt('a-value', (amp * 100).toFixed(0) + ' ' + L.uCm);
+        setTxt('d-value', damp.toFixed(1) + ' ' + L.uNsm);
+        document.title = L.headH.replace(/^[^\wА-Яа-яЁё]+/, '');
+        document.documentElement.lang = LANG;
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+        const dt = Math.min(clock.getDelta(), 0.05);
+        if (playing) simT += dt;
+
+        const x = pos(simT);          // m, displacement from equilibrium
+        const v = vel(simT);          // m/s
+        const len = clamp(L_eq + x * PX_PER_M, L_MIN, L_MAX);
+        const massCenterY = SPRING_TOP_Y - len - massSize / 2;
+
+        updateSpring(len);
+        massMesh.position.set(0, massCenterY, 0);
+
+        // forces
+        if (showForce) {
+            const fg = mass * G;                       // gravity (down), constant
+            const fs = kk * (xeq() + x);               // spring tension (up)
+            const top = massCenterY + massSize / 2;
+            gravArrow.position.set(0, massCenterY, 0);
+            gravArrow.setLength(clamp(fg * FORCE_SCALE, 0.15, 2.4), 0.22, 0.15);
+            springArrow.position.set(0, top, 0);
+            springArrow.setLength(clamp(Math.abs(fs) * FORCE_SCALE, 0.12, 2.6), 0.22, 0.15);
+            springArrow.setDirection(new THREE.Vector3(0, fs >= 0 ? 1 : -1, 0));
+        }
+
+        // dynamic readouts + energy
+        const ke = 0.5 * mass * v * v;
+        const pe = 0.5 * kk * x * x;
+        const e0 = 0.5 * kk * amp * amp;
+        setTxt('ro-x', (x * 100).toFixed(1) + ' ' + L.uCm);
+        setTxt('ro-v', v.toFixed(2) + ' ' + L.uMs);
+        setTxt('ro-ke', ke.toFixed(3));
+        setTxt('ro-pe', pe.toFixed(3));
+        document.getElementById('bar-ke').style.width = clamp(ke / e0 * 100, 0, 100) + '%';
+        document.getElementById('bar-pe').style.width = clamp(pe / e0 * 100, 0, 100) + '%';
+
+        updateLabels(massCenterY);
+        renderer.render(scene, camera);
+    }
+
+    init();
+    </script>
+</body>
+</html>

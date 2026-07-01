@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="page_title">Нуклеотид ДНК — строение</title>
+<style>
+
+
+*{margin:0;padding:0;box-sizing:border-box;}
+
+:root{
+  --bg:#f5f4f0;
+  --surface:rgba(255,255,255,0.90);
+  --border:rgba(0,0,0,0.08);
+  --text:#1c1917;
+  --muted:#78716c;
+  --phosphate:#f97316;
+  --sugar:#3b82f6;
+  --base-a:#22c55e;
+  --base-t:#ef4444;
+  --base-g:#eab308;
+  --base-c:#a855f7;
+  --bond-gray:#94a3b8;
+  --nitrogen:#6366f1;
+  --oxygen:#ef4444;
+  --hydrogen:#cbd5e1;
+  --shadow:0 2px 20px rgba(0,0,0,0.07);
+  --shadow-lg:0 8px 44px rgba(0,0,0,0.11);
+}
+
+body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);overflow:hidden;height:100vh;}
+
+body::before{
+  content:'';position:fixed;inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='%23f5f4f0'/%3E%3Ccircle cx='1' cy='1' r='0.6' fill='rgba(0,0,0,0.025)'/%3E%3C/svg%3E");
+  pointer-events:none;z-index:0;
+}
+
+#canvas-container{position:fixed;inset:0;z-index:1;}
+
+/* ── HEADER ── */
+.header{
+  position:fixed;top:0;left:0;right:0;z-index:200;
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  padding:0 48px;height:92px;
+  display:flex;align-items:center;gap:14px;
+  box-shadow:var(--shadow);
+}
+.h-formula{font-family:'DM Mono',monospace;font-size:22px;font-weight:500;letter-spacing:-0.5px;}
+.h-p{color:var(--phosphate);}
+.h-s{color:var(--sugar);}
+.h-b{color:var(--base-a);}
+.header-title{font-size:26px;font-weight:700;margin-left:10px;}
+.header-sub{font-size:15px;color:var(--muted);margin-left:auto;text-align:right;line-height:1.4;}
+
+/* ── LEFT PANEL ── */
+.panel-left{
+  position:fixed;left:24px;top:108px;z-index:100;
+  width:320px;
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:24px;
+  padding:20px 22px;
+  box-shadow:var(--shadow-lg);
+  max-height:calc(100vh - 200px);overflow-y:auto;
+}
+.panel-left::-webkit-scrollbar{width:4px;}
+.panel-left::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.12);border-radius:4px;}
+.panel-left h3{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:14px;}
+
+.props-table{width:100%;border-collapse:collapse;font-size:14px;}
+.props-table td{padding:7px 8px;border-bottom:1px solid rgba(0,0,0,0.05);font-size:13.5px;line-height:1.35;}
+.props-table td:first-child{color:var(--muted);font-size:12.5px;width:45%;}
+.props-table td:last-child{font-family:'DM Mono',monospace;font-weight:500;}
+
+/* ── RIGHT PANEL ── */
+.panel-right{
+  position:fixed;right:24px;top:108px;z-index:100;
+  width:285px;
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:24px;
+  padding:20px 22px;
+  box-shadow:var(--shadow-lg);
+}
+.panel-right h3{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:14px;}
+
+.ctrl-btn{
+  width:100%;padding:11px 16px;margin-bottom:10px;
+  background:rgba(0,0,0,0.04);border:1.5px solid var(--border);border-radius:14px;
+  font-family:'Syne',sans-serif;font-size:14px;font-weight:600;
+  color:var(--text);cursor:pointer;text-align:left;
+  transition:all 0.2s;display:flex;align-items:center;gap:8px;
+}
+.ctrl-btn:hover{background:rgba(0,0,0,0.07);transform:translateY(-1px);}
+.ctrl-btn.active{background:rgba(99,102,241,0.10);border-color:rgba(99,102,241,0.4);color:#4f46e5;}
+
+.base-selector{display:flex;gap:6px;margin-bottom:14px;}
+.base-btn{
+  flex:1;padding:10px 0;border-radius:12px;text-align:center;
+  font-family:'DM Mono',monospace;font-size:15px;font-weight:700;
+  cursor:pointer;border:2px solid transparent;transition:all 0.2s;
+}
+.base-btn.sel{transform:scale(1.05);box-shadow:0 2px 12px rgba(0,0,0,0.15);}
+.base-btn[data-b="A"]{background:rgba(34,197,94,0.12);color:#16a34a;}
+.base-btn[data-b="A"].sel{border-color:#22c55e;background:rgba(34,197,94,0.25);}
+.base-btn[data-b="T"]{background:rgba(239,68,68,0.12);color:#dc2626;}
+.base-btn[data-b="T"].sel{border-color:#ef4444;background:rgba(239,68,68,0.25);}
+.base-btn[data-b="G"]{background:rgba(234,179,8,0.12);color:#ca8a04;}
+.base-btn[data-b="G"].sel{border-color:#eab308;background:rgba(234,179,8,0.25);}
+.base-btn[data-b="C"]{background:rgba(168,85,247,0.12);color:#9333ea;}
+.base-btn[data-b="C"].sel{border-color:#a855f7;background:rgba(168,85,247,0.25);}
+
+/* ── LEGEND ── */
+.panel-legend{
+  position:fixed;left:24px;bottom:64px;z-index:100;
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:20px;
+  padding:14px 18px;
+  box-shadow:var(--shadow);
+  display:flex;flex-direction:column;gap:8px;
+}
+.leg-item{
+  display:flex;align-items:center;gap:9px;
+  font-size:13px;cursor:pointer;padding:3px 6px;border-radius:8px;
+  transition:background 0.15s;
+}
+.leg-item:hover{background:rgba(0,0,0,0.05);}
+.leg-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0;}
+
+/* ── HINT ── */
+.hint-bar{
+  position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:100;
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:99px;
+  padding:9px 24px;font-size:13px;color:var(--muted);
+  box-shadow:var(--shadow);white-space:nowrap;
+}
+
+/* ── INFO PANEL ── */
+#info-panel{
+  position:fixed;right:-460px;top:0;bottom:0;z-index:300;
+  width:420px;
+  background:rgba(255,255,255,0.97);
+  border-left:1px solid var(--border);
+  padding:32px 28px;overflow-y:auto;
+  box-shadow:-4px 0 40px rgba(0,0,0,0.10);
+  transition:right 0.38s cubic-bezier(0.4,0,0.2,1);
+}
+#info-panel.open{right:0;}
+#info-close{
+  position:absolute;top:20px;right:20px;z-index:10000;
+  width:36px;height:36px;border-radius:50%;
+  background:rgba(0,0,0,0.07);border:none;cursor:pointer;
+  font-size:18px;display:flex;align-items:center;justify-content:center;
+  transition:background 0.15s;
+}
+#info-close:hover{background:rgba(0,0,0,0.13);}
+.info-tag{
+  display:inline-block;padding:4px 10px;border-radius:99px;
+  font-size:12px;font-weight:600;letter-spacing:0.5px;
+  margin-bottom:16px;
+}
+.info-title{font-size:22px;font-weight:800;margin-bottom:6px;line-height:1.2;}
+.info-section{margin-top:18px;}
+.info-section h4{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:6px;}
+.info-section p{font-size:14.5px;line-height:1.65;color:#292524;}
+
+</style>
+</head>
+<body>
+
+<!-- Canvas -->
+<div id="canvas-container"><canvas id="c"></canvas></div>
+
+<!-- Header -->
+<header class="header">
+  <div class="h-formula"><span class="h-p">PO₄</span> + <span class="h-s">C₅H₁₀O₃</span> + <span class="h-b">Base</span></div>
+  <div class="header-title" data-i18n="header_title">Нуклеотид ДНК</div>
+  <div class="header-sub" data-i18n-html="header_sub">Мономер нуклеиновой кислоты<br>кликните на компонент</div>
+</header>
+
+<!-- Left panel -->
+<div class="panel-left">
+  <h3 data-i18n="props_title">Свойства нуклеотида</h3>
+  <table class="props-table">
+    <tbody>
+      <tr><td data-i18n="k_components">Компоненты</td><td>3</td></tr>
+      <tr><td data-i18n="k_phosphate">Фосфатная группа</td><td>PO₄³⁻</td></tr>
+      <tr><td data-i18n="k_sugar">Сахар</td><td data-i18n="v_sugar">Дезоксирибоза</td></tr>
+      <tr><td data-i18n="k_base">Основание</td><td id="prop-base">Аденин (A)</td></tr>
+      <tr><td data-i18n="k_bond_sg">Гликозидная связь</td><td>C1'–N</td></tr>
+      <tr><td data-i18n="k_bond_pe">Фосфоэфирная</td><td>C5'–O–P</td></tr>
+      <tr><td data-i18n="k_pair">Комплементарная пара</td><td id="prop-pair">A = T</td></tr>
+      <tr><td data-i18n="k_hbonds">Н-связей в паре</td><td id="prop-hb">2</td></tr>
+      <tr><td data-i18n="k_dna_role">Роль в ДНК</td><td data-i18n="v_dna_role">Хранение генетической информации</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- Right panel -->
+<div class="panel-right">
+  <h3 data-i18n="ctrl_title">Управление</h3>
+  <div class="base-selector">
+    <div class="base-btn sel" data-b="A" onclick="selectBase('A')">A</div>
+    <div class="base-btn" data-b="T" onclick="selectBase('T')">T</div>
+    <div class="base-btn" data-b="G" onclick="selectBase('G')">G</div>
+    <div class="base-btn" data-b="C" onclick="selectBase('C')">C</div>
+  </div>
+  <button class="ctrl-btn" id="btn-pause" onclick="togglePause()"><span data-i18n="btn_pause">⏸ Пауза</span></button>
+  <button class="ctrl-btn" id="btn-labels" onclick="toggleLabels()"><span data-i18n="btn_labels">🏷️ Подписи атомов</span></button>
+  <button class="ctrl-btn" id="btn-backbone" onclick="toggleBackbone()"><span data-i18n="btn_backbone">🔗 Каркас ДНК</span></button>
+  <button class="ctrl-btn" id="btn-hbonds" onclick="toggleHBonds()"><span data-i18n="btn_hbonds">💧 Водородные связи</span></button>
+</div>
+
+<!-- Legend -->
+<div class="panel-legend">
+  <div class="leg-item" onclick="flashGroup('phosphate')">
+    <div class="leg-dot" style="background:#f97316;"></div>
+    <span data-i18n="leg_phosphate">Фосфатная группа (PO₄)</span>
+  </div>
+  <div class="leg-item" onclick="flashGroup('sugar')">
+    <div class="leg-dot" style="background:#3b82f6;"></div>
+    <span data-i18n="leg_sugar">Дезоксирибоза (C₅)</span>
+  </div>
+  <div class="leg-item" onclick="flashGroup('base')">
+    <div class="leg-dot" style="background:#22c55e;"></div>
+    <span data-i18n="leg_base">Азотистое основание</span>
+  </div>
+  <div class="leg-item" onclick="flashGroup('bond')">
+    <div class="leg-dot" style="background:#94a3b8;"></div>
+    <span data-i18n="leg_bonds">Ковалентные связи</span>
+  </div>
+</div>
+
+<!-- Hint -->
+<div class="hint-bar" data-i18n="hint">Перетащите — вращение · Колесо — масштаб · Клик — информация</div>
+
+<!-- Info panel -->
+<div id="info-panel">
+  <button id="info-close" onclick="closeInfo()">✕</button>
+  <div class="info-tag" id="info-tag"></div>
+  <div class="info-title" id="info-title"></div>
+  <div id="info-body"></div>
+</div>
+
+<script>
+const I18N={
+ru:{
+page_title:'Нуклеотид ДНК — строение',header_title:'Нуклеотид ДНК',header_sub:'Мономер нуклеиновой кислоты<br>кликните на компонент',
+props_title:'Свойства нуклеотида',ctrl_title:'Управление',
+k_components:'Компоненты',k_phosphate:'Фосфатная группа',k_sugar:'Сахар',v_sugar:'Дезоксирибоза',
+k_base:'Основание',k_bond_sg:'Гликозидная связь',k_bond_pe:'Фосфоэфирная',
+k_pair:'Комплементарная пара',k_hbonds:'Н-связей в паре',k_dna_role:'Роль в ДНК',v_dna_role:'Хранение генетической информации',
+btn_pause:'⏸ Пауза',btn_resume:'▶ Продолжить',btn_labels:'🏷️ Подписи атомов',btn_backbone:'🔗 Каркас ДНК',btn_hbonds:'💧 Водородные связи',
+leg_phosphate:'Фосфатная группа (PO₄)',leg_sugar:'Дезоксирибоза (C₅)',leg_base:'Азотистое основание',leg_bonds:'Ковалентные связи',
+hint:'Перетащите — вращение · Колесо — масштаб · Клик — информация',
+bases:{A:'Аденин (A)',T:'Тимин (T)',G:'Гуанин (G)',C:'Цитозин (C)'},
+pairs:{A:'A = T',T:'T = A',G:'G ≡ C',C:'C ≡ G'},
+hbonds:{A:'2',T:'2',G:'3',C:'3'}
+},
+kz:{
+page_title:'ДНК нуклеотиді — құрылысы',header_title:'ДНК нуклеотиді',header_sub:'Нуклеин қышқылының мономері<br>компонентті басыңыз',
+props_title:'Нуклеотид қасиеттері',ctrl_title:'Басқару',
+k_components:'Компоненттер',k_phosphate:'Фосфат тобы',k_sugar:'Қант',v_sugar:'Дезоксирибоза',
+k_base:'Негіз',k_bond_sg:'Гликозидтік байланыс',k_bond_pe:'Фосфоэфирлік',
+k_pair:'Комплементарлық жұп',k_hbonds:'Жұптағы Н-байланыстар',k_dna_role:'ДНК-дағы рөлі',v_dna_role:'Генетикалық ақпаратты сақтау',
+btn_pause:'⏸ Кідірту',btn_resume:'▶ Жалғастыру',btn_labels:'🏷️ Атом белгілері',btn_backbone:'🔗 ДНК қаңқасы',btn_hbonds:'💧 Сутектік байланыстар',
+leg_phosphate:'Фосфат тобы (PO₄)',leg_sugar:'Дезоксирибоза (C₅)',leg_base:'Азотты негіз',leg_bonds:'Коваленттік байланыстар',
+hint:'Сүйреңіз — айналдыру · Дөңгелек — масштаб · Басу — ақпарат',
+bases:{A:'Аденин (A)',T:'Тимин (T)',G:'Гуанин (G)',C:'Цитозин (C)'},
+pairs:{A:'A = T',T:'T = A',G:'G ≡ C',C:'C ≡ G'},
+hbonds:{A:'2',T:'2',G:'3',C:'3'}
+},
+en:{
+page_title:'DNA Nucleotide — Structure',header_title:'DNA Nucleotide',header_sub:'Nucleic acid monomer<br>click on a component',
+props_title:'Nucleotide properties',ctrl_title:'Controls',
+k_components:'Components',k_phosphate:'Phosphate group',k_sugar:'Sugar',v_sugar:'Deoxyribose',
+k_base:'Base',k_bond_sg:'Glycosidic bond',k_bond_pe:'Phosphoester',
+k_pair:'Complementary pair',k_hbonds:'H-bonds in pair',k_dna_role:'Role in DNA',v_dna_role:'Storing genetic information',
+btn_pause:'⏸ Pause',btn_resume:'▶ Resume',btn_labels:'🏷️ Atom labels',btn_backbone:'🔗 DNA backbone',btn_hbonds:'💧 Hydrogen bonds',
+leg_phosphate:'Phosphate group (PO₄)',leg_sugar:'Deoxyribose (C₅)',leg_base:'Nitrogenous base',leg_bonds:'Covalent bonds',
+hint:'Drag — rotate · Scroll — zoom · Click — info',
+bases:{A:'Adenine (A)',T:'Thymine (T)',G:'Guanine (G)',C:'Cytosine (C)'},
+pairs:{A:'A = T',T:'T = A',G:'G ≡ C',C:'C ≡ G'},
+hbonds:{A:'2',T:'2',G:'3',C:'3'}
+}
+};
+const LANG=(()=>{const q=new URLSearchParams(location.search).get('lang');return(q&&I18N[q])?q:'ru';})();
+const tr=(key)=>(I18N[LANG]&&I18N[LANG][key])??(I18N.ru[key]);
+function applyStaticI18N(){
+  document.documentElement.lang=LANG;
+  const tv=tr('page_title');if(tv)document.title=tv;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{const v=tr(el.getAttribute('data-i18n'));if(v)el.textContent=v;});
+  document.querySelectorAll('[data-i18n-html]').forEach(el=>{const v=tr(el.getAttribute('data-i18n-html'));if(v)el.innerHTML=v;});
+}
+applyStaticI18N();
+</script>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "../../libs/vendor/three-0.160.0/three.module.js",
+    "three/addons/": "../../libs/vendor/three-0.160.0/addons/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+/* ────────────────────────────────────────────────
+   SCENE
+──────────────────────────────────────────────── */
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = false;
+
+const scene = new THREE.Scene();
+scene.background = null;
+
+const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 200);
+camera.position.set(0, 2, 22);
+camera.lookAt(0, 0, 0);
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+const dL = new THREE.DirectionalLight(0xffffff, 1.1);
+dL.position.set(8, 12, 10); scene.add(dL);
+const dL2 = new THREE.DirectionalLight(0x818cf8, 0.2);
+dL2.position.set(-8, -4, -6); scene.add(dL2);
+
+/* ────────────────────────────────────────────────
+   HELPERS
+──────────────────────────────────────────────── */
+const V = (x,y,z)=>new THREE.Vector3(x,y,z);
+
+function makeSphere(r, color, opacity=1){
+  const g = new THREE.SphereGeometry(r, 32, 24);
+  const m = new THREE.MeshPhongMaterial({ color, opacity, transparent: opacity<1, shininess: 90, specular: 0xffffff });
+  return new THREE.Mesh(g, m);
+}
+
+function makeCyl(from, to, radius, color, opacity=1){
+  const dir = new THREE.Vector3().subVectors(to, from);
+  const len = dir.length();
+  const g = new THREE.CylinderGeometry(radius, radius, len, 10);
+  const m = new THREE.MeshPhongMaterial({ color, opacity, transparent: opacity<1, shininess: 60 });
+  const mesh = new THREE.Mesh(g, m);
+  mesh.position.addVectors(from, to).multiplyScalar(0.5);
+  if(len > 0.001) mesh.quaternion.setFromUnitVectors(V(0,1,0), dir.normalize());
+  return mesh;
+}
+
+function makeLabel(text, pos, color){
+  const c = document.createElement('canvas');
+  c.width = 128; c.height = 48;
+  const ctx = c.getContext('2d');
+  ctx.font = 'bold 28px DM Mono, monospace';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+  ctx.beginPath(); ctx.roundRect(4,4,120,40,8); ctx.fill();
+  ctx.fillStyle = color;
+  ctx.fillText(text, 64, 26);
+  const tex = new THREE.CanvasTexture(c);
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false }));
+  sp.position.copy(pos);
+  sp.scale.set(1.6, 0.6, 1);
+  sp.visible = false;
+  return sp;
+}
+
+/* ────────────────────────────────────────────────
+   ATOM POSITIONS
+──────────────────────────────────────────────── */
+// Phosphate group (left)
+const P_center = V(-5.5, 0, 0);
+const P_O1 = V(-6.6, 1.0, 0.8);
+const P_O2 = V(-6.6, -1.0, -0.8);
+const P_O3 = V(-5.5, 1.2, -1.0);
+const P_O5 = V(-4.2, -0.5, 0.3); // bridge O to sugar C5'
+
+// Deoxyribose sugar (center) — pentagon ring
+const S_C5 = V(-3.0, -0.8, 0.2);
+const S_C4 = V(-1.6, -1.2, 0.5);
+const S_O4 = V(-0.8, 0.0, 0.9);   // ring O
+const S_C1 = V(0.5, -0.3, 0.5);   // connects to base
+const S_C2 = V(0.2, -1.6, 0.0);
+const S_C3 = V(-1.2, -1.8, -0.3);
+const S_O3 = V(-1.5, -3.0, -0.7); // 3' OH (backbone down)
+
+// Base connection point
+const BASE_CONN = V(1.8, 0.3, 0.3);
+
+// Bases — proper planar ring geometry
+const BASES = {
+  A: { // Adenine: purine (5-ring fused to 6-ring)
+    color: 0x22c55e,
+    atoms: [
+      // 5-ring: N9-C8-N7-C5-C4 (N9 = glycosidic bond)
+      {pos:V(3.5,-0.5,0), el:'N', r:0.28},  // 0: N9 (glycosidic)
+      {pos:V(2.3,-0.7,0), el:'C', r:0.24},  // 1: C8
+      {pos:V(1.7, 0.5,0), el:'N', r:0.28},  // 2: N7
+      {pos:V(2.5, 1.5,0), el:'C', r:0.24},  // 3: C5 (shared)
+      {pos:V(3.7, 0.8,0), el:'C', r:0.24},  // 4: C4 (shared)
+      // 6-ring extension: N3-C2-N1-C6 (shared edge C4-C5)
+      {pos:V(4.9, 1.5,0), el:'N', r:0.28},  // 5: N3
+      {pos:V(4.9, 2.8,0), el:'C', r:0.24},  // 6: C2
+      {pos:V(3.7, 3.5,0), el:'N', r:0.28},  // 7: N1
+      {pos:V(2.5, 2.8,0), el:'C', r:0.24}   // 8: C6
+    ],
+    // 5-ring + 6-ring bonds
+    bonds: [[0,1],[1,2],[2,3],[3,4],[4,0],[4,5],[5,6],[6,7],[7,8],[8,3]],
+    nh2: V(1.5, 3.5, 0) // NH2 group on C6
+  },
+  T: { // Thymine: pyrimidine (6-ring)
+    color: 0xef4444,
+    atoms: [
+      {pos:V(2.8, 0.0, 0), el:'N', r:0.28}, // 0: N1 (glycosidic)
+      {pos:V(1.6, 0.7, 0), el:'C', r:0.24}, // 1: C6
+      {pos:V(1.6, 2.0, 0), el:'C', r:0.24}, // 2: C5
+      {pos:V(2.8, 2.7, 0), el:'C', r:0.24}, // 3: C4
+      {pos:V(4.0, 2.0, 0), el:'N', r:0.28}, // 4: N3
+      {pos:V(4.0, 0.7, 0), el:'C', r:0.24}  // 5: C2
+    ],
+    bonds: [[0,1],[1,2],[2,3],[3,4],[4,5],[5,0]],
+    nh2: null,
+    methyl: V(0.4, 2.6, 0) // CH3 on C5
+  },
+  G: { // Guanine: purine (5-ring fused to 6-ring)
+    color: 0xeab308,
+    atoms: [
+      {pos:V(3.5,-0.5,0), el:'N', r:0.28},  // 0: N9 (glycosidic)
+      {pos:V(2.3,-0.7,0), el:'C', r:0.24},  // 1: C8
+      {pos:V(1.7, 0.5,0), el:'N', r:0.28},  // 2: N7
+      {pos:V(2.5, 1.5,0), el:'C', r:0.24},  // 3: C5 (shared)
+      {pos:V(3.7, 0.8,0), el:'C', r:0.24},  // 4: C4 (shared)
+      {pos:V(4.9, 1.5,0), el:'N', r:0.28},  // 5: N3
+      {pos:V(4.9, 2.8,0), el:'C', r:0.24},  // 6: C2
+      {pos:V(3.7, 3.5,0), el:'N', r:0.28},  // 7: N1
+      {pos:V(2.5, 2.8,0), el:'C', r:0.24}   // 8: C6
+    ],
+    bonds: [[0,1],[1,2],[2,3],[3,4],[4,0],[4,5],[5,6],[6,7],[7,8],[8,3]],
+    nh2: V(5.8, 3.4, 0) // NH2 on C2
+  },
+  C: { // Cytosine: pyrimidine (6-ring)
+    color: 0xa855f7,
+    atoms: [
+      {pos:V(2.8, 0.0, 0), el:'N', r:0.28}, // 0: N1 (glycosidic)
+      {pos:V(1.6, 0.7, 0), el:'C', r:0.24}, // 1: C6
+      {pos:V(1.6, 2.0, 0), el:'C', r:0.24}, // 2: C5
+      {pos:V(2.8, 2.7, 0), el:'C', r:0.24}, // 3: C4
+      {pos:V(4.0, 2.0, 0), el:'N', r:0.28}, // 4: N3
+      {pos:V(4.0, 0.7, 0), el:'C', r:0.24}  // 5: C2
+    ],
+    bonds: [[0,1],[1,2],[2,3],[3,4],[4,5],[5,0]],
+    nh2: V(2.8, 3.9, 0)
+  }
+};
+
+/* ────────────────────────────────────────────────
+   BUILD SCENE
+──────────────────────────────────────────────── */
+const mainGroup = new THREE.Group();
+scene.add(mainGroup);
+
+const clickables = [];
+const labelSprites = [];
+let baseMeshes = [];    // current base atom/bond meshes
+let baseLabels = [];
+let hbondMeshes = [];
+let backboneMeshes = [];
+let currentBase = 'A';
+
+// — PHOSPHATE GROUP —
+const phosphateGroup = new THREE.Group();
+const pAtom = makeSphere(0.42, 0xf97316);
+pAtom.position.copy(P_center);
+pAtom.userData = { type: 'phosphate' };
+phosphateGroup.add(pAtom); clickables.push(pAtom);
+
+const pOxygens = [P_O1, P_O2, P_O3, P_O5];
+pOxygens.forEach(pos => {
+  const o = makeSphere(0.3, 0xef4444);
+  o.position.copy(pos);
+  o.userData = { type: 'phosphate' };
+  phosphateGroup.add(o); clickables.push(o);
+  phosphateGroup.add(makeCyl(P_center, pos, 0.07, 0x94a3b8));
+});
+
+// Labels for phosphate
+const pLabel = makeLabel('P', P_center.clone().add(V(0,0.7,0)), '#f97316');
+phosphateGroup.add(pLabel); labelSprites.push(pLabel);
+pOxygens.forEach((pos,i) => {
+  const lb = makeLabel('O', pos.clone().add(V(0,0.5,0)), '#ef4444');
+  phosphateGroup.add(lb); labelSprites.push(lb);
+});
+
+mainGroup.add(phosphateGroup);
+
+// — SUGAR (DEOXYRIBOSE) —
+const sugarGroup = new THREE.Group();
+const sugarAtoms = [
+  {pos: S_C5, el:'C'}, {pos: S_C4, el:'C'}, {pos: S_O4, el:'O'},
+  {pos: S_C1, el:'C'}, {pos: S_C2, el:'C'}, {pos: S_C3, el:'C'}, {pos: S_O3, el:'O'}
+];
+sugarAtoms.forEach(a => {
+  const color = a.el === 'O' ? 0xef4444 : 0x3b82f6;
+  const s = makeSphere(a.el === 'O' ? 0.28 : 0.26, color);
+  s.position.copy(a.pos);
+  s.userData = { type: 'sugar' };
+  sugarGroup.add(s); clickables.push(s);
+  const lb = makeLabel(a.el, a.pos.clone().add(V(0,0.5,0)), a.el==='O' ? '#ef4444' : '#3b82f6');
+  sugarGroup.add(lb); labelSprites.push(lb);
+});
+
+// Sugar ring bonds
+const sugarBonds = [
+  [S_C5, S_C4], [S_C4, S_O4], [S_O4, S_C1], [S_C1, S_C2], [S_C2, S_C3], [S_C3, S_C4]
+];
+sugarBonds.forEach(([a,b]) => {
+  sugarGroup.add(makeCyl(a, b, 0.07, 0x60a5fa));
+});
+
+// Bridge: phosphate O5' → C5'
+sugarGroup.add(makeCyl(P_O5, S_C5, 0.07, 0x94a3b8));
+
+// C3' → O3' (3' end)
+sugarGroup.add(makeCyl(S_C3, S_O3, 0.07, 0x94a3b8));
+
+// C1' → base connection
+sugarGroup.add(makeCyl(S_C1, BASE_CONN, 0.07, 0x94a3b8));
+
+mainGroup.add(sugarGroup);
+
+// — BACKBONE EXTENSION (faded) —
+const bbUp = makeCyl(V(-6.6, 2.5, 0.8), P_O1, 0.05, 0xf97316, 0.3);
+bbUp.visible = false; mainGroup.add(bbUp); backboneMeshes.push(bbUp);
+const bbDown = makeCyl(S_O3, V(-1.5, -4.5, -1.0), 0.05, 0x3b82f6, 0.3);
+bbDown.visible = false; mainGroup.add(bbDown); backboneMeshes.push(bbDown);
+const bbLabel1 = makeLabel("5'", V(-6.6,3.2,0.8), '#f97316');
+bbLabel1.visible = false; mainGroup.add(bbLabel1); backboneMeshes.push(bbLabel1);
+const bbLabel2 = makeLabel("3'", V(-1.5,-5.2,-1.0), '#3b82f6');
+bbLabel2.visible = false; mainGroup.add(bbLabel2); backboneMeshes.push(bbLabel2);
+
+// — BASE (built dynamically) —
+const baseGroup = new THREE.Group();
+mainGroup.add(baseGroup);
+
+function buildBase(key) {
+  // Clear old
+  while(baseGroup.children.length > 0) baseGroup.remove(baseGroup.children[0]);
+  baseMeshes = []; baseLabels = [];
+  
+  // Remove old base clickables
+  for(let i = clickables.length - 1; i >= 0; i--) {
+    if(clickables[i].userData && clickables[i].userData.type === 'base') clickables.splice(i, 1);
+  }
+
+  const bd = BASES[key];
+  const baseColor = bd.color;
+
+  // Atoms
+  bd.atoms.forEach(a => {
+    const color = a.el === 'N' ? 0x6366f1 : baseColor;
+    const s = makeSphere(a.r, color);
+    s.position.copy(a.pos);
+    s.userData = { type: 'base' };
+    baseGroup.add(s);
+    baseMeshes.push(s);
+    clickables.push(s);
+    const lb = makeLabel(a.el, a.pos.clone().add(V(0,0.45,0)), a.el==='N' ? '#6366f1' : (key==='A'?'#16a34a':key==='T'?'#dc2626':key==='G'?'#ca8a04':'#9333ea'));
+    lb.visible = labelSprites[0] ? labelSprites[0].visible : false;
+    baseGroup.add(lb);
+    baseLabels.push(lb);
+    labelSprites.push(lb);
+  });
+
+  // Bonds
+  bd.bonds.forEach(([i,j]) => {
+    const bond = makeCyl(bd.atoms[i].pos, bd.atoms[j].pos, 0.06, 0x94a3b8);
+    baseGroup.add(bond);
+    baseMeshes.push(bond);
+  });
+
+  // NH2 group
+  if(bd.nh2) {
+    const nh2 = makeSphere(0.25, 0x6366f1);
+    nh2.position.copy(bd.nh2);
+    nh2.userData = { type: 'base' };
+    baseGroup.add(nh2); baseMeshes.push(nh2); clickables.push(nh2);
+    const parentIdx = key==='A' ? 8 : key==='G' ? 6 : 3; // C6 for A, C2 for G, C4 for C
+    baseGroup.add(makeCyl(bd.atoms[parentIdx].pos, bd.nh2, 0.05, 0x94a3b8));
+    const lb = makeLabel('NH₂', bd.nh2.clone().add(V(0,0.45,0)), '#6366f1');
+    lb.visible = labelSprites[0] ? labelSprites[0].visible : false;
+    baseGroup.add(lb); baseLabels.push(lb); labelSprites.push(lb);
+  }
+
+  // Methyl group for Thymine
+  if(bd.methyl) {
+    const ch3 = makeSphere(0.3, 0xfbbf24);
+    ch3.position.copy(bd.methyl);
+    ch3.userData = { type: 'base' };
+    baseGroup.add(ch3); baseMeshes.push(ch3); clickables.push(ch3);
+    baseGroup.add(makeCyl(bd.atoms[2].pos, bd.methyl, 0.05, 0x94a3b8));
+    const lb = makeLabel('CH₃', bd.methyl.clone().add(V(0,0.45,0)), '#ca8a04');
+    lb.visible = labelSprites[0] ? labelSprites[0].visible : false;
+    baseGroup.add(lb); baseLabels.push(lb); labelSprites.push(lb);
+  }
+
+  // Glycosidic bond (base N9/N1 → C1')
+  const glycN = bd.atoms[0].pos; // N9 for purines (idx 0), N1 for pyrimidines (idx 0)
+  baseGroup.add(makeCyl(BASE_CONN, glycN, 0.07, 0xd97706));
+
+  // H-bond stubs
+  buildHBonds(key);
+
+  // Update props
+  const lang = I18N[LANG] || I18N.ru;
+  document.getElementById('prop-base').textContent = lang.bases[key];
+  document.getElementById('prop-pair').textContent = lang.pairs[key];
+  document.getElementById('prop-hb').textContent = lang.hbonds[key];
+}
+
+function buildHBonds(key) {
+  hbondMeshes.forEach(m => mainGroup.remove(m));
+  hbondMeshes = [];
+  
+  const bd = BASES[key];
+  const hbDir = V(0, 0, -1.8); // pointing "inward" toward complementary base
+  
+  // H-bond positions: atoms that participate in Watson-Crick pairing
+  let hbPositions = [];
+  if(key === 'A') {
+    // A=T: N1(idx 7) and NH2 on C6(idx 8)
+    hbPositions = [bd.atoms[7].pos, bd.atoms[8].pos];
+  } else if(key === 'T') {
+    // T=A: N3(idx 4) and O on C4(idx 3)
+    hbPositions = [bd.atoms[4].pos, bd.atoms[3].pos];
+  } else if(key === 'G') {
+    // G≡C: N1(idx 7), NH2 on C2(idx 6), O on C6(idx 8)
+    hbPositions = [bd.atoms[7].pos, bd.atoms[6].pos, bd.atoms[8].pos];
+  } else {
+    // C≡G: NH2 on C4(idx 3), N3(idx 4), O on C2(idx 5)
+    hbPositions = [bd.atoms[3].pos, bd.atoms[4].pos, bd.atoms[5].pos];
+  }
+
+  const showHB = document.getElementById('btn-hbonds').classList.contains('active');
+  hbPositions.forEach(p => {
+    const start = p.clone();
+    const end = p.clone().add(hbDir);
+    const dash = makeCyl(start, end, 0.04, 0x67e8f9, 0.6);
+    dash.visible = showHB;
+    mainGroup.add(dash);
+    hbondMeshes.push(dash);
+  });
+}
+
+buildBase('A');
+
+/* ────────────────────────────────────────────────
+   STATE & ANIMATION
+──────────────────────────────────────────────── */
+let paused = false;
+let showLabels = false;
+let showBackbone = false;
+let showHB = false;
+let animT = 0;
+let rotX = 0.15, isDragging = false, dragStart = null, lastMouse = {x:0,y:0}, dragDelta = 0;
+
+function animate() {
+  requestAnimationFrame(animate);
+  if(!paused) {
+    animT += 0.016;
+    mainGroup.rotation.y += 0.0006;
+    mainGroup.rotation.x = rotX;
+
+    // H-bond pulse
+    hbondMeshes.forEach((hb, i) => {
+      if(hb.visible) hb.material.opacity = 0.3 + 0.4*(0.5 + 0.5*Math.sin(animT*2.0 + i*1.5));
+    });
+  }
+  renderer.render(scene, camera);
+}
+
+/* ────────────────────────────────────────────────
+   CONTROLS
+──────────────────────────────────────────────── */
+window.selectBase = function(key) {
+  currentBase = key;
+  document.querySelectorAll('.base-btn').forEach(b => b.classList.toggle('sel', b.dataset.b === key));
+  buildBase(key);
+};
+
+window.togglePause = function() {
+  paused = !paused;
+  const btn = document.getElementById('btn-pause');
+  const lang = I18N[LANG] || I18N.ru;
+  btn.querySelector('span').textContent = paused ? (lang.btn_resume || '▶ Продолжить') : (lang.btn_pause || '⏸ Пауза');
+  btn.classList.toggle('active', paused);
+};
+
+window.toggleLabels = function() {
+  showLabels = !showLabels;
+  labelSprites.forEach(lb => lb.visible = showLabels);
+  baseLabels.forEach(lb => lb.visible = showLabels);
+  document.getElementById('btn-labels').classList.toggle('active', showLabels);
+};
+
+window.toggleBackbone = function() {
+  showBackbone = !showBackbone;
+  backboneMeshes.forEach(m => m.visible = showBackbone);
+  document.getElementById('btn-backbone').classList.toggle('active', showBackbone);
+};
+
+window.toggleHBonds = function() {
+  showHB = !showHB;
+  hbondMeshes.forEach(m => m.visible = showHB);
+  document.getElementById('btn-hbonds').classList.toggle('active', showHB);
+};
+
+window.flashGroup = function(type) {
+  clickables.forEach(m => {
+    if(m.userData && m.userData.type === type) {
+      m.material.emissive.setHex(m.material.color.getHex());
+      setTimeout(() => m.material.emissive.setHex(0x000000), 500);
+    }
+  });
+  openInfo(type);
+};
+
+/* ────────────────────────────────────────────────
+   INFO PANEL
+──────────────────────────────────────────────── */
+const infoDB_ALL = {
+  ru: {
+    phosphate: { tag:'PO₄³⁻ · тетраэдр', title:'Фосфатная группа', sections:[
+      {h:'Структура',p:'Атом фосфора (P) связан с четырьмя атомами кислорода (O) тетраэдрически. Два O несут отрицательный заряд — это делает ДНК полианионом.'},
+      {h:'Роль в ДНК',p:'Фосфатные группы соединяют соседние нуклеотиды через фосфодиэфирные связи (5\'→3\'), образуя сахаро-фосфатный каркас — «перила» двойной спирали.'},
+      {h:'Заряд и свойства',p:'Отрицательный заряд при физиологическом pH делает ДНК водорастворимой и позволяет связываться с гистонами (положительно заряженными белками) для упаковки в хроматин.'}
+    ]},
+    sugar: { tag:'C₅H₁₀O₃ · пентоза', title:'Дезоксирибоза', sections:[
+      {h:'Строение',p:'Пятичленное кольцо: 4 атома углерода + 1 кислород. У 2\'-углерода отсутствует ОН-группа (отсюда «дезокси» — без кислорода), в отличие от рибозы в РНК.'},
+      {h:'Нумерация углеродов',p:'C1\' — к основанию (гликозидная связь). C3\' и C5\' — к фосфатам соседних нуклеотидов. Направление цепи: 5\'→3\'.'},
+      {h:'Конформация',p:'Кольцо не плоское — принимает конформацию «конверт» (C2\'-эндо в B-ДНК). Это влияет на ширину малой и большой бороздок спирали.'}
+    ]},
+    base: { tag:'Гетероциклическое · ароматическое', title:'Азотистое основание', sections:[
+      {h:'Четыре основания ДНК',p:'Пурины: Аденин (A) и Гуанин (G) — два сшитых кольца (5+6). Пиримидины: Тимин (T) и Цитозин (C) — одно кольцо (6). В РНК вместо T стоит Урацил (U).'},
+      {h:'Комплементарность',p:'A=T (2 водородные связи). G≡C (3 связи — прочнее). Правило Чаргаффа: количество A = T, количество G = C. Это основа точного копирования ДНК.'},
+      {h:'Стэкинг',p:'Основания расположены внутри спирали, перпендикулярно оси. Между соседними парами — стэкинг-взаимодействия (π–π), которые стабилизируют двойную спираль наравне с H-связями.'}
+    ]}
+  },
+  kz: {
+    phosphate: { tag:'PO₄³⁻ · тетраэдр', title:'Фосфат тобы', sections:[
+      {h:'Құрылымы',p:'Фосфор атомы (P) төрт оттек атомымен (O) тетраэдрлік түрде байланысқан. Екі O теріс зарядты — бұл ДНК-ны полианион етеді.'},
+      {h:'ДНК-дағы рөлі',p:'Фосфат топтары көрші нуклеотидтерді фосфодиэфирлік байланыстар арқылы (5\'→3\') жалғастырып, қант-фосфат қаңқасын — қос спиральдің «тұтқаларын» құрайды.'},
+      {h:'Заряд және қасиеттер',p:'Физиологиялық pH-та теріс заряд ДНК-ны суда ерігіш етеді және хроматинге оралу үшін оң зарядты гистон ақуыздармен байланысуға мүмкіндік береді.'}
+    ]},
+    sugar: { tag:'C₅H₁₀O₃ · пентоза', title:'Дезоксирибоза', sections:[
+      {h:'Құрылысы',p:'Бес мүшелі сақина: 4 көміртек + 1 оттек атомы. 2\'-көміртекте ОН-тобы жоқ («дезокси» — оттексіз), РНК-дағы рибозадан айырмашылығы осы.'},
+      {h:'Көміртек нөмірлеу',p:'C1\' — негізге (гликозидтік байланыс). C3\' және C5\' — көрші нуклеотидтердің фосфаттарына. Тізбек бағыты: 5\'→3\'.'},
+      {h:'Конформация',p:'Сақина жазық емес — «конверт» конформациясын қабылдайды (B-ДНК-да C2\'-эндо). Бұл спиральдің кіші және үлкен ойықтарының еніне әсер етеді.'}
+    ]},
+    base: { tag:'Гетероциклді · ароматты', title:'Азотты негіз', sections:[
+      {h:'ДНК-ның төрт негізі',p:'Пуриндер: Аденин (A) және Гуанин (G) — екі тігілген сақина (5+6). Пиримидиндер: Тимин (T) және Цитозин (C) — бір сақина (6). РНК-да T орнына Урацил (U) тұрады.'},
+      {h:'Комплементарлық',p:'A=T (2 сутектік байланыс). G≡C (3 байланыс — берік). Чаргафф ережесі: A саны = T саны, G саны = C саны. Бұл ДНК-ның дәл көшірілуінің негізі.'},
+      {h:'Стэкинг',p:'Негіздер спираль ішінде, оське перпендикуляр орналасқан. Көрші жұптар арасында стэкинг-өзара әрекет (π–π) бар — ол қос спиральді H-байланыстармен бірдей тұрақтандырады.'}
+    ]}
+  },
+  en: {
+    phosphate: { tag:'PO₄³⁻ · tetrahedron', title:'Phosphate Group', sections:[
+      {h:'Structure',p:'A phosphorus atom (P) is tetrahedrally bonded to four oxygen atoms (O). Two O carry negative charges, making DNA a polyanion.'},
+      {h:'Role in DNA',p:'Phosphate groups link adjacent nucleotides via phosphodiester bonds (5\'→3\'), forming the sugar-phosphate backbone — the "rails" of the double helix.'},
+      {h:'Charge & properties',p:'The negative charge at physiological pH makes DNA water-soluble and allows binding to positively charged histone proteins for chromatin packaging.'}
+    ]},
+    sugar: { tag:'C₅H₁₀O₃ · pentose', title:'Deoxyribose', sections:[
+      {h:'Structure',p:'Five-membered ring: 4 carbon atoms + 1 oxygen. The 2\'-carbon lacks an OH group ("deoxy" = without oxygen), unlike ribose in RNA.'},
+      {h:'Carbon numbering',p:'C1\' — to base (glycosidic bond). C3\' and C5\' — to phosphates of neighboring nucleotides. Chain direction: 5\'→3\'.'},
+      {h:'Conformation',p:'The ring is not flat — it adopts an "envelope" conformation (C2\'-endo in B-DNA). This affects the width of the minor and major grooves of the helix.'}
+    ]},
+    base: { tag:'Heterocyclic · aromatic', title:'Nitrogenous Base', sections:[
+      {h:'Four DNA bases',p:'Purines: Adenine (A) and Guanine (G) — two fused rings (5+6). Pyrimidines: Thymine (T) and Cytosine (C) — one ring (6). In RNA, Uracil (U) replaces T.'},
+      {h:'Complementarity',p:'A=T (2 hydrogen bonds). G≡C (3 bonds — stronger). Chargaff\'s rule: amount of A = T, amount of G = C. This is the basis of accurate DNA replication.'},
+      {h:'Stacking',p:'Bases sit inside the helix, perpendicular to the axis. Between adjacent pairs — stacking interactions (π–π) that stabilize the double helix alongside H-bonds.'}
+    ]}
+  }
+};
+const infoDB = infoDB_ALL[LANG] || infoDB_ALL.ru;
+
+window.openInfo = function(type) {
+  const data = infoDB[type];
+  if(!data) return;
+  const tagEl = document.getElementById('info-tag');
+  tagEl.textContent = data.tag;
+  // Color tag by type
+  const tagColors = {
+    phosphate: {bg:'rgba(249,115,22,0.15)', color:'#c2410c'},
+    sugar: {bg:'rgba(59,130,246,0.15)', color:'#1d4ed8'},
+    base: {bg:'rgba(34,197,94,0.15)', color:'#15803d'}
+  };
+  const tc = tagColors[type] || tagColors.base;
+  tagEl.style.background = tc.bg;
+  tagEl.style.color = tc.color;
+
+  document.getElementById('info-title').textContent = data.title;
+  document.getElementById('info-body').innerHTML = data.sections.map(s =>
+    `<div class="info-section"><h4>${s.h}</h4><p>${s.p}</p></div>`
+  ).join('');
+  document.getElementById('info-panel').classList.add('open');
+};
+
+window.closeInfo = function() {
+  document.getElementById('info-panel').classList.remove('open');
+};
+
+/* ────────────────────────────────────────────────
+   RAYCASTER
+──────────────────────────────────────────────── */
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+
+canvas.addEventListener('click', e => {
+  if(isDragging) return;
+  mouse.x = (e.clientX/innerWidth)*2 - 1;
+  mouse.y = -(e.clientY/innerHeight)*2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+  const hits = raycaster.intersectObjects(clickables);
+  if(hits.length > 0) {
+    const ud = hits[0].object.userData;
+    if(ud.type) openInfo(ud.type);
+  }
+});
+
+/* ────────────────────────────────────────────────
+   MOUSE DRAG + SCROLL
+──────────────────────────────────────────────── */
+canvas.addEventListener('mousedown', e => {
+  dragStart = {x:e.clientX, y:e.clientY};
+  lastMouse = {x:e.clientX, y:e.clientY};
+  isDragging = false; dragDelta = 0;
+});
+canvas.addEventListener('mousemove', e => {
+  if(!dragStart) return;
+  const dx = e.clientX - dragStart.x, dy = e.clientY - dragStart.y;
+  dragDelta = Math.sqrt(dx*dx+dy*dy);
+  if(dragDelta > 4) isDragging = true;
+  if(isDragging) {
+    mainGroup.rotation.y += (e.clientX - lastMouse.x) * 0.012;
+    rotX = Math.max(-0.8, Math.min(0.8, rotX + (e.clientY - lastMouse.y)*0.010));
+    mainGroup.rotation.x = rotX;
+  }
+  lastMouse = {x:e.clientX, y:e.clientY};
+});
+canvas.addEventListener('mouseup', () => { dragStart = null; });
+canvas.addEventListener('mouseleave', () => { dragStart = null; isDragging = false; });
+
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  camera.position.z = Math.max(10, Math.min(35, camera.position.z + e.deltaY*0.03));
+}, { passive: false });
+
+/* ────────────────────────────────────────────────
+   RESIZE + START
+──────────────────────────────────────────────── */
+window.addEventListener('resize', () => {
+  camera.aspect = innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+animate();
+</script>
+</body>
+</html>

@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="page_title">Окислительно-восстановительная реакция</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #050505;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            color: #fff;
+            user-select: none;
+        }
+
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        /* UI Overlay */
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            pointer-events: none;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .header {
+            text-align: center;
+            text-shadow: 0 0 10px rgba(0, 200, 255, 0.5);
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 28px;
+            color: #e0e0e0;
+        }
+
+        .sub-header {
+            font-size: 14px;
+            color: #aaa;
+            margin-top: 5px;
+        }
+
+        /* Formula Bar */
+        .formula-container {
+            position: absolute;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(20, 20, 30, 0.8);
+            border: 1px solid #444;
+            border-radius: 10px;
+            padding: 15px 30px;
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            
+        }
+
+        .equation {
+            font-size: 24px;
+            font-family: 'Times New Roman', serif;
+            letter-spacing: 1px;
+        }
+
+        .chem-Fe {
+            color: #aaa;
+            font-weight: bold;
+            transition: color 0.3s;
+        }
+
+        .chem-Cu {
+            color: #3b82f6;
+            font-weight: bold;
+            transition: color 0.3s;
+        }
+
+        .chem-e {
+            color: #fbbf24;
+            font-weight: bold;
+        }
+
+        /* Highlight classes */
+        .highlight-ox {
+            text-shadow: 0 0 15px #aaa;
+            color: #fff;
+        }
+
+        .highlight-red {
+            text-shadow: 0 0 15px #3b82f6;
+            color: #60a5fa;
+        }
+
+        /* Control Panel */
+        .controls {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(20, 20, 30, 0.9);
+            padding: 20px;
+            border-radius: 15px;
+            border: 1px solid #444;
+            text-align: center;
+            pointer-events: auto;
+            width: 400px;
+        }
+
+        .btn-main {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            border: none;
+            color: white;
+            padding: 12px 30px;
+            font-size: 16px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
+            transition: transform 0.1s;
+            width: 80%;
+            margin-bottom: 15px;
+        }
+
+        .btn-main:active {
+            transform: scale(0.98);
+        }
+
+        .btn-main:hover {
+            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.6);
+        }
+
+        .slider-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+            font-size: 14px;
+            color: #ccc;
+        }
+
+        input[type=range] {
+            width: 60%;
+            cursor: pointer;
+        }
+
+        /* Legend */
+        .legend {
+            position: absolute;
+            top: 100px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 13px;
+            border-left: 3px solid #fbbf24;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        /* Floating Labels (3D projected) */
+        .label-3d {
+            position: absolute;
+            font-size: 12px;
+            font-weight: bold;
+            color: #fff;
+            padding: 4px 8px;
+            border-radius: 4px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.5s;
+            text-transform: uppercase;
+        }
+
+        .lbl-oxid {
+            background: rgba(100, 100, 100, 0.8);
+            border: 1px solid #aaa;
+        }
+
+        .lbl-red {
+            background: rgba(180, 83, 9, 0.8);
+            border: 1px solid #fbbf24;
+        }
+
+        
+
+    </style>
+</head>
+<body>
+
+<div id="canvas-container"></div>
+<div id="ui-layer">
+    <div class="header">
+        <h1 data-i18n="header_h1">Химия: Redox Реакция</h1>
+        <div class="sub-header" data-i18n="subheader">Взаимодействие Железа (Fe) и Сульфата Меди (CuSO₄)</div>
+    </div>
+
+    <div class="formula-container">
+        <div class="equation">
+            <span id="eq-fe" class="chem-Fe">Fe⁰</span>
+            <span style="color:#666"> + </span>
+            <span id="eq-cu" class="chem-Cu">Cu²⁺</span>
+            <span style="color:#666"> ➝ </span>
+            <span class="chem-Fe" style="color:#4ade80">Fe²⁺</span>
+            <span style="color:#666"> + </span>
+            <span class="chem-Cu" style="color:#b45309">Cu⁰</span>
+        </div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item">
+            <div class="dot" style="background:#9ca3af"></div>
+            <span data-i18n="legend_fe">Атом Железа (Fe)</span>
+        </div>
+        <div class="legend-item">
+            <div class="dot" style="background:#3b82f6; box-shadow:0 0 5px #3b82f6"></div>
+            <span data-i18n="legend_cu_ion">Ион Меди (Cu²⁺)</span>
+        </div>
+        <div class="legend-item">
+            <div class="dot" style="background:#b45309"></div>
+            <span data-i18n="legend_cu">Атом Меди (Cu)</span>
+        </div>
+        <div class="legend-item">
+            <div class="dot" style="background:#4ade80; box-shadow:0 0 5px #4ade80"></div>
+            <span data-i18n="legend_fe_ion">Ион Железа (Fe²⁺)</span>
+        </div>
+        <div class="legend-item">
+            <div class="dot" style="background:#fbbf24; box-shadow:0 0 8px #fbbf24"></div>
+            <span data-i18n="legend_electron">Электрон (e⁻)</span>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button class="btn-main" onclick="toggleReaction()" id="btn-action" data-i18n="btn_start">ЗАПУСТИТЬ РЕАКЦИЮ</button>
+
+        <div class="slider-row">
+            <span data-i18n="speed_label">Скорость времени:</span>
+            <input type="range" id="time-scale" min="0.1" max="2.0" step="0.1" value="1.0">
+        </div>
+        <div class="slider-row">
+            <div style="font-size:11px; color:#888;" data-i18n-html="hint_html">
+                Следите за желтыми частицами (электронами).<br>
+                Железо отдает их меди.
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Container for dynamic labels -->
+<div id="labels-container"></div>
+
+<!-- Three.js -->
+<script type="importmap">
+    {
+        "imports": {
+            "three": "../../libs/vendor/three-0.160.0/three.module.js",
+            "three/addons/": "../../libs/vendor/three-0.160.0/addons/"
+        }
+    }
+</script>
+
+<script type="module">
+    import * as THREE from 'three';
+    import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+
+    // =====================================================================
+    //  I18N — встроенные переводы (RU / KZ / EN). Язык: ?lang=ru|kz|en.
+    // =====================================================================
+    const I18N = {
+        ru: {
+            page_title: 'Окислительно-восстановительная реакция',
+            header_h1: 'Химия: Redox Реакция',
+            subheader: 'Взаимодействие Железа (Fe) и Сульфата Меди (CuSO₄)',
+            legend_fe: 'Атом Железа (Fe)',
+            legend_cu_ion: 'Ион Меди (Cu²⁺)',
+            legend_cu: 'Атом Меди (Cu)',
+            legend_fe_ion: 'Ион Железа (Fe²⁺)',
+            legend_electron: 'Электрон (e⁻)',
+            btn_start: 'ЗАПУСТИТЬ РЕАКЦИЮ',
+            btn_pause: 'ПАУЗА',
+            btn_resume: 'ПРОДОЛЖИТЬ',
+            speed_label: 'Скорость времени:',
+            hint_html: 'Следите за желтыми частицами (электронами).<br>Железо отдает их меди.',
+            label_oxidation: 'ОКИСЛЕНИЕ (-2e⁻)',
+            label_reduction: 'ВОССТАНОВЛЕНИЕ'
+        },
+        kz: {
+            page_title: 'Тотығу-тотықсыздану реакциясы',
+            header_h1: 'Химия: Redox реакциясы',
+            subheader: 'Темір (Fe) мен мыс (II) сульфатының (CuSO₄) әрекеттесуі',
+            legend_fe: 'Темір атомы (Fe)',
+            legend_cu_ion: 'Мыс ионы (Cu²⁺)',
+            legend_cu: 'Мыс атомы (Cu)',
+            legend_fe_ion: 'Темір ионы (Fe²⁺)',
+            legend_electron: 'Электрон (e⁻)',
+            btn_start: 'РЕАКЦИЯНЫ БАСТАУ',
+            btn_pause: 'ҮЗІЛІС',
+            btn_resume: 'ЖАЛҒАСТЫРУ',
+            speed_label: 'Уақыт жылдамдығы:',
+            hint_html: 'Сары бөлшектерге (электрондарға) назар аударыңыз.<br>Темір оларды мысқа береді.',
+            label_oxidation: 'ТОТЫҒУ (-2e⁻)',
+            label_reduction: 'ТОТЫҚСЫЗДАНУ'
+        },
+        en: {
+            page_title: 'Redox Reaction',
+            header_h1: 'Chemistry: Redox Reaction',
+            subheader: 'Reaction of Iron (Fe) with Copper(II) Sulfate (CuSO₄)',
+            legend_fe: 'Iron Atom (Fe)',
+            legend_cu_ion: 'Copper Ion (Cu²⁺)',
+            legend_cu: 'Copper Atom (Cu)',
+            legend_fe_ion: 'Iron Ion (Fe²⁺)',
+            legend_electron: 'Electron (e⁻)',
+            btn_start: 'START REACTION',
+            btn_pause: 'PAUSE',
+            btn_resume: 'RESUME',
+            speed_label: 'Time speed:',
+            hint_html: 'Watch the yellow particles (electrons).<br>Iron donates them to copper.',
+            label_oxidation: 'OXIDATION (-2e⁻)',
+            label_reduction: 'REDUCTION'
+        }
+    };
+    const LANG = (() => {
+        const q = new URLSearchParams(location.search).get('lang');
+        return (q && I18N[q]) ? q : 'ru';
+    })();
+    const t = (key) => (I18N[LANG] && I18N[LANG][key]) ?? (I18N.ru && I18N.ru[key]);
+
+    function applyStaticI18N() {
+        document.documentElement.lang = LANG;
+        const titleVal = t('page_title');
+        if (titleVal) document.title = titleVal;
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const v = t(el.getAttribute('data-i18n'));
+            if (v) el.textContent = v;
+        });
+        document.querySelectorAll('[data-i18n-html]').forEach(el => {
+            const v = t(el.getAttribute('data-i18n-html'));
+            if (v) el.innerHTML = v;
+        });
+    }
+
+    applyStaticI18N();
+// --- Configuration ---
+    const CONFIG = {
+        colorFe: 0x9ca3af,      // Grey (Metallic)
+        colorFeIon: 0x4ade80,   // Light Green
+        colorCuIon: 0x3b82f6,   // Blue solution
+        colorCu: 0xb45309,      // Copper/Brown
+        colorElectron: 0xfbbf24,// Yellow
+
+        atomRadius: 1.5,
+        latticeSpacing: 3.2,
+        solutionBounds: {x: 15, y: 15, z: 10},
+        reactionDist: 5.0, // Distance to trigger electron jump
+
+        simSpeed: 1.0
+    };
+
+    // --- State ---
+    let state = {
+        isRunning: false,
+        atoms: [], // Array of atom objects
+        electrons: [], // Active electron particles
+        labels: [] // Active HTML labels
+    };
+
+    // --- Globals ---
+    let scene, camera, renderer, controls;
+    let ironGroup;
+
+    // --- Initialization ---
+    function init() {
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x050505);
+        scene.fog = new THREE.FogExp2(0x050505, 0.02);
+
+        const aspect = window.innerWidth / window.innerHeight;
+        camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 100);
+        camera.position.set(0, 5, 40);
+
+        renderer = new THREE.WebGLRenderer({antialias: true, alpha: true});
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        // Lights
+        const ambient = new THREE.AmbientLight(0xffffff, 0.4);
+        scene.add(ambient);
+
+        const sun = new THREE.DirectionalLight(0xffffff, 1.0);
+        sun.position.set(10, 20, 20);
+        scene.add(sun);
+
+        const blueLight = new THREE.PointLight(0x3b82f6, 0.5, 50);
+        blueLight.position.set(10, 0, 0); // Solution glow
+        scene.add(blueLight);
+
+        controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.maxDistance = 60;
+
+        // Setup
+        createSceneObjects();
+
+        // Listeners
+        window.addEventListener('resize', onResize);
+        document.getElementById('time-scale').addEventListener('input', (e) => CONFIG.simSpeed = parseFloat(e.target.value));
+
+        animate();
+    }
+
+    // --- Scene Creation ---
+    function createSceneObjects() {
+        // 1. Iron Lattice (Left side)
+        // Create a wall of Fe atoms
+        const geoFe = new THREE.SphereGeometry(CONFIG.atomRadius, 32, 32);
+        const matFe = new THREE.MeshStandardMaterial({
+            color: CONFIG.colorFe,
+            metalness: 0.8,
+            roughness: 0.3,
+            roughness: 0.3
+        });
+
+        // Create grid 3x5x3
+        for (let x = 0; x < 2; x++) {
+            for (let y = -3; y <= 3; y++) {
+                for (let z = -2; z <= 2; z++) {
+                    const mesh = new THREE.Mesh(geoFe, matFe.clone());
+                    // Position on left side
+                    const px = -8 - (x * CONFIG.latticeSpacing);
+                    const py = y * CONFIG.latticeSpacing;
+                    const pz = z * CONFIG.latticeSpacing;
+
+                    mesh.position.set(px, py, pz);
+                    scene.add(mesh);
+
+                    state.atoms.push({
+                        mesh: mesh,
+                        type: 'Fe', // Solid Iron
+                        charge: 0,
+                        velocity: new THREE.Vector3(0, 0, 0), // Static
+                        isStatic: true,
+                        id: Math.random()
+                    });
+                }
+            }
+        }
+
+        // 2. Copper Ions (Right side - Solution)
+        const geoCu = new THREE.SphereGeometry(CONFIG.atomRadius * 0.8, 32, 32);
+        const matCuIon = new THREE.MeshStandardMaterial({
+            color: CONFIG.colorCuIon,
+            metalness: 0.1,
+            roughness: 0.2,
+            roughness: 0.2,
+            opacity: 0.9,
+            transparent: true,
+            emissive: 0x002266
+        });
+
+        // Spawn floating ions
+        for (let i = 0; i < 15; i++) {
+            const mesh = new THREE.Mesh(geoCu, matCuIon.clone());
+            // Random pos in solution area
+            mesh.position.set(
+                    Math.random() * 15 + 2, // X: 2 to 17
+                    (Math.random() - 0.5) * 20, // Y
+                    (Math.random() - 0.5) * 15  // Z
+            );
+
+            // Add "halo" sprite for ion look
+            const sprite = createSpriteHalo(CONFIG.colorCuIon);
+            mesh.add(sprite);
+
+            scene.add(mesh);
+
+            state.atoms.push({
+                mesh: mesh,
+                type: 'Cu_ion',
+                charge: 2,
+                velocity: new THREE.Vector3(
+                        (Math.random() - 0.5) * 0.1,
+                        (Math.random() - 0.5) * 0.1,
+                        (Math.random() - 0.5) * 0.1
+                ),
+                isStatic: false,
+                targetFe: null // Will target an iron atom
+            });
+        }
+    }
+
+    function createSpriteHalo(color) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 64;
+        canvas.height = 64;
+        const ctx = canvas.getContext('2d');
+        const grad = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+        grad.addColorStop(0, '#ffffff');
+        grad.addColorStop(0.2, '#' + new THREE.Color(color).getHexString());
+        grad.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, 64, 64);
+
+        const tex = new THREE.CanvasTexture(canvas);
+        const mat = new THREE.SpriteMaterial({map: tex, blending: THREE.AdditiveBlending, opacity: 0.6});
+        const sprite = new THREE.Sprite(mat);
+        sprite.scale.set(6, 6, 1);
+        return sprite;
+    }
+
+    function createElectron(startPos) {
+        const geo = new THREE.SphereGeometry(0.3, 8, 8);
+        const mat = new THREE.MeshBasicMaterial({color: CONFIG.colorElectron});
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.copy(startPos);
+
+        // Glow
+        const sprite = createSpriteHalo(CONFIG.colorElectron);
+        sprite.scale.set(2, 2, 1);
+        mesh.add(sprite);
+
+        scene.add(mesh);
+        return mesh;
+    }
+
+    // --- Physics & Logic ---
+
+    function updateSimulation(dt) {
+        if (!state.isRunning) return;
+
+        // 1. Move free atoms (Brownian motion + Attraction)
+        state.atoms.forEach(atom => {
+            if (!atom.isStatic) {
+                // Random wiggles
+                atom.velocity.x += (Math.random() - 0.5) * 0.01;
+                atom.velocity.y += (Math.random() - 0.5) * 0.01;
+                atom.velocity.z += (Math.random() - 0.5) * 0.01;
+
+                // If Cu ion, drift left towards Iron
+                if (atom.type === 'Cu_ion' && !atom.targetFe) {
+                    atom.velocity.x -= 0.005 * CONFIG.simSpeed;
+                }
+
+                // If Fe ion (after reaction), drift right into solution
+                if (atom.type === 'Fe_ion') {
+                    atom.velocity.x += 0.005 * CONFIG.simSpeed;
+                }
+
+                // Apply velocity
+                atom.mesh.position.add(atom.velocity.clone().multiplyScalar(CONFIG.simSpeed));
+
+                // Boundaries (bounce)
+                if (atom.mesh.position.y > 10 || atom.mesh.position.y < -10) atom.velocity.y *= -1;
+                if (atom.mesh.position.z > 10 || atom.mesh.position.z < -10) atom.velocity.z *= -1;
+                if (atom.mesh.position.x > 20) atom.velocity.x *= -1; // Far right wall
+            }
+        });
+
+        // 2. Check Reactions
+        // Find Cu ions close to Fe solid atoms
+        state.atoms.forEach(cu => {
+            if (cu.type === 'Cu_ion' && !cu.isReacting) {
+                // Find closest Fe solid
+                let closestFe = null;
+                let minD = 999;
+
+                state.atoms.forEach(fe => {
+                    if (fe.type === 'Fe' && fe.isStatic) {
+                        const d = cu.mesh.position.distanceTo(fe.mesh.position);
+                        if (d < minD) {
+                            minD = d;
+                            closestFe = fe;
+                        }
+                    }
+                });
+
+                // Trigger Reaction?
+                if (closestFe && minD < CONFIG.reactionDist) {
+                    // Attraction force
+                    const dir = new THREE.Vector3().subVectors(closestFe.mesh.position, cu.mesh.position).normalize();
+                    cu.velocity.add(dir.multiplyScalar(0.02 * CONFIG.simSpeed));
+
+                    // CONTACT!
+                    if (minD < CONFIG.atomRadius * 2.2) {
+                        triggerRedox(closestFe, cu);
+                    }
+                }
+            }
+        });
+
+        // 3. Animate Electrons
+        for (let i = state.electrons.length - 1; i >= 0; i--) {
+            const e = state.electrons[i];
+            const speed = 5.0 * CONFIG.simSpeed * dt;
+
+            const dir = new THREE.Vector3().subVectors(e.targetPos, e.mesh.position);
+            const dist = dir.length();
+            dir.normalize();
+
+            if (dist < speed) {
+                // Arrived
+                scene.remove(e.mesh);
+                state.electrons.splice(i, 1);
+                completeRedox(e.feRef, e.cuRef);
+            } else {
+                e.mesh.position.add(dir.multiplyScalar(speed));
+            }
+        }
+
+        // 4. Update Labels
+        updateLabels();
+    }
+
+    function triggerRedox(fe, cu) {
+        // Lock them
+        cu.isReacting = true;
+        fe.isReacting = true; // Temporary flag so multiple Cu don't attack same Fe
+
+        // Stop Cu
+        cu.velocity.set(0, 0, 0);
+
+        // Spawn 2 electrons moving from Fe to Cu
+        for (let i = 0; i < 2; i++) {
+            const elec = createElectron(fe.mesh.position);
+            // Slight offset start
+            elec.position.y += (i == 0 ? 0.5 : -0.5);
+
+            state.electrons.push({
+                mesh: elec,
+                targetPos: cu.mesh.position.clone(),
+                feRef: fe,
+                cuRef: cu
+            });
+        }
+
+        // Highlight Equation
+        document.getElementById('eq-fe').classList.add('highlight-ox');
+        setTimeout(() => document.getElementById('eq-fe').classList.remove('highlight-ox'), 1000);
+    }
+
+    function completeRedox(fe, cu) {
+        // Only run logic once (2 electrons arrive, only 1 trigger needed)
+        if (fe.hasReacted) return;
+        fe.hasReacted = true;
+
+        // --- IRON (Oxidation) ---
+        // Fe -> Fe2+ (Green)
+        fe.type = 'Fe_ion';
+        fe.isStatic = false; // Detaches from lattice
+        fe.charge = 2;
+        fe.mesh.material.color.setHex(CONFIG.colorFeIon);
+        fe.mesh.material.emissive.setHex(0x003300); // Glow
+        fe.velocity.set(0.05, 0, 0); // Push out
+
+        // Show label
+        spawnLabel(fe.mesh.position, t('label_oxidation'), "lbl-oxid");
+
+        // --- COPPER (Reduction) ---
+        // Cu2+ -> Cu (Brown Solid)
+        cu.type = 'Cu';
+        cu.isStatic = true; // Sticks to lattice location where Fe was?
+        // Actually, usually Cu deposits on surface.
+        // Let's make Cu take Fe's physical place or stick to it.
+
+        // Visual Swap: Cu takes Fe's place approximately
+        // Interpolate position to Fe's original spot to simulate plating
+        cu.mesh.position.lerp(fe.mesh.position, 0.8);
+
+        cu.charge = 0;
+        cu.mesh.material.color.setHex(CONFIG.colorCu);
+        cu.mesh.material.emissive.setHex(0x000000); // Remove glow
+        cu.mesh.material.opacity = 1.0;
+        cu.mesh.material.metalness = 0.6;
+        // Remove halo child
+        if (cu.mesh.children.length > 0) cu.mesh.remove(cu.mesh.children[0]);
+
+        // Show label
+        spawnLabel(cu.mesh.position, t('label_reduction'), "lbl-red");
+
+        // Highlight Equation Right Side
+        document.getElementById('eq-cu').classList.add('highlight-red');
+        setTimeout(() => document.getElementById('eq-cu').classList.remove('highlight-red'), 1000);
+    }
+
+    function spawnLabel(pos, text, cssClass) {
+        const div = document.createElement('div');
+        div.className = `label-3d ${cssClass}`;
+        div.textContent = text;
+        document.getElementById('labels-container').appendChild(div);
+
+        state.labels.push({
+            el: div,
+            pos: pos.clone().add(new THREE.Vector3(0, 2, 0)), // Float above
+            life: 2.0 // Seconds
+        });
+    }
+
+    function updateLabels() {
+        const dt = 0.016;
+        for (let i = state.labels.length - 1; i >= 0; i--) {
+            const lbl = state.labels[i];
+            lbl.life -= dt;
+
+            // Float up
+            lbl.pos.y += 0.01;
+
+            // Project
+            const screenPos = lbl.pos.clone().project(camera);
+            const x = (screenPos.x * .5 + .5) * window.innerWidth;
+            const y = (-(screenPos.y * .5) + .5) * window.innerHeight;
+
+            lbl.el.style.left = x + 'px';
+            lbl.el.style.top = y + 'px';
+            lbl.el.style.opacity = Math.min(1, lbl.life);
+
+            if (lbl.life <= 0) {
+                lbl.el.remove();
+                state.labels.splice(i, 1);
+            }
+        }
+    }
+
+    // --- Interaction ---
+    window.toggleReaction = function () {
+        state.isRunning = !state.isRunning;
+        const btn = document.getElementById('btn-action');
+        btn.textContent = state.isRunning ? t('btn_pause') : t('btn_resume');
+        btn.style.background = state.isRunning ? "#ef4444" : "linear-gradient(135deg, #3b82f6, #2563eb)";
+    };
+
+    function onResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+        updateSimulation(0.016); // ~60fps
+        controls.update();
+        renderer.render(scene, camera);
+    }
+
+    // Start
+    init();
+
+</script>
+</body>
+</html>

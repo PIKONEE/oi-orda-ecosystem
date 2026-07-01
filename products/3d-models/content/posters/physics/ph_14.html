@@ -1,0 +1,1355 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Волны на воде — Интерференция и дифракция</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #0a1628 0%, #1a3a5c 50%, #0a1628 100%);
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 20px 30px;
+            background: linear-gradient(180deg, rgba(0,0,0,0.8) 0%, transparent 100%);
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .header h1 {
+            color: white;
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .header p {
+            color: rgba(255,255,255,0.6);
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        .control-panel {
+            position: absolute;
+            top: 100px;
+            left: 20px;
+            width: 300px;
+            background: rgba(8, 20, 40, 0.95);
+            
+            border-radius: 16px;
+            padding: 20px;
+            z-index: 10;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .mode-selector {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .mode-btn {
+            padding: 12px 8px;
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            background: rgba(255,255,255,0.03);
+            color: rgba(255,255,255,0.6);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+        }
+
+        .mode-btn:hover {
+            background: rgba(255,255,255,0.08);
+            color: white;
+        }
+
+        .mode-btn.active {
+            border-color: #4fc3f7;
+            background: rgba(79, 195, 247, 0.15);
+            color: #4fc3f7;
+        }
+
+        .mode-icon {
+            font-size: 20px;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .section-title {
+            color: rgba(255,255,255,0.4);
+            font-size: 10px;
+            font-weight: 600;
+            margin: 20px 0 12px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+        }
+
+        .param-group {
+            margin-bottom: 16px;
+        }
+
+        .param-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .param-name {
+            color: rgba(255,255,255,0.85);
+            font-size: 13px;
+        }
+
+        .param-value {
+            color: #4fc3f7;
+            font-size: 14px;
+            font-weight: 700;
+            font-family: 'Consolas', monospace;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            -webkit-appearance: none;
+            background: rgba(255,255,255,0.1);
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #4fc3f7;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(79,195,247,0.5);
+        }
+
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 12px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+
+        .toggle-row label {
+            color: rgba(255,255,255,0.8);
+            font-size: 12px;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 36px;
+            height: 20px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            inset: 0;
+            background: rgba(255,255,255,0.15);
+            border-radius: 20px;
+            transition: 0.3s;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 14px;
+            width: 14px;
+            left: 3px;
+            bottom: 3px;
+            background: white;
+            border-radius: 50%;
+            transition: 0.3s;
+        }
+
+        .toggle-switch input:checked + .toggle-slider {
+            background: #4fc3f7;
+        }
+
+        .toggle-switch input:checked + .toggle-slider:before {
+            transform: translateX(16px);
+        }
+
+        .btn-reset {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.08);
+            color: rgba(255,255,255,0.7);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 12px;
+        }
+
+        .btn-reset:hover {
+            background: rgba(255,255,255,0.12);
+            color: white;
+        }
+
+        /* Info Panel */
+        .info-panel {
+            position: absolute;
+            top: 100px;
+            right: 20px;
+            width: 280px;
+            background: rgba(8, 20, 40, 0.95);
+            
+            border-radius: 16px;
+            padding: 20px;
+            z-index: 10;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .info-title {
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 14px;
+        }
+
+        .phenomenon-box {
+            background: rgba(255,255,255,0.03);
+            border-radius: 10px;
+            padding: 14px;
+            margin-bottom: 12px;
+            border-left: 3px solid;
+        }
+
+        .phenomenon-box.interference { border-color: #66bb6a; }
+        .phenomenon-box.diffraction { border-color: #ffa726; }
+
+        .phenomenon-title {
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .phenomenon-box.interference .phenomenon-title { color: #66bb6a; }
+        .phenomenon-box.diffraction .phenomenon-title { color: #ffa726; }
+
+        .phenomenon-text {
+            color: rgba(255,255,255,0.65);
+            font-size: 11px;
+            line-height: 1.5;
+        }
+
+        .formula-box {
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+            margin-top: 14px;
+        }
+
+        .formula-label {
+            color: rgba(255,255,255,0.5);
+            font-size: 10px;
+            margin-bottom: 6px;
+        }
+
+        .formula {
+            font-family: 'Times New Roman', serif;
+            font-size: 16px;
+            color: white;
+        }
+
+        .formula .highlight { color: #4fc3f7; }
+
+        /* Legend */
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(8, 20, 40, 0.95);
+            border-radius: 12px;
+            padding: 12px 20px;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .legend-title {
+            color: rgba(255,255,255,0.5);
+            font-size: 11px;
+            margin-right: 8px;
+        }
+
+        .legend-gradient {
+            width: 150px;
+            height: 16px;
+            border-radius: 4px;
+            background: linear-gradient(90deg, #1565c0, #42a5f5, #e3f2fd, #42a5f5, #1565c0);
+        }
+
+        .legend-labels {
+            display: flex;
+            justify-content: space-between;
+            width: 150px;
+            margin-top: 4px;
+        }
+
+        .legend-labels span {
+            color: rgba(255,255,255,0.5);
+            font-size: 9px;
+        }
+
+        .source-indicator {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: rgba(255,255,255,0.7);
+            font-size: 11px;
+        }
+
+        .source-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #ff5722;
+            box-shadow: 0 0 8px rgba(255,87,34,0.6);
+        }
+
+        .hint {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            color: rgba(255,255,255,0.3);
+            font-size: 11px;
+            z-index: 5;
+        }
+
+        /* View toggle */
+        .view-toggle {
+            display: flex;
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            padding: 3px;
+            margin-bottom: 16px;
+        }
+
+        .view-btn {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            border-radius: 6px;
+            background: transparent;
+            color: rgba(255,255,255,0.5);
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .view-btn.active {
+            background: rgba(79,195,247,0.2);
+            color: #4fc3f7;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="canvas-container"></div>
+
+    <div class="header">
+        <h1>🌊 Волны на воде</h1>
+        <p><span>Интерференция • Дифракция • Принцип суперпозиции</span></p>
+    </div>
+
+    <div class="control-panel">
+        <div class="view-toggle">
+            <button class="view-btn active" id="view-3d">3D вид</button>
+            <button class="view-btn" id="view-top">Вид сверху</button>
+        </div>
+
+        <div class="mode-selector">
+            <button class="mode-btn active" data-mode="single">
+                <span class="mode-icon">◉</span>
+                Один источник
+            </button>
+            <button class="mode-btn" data-mode="interference">
+                <span class="mode-icon">◉◉</span>
+                Интерференция
+            </button>
+            <button class="mode-btn" data-mode="slit">
+                <span class="mode-icon">▯</span>
+                Щель
+            </button>
+            <button class="mode-btn" data-mode="double-slit">
+                <span class="mode-icon">▯▯</span>
+                Две щели
+            </button>
+        </div>
+
+        <div class="section-title">Параметры волн</div>
+
+        <div class="param-group">
+            <div class="param-header">
+                <span class="param-name">Длина волны λ</span>
+                <span class="param-value" id="wavelength-value">1.0 м</span>
+            </div>
+            <input type="range" id="wavelength-slider" min="0.5" max="2" step="0.1" value="1">
+        </div>
+
+        <div class="param-group">
+            <div class="param-header">
+                <span class="param-name">Частота f</span>
+                <span class="param-value" id="frequency-value">1.0 Гц</span>
+            </div>
+            <input type="range" id="frequency-slider" min="0.3" max="2" step="0.1" value="1">
+        </div>
+
+        <div class="param-group" id="distance-group">
+            <div class="param-header">
+                <span class="param-name">Расстояние между источниками</span>
+                <span class="param-value" id="distance-value">3.0 м</span>
+            </div>
+            <input type="range" id="distance-slider" min="1" max="6" step="0.5" value="3">
+        </div>
+
+        <div class="param-group" id="slit-group" style="display:none;">
+            <div class="param-header">
+                <span class="param-name">Ширина щели</span>
+                <span class="param-value" id="slit-value">2.0 м</span>
+            </div>
+            <input type="range" id="slit-slider" min="0.5" max="4" step="0.5" value="2">
+        </div>
+
+        <div class="section-title">Отображение</div>
+
+        <div class="toggle-row">
+            <label>Источники волн</label>
+            <label class="toggle-switch">
+                <input type="checkbox" id="toggle-sources" checked>
+                <span class="toggle-slider"></span>
+            </label>
+        </div>
+
+        <div class="toggle-row">
+            <label>Линии максимумов</label>
+            <label class="toggle-switch">
+                <input type="checkbox" id="toggle-maxima">
+                <span class="toggle-slider"></span>
+            </label>
+        </div>
+
+        <button class="btn-reset" id="btn-reset">↺ Сбросить</button>
+    </div>
+
+    <div class="info-panel">
+        <div class="info-title">Волновые явления</div>
+
+        <div class="phenomenon-box interference">
+            <div class="phenomenon-title">Интерференция</div>
+            <div class="phenomenon-text">
+                Наложение волн от двух источников. В точках, где волны приходят в фазе — усиление (максимум). В противофазе — ослабление (минимум).
+            </div>
+        </div>
+
+        <div class="phenomenon-box diffraction">
+            <div class="phenomenon-title">Дифракция</div>
+            <div class="phenomenon-text">
+                Огибание волнами препятствий. Каждая точка щели становится источником вторичных волн (принцип Гюйгенса).
+            </div>
+        </div>
+
+        <div class="formula-box">
+            <div class="formula-label">Условие максимума интерференции</div>
+            <div class="formula">
+                Δ = <span class="highlight">n</span>λ, где n = 0, ±1, ±2...
+            </div>
+        </div>
+
+        <div class="formula-box">
+            <div class="formula-label">Условие минимума</div>
+            <div class="formula">
+                Δ = (<span class="highlight">n</span> + ½)λ
+            </div>
+        </div>
+    </div>
+
+    <div class="legend">
+        <span class="legend-title">Амплитуда:</span>
+        <div>
+            <div class="legend-gradient"></div>
+            <div class="legend-labels">
+                <span>−A</span>
+                <span>0</span>
+                <span>+A</span>
+            </div>
+        </div>
+        <div class="source-indicator">
+            <div class="source-dot"></div>
+            <span>Источник</span>
+        </div>
+    </div>
+
+    <div class="hint">ЛКМ — вращение • ПКМ — перемещение • Колёсико — зум</div>
+
+    <script src="../../libs/vendor/three-r128/three.min.js"></script>
+    <script>
+        // Parameters
+        let mode = 'single';
+        let wavelength = 1.0;
+        let frequency = 1.0;
+        let sourceDistance = 3.0;
+        let slitWidth = 2.0;
+        let showSources = true;
+        let showMaxima = false;
+        let viewMode = '3d'; // '3d' or 'top'
+
+        // Simulation
+        let time = 0;
+        const gridSize = 100;
+        const worldSize = 12;
+
+        // Three.js
+        let scene, camera, renderer, mainGroup;
+        let waterMesh, sourceSpheres, barrierMesh, maximaLines;
+
+        // Controls
+        let isDragging = false;
+        let isPanning = false;
+        let lastMouse = { x: 0, y: 0 };
+        let rotation = { x: 0.6, y: 0 };
+        let pan = { x: 0, y: 0 };
+
+        const container = document.getElementById('canvas-container');
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color('#0a1830');
+
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
+            updateCameraPosition();
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            container.appendChild(renderer.domElement);
+
+            // Lighting
+            scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+
+            const light1 = new THREE.DirectionalLight(0xffffff, 0.8);
+            light1.position.set(5, 10, 5);
+            scene.add(light1);
+
+            mainGroup = new THREE.Group();
+            scene.add(mainGroup);
+
+            createWater();
+            createSources();
+            createBarrier();
+            createMaximaLines();
+
+            setupControls();
+            animate();
+        }
+
+        function updateCameraPosition() {
+            if (viewMode === '3d') {
+                camera.position.set(0, 12, 14);
+                camera.lookAt(0, 0, 0);
+            } else {
+                camera.position.set(0, 20, 0.01);
+                camera.lookAt(0, 0, 0);
+            }
+        }
+
+        function createWater() {
+            const geometry = new THREE.PlaneGeometry(worldSize, worldSize, gridSize - 1, gridSize - 1);
+            geometry.rotateX(-Math.PI / 2);
+
+            const material = new THREE.MeshPhongMaterial({
+                color: 0x1976d2,
+                shininess: 100,
+                side: THREE.DoubleSide,
+                flatShading: false,
+                vertexColors: true
+            });
+
+            // Add color attribute
+            const colors = new Float32Array(geometry.attributes.position.count * 3);
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+            waterMesh = new THREE.Mesh(geometry, material);
+            mainGroup.add(waterMesh);
+
+            // Border frame
+            const borderGeom = new THREE.EdgesGeometry(new THREE.BoxGeometry(worldSize, 0.5, worldSize));
+            const borderMat = new THREE.LineBasicMaterial({ color: 0x4fc3f7, transparent: true, opacity: 0.5 });
+            const border = new THREE.LineSegments(borderGeom, borderMat);
+            border.position.y = -0.25;
+            mainGroup.add(border);
+
+            // Pool bottom
+            const bottomGeom = new THREE.PlaneGeometry(worldSize, worldSize);
+            const bottomMat = new THREE.MeshBasicMaterial({ color: 0x0d47a1, side: THREE.DoubleSide });
+            const bottom = new THREE.Mesh(bottomGeom, bottomMat);
+            bottom.rotation.x = -Math.PI / 2;
+            bottom.position.y = -0.5;
+            mainGroup.add(bottom);
+        }
+
+        function createSources() {
+            sourceSpheres = new THREE.Group();
+
+            const sphereGeom = new THREE.SphereGeometry(0.15, 16, 16);
+            const sphereMat = new THREE.MeshBasicMaterial({ color: 0xff5722 });
+
+            // Create up to 2 source markers
+            for (let i = 0; i < 2; i++) {
+                const sphere = new THREE.Mesh(sphereGeom, sphereMat.clone());
+                
+                // Glow effect
+                const glowGeom = new THREE.SphereGeometry(0.25, 16, 16);
+                const glowMat = new THREE.MeshBasicMaterial({ 
+                    color: 0xff5722, 
+                    transparent: true, 
+                    opacity: 0.3 
+                });
+                const glow = new THREE.Mesh(glowGeom, glowMat);
+                sphere.add(glow);
+
+                // Pulse ring
+                const ringGeom = new THREE.RingGeometry(0.2, 0.25, 32);
+                const ringMat = new THREE.MeshBasicMaterial({ 
+                    color: 0xff5722, 
+                    transparent: true, 
+                    opacity: 0.5,
+                    side: THREE.DoubleSide
+                });
+                const ring = new THREE.Mesh(ringGeom, ringMat);
+                ring.rotation.x = -Math.PI / 2;
+                sphere.add(ring);
+                sphere.pulseRing = ring;
+
+                sourceSpheres.add(sphere);
+            }
+
+            mainGroup.add(sourceSpheres);
+            updateSources();
+        }
+
+        function updateSources() {
+            const sources = getSourcePositions();
+            
+            sourceSpheres.children.forEach((sphere, i) => {
+                if (i < sources.length && showSources) {
+                    sphere.visible = true;
+                    sphere.position.set(sources[i].x, 0.3, sources[i].z);
+                } else {
+                    sphere.visible = false;
+                }
+            });
+        }
+
+        function getSourcePositions() {
+            if (mode === 'single') {
+                return [{ x: 0, z: -worldSize / 3 }];
+            } else if (mode === 'interference') {
+                return [
+                    { x: -sourceDistance / 2, z: -worldSize / 3 },
+                    { x: sourceDistance / 2, z: -worldSize / 3 }
+                ];
+            } else if (mode === 'slit' || mode === 'double-slit') {
+                // For slits, sources are generated dynamically along the slit
+                return [];
+            }
+            return [];
+        }
+
+        function createBarrier() {
+            barrierMesh = new THREE.Group();
+
+            const barrierMat = new THREE.MeshStandardMaterial({
+                color: 0x455a64,
+                roughness: 0.7,
+                metalness: 0.3
+            });
+
+            // Create barrier segments
+            updateBarrier();
+            mainGroup.add(barrierMesh);
+        }
+
+        function updateBarrier() {
+            while (barrierMesh.children.length > 0) {
+                barrierMesh.remove(barrierMesh.children[0]);
+            }
+
+            if (mode !== 'slit' && mode !== 'double-slit') {
+                return;
+            }
+
+            const barrierMat = new THREE.MeshStandardMaterial({
+                color: 0x455a64,
+                roughness: 0.7,
+                metalness: 0.3
+            });
+
+            const barrierZ = -worldSize / 6;
+            const barrierHeight = 0.8;
+            const barrierThickness = 0.2;
+
+            if (mode === 'slit') {
+                // Single slit - two barrier segments
+                const leftWidth = (worldSize - slitWidth) / 2;
+                const rightWidth = leftWidth;
+
+                // Left barrier
+                const leftGeom = new THREE.BoxGeometry(leftWidth, barrierHeight, barrierThickness);
+                const leftBarrier = new THREE.Mesh(leftGeom, barrierMat);
+                leftBarrier.position.set(-worldSize / 2 + leftWidth / 2, barrierHeight / 2 - 0.3, barrierZ);
+                barrierMesh.add(leftBarrier);
+
+                // Right barrier
+                const rightGeom = new THREE.BoxGeometry(rightWidth, barrierHeight, barrierThickness);
+                const rightBarrier = new THREE.Mesh(rightGeom, barrierMat);
+                rightBarrier.position.set(worldSize / 2 - rightWidth / 2, barrierHeight / 2 - 0.3, barrierZ);
+                barrierMesh.add(rightBarrier);
+
+            } else if (mode === 'double-slit') {
+                // Double slit
+                const slitSeparation = sourceDistance;
+                const singleSlitWidth = slitWidth * 0.4;
+                const centerWidth = slitSeparation - singleSlitWidth;
+
+                // Left barrier
+                const leftWidth = (worldSize - slitSeparation - singleSlitWidth) / 2;
+                const leftGeom = new THREE.BoxGeometry(leftWidth, barrierHeight, barrierThickness);
+                const leftBarrier = new THREE.Mesh(leftGeom, barrierMat);
+                leftBarrier.position.set(-worldSize / 2 + leftWidth / 2, barrierHeight / 2 - 0.3, barrierZ);
+                barrierMesh.add(leftBarrier);
+
+                // Center barrier
+                const centerGeom = new THREE.BoxGeometry(centerWidth, barrierHeight, barrierThickness);
+                const centerBarrier = new THREE.Mesh(centerGeom, barrierMat);
+                centerBarrier.position.set(0, barrierHeight / 2 - 0.3, barrierZ);
+                barrierMesh.add(centerBarrier);
+
+                // Right barrier
+                const rightGeom = new THREE.BoxGeometry(leftWidth, barrierHeight, barrierThickness);
+                const rightBarrier = new THREE.Mesh(rightGeom, barrierMat);
+                rightBarrier.position.set(worldSize / 2 - leftWidth / 2, barrierHeight / 2 - 0.3, barrierZ);
+                barrierMesh.add(rightBarrier);
+            }
+        }
+
+        function createMaximaLines() {
+            maximaLines = new THREE.Group();
+            mainGroup.add(maximaLines);
+        }
+
+        function updateMaximaLines() {
+            while (maximaLines.children.length > 0) {
+                maximaLines.remove(maximaLines.children[0]);
+            }
+
+            if (!showMaxima || mode === 'single') return;
+
+            const lineMat = new THREE.LineBasicMaterial({
+                color: 0x76ff03,
+                transparent: true,
+                opacity: 0.6
+            });
+
+            // Draw constructive interference lines
+            const sources = getSourcePositions();
+            if (sources.length < 2) return;
+
+            const d = sourceDistance;
+            const numOrders = 5;
+
+            for (let n = -numOrders; n <= numOrders; n++) {
+                const points = [];
+
+                // Calculate interference maxima line
+                for (let z = -worldSize / 2; z <= worldSize / 2; z += 0.2) {
+                    // Path difference = n * wavelength
+                    // For two sources at ±d/2, path difference formula
+                    const pathDiff = n * wavelength;
+                    
+                    // Approximate x position for this z
+                    if (Math.abs(n) === 0) {
+                        points.push(new THREE.Vector3(0, 0.05, z));
+                    } else {
+                        // Hyperbola approximation
+                        const x = (pathDiff / d) * z * 0.3;
+                        if (Math.abs(x) < worldSize / 2) {
+                            points.push(new THREE.Vector3(x, 0.05, z));
+                        }
+                    }
+                }
+
+                if (points.length > 1) {
+                    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                    const line = new THREE.Line(geometry, lineMat);
+                    maximaLines.add(line);
+                }
+            }
+        }
+
+        function calculateWaveHeight(x, z, t) {
+            const k = (2 * Math.PI) / wavelength;
+            const omega = 2 * Math.PI * frequency;
+            const barrierZ = -worldSize / 6;
+
+            let totalHeight = 0;
+
+            if (mode === 'single') {
+                // Single point source
+                const sx = 0, sz = -worldSize / 3;
+                const r = Math.sqrt((x - sx) ** 2 + (z - sz) ** 2);
+                if (r > 0.1) {
+                    totalHeight = Math.sin(k * r - omega * t) / Math.sqrt(r + 1);
+                }
+
+            } else if (mode === 'interference') {
+                // Two point sources
+                const sources = [
+                    { x: -sourceDistance / 2, z: -worldSize / 3 },
+                    { x: sourceDistance / 2, z: -worldSize / 3 }
+                ];
+
+                sources.forEach(src => {
+                    const r = Math.sqrt((x - src.x) ** 2 + (z - src.z) ** 2);
+                    if (r > 0.1) {
+                        totalHeight += Math.sin(k * r - omega * t) / Math.sqrt(r + 1);
+                    }
+                });
+
+            } else if (mode === 'slit') {
+                // Single slit diffraction
+                const sourceZ = -worldSize / 3;
+
+                // Check if behind barrier
+                if (z > barrierZ) {
+                    // Huygens principle - integrate across slit
+                    const numPoints = 15;
+                    const halfSlit = slitWidth / 2;
+
+                    for (let i = 0; i < numPoints; i++) {
+                        const srcX = -halfSlit + (i / (numPoints - 1)) * slitWidth;
+                        const srcZ = barrierZ;
+
+                        const r = Math.sqrt((x - srcX) ** 2 + (z - srcZ) ** 2);
+                        if (r > 0.1) {
+                            totalHeight += Math.sin(k * r - omega * t) / Math.sqrt(r + 1) / numPoints;
+                        }
+                    }
+                    totalHeight *= 2;
+                } else {
+                    // Before barrier - plane wave
+                    const r = Math.abs(z - sourceZ);
+                    totalHeight = Math.sin(k * r - omega * t) * 0.8;
+                }
+
+            } else if (mode === 'double-slit') {
+                // Double slit
+                const sourceZ = -worldSize / 3;
+                const slitSeparation = sourceDistance;
+                const singleSlitWidth = slitWidth * 0.4;
+
+                if (z > barrierZ) {
+                    // Two slits
+                    const slitCenters = [-slitSeparation / 2, slitSeparation / 2];
+                    const numPointsPerSlit = 8;
+
+                    slitCenters.forEach(center => {
+                        for (let i = 0; i < numPointsPerSlit; i++) {
+                            const srcX = center - singleSlitWidth / 2 + (i / (numPointsPerSlit - 1)) * singleSlitWidth;
+                            const srcZ = barrierZ;
+
+                            const r = Math.sqrt((x - srcX) ** 2 + (z - srcZ) ** 2);
+                            if (r > 0.1) {
+                                totalHeight += Math.sin(k * r - omega * t) / Math.sqrt(r + 1) / numPointsPerSlit;
+                            }
+                        }
+                    });
+                    totalHeight *= 1.5;
+                } else {
+                    const r = Math.abs(z - sourceZ);
+                    totalHeight = Math.sin(k * r - omega * t) * 0.8;
+                }
+            }
+
+            return totalHeight * 0.3;
+        }
+
+        function updateWater() {
+            const positions = waterMesh.geometry.attributes.position;
+            const colors = waterMesh.geometry.attributes.color;
+
+            for (let i = 0; i < positions.count; i++) {
+                const x = positions.getX(i);
+                const z = positions.getZ(i);
+
+                const height = calculateWaveHeight(x, z, time);
+                positions.setY(i, height);
+
+                // Color based on height
+                const normalizedHeight = (height + 0.4) / 0.8;
+                const r = 0.1 + normalizedHeight * 0.5;
+                const g = 0.3 + normalizedHeight * 0.4;
+                const b = 0.7 + normalizedHeight * 0.3;
+
+                colors.setXYZ(i, r, g, b);
+            }
+
+            positions.needsUpdate = true;
+            colors.needsUpdate = true;
+            waterMesh.geometry.computeVertexNormals();
+        }
+
+        function animateSources() {
+            sourceSpheres.children.forEach(sphere => {
+                if (sphere.visible && sphere.pulseRing) {
+                    const scale = 1 + Math.sin(time * frequency * Math.PI * 2) * 0.5;
+                    sphere.pulseRing.scale.set(scale, scale, 1);
+                    sphere.pulseRing.material.opacity = 0.5 - scale * 0.15;
+                }
+            });
+        }
+
+        function setupControls() {
+            // Mode buttons
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    mode = btn.dataset.mode;
+
+                    // Show/hide relevant controls
+                    const distanceGroup = document.getElementById('distance-group');
+                    const slitGroup = document.getElementById('slit-group');
+
+                    distanceGroup.style.display = (mode === 'interference' || mode === 'double-slit') ? 'block' : 'none';
+                    slitGroup.style.display = (mode === 'slit' || mode === 'double-slit') ? 'block' : 'none';
+
+                    updateSources();
+                    updateBarrier();
+                    updateMaximaLines();
+                });
+            });
+
+            // View buttons
+            document.getElementById('view-3d').addEventListener('click', () => {
+                viewMode = '3d';
+                document.getElementById('view-3d').classList.add('active');
+                document.getElementById('view-top').classList.remove('active');
+                rotation = { x: 0.6, y: 0 };
+                updateCameraPosition();
+            });
+
+            document.getElementById('view-top').addEventListener('click', () => {
+                viewMode = 'top';
+                document.getElementById('view-top').classList.add('active');
+                document.getElementById('view-3d').classList.remove('active');
+                rotation = { x: Math.PI / 2, y: 0 };
+                updateCameraPosition();
+            });
+
+            // Sliders
+            document.getElementById('wavelength-slider').addEventListener('input', (e) => {
+                wavelength = parseFloat(e.target.value);
+                document.getElementById('wavelength-value').textContent = wavelength.toFixed(1) + ' м';
+                updateMaximaLines();
+            });
+
+            document.getElementById('frequency-slider').addEventListener('input', (e) => {
+                frequency = parseFloat(e.target.value);
+                document.getElementById('frequency-value').textContent = frequency.toFixed(1) + ' Гц';
+            });
+
+            document.getElementById('distance-slider').addEventListener('input', (e) => {
+                sourceDistance = parseFloat(e.target.value);
+                document.getElementById('distance-value').textContent = sourceDistance.toFixed(1) + ' м';
+                updateSources();
+                updateBarrier();
+                updateMaximaLines();
+            });
+
+            document.getElementById('slit-slider').addEventListener('input', (e) => {
+                slitWidth = parseFloat(e.target.value);
+                document.getElementById('slit-value').textContent = slitWidth.toFixed(1) + ' м';
+                updateBarrier();
+            });
+
+            // Toggles
+            document.getElementById('toggle-sources').addEventListener('change', (e) => {
+                showSources = e.target.checked;
+                updateSources();
+            });
+
+            document.getElementById('toggle-maxima').addEventListener('change', (e) => {
+                showMaxima = e.target.checked;
+                updateMaximaLines();
+            });
+
+            // Reset
+            document.getElementById('btn-reset').addEventListener('click', () => {
+                mode = 'single';
+                wavelength = 1.0;
+                frequency = 1.0;
+                sourceDistance = 3.0;
+                slitWidth = 2.0;
+                showSources = true;
+                showMaxima = false;
+                viewMode = '3d';
+                rotation = { x: 0.6, y: 0 };
+                pan = { x: 0, y: 0 };
+                time = 0;
+
+                document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                document.querySelector('.mode-btn[data-mode="single"]').classList.add('active');
+                document.getElementById('view-3d').classList.add('active');
+                document.getElementById('view-top').classList.remove('active');
+
+                document.getElementById('wavelength-slider').value = 1;
+                document.getElementById('frequency-slider').value = 1;
+                document.getElementById('distance-slider').value = 3;
+                document.getElementById('slit-slider').value = 2;
+                document.getElementById('wavelength-value').textContent = '1.0 м';
+                document.getElementById('frequency-value').textContent = '1.0 Гц';
+                document.getElementById('distance-value').textContent = '3.0 м';
+                document.getElementById('slit-value').textContent = '2.0 м';
+
+                document.getElementById('toggle-sources').checked = true;
+                document.getElementById('toggle-maxima').checked = false;
+
+                document.getElementById('distance-group').style.display = 'none';
+                document.getElementById('slit-group').style.display = 'none';
+
+                mainGroup.position.set(0, 0, 0);
+                updateCameraPosition();
+                updateSources();
+                updateBarrier();
+                updateMaximaLines();
+            });
+
+            // Mouse controls
+            renderer.domElement.addEventListener('contextmenu', e => e.preventDefault());
+
+            renderer.domElement.addEventListener('mousedown', (e) => {
+                if (e.button === 0) isDragging = true;
+                else if (e.button === 2) isPanning = true;
+                lastMouse = { x: e.clientX, y: e.clientY };
+            });
+
+            renderer.domElement.addEventListener('mousemove', (e) => {
+                const dx = e.clientX - lastMouse.x;
+                const dy = e.clientY - lastMouse.y;
+
+                if (isDragging && viewMode === '3d') {
+                    rotation.y += dx * 0.008;
+                    rotation.x += dy * 0.008;
+                    rotation.x = Math.max(0.2, Math.min(1.4, rotation.x));
+                }
+
+                if (isPanning) {
+                    pan.x -= dx * 0.02;
+                    pan.y += dy * 0.02;
+                    mainGroup.position.x = pan.x;
+                    mainGroup.position.z = -pan.y;
+                }
+
+                lastMouse = { x: e.clientX, y: e.clientY };
+            });
+
+            renderer.domElement.addEventListener('mouseup', () => {
+                isDragging = false;
+                isPanning = false;
+            });
+
+            renderer.domElement.addEventListener('mouseleave', () => {
+                isDragging = false;
+                isPanning = false;
+            });
+
+            renderer.domElement.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                camera.position.y = Math.max(5, Math.min(30, camera.position.y + e.deltaY * 0.02));
+                if (viewMode === '3d') {
+                    camera.position.z = Math.max(5, Math.min(25, camera.position.z + e.deltaY * 0.02));
+                }
+            }, { passive: false });
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            time += 0.016;
+
+            updateWater();
+            animateSources();
+
+            if (viewMode === '3d') {
+                mainGroup.rotation.y = rotation.y;
+                camera.position.y = 12 * Math.cos(rotation.x - 0.6) + 5;
+                camera.position.z = 14 * Math.sin(rotation.x - 0.6) + 8;
+                camera.lookAt(mainGroup.position);
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        init();
+    </script>
+<script>
+(function() {
+    const TEXT_MAP = {
+    "Волны на воде — Интерференция и дифракция": {
+        "kz": "Су толқындары — Интерференция және дифракция",
+        "en": "Water Waves — Interference and Diffraction"
+    },
+    "Интерференция • Дифракция • Принцип суперпозиции": {
+        "kz": "Интерференция • Дифракция • Суперпозиция принципі",
+        "en": "Interference • Diffraction • Superposition principle"
+    },
+    "Вид сверху": {
+        "kz": "Үстінен көрініс",
+        "en": "Top view"
+    },
+    "Параметры волн": {
+        "kz": "Толқын параметрлері",
+        "en": "Wave parameters"
+    },
+    "Длина волны λ": {
+        "kz": "Толқын ұзындығы λ",
+        "en": "Wavelength λ"
+    },
+    "Частота f": {
+        "kz": "Жиілік f",
+        "en": "Frequency f"
+    },
+    "Расстояние между источниками": {
+        "kz": "Көздер арасындағы қашықтық",
+        "en": "Distance between sources"
+    },
+    "Ширина щели": {
+        "kz": "Саңылау ені",
+        "en": "Slit width"
+    },
+    "Источники волн": {
+        "kz": "Толқын көздері",
+        "en": "Wave sources"
+    },
+    "Линии максимумов": {
+        "kz": "Максимум сызықтары",
+        "en": "Maxima lines"
+    },
+    "Интерференция": {
+        "kz": "Интерференция",
+        "en": "Interference"
+    },
+    "Дифракция": {
+        "kz": "Дифракция",
+        "en": "Diffraction"
+    },
+    "Условие максимума интерференции": {
+        "kz": "Интерференция максимумының шарты",
+        "en": "Constructive interference condition"
+    },
+    "Условие минимума": {
+        "kz": "Минимум шарты",
+        "en": "Destructive condition"
+    },
+    "Волновые явления": {
+        "kz": "Толқындық құбылыстар",
+        "en": "Wave Phenomena"
+    }
+,
+    "Волны на воде — 3D Модель": {
+        "kz": "Судағы толқындар — 3D Модель",
+        "en": "Waves on Water — 3D Model"
+    },
+    "🌊 Волны на воде": {
+        "kz": "🌊 Судағы толқындар",
+        "en": "🌊 Waves on Water"
+    },
+    "Интерференция • Дифракция • Волновые явления": {
+        "kz": "Интерференция • Дифракция • Толқындық құбылыстар",
+        "en": "Interference • Diffraction • Wave phenomena"
+    },
+    "3D вид": {
+        "kz": "3D көрініс",
+        "en": "3D view"
+    },
+    "Один источник": {
+        "kz": "Бір көзі",
+        "en": "Single source"
+    },
+    "Щель": {
+        "kz": "Саңылау",
+        "en": "Slit"
+    },
+    "Две щели": {
+        "kz": "Екі саңылау",
+        "en": "Two slits"
+    },
+    "Отображение": {
+        "kz": "Бейнелеу",
+        "en": "Display"
+    },
+    "↺ Сбросить": {
+        "kz": "↺ Қалпына келтіру",
+        "en": "↺ Reset"
+    },
+    "1.0 м": {
+        "kz": "1.0 м",
+        "en": "1.0 m"
+    },
+    "1.0 Гц": {
+        "kz": "1.0 Гц",
+        "en": "1.0 Hz"
+    },
+    "3.0 м": {
+        "kz": "3.0 м",
+        "en": "3.0 m"
+    },
+    "2.0 м": {
+        "kz": "2.0 м",
+        "en": "2.0 m"
+    },
+    "Амплитуда:": {
+        "kz": "Амплитуда:",
+        "en": "Amplitude:"
+    },
+    "Источник": {
+        "kz": "Көзі",
+        "en": "Source"
+    },
+    "ЛКМ — вращение • ПКМ — перемещение • Колёсико — зум": {
+        "kz": "Сол жақ батырма — айналдыру • Оң жақ батырма — жылжыту • Дөңгелек — масштабтау",
+        "en": "LMB — rotate • RMB — pan • Scroll — zoom"
+    },
+    "Наложение волн от двух источников. В точках, где волны приходят в фазе — усиление (светлые полосы), в противофазе — ослабление (тёмные полосы).": {
+        "kz": "Екі көзден толқындардың қабаттасуы. Толқындар фазада келетін нүктелерде — күшею (ашық жолақтар), қарсы фазада — әлсіреу (қараңғы жолақтар).",
+        "en": "Superposition of waves from two sources. At points where waves arrive in phase — amplification (bright bands), in antiphase — weakening (dark bands)."
+    },
+    "Огибание волнами препятствий. Каждая точка щели становится источником вторичных волн (принцип Гюйгенса).": {
+        "kz": "Толқындардың кедергілерді орап өтуі. Саңылаудың әр нүктесі екінші ретті толқындардың көзіне айналады (Гюйгенс принципі).",
+        "en": "Bending of waves around obstacles. Each point of the slit becomes a source of secondary waves (Huygens' principle)."
+    }
+,
+    "λ, где n = 0, ±1, ±2...": {
+        "kz": "λ, мұндағы n = 0, ±1, ±2...",
+        "en": "λ, where n = 0, ±1, ±2..."
+    }
+};
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentLang = urlParams.get('lang') || 'ru';
+
+    if (currentLang === 'ru') return; // No translation needed
+
+    function translateTextNodes(root) {
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
+        const nodes = [];
+        while (walker.nextNode()) nodes.push(walker.currentNode);
+        
+        nodes.forEach(node => {
+            let text = node.textContent;
+            if (!text || !text.trim()) return;
+            
+            const trimmed = text.trim();
+            if (TEXT_MAP[trimmed] && TEXT_MAP[trimmed][currentLang]) {
+                node.textContent = text.replace(trimmed, TEXT_MAP[trimmed][currentLang]);
+            }
+        });
+    }
+
+    function translateAttributes(root) {
+        root.querySelectorAll('[title]').forEach(el => {
+            const t = el.getAttribute('title');
+            if (TEXT_MAP[t] && TEXT_MAP[t][currentLang]) {
+                el.setAttribute('title', TEXT_MAP[t][currentLang]);
+            }
+        });
+        root.querySelectorAll('[placeholder]').forEach(el => {
+            const t = el.getAttribute('placeholder');
+            if (TEXT_MAP[t] && TEXT_MAP[t][currentLang]) {
+                el.setAttribute('placeholder', TEXT_MAP[t][currentLang]);
+            }
+        });
+        // Translate page title
+        const titleText = document.title.trim();
+        if (TEXT_MAP[titleText] && TEXT_MAP[titleText][currentLang]) {
+            document.title = TEXT_MAP[titleText][currentLang];
+        }
+    }
+
+    
+
+    function applyTranslations() {
+        translateTextNodes(document.body);
+        translateAttributes(document);
+        if (typeof translateData === 'function') translateData(currentLang);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', applyTranslations);
+    } else {
+        applyTranslations();
+    }
+
+    // Re-translate after dynamic content changes
+    window.currentLang = currentLang;
+    window._currentLang = currentLang;
+    window._TEXT_MAP = TEXT_MAP;
+
+    // One-time delayed re-translate for dynamic content
+    let _tc=0;const _ti=setInterval(()=>{translateTextNodes(document.body);translateAttributes(document);if(++_tc>=20)clearInterval(_ti);},500);
+})();
+</script>
+</body>
+</html>

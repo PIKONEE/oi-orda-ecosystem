@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Электродвигатель Постоянного Тока</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #10141a;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            color: #e2e8f0;
+        }
+
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        .header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 20px;
+            text-align: center;
+            background: linear-gradient(180deg, rgba(16, 20, 26, 0.9) 0%, transparent 100%);
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        h1 {
+            color: #3b82f6;
+            margin: 0;
+            font-size: 24px;
+            text-transform: uppercase;
+            text-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+        }
+
+        .control-panel {
+            position: absolute;
+            top: 80px;
+            left: 20px;
+            width: 300px;
+            background: rgba(23, 29, 39, 0.9);
+            border-radius: 12px;
+            padding: 20px;
+            z-index: 10;
+            border-left: 4px solid #3b82f6;
+            max-height: calc(100vh - 100px);
+            overflow-y: auto;
+        }
+
+        .slider-group {
+            margin-bottom: 15px;
+        }
+
+        .slider-group label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            color: #cbd5e1;
+            margin-bottom: 5px;
+        }
+
+        .slider-group label span.value {
+            color: #3b82f6;
+            font-weight: bold;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+            accent-color: #3b82f6;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            background: #3b82f6;
+            border: none;
+            border-radius: 6px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .btn:hover {
+            background: #2563eb;
+        }
+
+        .checkbox-item {
+            margin-top: 8px;
+            font-size: 13px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            color: #cbd5e1;
+        }
+
+        .info-panel {
+            position: absolute;
+            top: 80px;
+            right: 20px;
+            width: 220px;
+            background: rgba(23, 29, 39, 0.9);
+            border-radius: 12px;
+            padding: 15px;
+            z-index: 10;
+            border-right: 4px solid #f59e0b;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+
+        .stat-val {
+            font-weight: bold;
+            color: #fff;
+            font-family: monospace;
+        }
+
+        .legend {
+            margin-top: 15px;
+            font-size: 11px;
+            color: #94a3b8;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .hint {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            text-align: center;
+            font-size: 12px;
+            color: #aaa;
+            pointer-events: none;
+            z-index: 5;
+        }
+    </style>
+</head>
+<body>
+<script>
+/* i18n */
+(function(){
+  var lang=new URLSearchParams(location.search).get('lang')||'ru';
+  var T={
+    ru:{title:'⚡ Электродвигатель (DC)',lbl_volt:'Напряжение (U):',btn_rev:'🔄 Сменить полярность',
+      cb1:'Магнитное поле (B)',cb2:'Сила Лоренца (F)',cb3:'Ток (Частицы)',
+      leg1:'Север (N)',leg2:'Юг (S)',leg3:'Сила (F)',leg4:'Электроны',
+      sl_rpm:'Скорость:',sl_cur:'Ток:',sl_pow:'Мощность:',
+      hint:'ЛКМ - Вращение • ПКМ - Панорама • Колесо - Зум',
+      vUnit:' В',wUnit:' Вт'},
+    kz:{title:'⚡ Электр қозғалтқышы (DC)',lbl_volt:'Кернеу (U):',btn_rev:'🔄 Полярлықты ауыстыру',
+      cb1:'Магнит өрісі (B)',cb2:'Лоренц күші (F)',cb3:'Ток (Бөлшектер)',
+      leg1:'Солтүстік (N)',leg2:'Оңтүстік (S)',leg3:'Күш (F)',leg4:'Электрондар',
+      sl_rpm:'Жылдамдық:',sl_cur:'Ток:',sl_pow:'Қуат:',
+      hint:'СТ - Айналу • ОТ - Панорама • Доңғалақ - Зум',
+      vUnit:' В',wUnit:' Вт'},
+    en:{title:'⚡ DC Electric Motor',lbl_volt:'Voltage (U):',btn_rev:'🔄 Reverse polarity',
+      cb1:'Magnetic field (B)',cb2:'Lorentz force (F)',cb3:'Current (Particles)',
+      leg1:'North (N)',leg2:'South (S)',leg3:'Force (F)',leg4:'Electrons',
+      sl_rpm:'Speed:',sl_cur:'Current:',sl_pow:'Power:',
+      hint:'LMB - Rotate • RMB - Pan • Wheel - Zoom',
+      vUnit:' V',wUnit:' W'}
+  };
+  window._t=T[lang]||T.ru;
+  document.addEventListener('DOMContentLoaded',function(){
+    var t=window._t;
+    var h1=document.querySelector('.header h1');if(h1)h1.textContent=t.title;
+    var sl=document.querySelectorAll('.slider-group label > span:first-child');
+    if(sl[0])sl[0].textContent=t.lbl_volt;
+    var btn=document.querySelector('.btn');if(btn)btn.textContent=t.btn_rev;
+    var cb=document.querySelectorAll('.checkbox-item label');
+    if(cb[0])cb[0].textContent=t.cb1;
+    if(cb[1])cb[1].textContent=t.cb2;
+    if(cb[2])cb[2].textContent=t.cb3;
+    var li=document.querySelectorAll('.legend-item');
+    if(li[0])li[0].lastChild.textContent=' '+t.leg1;
+    if(li[1])li[1].lastChild.textContent=' '+t.leg2;
+    if(li[2])li[2].lastChild.textContent=' '+t.leg3;
+    if(li[3])li[3].lastChild.textContent=' '+t.leg4;
+    var sr=document.querySelectorAll('.stat-row > span:first-child');
+    if(sr[0])sr[0].textContent=t.sl_rpm;
+    if(sr[1])sr[1].textContent=t.sl_cur;
+    if(sr[2])sr[2].textContent=t.sl_pow;
+    var hint=document.querySelector('.hint');if(hint)hint.textContent=t.hint;
+  });
+})();
+</script>
+
+<div id="canvas-container"></div>
+
+<div class="header">
+    <h1>⚡ Электродвигатель (DC)</h1>
+</div>
+
+<div class="control-panel">
+    <div class="slider-group">
+        <label><span>Напряжение (U):</span><span class="value" id="val-voltage">0 В</span></label>
+        <input type="range" id="input-voltage" min="-12" max="12" step="1" value="0">
+    </div>
+    <button class="btn" onclick="reversePolarity()">🔄 Сменить полярность</button>
+
+    <div class="checkbox-item">
+        <input type="checkbox" id="check-field" checked>
+        <label for="check-field">Магнитное поле (B)</label>
+    </div>
+    <div class="checkbox-item">
+        <input type="checkbox" id="check-force" checked>
+        <label for="check-force">Сила Лоренца (F)</label>
+    </div>
+    <div class="checkbox-item">
+        <input type="checkbox" id="check-current" checked>
+        <label for="check-current">Ток (Частицы)</label>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item">
+            <div class="dot" style="background:#ef4444"></div>
+            Север (N)
+        </div>
+        <div class="legend-item">
+            <div class="dot" style="background:#3b82f6"></div>
+            Юг (S)
+        </div>
+        <div class="legend-item">
+            <div class="dot" style="background:#22c55e"></div>
+            Сила (F)
+        </div>
+        <div class="legend-item">
+            <div class="dot" style="background:#facc15"></div>
+            Электроны
+        </div>
+    </div>
+</div>
+
+<div class="info-panel">
+    <div class="stat-row"><span>Скорость:</span> <span class="stat-val" id="stat-rpm">0 RPM</span></div>
+    <div class="stat-row"><span>Ток:</span> <span class="stat-val" id="stat-current">0.0 A</span></div>
+    <div class="stat-row"><span>Мощность:</span> <span class="stat-val" id="stat-power">0 Вт</span></div>
+</div>
+
+<div class="hint">ЛКМ - Вращение • ПКМ - Панорама • Колесо - Зум</div>
+
+<script type="importmap">
+    {
+        "imports": {
+            "three": "../../libs/vendor/three-0.160.0/three.module.js",
+            "three/addons/": "../../libs/vendor/three-0.160.0/addons/"
+        }
+    }
+</script>
+
+<script type="module">
+    import * as THREE from 'three';
+    import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+
+    const CONFIG = {
+        colorN: 0xef4444, // Red
+        colorS: 0x3b82f6, // Blue
+        colorCopper: 0xd97706, // Copper
+        colorSteel: 0xbdc3c7, // Silver
+        colorForce: 0x22c55e, // Green
+        colorField: 0x64748b,
+        colorCurrent: 0xfacc15
+    };
+
+    let state = {voltage: 0, speed: 0, angle: 0, resistance: 2.0};
+    let scene, camera, renderer, controls;
+    let rotorGroup, forceArrowL, forceArrowR, fieldLines;
+    let particlesSystem, particlePositions, particleSpeeds;
+
+    function init() {
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x10141a);
+        scene.fog = new THREE.Fog(0x10141a, 50, 200); // Light fog
+
+        camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(15, 15, 20);
+        camera.lookAt(0, 0, 0);
+
+        renderer = new THREE.WebGLRenderer({antialias: true});
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = false;
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        // --- LIGHTING (High Visibility) ---
+        const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambient);
+
+        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.6);
+        scene.add(hemiLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+        dirLight.position.set(10, 20, 10);
+        dirLight.castShadow = true;
+        scene.add(dirLight);
+
+        // Fill lights
+        const pl1 = new THREE.PointLight(0xffffff, 0.5);
+        pl1.position.set(-10, 5, 10);
+        scene.add(pl1);
+        const pl2 = new THREE.PointLight(0xffffff, 0.5);
+        pl2.position.set(10, -5, -10);
+        scene.add(pl2);
+
+        controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+
+        createScene();
+        setupUI();
+        window.addEventListener('resize', onResize);
+        animate();
+    }
+
+    function createScene() {
+        // Base
+        const base = new THREE.Mesh(
+                new THREE.BoxGeometry(16, 1, 12),
+                new THREE.MeshPhongMaterial({color: 0x1e293b})
+        );
+        base.position.y = -3.5;
+        base.receiveShadow = true;
+        scene.add(base);
+
+        // --- STATOR (Magnets) ---
+        // N Pole (Red)
+        const matN = new THREE.MeshPhongMaterial({color: CONFIG.colorN, shininess: 100});
+        const magN = new THREE.Mesh(new THREE.BoxGeometry(4, 6, 6), matN);
+        magN.position.set(-5, 0, 0);
+        magN.castShadow = true;
+        scene.add(magN);
+
+        // S Pole (Blue)
+        const matS = new THREE.MeshPhongMaterial({color: CONFIG.colorS, shininess: 100});
+        const magS = new THREE.Mesh(new THREE.BoxGeometry(4, 6, 6), matS);
+        magS.position.set(5, 0, 0);
+        magS.castShadow = true;
+        scene.add(magS);
+
+        // Pole Shoes (Curved)
+        const poleGeo = new THREE.CylinderGeometry(3.5, 3.5, 6, 32, 1, true, Math.PI * 0.75, Math.PI * 0.5);
+        const poleMat = new THREE.MeshPhongMaterial({color: 0x64748b, side: THREE.DoubleSide});
+
+        const shoeN = new THREE.Mesh(poleGeo, poleMat);
+        shoeN.rotation.z = Math.PI / 2;
+        shoeN.rotation.y = Math.PI / 2;
+        shoeN.position.set(-3, 0, 0);
+        scene.add(shoeN);
+
+        const shoeS = new THREE.Mesh(poleGeo, poleMat);
+        shoeS.rotation.z = Math.PI / 2;
+        shoeS.rotation.y = -Math.PI / 2;
+        shoeS.position.set(3, 0, 0);
+        scene.add(shoeS);
+
+        // --- ROTOR ---
+        rotorGroup = new THREE.Group();
+        scene.add(rotorGroup);
+
+        // Shaft
+        const shaft = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.3, 0.3, 14, 16),
+                new THREE.MeshPhongMaterial({color: CONFIG.colorSteel, shininess: 100})
+        );
+        shaft.rotation.x = Math.PI / 2;
+        rotorGroup.add(shaft);
+
+        // Core
+        const core = new THREE.Mesh(
+                new THREE.CylinderGeometry(2.5, 2.5, 4, 16),
+                new THREE.MeshPhongMaterial({color: 0x334155})
+        );
+        core.rotation.x = Math.PI / 2;
+        rotorGroup.add(core);
+
+        // Coil (Copper Loop)
+        const wireMat = new THREE.MeshPhongMaterial({color: CONFIG.colorCopper, shininess: 50});
+
+        // Top Wire
+        const wTop = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 6, 8), wireMat);
+        wTop.rotation.x = Math.PI / 2;
+        wTop.position.y = 2.7;
+        rotorGroup.add(wTop);
+
+        // Bottom Wire
+        const wBot = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 6, 8), wireMat);
+        wBot.rotation.x = Math.PI / 2;
+        wBot.position.y = -2.7;
+        rotorGroup.add(wBot);
+
+        // Sides
+        const wSide = new THREE.Mesh(new THREE.BoxGeometry(0.4, 5.4, 0.4), wireMat);
+        wSide.position.z = 3;
+        rotorGroup.add(wSide);
+        const wSide2 = wSide.clone();
+        wSide2.position.z = -3;
+        rotorGroup.add(wSide2);
+
+        // Commutator (Split Ring)
+        const commMat = new THREE.MeshPhongMaterial({color: 0xfacc15, shininess: 80});
+        const commGeo = new THREE.CylinderGeometry(0.8, 0.8, 1.5, 32, 1, false, 0.2, Math.PI - 0.4);
+
+        const comm1 = new THREE.Mesh(commGeo, commMat);
+        comm1.rotation.x = Math.PI / 2;
+        comm1.position.z = 4.5;
+        rotorGroup.add(comm1);
+
+        const comm2 = new THREE.Mesh(commGeo, commMat);
+        comm2.rotation.x = Math.PI / 2;
+        comm2.rotation.y = Math.PI;
+        comm2.position.z = 4.5;
+        rotorGroup.add(comm2);
+
+        // --- BRUSHES ---
+        const brushMat = new THREE.MeshPhongMaterial({color: 0x111111});
+        const brushTop = new THREE.Mesh(new THREE.BoxGeometry(0.6, 1.5, 1), brushMat);
+        brushTop.position.set(0, 1.3, 4.5);
+        scene.add(brushTop);
+        const brushBot = new THREE.Mesh(new THREE.BoxGeometry(0.6, 1.5, 1), brushMat);
+        brushBot.position.set(0, -1.3, 4.5);
+        scene.add(brushBot);
+
+        // --- FIELD LINES ---
+        const lineMat = new THREE.LineBasicMaterial({color: 0xffffff, transparent: true, opacity: 0.2});
+        const points = [];
+        for (let y = -2; y <= 2; y += 1) {
+            for (let z = -2; z <= 2; z += 1) {
+                points.push(new THREE.Vector3(-3, y, z));
+                points.push(new THREE.Vector3(3, y, z));
+            }
+        }
+        const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
+        fieldLines = new THREE.LineSegments(lineGeo, lineMat);
+        scene.add(fieldLines);
+
+        // --- FORCE ARROWS ---
+        const arrowHead = new THREE.ConeGeometry(0.4, 1, 16);
+        const arrowShaft = new THREE.CylinderGeometry(0.1, 0.1, 3, 8);
+        const arrowMat = new THREE.MeshBasicMaterial({color: CONFIG.colorForce});
+
+        const makeArrow = () => {
+            const grp = new THREE.Group();
+            const s = new THREE.Mesh(arrowShaft, arrowMat);
+            s.position.y = 1.5;
+            const h = new THREE.Mesh(arrowHead, arrowMat);
+            h.position.y = 3.5;
+            grp.add(s, h);
+            return grp;
+        }
+
+        forceArrowL = makeArrow(); // Attached to Top Wire
+        forceArrowL.position.y = 2.7;
+        forceArrowL.rotation.z = -Math.PI / 2; // Point Left
+        rotorGroup.add(forceArrowL);
+
+        forceArrowR = makeArrow(); // Attached to Bot Wire
+        forceArrowR.position.y = -2.7;
+        forceArrowR.rotation.z = Math.PI / 2; // Point Right
+        rotorGroup.add(forceArrowR);
+
+        // --- PARTICLES (Electricity) ---
+        const pCount = 100;
+        const pGeo = new THREE.BufferGeometry();
+        const pPos = new Float32Array(pCount * 3);
+        pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+        const pMat = new THREE.PointsMaterial({color: CONFIG.colorCurrent, size: 0.3});
+        particlesSystem = new THREE.Points(pGeo, pMat);
+        rotorGroup.add(particlesSystem);
+
+        particlePositions = [];
+        for (let i = 0; i < pCount; i++) particlePositions.push(Math.random() * 24); // path length
+    }
+
+    function updatePhysics(dt) {
+        // Speed Logic
+        const targetSpeed = state.voltage * 2; // rad/s
+        state.speed += (targetSpeed - state.speed) * 2.0 * dt;
+        state.angle += state.speed * dt;
+
+        rotorGroup.rotation.z = -state.angle;
+
+        // Current & Power
+        const current = Math.abs(state.voltage) / state.resistance;
+        const power = Math.abs(state.voltage * current);
+
+        document.getElementById('stat-rpm').innerText = Math.round(state.speed * 9.55) + " RPM";
+        document.getElementById('stat-current').innerText = current.toFixed(1) + " A";
+        document.getElementById('stat-power').innerText = Math.round(power) + (window._t?window._t.wUnit:' Вт');
+
+        // Force Arrows Visibility
+        const hasPower = Math.abs(state.voltage) > 0;
+        const showForce = document.getElementById('check-force').checked && hasPower;
+
+        forceArrowL.visible = showForce;
+        forceArrowR.visible = showForce;
+
+        // Keep Force arrows Tangential visually
+        // In local space, Top wire is at +Y. Force for CW rotation (V>0) should be -X (Left).
+        // Arrow L is pointing -X. Perfect.
+        // If V<0, we need to flip arrows.
+        const dir = state.voltage >= 0 ? 1 : -1;
+        forceArrowL.rotation.z = -Math.PI / 2 * dir;
+        forceArrowR.rotation.z = Math.PI / 2 * dir;
+
+        // Particles
+        updateParticles(dt, current, dir);
+    }
+
+    function updateParticles(dt, current, dir) {
+        const show = document.getElementById('check-current').checked && current > 0.1;
+        particlesSystem.visible = show;
+        if (!show) return;
+
+        const positions = particlesSystem.geometry.attributes.position.array;
+        const speed = current * 5 * dt * dir; // Direction depends on polarity
+
+        for (let i = 0; i < particlePositions.length; i++) {
+            // Update linear pos
+            particlePositions[i] += speed;
+            if (particlePositions[i] > 24) particlePositions[i] -= 24;
+            if (particlePositions[i] < 0) particlePositions[i] += 24;
+
+            // Map linear pos to rectangular loop
+            // Loop: Top(-Z->+Z) -> Back(Y->-Y) -> Bot(+Z->-Z) -> Front(-Y->Y)
+            // Lengths approx: 6, 5.4, 6, 5.4 -> Total ~22.8. Let's use 24 range.
+            let p = particlePositions[i];
+            let x = 0, y = 0, z = 0;
+
+            // Simple rectangle approximation for visuals
+            if (p < 6) { // Top wire
+                y = 2.7;
+                z = -3 + p;
+            } else if (p < 12) { // Back
+                z = 3;
+                y = 2.7 - (p - 6);
+            } else if (p < 18) { // Bot wire
+                y = -2.7;
+                z = 3 - (p - 12);
+            } else { // Front
+                z = -3;
+                y = -2.7 + (p - 18);
+            }
+
+            // Jitter for volume
+            x = (Math.random() - 0.5) * 0.2;
+
+            positions[i * 3] = x;
+            positions[i * 3 + 1] = y;
+            positions[i * 3 + 2] = z;
+        }
+        particlesSystem.geometry.attributes.position.needsUpdate = true;
+    }
+
+    window.reversePolarity = () => {
+        const el = document.getElementById('input-voltage');
+        el.value = -parseInt(el.value);
+        el.dispatchEvent(new Event('input'));
+    };
+
+    function setupUI() {
+        const slider = document.getElementById('input-voltage');
+        slider.addEventListener('input', (e) => {
+            state.voltage = parseInt(e.target.value);
+            document.getElementById('val-voltage').innerText = state.voltage + (window._t?window._t.vUnit:' В');
+        });
+        document.getElementById('check-field').addEventListener('change', (e) => fieldLines.visible = e.target.checked);
+    }
+
+    function onResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+        updatePhysics(0.016);
+        controls.update();
+        renderer.render(scene, camera);
+    }
+
+    window.onload = init;
+</script>
+</body>
+</html>

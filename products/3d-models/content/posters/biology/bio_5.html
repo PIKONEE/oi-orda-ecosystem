@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="page_title">Череп человека — анатомическая модель</title>
+    <link rel="stylesheet" href="_poster.css">
+</head>
+<body>
+<div id="canvas-container"></div>
+<div id="header">
+    <h1 data-i18n="header_title">Череп человека</h1>
+    <p data-i18n="header_subtitle">Интерактивная анатомическая модель — 8 ключевых костей</p>
+</div>
+<div id="hint" data-i18n="hint">Кликните по любой части черепа, чтобы узнать о кости</div>
+<button id="reset-btn" data-i18n="reset_btn" data-i18n-title="reset_btn_title" title="Сбросить вид">↺ Сбросить вид</button>
+<div id="info-panel" aria-hidden="true">
+    <button class="close-btn" id="close-btn" data-i18n-aria-label="close_btn_label" aria-label="Закрыть">×</button>
+    <div class="info-header"><span class="info-dot" id="info-dot"></span><div><h2 id="info-title">Название</h2><span id="info-subtitle"></span></div></div>
+    <p id="info-desc">Описание</p>
+    <div id="info-facts"></div>
+</div>
+<div id="legend"></div>
+<div id="hover-label"></div>
+<div id="loading"><div class="spinner"></div><div id="loading-text" data-i18n="loading">Загрузка модели черепа…</div></div>
+
+<script type="importmap">
+    { "imports": { "three": "../../libs/vendor/three-0.160.0/three.module.js", "three/addons/": "../../libs/vendor/three-0.160.0/addons/" } }
+</script>
+
+<script type="module">
+    import { initPoster } from './_poster_lib.js';
+
+    const I18N = {
+        ru: {
+            page_title: 'Череп человека — анатомическая модель',
+            header_title: 'Череп человека',
+            header_subtitle: 'Интерактивная анатомическая модель — 8 ключевых костей',
+            hint: 'Кликните по любой части черепа, чтобы узнать о кости',
+            reset_btn: '↺ Сбросить вид', reset_btn_title: 'Сбросить вид', close_btn_label: 'Закрыть',
+            loading: 'Загрузка модели черепа…', error_load: 'Не удалось загрузить skull.glb', error_no_mesh: 'В модели нет меша',
+            facts_label: 'Интересный факт',
+            zones: {
+                os_frontale: { title: 'Лобная кость', desc: 'Плоская кость, образующая переднюю часть свода черепа и верхнюю стенку глазниц. Защищает лобные доли мозга. Содержит лобные пазухи — воздушные полости, уменьшающие массу черепа и участвующие в формировании голоса.', facts: 'У новорождённых лобная кость состоит из двух половин, соединённых лобным швом, который зарастает к 6–8 годам.' },
+                os_parietale: { title: 'Теменная кость', desc: 'Парная четырёхугольная кость, формирующая свод (крышу) черепа. Правая и левая теменные кости соединяются по срединной линии сагиттальным швом. Защищает верхние отделы мозга.', facts: 'Толщина теменной кости в среднем 4–5 мм, но на отдельных участках может достигать 1 см.' },
+                os_occipitale: { title: 'Затылочная кость', desc: 'Непарная кость, замыкающая череп сзади и снизу. Имеет большое затылочное отверстие (foramen magnum), через которое головной мозг соединяется со спинным. Снизу — мыщелки для сочленения с первым шейным позвонком.', facts: 'Через большое затылочное отверстие проходят продолговатый мозг, позвоночные артерии и спинномозговые оболочки.' },
+                os_temporale_l: { title: 'Левая височная кость', desc: 'Сложная парная кость на боковой поверхности черепа. Содержит орган слуха и вестибулярный аппарат, канал внутренней сонной артерии и шиловидный отросток. Участвует в образовании височно-нижнечелюстного сустава.', facts: 'Внутри височной кости находится среднее ухо — полость размером с горошину, содержащая три самые маленькие кости тела: молоточек, наковальню и стремечко.' },
+                os_temporale_r: { title: 'Правая височная кость', desc: 'Зеркальная пара левой височной кости. Формирует боковую стенку и часть основания черепа. Сосцевидный отросток — место прикрепления грудино-ключично-сосцевидной мышцы, отвечающей за повороты головы.', facts: 'Каменистая часть (пирамида) височной кости — самая твёрдая кость в организме человека.' },
+                os_nasale: { title: 'Носовые кости и глазницы', desc: 'Носовые кости — две тонкие продолговатые пластинки, образующие спинку носа. Глазницы (орбиты) — парные впадины, защищающие глазные яблоки, слёзные железы, мышцы и нервы глаза. Стенки орбит образованы семью костями.', facts: 'Объём каждой глазницы около 30 мл, а глазное яблоко занимает лишь пятую часть этого пространства.' },
+                os_zygomaticum: { title: 'Скуловая кость', desc: 'Парная кость, формирующая выступ щеки и нижнебоковой край глазницы. Соединяет верхнюю челюсть, лобную и височную кости, образуя скуловую дугу — важный ориентир в анатомии лица.', facts: 'Скуловая дуга — место прикрепления жевательной мышцы, одной из самых сильных мышц тела (сила сжатия до 70 кг).' },
+                maxilla: { title: 'Верхняя и нижняя челюсти', desc: 'Верхняя челюсть (maxilla) — парная кость, участвующая в образовании глазниц, носовой и ротовой полостей. Содержит гайморову пазуху и лунки для верхних зубов. Нижняя челюсть (mandibula) — единственная подвижная кость черепа, обеспечивающая жевание и речь.', facts: 'Нижняя челюсть — самая крупная и прочная кость лицевого скелета. Сила укуса человека достигает 70–80 кг.' }
+            }
+        },
+        kz: {
+            page_title: 'Адам бас сүйегі — анатомиялық модель',
+            header_title: 'Адам бас сүйегі',
+            header_subtitle: 'Интерактивті анатомиялық модель — 8 негізгі сүйек',
+            hint: 'Сүйек туралы білу үшін бас сүйегінің кез келген бөлігіне басыңыз',
+            reset_btn: '↺ Көріністі қалпына келтіру', reset_btn_title: 'Көріністі қалпына келтіру', close_btn_label: 'Жабу',
+            loading: 'Бас сүйек моделі жүктелуде…', error_load: 'skull.glb файлын жүктеу мүмкін болмады', error_no_mesh: 'Модельде меш табылмады',
+            facts_label: 'Қызықты факт',
+            zones: {
+                os_frontale: { title: 'Маңдай сүйегі', desc: 'Бас сүйек күмбезінің алдыңғы бөлігін және көз шарасының жоғарғы қабырғасын құрайтын жалпақ сүйек. Мидың маңдай бөліктерін қорғайды. Маңдай қойнауларын — бас сүйек массасын азайтып, дауыс резонансына қатысатын ауа қуыстарын қамтиды.', facts: 'Жаңа туған нәрестеде маңдай сүйегі маңдай тігісімен байланысқан екі бөліктен тұрады, ол 6–8 жасқа қарай бітіседі.' },
+                os_parietale: { title: 'Төбе сүйегі', desc: 'Бас сүйек күмбезін (шатырын) құрайтын жұп төртбұрышты сүйек. Оң және сол төбе сүйектері орта сызық бойымен сагиттальды тігіспен қосылады. Мидың жоғарғы бөлімдерін қорғайды.', facts: 'Төбе сүйегінің орташа қалыңдығы 4–5 мм, бірақ кейбір учаскелерде 1 см-ге дейін жетуі мүмкін.' },
+                os_occipitale: { title: 'Шүйде сүйегі', desc: 'Бас сүйекті артынан және төменнен жабатын жұпсыз сүйек. Үлкен шүйде тесігі (foramen magnum) бар — ол арқылы ми жұлынмен байланысады. Төменгі бетінде бірінші мойын омыртқасымен буындасатын бүртіктер бар.', facts: 'Үлкен шүйде тесігі арқылы сопақша ми, омыртқа артериялары және жұлын қабықтары өтеді.' },
+                os_temporale_l: { title: 'Сол жақ самай сүйегі', desc: 'Бас сүйектің бүйір бетіндегі күрделі жұп сүйек. Есту мүшесі мен вестибулярлық аппаратты, ішкі ұйқы артериясының каналын және бізтәрізді өсіндіні қамтиды. Самай-төменгі жақ буынының құрамына кіреді.', facts: 'Самай сүйегінің ішінде ортаңғы құлақ орналасқан — бұршақ көлеміндегі қуыс, оның ішінде дененің ең кішкентай үш сүйегі: балғашық, төс және үзеңгі бар.' },
+                os_temporale_r: { title: 'Оң жақ самай сүйегі', desc: 'Сол жақ самай сүйегінің айна жұбы. Бас сүйектің бүйір қабырғасын және негізінің бір бөлігін құрайды. Емізікшетәрізді өсіндісі — бас бұруға жауапты төс-бұғана-емізікше бұлшықетінің бекіну орны.', facts: 'Самай сүйегінің тасты бөлігі (пирамидасы) — адам ағзасындағы ең қатты сүйек.' },
+                os_nasale: { title: 'Мұрын сүйектері және көз шаралары', desc: 'Мұрын сүйектері — мұрын тұсын құрайтын екі жіңішке ұзынша пластина. Көз шаралары (орбиталар) — көз алмаларын, жас бездерін, көз бұлшықеттерін және жүйкелерін қорғайтын жұп ойыстар.', facts: 'Әр көз шарасының көлемі шамамен 30 мл, ал көз алмасы бұл кеңістіктің тек бестен бір бөлігін алады.' },
+                os_zygomaticum: { title: 'Бет сүйегі', desc: 'Бет шығыңқылығын және көз шарасының төменгі-бүйір шетін құрайтын жұп сүйек. Жоғарғы жақ, маңдай және самай сүйектерін байланыстырып, бет сүйек доғасын құрайды.', facts: 'Бет сүйек доғасы — дененің ең күшті бұлшықеттерінің бірі болып табылатын шайнау бұлшықетінің (қысу күші 70 кг-ға дейін) бекіну орны.' },
+                maxilla: { title: 'Жоғарғы және төменгі жақтар', desc: 'Жоғарғы жақ (maxilla) — көз шараларын, мұрын және ауыз қуыстарын құруға қатысатын жұп сүйек. Гаймор қойнауын және жоғарғы тістердің ұяшықтарын қамтиды. Төменгі жақ (mandibula) — бас сүйектің жалғыз қозғалмалы сүйегі, шайнау мен сөйлеуді қамтамасыз етеді.', facts: 'Төменгі жақ — бет сүйегінің ең ірі және берік сүйегі. Адамның тістеу күші 70–80 кг-ға жетеді.' }
+            }
+        },
+        en: {
+            page_title: 'Human Skull — Anatomical Model',
+            header_title: 'Human Skull',
+            header_subtitle: 'Interactive anatomical model — 8 key bones',
+            hint: 'Click any part of the skull to learn about the bone',
+            reset_btn: '↺ Reset view', reset_btn_title: 'Reset view', close_btn_label: 'Close',
+            loading: 'Loading skull model…', error_load: 'Failed to load skull.glb', error_no_mesh: 'No mesh found in the model',
+            facts_label: 'Did you know?',
+            zones: {
+                os_frontale: { title: 'Frontal Bone', desc: 'A flat bone forming the anterior part of the cranial vault and the superior wall of the orbits. It protects the frontal lobes of the brain. Contains frontal sinuses — air-filled cavities that reduce skull weight and contribute to voice resonance.', facts: 'In newborns the frontal bone consists of two halves joined by the frontal suture, which fuses by age 6–8.' },
+                os_parietale: { title: 'Parietal Bone', desc: 'A paired quadrilateral bone forming the vault (roof) of the skull. The right and left parietal bones are joined along the midline by the sagittal suture. They protect the upper portions of the brain.', facts: 'The average thickness of the parietal bone is 4–5 mm, but it can reach up to 1 cm in certain areas.' },
+                os_occipitale: { title: 'Occipital Bone', desc: 'An unpaired bone that closes the skull posteriorly and inferiorly. Contains the foramen magnum, through which the brain connects with the spinal cord. On its inferior surface are condyles for articulation with the first cervical vertebra.', facts: 'The medulla oblongata, vertebral arteries and spinal meninges all pass through the foramen magnum.' },
+                os_temporale_l: { title: 'Left Temporal Bone', desc: 'A complex paired bone on the lateral surface of the skull. Houses the organs of hearing and balance, the internal carotid canal, and the styloid process. Participates in forming the temporomandibular joint.', facts: 'Inside the temporal bone lies the middle ear — a pea-sized cavity containing the three smallest bones in the body: the malleus, incus, and stapes.' },
+                os_temporale_r: { title: 'Right Temporal Bone', desc: 'The mirror pair of the left temporal bone. Forms the lateral wall and part of the cranial base. The mastoid process serves as an attachment point for the sternocleidomastoid muscle, responsible for turning the head.', facts: 'The petrous part (pyramid) of the temporal bone is the hardest bone in the human body.' },
+                os_nasale: { title: 'Nasal Bones & Orbits', desc: 'The nasal bones are two thin oblong plates forming the bridge of the nose. The orbits are paired cavities protecting the eyeballs, lacrimal glands, eye muscles and nerves. The walls of each orbit are formed by seven cranial bones.', facts: 'Each orbit has a volume of about 30 mL, yet the eyeball occupies only one-fifth of that space.' },
+                os_zygomaticum: { title: 'Zygomatic Bone', desc: 'A paired bone forming the prominence of the cheek and the inferolateral rim of the orbit. It connects the maxilla, frontal and temporal bones, forming the zygomatic arch — an important facial landmark.', facts: 'The zygomatic arch serves as the attachment site for the masseter muscle — one of the strongest muscles in the body (bite force up to 70 kg).' },
+                maxilla: { title: 'Maxilla & Mandible', desc: 'The maxilla is a paired bone contributing to the orbits, nasal and oral cavities. It contains the maxillary sinus and sockets for the upper teeth. The mandible is the only movable bone of the skull, enabling chewing and speech.', facts: 'The mandible is the largest and strongest bone of the facial skeleton. Human bite force can reach 70–80 kg.' }
+            }
+        }
+    };
+
+    const ZONES = [
+        { id: 'os_frontale',    subtitle: 'Os frontale',           color: 0xff6b6b },
+        { id: 'os_parietale',   subtitle: 'Os parietale',          color: 0x4d96ff },
+        { id: 'os_occipitale',  subtitle: 'Os occipitale',         color: 0xffd93d },
+        { id: 'os_temporale_l', subtitle: 'Os temporale (sin.)',   color: 0x6bcb77 },
+        { id: 'os_temporale_r', subtitle: 'Os temporale (dex.)',   color: 0xc77dff },
+        { id: 'os_nasale',      subtitle: 'Ossa nasalia & Orbita', color: 0x00c9a7 },
+        { id: 'os_zygomaticum', subtitle: 'Os zygomaticum',        color: 0xff9f45 },
+        { id: 'maxilla',        subtitle: 'Maxilla & Mandibula',   color: 0xf472b6 }
+    ];
+
+    // classify(x, y, z) — normalized coords: x right, y up, z front.
+    // Returns zone index (0–7) based on where the click landed on the skull.
+    function classify(x, y, z) {
+        // 7: Mandible / Maxilla — bottom front
+        if (y < -0.3 && z > -0.2) return 7;
+        // 6: Zygomatic — side-front, mid-level (cheekbone area)
+        if (y > -0.35 && y < 0.15 && z > 0.2 && Math.abs(x) > 0.3) return 6;
+        // 5: Nasal bones & orbits — front center at face level
+        if (y > -0.3 && y < 0.25 && z > 0.4 && Math.abs(x) < 0.35) return 5;
+        // 3: Left temporal — left side
+        if (x < -0.45 && y < 0.4) return 3;
+        // 4: Right temporal — right side
+        if (x > 0.45 && y < 0.4) return 4;
+        // 2: Occipital — back
+        if (z < -0.2 && y < 0.5) return 2;
+        // 0: Frontal — front upper
+        if (z > 0.1 && y > 0.15) return 0;
+        // 1: Parietal — top
+        if (y > 0.35) return 1;
+        // Default: frontal for anything remaining
+        return 0;
+    }
+
+    initPoster({ modelFile: 'skull.glb', zones: ZONES, classify, i18n: I18N });
+</script>
+</body>
+</html>

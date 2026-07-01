@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="page_title">Векторы в пространстве</title>
+<style>
+
+
+*{margin:0;padding:0;box-sizing:border-box;}
+
+:root{
+  --bg:#eef0f4;
+  --surface:rgba(255,255,255,0.94);
+  --border:rgba(20,30,55,0.08);
+  --text:#141c28;
+  --muted:#5b6878;
+  --faint:#97a3b2;
+  --a:#2563eb;  --a-dim:rgba(37,99,235,0.10);    /* vector a — blue  */
+  --b:#16a34a;  --b-dim:rgba(22,163,74,0.10);     /* vector b — green */
+  --sum:#ea580c;                                   /* a+b — orange */
+  --cross:#9333ea;                                 /* a×b — purple */
+  --accent:#2563eb;
+  --accent-dim:rgba(37,99,235,0.10);
+  --shadow:0 2px 22px rgba(20,30,60,0.07);
+  --shadow-lg:0 18px 56px rgba(20,30,70,0.15);
+}
+
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);overflow:hidden;height:100vh;}
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(1200px 760px at 70% 30%, rgba(37,99,235,0.10), transparent 60%),
+    radial-gradient(820px 560px at 16% 84%, rgba(147,51,234,0.06), transparent 55%);
+}
+
+#canvas-container{position:fixed;inset:0;z-index:1;}
+#labels-layer{position:fixed;inset:0;z-index:40;pointer-events:none;overflow:hidden;}
+
+.dim-label{position:absolute;transform:translate(-50%,-50%);font-family:'Roboto Mono',monospace;font-size:14px;font-weight:700;padding:3px 9px;border-radius:9px;white-space:nowrap;letter-spacing:-0.3px;background:rgba(255,255,255,0.97);box-shadow:0 3px 12px rgba(20,30,60,0.13);transition:opacity 0.18s;}
+.dim-label.hidden{opacity:0;}
+.dim-label.la{background:var(--a);color:#fff;border:none;box-shadow:0 4px 14px rgba(37,99,235,0.4);}
+.dim-label.lb{background:var(--b);color:#fff;border:none;box-shadow:0 4px 14px rgba(22,163,74,0.4);}
+.dim-label.lsum{background:var(--sum);color:#fff;border:none;box-shadow:0 4px 14px rgba(234,88,12,0.4);}
+.dim-label.lcross{background:var(--cross);color:#fff;border:none;box-shadow:0 4px 14px rgba(147,51,234,0.4);}
+.dim-label.lax{color:var(--muted);border:1px solid rgba(20,30,55,0.12);font-size:13px;}
+.dim-label.lphi{color:var(--text);border:1px solid rgba(20,30,55,0.18);}
+
+.header{position:fixed;top:0;left:0;right:0;z-index:200;background:var(--surface);border-bottom:1px solid var(--border);padding:0 38px;height:84px;display:flex;align-items:center;gap:15px;box-shadow:var(--shadow);}
+.h-badge{width:46px;height:46px;border-radius:14px;flex-shrink:0;background:linear-gradient(135deg,#2563eb,#60a5fa);display:flex;align-items:center;justify-content:center;box-shadow:0 7px 20px rgba(37,99,235,0.36);}
+.h-badge svg{width:25px;height:25px;}
+.header-title{font-size:24px;font-weight:800;letter-spacing:-0.5px;}
+.header-tag{font-family:'Roboto Mono',monospace;font-size:13px;color:var(--accent);background:var(--accent-dim);padding:4px 11px;border-radius:8px;}
+.header-sub{font-size:14px;color:var(--muted);margin-left:auto;text-align:right;line-height:1.45;}
+
+.eq-banner{position:fixed;top:96px;left:50%;transform:translateX(-50%);z-index:150;background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-lg);padding:9px 22px;display:flex;gap:22px;pointer-events:none;}
+.eq-vec{font-family:'Roboto Mono',monospace;font-size:16px;font-weight:700;}
+.eq-vec.va{color:var(--a);} .eq-vec.vb{color:var(--b);}
+
+.panel{position:fixed;z-index:100;background:var(--surface);border:1px solid var(--border);border-radius:22px;box-shadow:var(--shadow-lg);}
+.panel h3{font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;color:var(--faint);}
+
+.panel-left{left:22px;top:98px;width:336px;padding:18px 18px;overflow:hidden;min-height:410px;}
+.ld-list,.ld-detail{transition:transform 0.4s cubic-bezier(0.4,0,0.2,1),opacity 0.28s;}
+.ld-list h3{margin-bottom:12px;padding-left:4px;}
+.ld-detail{position:absolute;inset:18px 18px;transform:translateX(26px);opacity:0;pointer-events:none;overflow-y:auto;}
+.ld-detail::-webkit-scrollbar{width:4px;}
+.ld-detail::-webkit-scrollbar-thumb{background:rgba(20,30,60,0.16);border-radius:4px;}
+.panel-left.detail .ld-list{transform:translateX(-26px);opacity:0;pointer-events:none;}
+.panel-left.detail .ld-detail{transform:translateX(0);opacity:1;pointer-events:auto;}
+
+.metric{display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:14px;cursor:pointer;border:1px solid transparent;transition:all 0.15s;margin-bottom:2px;}
+.metric:hover{background:rgba(20,30,60,0.04);}
+.metric.active{background:var(--accent-dim);border-color:rgba(37,99,235,0.22);}
+.metric-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0;}
+.metric-main{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;}
+.metric-name{font-size:15px;font-weight:700;line-height:1.15;}
+.metric-sub{font-family:'Roboto Mono',monospace;font-size:13px;color:var(--muted);}
+.metric-val{font-family:'Roboto Mono',monospace;font-size:19px;font-weight:500;color:var(--accent);letter-spacing:-1px;flex-shrink:0;}
+
+.ld-back{display:inline-flex;align-items:center;gap:5px;cursor:pointer;border:none;background:none;font-family:'Inter',sans-serif;font-size:14px;font-weight:700;color:var(--accent);padding:4px 6px 4px 0;margin-bottom:12px;}
+.ld-back:hover{opacity:0.7;}
+.d-tag{display:inline-block;padding:4px 12px;border-radius:99px;font-size:13px;font-weight:700;margin-bottom:10px;background:var(--accent-dim);color:var(--accent);}
+.d-title{font-size:22px;font-weight:800;letter-spacing:-0.4px;line-height:1.15;margin-bottom:14px;}
+.d-bigval{display:flex;align-items:baseline;gap:9px;margin-bottom:4px;}
+.d-bigval b{font-family:'Roboto Mono',monospace;font-size:35px;font-weight:500;color:var(--accent);letter-spacing:-1.5px;line-height:1;}
+.d-bigval span{font-size:14px;color:var(--muted);font-weight:600;}
+.d-formula{margin:13px 0 4px;padding:13px 15px;border-radius:13px;background:linear-gradient(135deg,rgba(96,165,250,0.12),rgba(37,99,235,0.05));border:1px solid rgba(37,99,235,0.16);font-family:'Roboto Mono',monospace;font-size:14px;color:#1e40af;font-weight:500;line-height:1.95;white-space:pre-line;}
+.d-para{font-size:15px;line-height:1.62;color:#2c3744;margin-top:13px;}
+
+.panel-right{right:22px;top:98px;width:300px;padding:18px;}
+.vec-card{border-radius:15px;padding:12px 14px;margin-bottom:12px;border:1px solid;}
+.vec-card.va{background:var(--a-dim);border-color:rgba(37,99,235,0.18);}
+.vec-card.vb{background:var(--b-dim);border-color:rgba(22,163,74,0.18);}
+.vc-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px;}
+.vc-name{font-family:'Roboto Mono',monospace;font-style:italic;font-size:17px;font-weight:700;}
+.va .vc-name{color:var(--a);} .vb .vc-name{color:var(--b);}
+.vc-val{font-family:'Roboto Mono',monospace;font-size:14px;color:var(--muted);}
+.comp-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.comp-lab{font-family:'Roboto Mono',monospace;font-size:13px;color:var(--muted);width:14px;}
+.comp-row input[type=range]{-webkit-appearance:none;appearance:none;flex:1;height:5px;border-radius:3px;outline:none;cursor:pointer;}
+.va .comp-row input[type=range]{background:linear-gradient(90deg,var(--a) var(--fill,50%),rgba(37,99,235,0.16) var(--fill,50%));}
+.vb .comp-row input[type=range]{background:linear-gradient(90deg,var(--b) var(--fill,50%),rgba(22,163,74,0.16) var(--fill,50%));}
+.comp-row input::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:16px;height:16px;border-radius:50%;background:#fff;cursor:pointer;}
+.va .comp-row input::-webkit-slider-thumb{border:2.5px solid var(--a);}
+.vb .comp-row input::-webkit-slider-thumb{border:2.5px solid var(--b);}
+.comp-num{font-family:'Roboto Mono',monospace;font-size:13.5px;font-weight:600;width:30px;text-align:right;}
+
+.show-label{font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;color:var(--faint);margin:6px 0 10px 2px;}
+.show-chip{display:flex;align-items:center;gap:11px;width:100%;padding:11px 14px;margin-bottom:8px;border-radius:14px;cursor:pointer;background:rgba(20,30,60,0.035);border:1.5px solid transparent;transition:all 0.16s;}
+.show-chip:hover{background:rgba(20,30,60,0.06);}
+.show-chip.on{background:var(--accent-dim);border-color:rgba(37,99,235,0.30);}
+.chip-ico{width:32px;height:32px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:16px;font-family:'Roboto Mono',monospace;font-weight:700;color:#fff;}
+.chip-ico.ic-sum{background:var(--sum);} .chip-ico.ic-cross{background:var(--cross);} .chip-ico.ic-phi{background:#64748b;}
+.chip-text{flex:1;min-width:0;}
+.chip-name{font-size:14.5px;font-weight:700;}
+.chip-sub{font-size:12.5px;color:var(--muted);font-family:'Roboto Mono',monospace;}
+.chip-state{width:21px;height:21px;border-radius:50%;flex-shrink:0;border:2px solid rgba(20,30,60,0.16);display:flex;align-items:center;justify-content:center;transition:all 0.16s;}
+.show-chip.on .chip-state{background:var(--accent);border-color:var(--accent);}
+.show-chip.on .chip-state::after{content:'✓';color:#fff;font-size:13px;font-weight:700;}
+
+.hint-bar{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:100;background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:9px 22px;font-size:13.5px;color:var(--muted);box-shadow:var(--shadow);white-space:nowrap;display:flex;align-items:center;gap:9px;}
+.hint-grab{color:var(--accent);font-weight:700;}
+.hint-dot{color:var(--faint);}
+
+@media (max-width:1180px){.panel-left{width:300px;}.panel-right{width:272px;}}
+</style>
+</head>
+<body>
+
+<div id="canvas-container"><canvas id="c"></canvas></div>
+<div id="labels-layer"></div>
+
+<header class="header">
+  <div class="h-badge">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.7" stroke-linejoin="round">
+      <path d="M4 20 L18 6 M18 6 L12 6 M18 6 L18 12"/><path d="M4 20 L16 17 M16 17 L12 14 M16 17 L13 21" opacity="0.6"/>
+    </svg>
+  </div>
+  <div class="header-title" data-i18n="header_title">Векторы в пространстве</div>
+  <div class="header-tag">a · b · a×b</div>
+  <div class="header-sub" data-i18n-html="header_sub">Два вектора из начала координат<br>тяните наконечники или двигайте ползунки</div>
+</header>
+
+<div class="eq-banner">
+  <div class="eq-vec va" id="eq-a"></div>
+  <div class="eq-vec vb" id="eq-b"></div>
+</div>
+
+<!-- LEFT -->
+<div class="panel panel-left" id="panel-left">
+  <div class="ld-list">
+    <h3 data-i18n="props_title">Величины</h3>
+    <div id="metrics"></div>
+  </div>
+  <div class="ld-detail">
+    <button class="ld-back" onclick="window.showList()"><span>‹</span> <span data-i18n="back">Назад</span></button>
+    <div id="detail-content"></div>
+  </div>
+</div>
+
+<!-- RIGHT -->
+<div class="panel panel-right">
+  <div class="vec-card va">
+    <div class="vc-top"><span class="vc-name">a</span><span class="vc-val" id="va-val"></span></div>
+    <div class="comp-row"><span class="comp-lab">x</span><input type="range" min="-8" max="8" step="0.5" value="4" id="sl-ax" oninput="window.setComp('a',0,+this.value)"><span class="comp-num" id="num-ax">4</span></div>
+    <div class="comp-row"><span class="comp-lab">y</span><input type="range" min="-8" max="8" step="0.5" value="2" id="sl-ay" oninput="window.setComp('a',1,+this.value)"><span class="comp-num" id="num-ay">2</span></div>
+    <div class="comp-row"><span class="comp-lab">z</span><input type="range" min="-8" max="8" step="0.5" value="1" id="sl-az" oninput="window.setComp('a',2,+this.value)"><span class="comp-num" id="num-az">1</span></div>
+  </div>
+  <div class="vec-card vb">
+    <div class="vc-top"><span class="vc-name">b</span><span class="vc-val" id="vb-val"></span></div>
+    <div class="comp-row"><span class="comp-lab">x</span><input type="range" min="-8" max="8" step="0.5" value="1" id="sl-bx" oninput="window.setComp('b',0,+this.value)"><span class="comp-num" id="num-bx">1</span></div>
+    <div class="comp-row"><span class="comp-lab">y</span><input type="range" min="-8" max="8" step="0.5" value="3" id="sl-by" oninput="window.setComp('b',1,+this.value)"><span class="comp-num" id="num-by">3</span></div>
+    <div class="comp-row"><span class="comp-lab">z</span><input type="range" min="-8" max="8" step="0.5" value="3" id="sl-bz" oninput="window.setComp('b',2,+this.value)"><span class="comp-num" id="num-bz">3</span></div>
+  </div>
+
+  <div class="show-label" data-i18n="show_title">Показать</div>
+  <div class="show-chip on" id="chip-sum" onclick="window.toggleSum()">
+    <div class="chip-ico ic-sum">+</div>
+    <div class="chip-text"><span class="chip-name" data-i18n="ch_sum">Сумма a + b</span><span class="chip-sub" data-i18n="ch_sum_sub">правило параллелограмма</span></div>
+    <div class="chip-state"></div>
+  </div>
+  <div class="show-chip" id="chip-cross" onclick="window.toggleCross()">
+    <div class="chip-ico ic-cross">×</div>
+    <div class="chip-text"><span class="chip-name" data-i18n="ch_cross">Произвед. a × b</span><span class="chip-sub" data-i18n="ch_cross_sub">перпендикуляр + площадь</span></div>
+    <div class="chip-state"></div>
+  </div>
+  <div class="show-chip" id="chip-phi" onclick="window.togglePhi()">
+    <div class="chip-ico ic-phi">∠</div>
+    <div class="chip-text"><span class="chip-name" data-i18n="ch_phi">Угол φ</span><span class="chip-sub">cos φ = a·b / |a||b|</span></div>
+    <div class="chip-state"></div>
+  </div>
+</div>
+
+<div class="hint-bar" data-i18n-html="hint">
+  <span class="hint-grab">Тяните наконечники</span><span class="hint-dot">·</span>
+  <span>фон — поворот сцены</span><span class="hint-dot">·</span><span>ползунки — точные координаты</span>
+</div>
+
+<script>
+const I18N={
+ru:{
+  page_title:'Векторы в пространстве',header_title:'Векторы в пространстве',
+  header_sub:'Два вектора из начала координат<br>тяните наконечники или двигайте ползунки',
+  props_title:'Величины',back:'Назад',show_title:'Показать',
+  ch_sum:'Сумма a + b',ch_sum_sub:'правило параллелограмма',ch_cross:'Произвед. a × b',ch_cross_sub:'перпендикуляр + площадь',ch_phi:'Угол φ',
+  hint:'<span class="hint-grab">Тяните наконечники</span><span class="hint-dot">·</span><span>фон — поворот сцены</span><span class="hint-dot">·</span><span>ползунки — точные координаты</span>',
+  m_la:'Длина |a|',m_lb:'Длина |b|',m_dot:'Скалярное a·b',m_cross:'Площадь |a×b|',m_phi:'Угол φ',m_sum:'Длина |a+b|',
+  sub_la:'√(x²+y²+z²)',sub_dot:'aₓbₓ + a_y b_y + a_z b_z',sub_cross:'площадь параллелограмма',sub_phi:'между a и b',sub_sum:'длина суммы',
+  unit_none:'',unit_deg:'°',
+},
+kz:{
+  page_title:'Кеңістіктегі векторлар',header_title:'Кеңістіктегі векторлар',
+  header_sub:'Координат басынан шыққан екі вектор<br>ұштарын сүйреңіз немесе жүгірткілерді жылжытыңыз',
+  props_title:'Шамалар',back:'Артқа',show_title:'Көрсету',
+  ch_sum:'Қосынды a + b',ch_sum_sub:'параллелограмм ережесі',ch_cross:'Көбейтінді a × b',ch_cross_sub:'перпендикуляр + аудан',ch_phi:'φ бұрышы',
+  hint:'<span class="hint-grab">Ұштарын сүйреңіз</span><span class="hint-dot">·</span><span>фон — сахынаны бұру</span><span class="hint-dot">·</span><span>жүгірткілер — нақты координаталар</span>',
+  m_la:'Ұзындық |a|',m_lb:'Ұзындық |b|',m_dot:'Скаляр a·b',m_cross:'Аудан |a×b|',m_phi:'φ бұрышы',m_sum:'Ұзындық |a+b|',
+  sub_la:'√(x²+y²+z²)',sub_dot:'aₓbₓ + a_y b_y + a_z b_z',sub_cross:'параллелограмм ауданы',sub_phi:'a мен b арасы',sub_sum:'қосынды ұзындығы',
+  unit_none:'',unit_deg:'°',
+},
+en:{
+  page_title:'Vectors in Space',header_title:'Vectors in Space',
+  header_sub:'Two vectors from the origin<br>drag the arrow tips or move the sliders',
+  props_title:'Quantities',back:'Back',show_title:'Show',
+  ch_sum:'Sum a + b',ch_sum_sub:'parallelogram rule',ch_cross:'Product a × b',ch_cross_sub:'perpendicular + area',ch_phi:'Angle φ',
+  hint:'<span class="hint-grab">Drag the tips</span><span class="hint-dot">·</span><span>background — rotate the scene</span><span class="hint-dot">·</span><span>sliders — exact coordinates</span>',
+  m_la:'Length |a|',m_lb:'Length |b|',m_dot:'Dot product a·b',m_cross:'Area |a×b|',m_phi:'Angle φ',m_sum:'Length |a+b|',
+  sub_la:'√(x²+y²+z²)',sub_dot:'aₓbₓ + a_y b_y + a_z b_z',sub_cross:'parallelogram area',sub_phi:'between a and b',sub_sum:'length of the sum',
+  unit_none:'',unit_deg:'°',
+}
+};
+const LANG=(()=>{const q=new URLSearchParams(location.search).get('lang');return(q&&I18N[q])?q:'ru';})();
+const tr=key=>(I18N[LANG]&&I18N[LANG][key])!==undefined?I18N[LANG][key]:I18N.ru[key];
+function applyStaticI18N(){
+  document.documentElement.lang=LANG;
+  const tv=tr('page_title');if(tv)document.title=tv;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{const v=tr(el.getAttribute('data-i18n'));if(v!==undefined)el.textContent=v;});
+  document.querySelectorAll('[data-i18n-html]').forEach(el=>{const v=tr(el.getAttribute('data-i18n-html'));if(v!==undefined)el.innerHTML=v;});
+}
+applyStaticI18N();
+
+const f1=x=>{const v=x.toFixed(1);return v==='-0.0'?'0.0':v;};
+const f2=x=>{const v=x.toFixed(2);return v==='-0.00'?'0.00':v;};
+window.A={a:[4,2,1],b:[1,3,3]};
+const dot=()=>{const {a,b}=window.A;return a[0]*b[0]+a[1]*b[1]+a[2]*b[2];};
+const mag=v=>Math.hypot(v[0],v[1],v[2]);
+const cross=()=>{const {a,b}=window.A;return [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]];};
+const sumV=()=>{const {a,b}=window.A;return [a[0]+b[0],a[1]+b[1],a[2]+b[2]];};
+const phi=()=>{const ma=mag(window.A.a),mb=mag(window.A.b);if(ma<1e-6||mb<1e-6)return 0;let c=dot()/(ma*mb);c=Math.max(-1,Math.min(1,c));return Math.acos(c)*180/Math.PI;};
+
+const METRICS=[
+  {key:'la',  dot:'var(--a)',    i:'m_la',  fmt:()=>f2(mag(window.A.a)), sub:()=>tr('sub_la'),   unit:'unit_none'},
+  {key:'lb',  dot:'var(--b)',    i:'m_lb',  fmt:()=>f2(mag(window.A.b)), sub:()=>tr('sub_la'),   unit:'unit_none'},
+  {key:'dot', dot:'var(--accent)',i:'m_dot',fmt:()=>f1(dot()),          sub:()=>tr('sub_dot'),  unit:'unit_none'},
+  {key:'cross',dot:'var(--cross)',i:'m_cross',fmt:()=>f2(mag(cross())), sub:()=>tr('sub_cross'),unit:'unit_none'},
+  {key:'phi', dot:'#64748b',     i:'m_phi', fmt:()=>f1(phi()),          sub:()=>tr('sub_phi'),  unit:'unit_deg'},
+  {key:'sum', dot:'var(--sum)',  i:'m_sum', fmt:()=>f2(mag(sumV())),    sub:()=>tr('sub_sum'),  unit:'unit_none'},
+];
+function renderMetrics(){
+  document.getElementById('metrics').innerHTML=METRICS.map(m=>`
+    <div class="metric" data-key="${m.key}" onclick="window.openDetail('${m.key}')">
+      <div class="metric-dot" style="background:${m.dot}"></div>
+      <div class="metric-main"><span class="metric-name">${tr(m.i)}</span><span class="metric-sub" id="ms-${m.key}"></span></div>
+      <span class="metric-val" id="mv-${m.key}">—</span>
+    </div>`).join('');
+}
+const vstr=v=>'('+f1(v[0])+'; '+f1(v[1])+'; '+f1(v[2])+')';
+function updateMetricValues(){
+  METRICS.forEach(m=>{
+    const v=document.getElementById('mv-'+m.key);if(v)v.textContent=m.fmt();
+    const s=document.getElementById('ms-'+m.key);if(s)s.textContent=m.sub();
+  });
+  const {a,b}=window.A;
+  ['a','b'].forEach(vn=>{['x','y','z'].forEach((ax,i)=>{
+    const val=window.A[vn][i];
+    document.getElementById('num-'+vn+ax).textContent=f1(val);
+    const sl=document.getElementById('sl-'+vn+ax);sl.value=val;sl.style.setProperty('--fill',((val+8)/16*100)+'%');
+  });});
+  document.getElementById('va-val').textContent=vstr(a);
+  document.getElementById('vb-val').textContent=vstr(b);
+  document.getElementById('eq-a').textContent='a = '+vstr(a);
+  document.getElementById('eq-b').textContent='b = '+vstr(b);
+}
+renderMetrics();
+</script>
+
+<script type="importmap">
+{"imports":{"three":"../../libs/vendor/three-0.160.0/three.module.js"}}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+const canvas=document.getElementById('c');
+const renderer=new THREE.WebGLRenderer({canvas,antialias: true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+
+const RNG=8, AXEXT=9;
+const scene=new THREE.Scene();scene.background=null;
+const camera=new THREE.PerspectiveCamera(42,innerWidth/innerHeight,0.1,8000);
+let camDist=34,camDistTarget=34,userZoom=1.0;
+let showSum=true,showCross=false,showPhi=false;
+
+const PI=Math.PI;
+const f1=x=>{const v=x.toFixed(1);return v==='-0.0'?'0.0':v;};
+const f2=x=>{const v=x.toFixed(2);return v==='-0.00'?'0.00':v;};
+
+function computeCamTarget(){
+  const R0=AXEXT*1.55*1.08;
+  const fovy=camera.fov*PI/180;
+  const dV=R0/Math.sin(fovy/2);
+  const usableW=Math.max(420,innerWidth-660);
+  const fovx=2*Math.atan(Math.tan(fovy/2)*usableW/innerHeight);
+  const dH=R0/Math.sin(fovx/2);
+  return Math.max(dV,dH)*userZoom;
+}
+function applyCamera(){
+  const e=new THREE.Euler(rotX,rotY,0,'YXZ');
+  camera.position.set(0,0,1).applyEuler(e).multiplyScalar(camDist);
+  camera.up.set(0,1,0).applyEuler(e);
+  camera.lookAt(0,0,0);
+}
+
+scene.add(new THREE.AmbientLight(0xffffff,0.74));
+const kL=new THREE.DirectionalLight(0xffffff,0.85);kL.position.set(6,10,8);scene.add(kL);
+const fL=new THREE.DirectionalLight(0x93c5fd,0.35);fL.position.set(-8,-2,-6);scene.add(fL);
+
+const V=(x,y,z)=>new THREE.Vector3(x,y,z);
+const VA=arr=>new THREE.Vector3(arr[0],arr[1],arr[2]);
+const obj=new THREE.Group();scene.add(obj);
+
+const COL={axis:0x94a3b8,a:0x2563eb,b:0x16a34a,sum:0xea580c,cross:0x9333ea,grid:0xdfe3ea};
+const tR=AXEXT*0.012;
+
+function cyl(from,to,rr,mat){const dir=new THREE.Vector3().subVectors(to,from),len=dir.length();const m=new THREE.Mesh(new THREE.CylinderGeometry(rr,rr,len,12),mat);m.position.addVectors(from,to).multiplyScalar(0.5);if(len>1e-6)m.quaternion.setFromUnitVectors(V(0,1,0),dir.normalize());return m;}
+function cone(at,dir,rr,hh,mat){const m=new THREE.Mesh(new THREE.ConeGeometry(rr,hh,16),mat);m.position.copy(at);m.quaternion.setFromUnitVectors(V(0,1,0),dir.clone().normalize());return m;}
+function sphere(r,mat){return new THREE.Mesh(new THREE.SphereGeometry(r,18,14),mat);}
+function arrow(to,colHex,rad,grp,emissive){
+  const len=to.length();if(len<1e-4)return;
+  const dir=to.clone().normalize();
+  const headH=Math.min(len*0.5,rad*9), shaftEnd=to.clone().sub(dir.clone().multiplyScalar(headH*0.9));
+  const mat=new THREE.MeshStandardMaterial({color:colHex,roughness:0.35,metalness:0.15,emissive:emissive?colHex:0x000000,emissiveIntensity:emissive?0.4:0});
+  grp.add(cyl(V(0,0,0),shaftEnd,rad,mat));
+  grp.add(cone(to.clone().sub(dir.clone().multiplyScalar(headH*0.5)),dir,rad*2.1,headH,mat));
+}
+
+/* ── STATIC axes ── */
+const axesGroup=new THREE.Group();obj.add(axesGroup);
+(function(){
+  const aMat=new THREE.MeshStandardMaterial({color:COL.axis,roughness:0.5});
+  [[V(1,0,0)],[V(0,1,0)],[V(0,0,1)]].forEach(([d])=>{
+    axesGroup.add(cyl(d.clone().multiplyScalar(-AXEXT),d.clone().multiplyScalar(AXEXT),tR*0.6,aMat));
+    axesGroup.add(cone(d.clone().multiplyScalar(AXEXT),d,tR*2,tR*6,aMat));
+  });
+  axesGroup.add(sphere(tR*1.6,new THREE.MeshStandardMaterial({color:0x334155,roughness:0.4})));
+})();
+
+/* ── DYNAMIC ── */
+const dynGroup=new THREE.Group();obj.add(dynGroup);
+function disposeDyn(){while(dynGroup.children.length){const o=dynGroup.children[0];o.traverse(x=>{if(x.geometry)x.geometry.dispose();});dynGroup.remove(o);}}
+let tipA=null,tipB=null,hiKey=null;
+
+function quad4(p1,p2,p3,p4,mat){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute([p1.x,p1.y,p1.z,p2.x,p2.y,p2.z,p3.x,p3.y,p3.z, p1.x,p1.y,p1.z,p3.x,p3.y,p3.z,p4.x,p4.y,p4.z],3));g.computeVertexNormals();return new THREE.Mesh(g,mat);}
+
+function buildDyn(){
+  disposeDyn();
+  const a=VA(window.A.a), b=VA(window.A.b), s=VA(sumVA()), cr=VA(crossVA());
+  const rad=tR*1.5;
+
+  // parallelogram (shown with sum or cross)
+  if(showSum||showCross){
+    const pMat=new THREE.MeshStandardMaterial({color:showCross?COL.cross:COL.sum,roughness:0.6,transparent:true,opacity:showCross?0.22:0.13,side:THREE.DoubleSide});
+    dynGroup.add(quad4(V(0,0,0),a,a.clone().add(b),b,pMat));
+    // dashed-ish guide edges (a from b, b from a)
+    const gMat=new THREE.MeshStandardMaterial({color:0x94a3b8,roughness:0.5,transparent:true,opacity:0.5});
+    dynGroup.add(cyl(a,a.clone().add(b),tR*0.5,gMat));
+    dynGroup.add(cyl(b,a.clone().add(b),tR*0.5,gMat));
+  }
+
+  // vectors a and b
+  arrow(a,COL.a,rad*(hiKey==='la'?1.6:1),dynGroup,hiKey==='la');
+  arrow(b,COL.b,rad*(hiKey==='lb'?1.6:1),dynGroup,hiKey==='lb');
+
+  // sum vector
+  if(showSum) arrow(s,COL.sum,rad*(hiKey==='sum'?1.5:1.05),dynGroup,hiKey==='sum');
+
+  // cross product (direction only — fixed display length), perpendicular to both
+  if(showCross){
+    const cm=cr.length();
+    if(cm>1e-4){const disp=cr.clone().normalize().multiplyScalar(Math.min(AXEXT*0.7, RNG*0.9));arrow(disp,COL.cross,rad*1.1,dynGroup,hiKey==='cross');}
+  }
+
+  // angle arc between a and b
+  if(showPhi){
+    const ma=a.length(),mb=b.length();
+    if(ma>1e-4&&mb>1e-4){
+      const ua=a.clone().normalize(),ub=b.clone().normalize();
+      const arcR=Math.min(ma,mb)*0.4;const steps=20;
+      const pts=[];const q0=new THREE.Quaternion().setFromUnitVectors(V(0,1,0),ua),q1=new THREE.Quaternion().setFromUnitVectors(V(0,1,0),ub);
+      for(let i=0;i<=steps;i++){const q=new THREE.Quaternion().slerpQuaternions(q0,q1,i/steps);pts.push(V(0,1,0).applyQuaternion(q).multiplyScalar(arcR));}
+      dynGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0x334155})));
+    }
+  }
+
+  // draggable tips
+  tipA=sphere(tR*2.2,new THREE.MeshStandardMaterial({color:COL.a,roughness:0.2,metalness:0.3,emissive:COL.a,emissiveIntensity:0.25}));tipA.position.copy(a);tipA.userData.tip='a';dynGroup.add(tipA);
+  tipB=sphere(tR*2.2,new THREE.MeshStandardMaterial({color:COL.b,roughness:0.2,metalness:0.3,emissive:COL.b,emissiveIntensity:0.25}));tipB.position.copy(b);tipB.userData.tip='b';dynGroup.add(tipB);
+
+  updateLabelAnchors();
+}
+function sumVA(){const {a,b}=window.A;return [a[0]+b[0],a[1]+b[1],a[2]+b[2]];}
+function crossVA(){const {a,b}=window.A;return [a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];}
+function magA(v){return Math.hypot(v[0],v[1],v[2]);}
+
+/* ── LABELS ── */
+const layer=document.getElementById('labels-layer');
+function mkLabel(cls){const d=document.createElement('div');d.className='dim-label '+cls;layer.appendChild(d);return d;}
+const L_a=mkLabel('la'),L_b=mkLabel('lb'),L_s=mkLabel('lsum'),L_c=mkLabel('lcross'),L_phi=mkLabel('lphi');
+const L_x=mkLabel('lax'),L_y=mkLabel('lax'),L_z=mkLabel('lax');
+const anc={a:V(),b:V(),s:V(),c:V(),phi:V(),x:V(AXEXT*1.05,0,0),y:V(0,AXEXT*1.05,0),z:V(0,0,AXEXT*1.05)};
+function updateLabelAnchors(){
+  const a=VA(window.A.a),b=VA(window.A.b),s=VA(sumVA()),cr=VA(crossVA());
+  anc.a.copy(a).multiplyScalar(1.06); anc.b.copy(b).multiplyScalar(1.06);
+  anc.s.copy(s).multiplyScalar(1.04);
+  if(cr.length()>1e-4) anc.c.copy(cr.clone().normalize().multiplyScalar(Math.min(AXEXT*0.7,RNG*0.9)+0.6));
+  const ma=a.length(),mb=b.length();
+  if(ma>1e-4&&mb>1e-4){const ua=a.clone().normalize(),ub=b.clone().normalize();anc.phi.copy(ua.add(ub).normalize().multiplyScalar(Math.min(ma,mb)*0.5));}
+  L_a.textContent='a'; L_b.textContent='b'; L_s.textContent='a+b';
+  L_c.textContent='a×b'; L_phi.textContent='φ = '+f1(phiA())+'°';
+  L_x.textContent='x'; L_y.textContent='y'; L_z.textContent='z';
+}
+function phiA(){const ma=magA(window.A.a),mb=magA(window.A.b);if(ma<1e-6||mb<1e-6)return 0;const {a,b}=window.A;let c=(a[0]*b[0]+a[1]*b[1]+a[2]*b[2])/(ma*mb);c=Math.max(-1,Math.min(1,c));return Math.acos(c)*180/PI;}
+function project(localVec){const w=localVec.clone().applyMatrix4(obj.matrixWorld).project(camera);return {x:(w.x*0.5+0.5)*innerWidth,y:(-w.y*0.5+0.5)*innerHeight,behind:w.z>1};}
+function place(el,v,vis){if(!vis){el.classList.add('hidden');return;}const s=project(v);if(s.behind){el.classList.add('hidden');return;}el.classList.remove('hidden');el.style.left=s.x+'px';el.style.top=s.y+'px';}
+function updateLabels(){
+  place(L_a,anc.a,magA(window.A.a)>0.3);place(L_b,anc.b,magA(window.A.b)>0.3);
+  place(L_s,anc.s,showSum&&magA(sumVA())>0.3);
+  place(L_c,anc.c,showCross&&magA(crossVA())>0.3);
+  place(L_phi,anc.phi,showPhi);
+  place(L_x,anc.x,true);place(L_y,anc.y,true);place(L_z,anc.z,true);
+}
+
+/* ── DETAIL ── */
+const DETAIL_ALL={
+ru:{
+  la:{tag:'Длина вектора',p:'Длина (модуль) вектора a — это расстояние от начала координат до его конца. По теореме Пифагора в пространстве |a| = √(x² + y² + z²), где x, y, z — координаты вектора.'},
+  lb:{tag:'Длина вектора',p:'Длина вектора b вычисляется так же: |b| = √(x² + y² + z²). Длина всегда неотрицательна и равна нулю только у нулевого вектора.'},
+  dot:{tag:'Скалярное произведение',p:'Скалярное произведение a·b = aₓbₓ + a_yb_y + a_zb_z — это число (скаляр). Геометрически a·b = |a||b|cosφ. Если a·b = 0, векторы перпендикулярны; если >0 — угол острый, <0 — тупой.'},
+  cross:{tag:'Векторное произведение',p:'Длина векторного произведения |a×b| = |a||b|sinφ равна площади параллелограмма, построенного на векторах a и b. Сам вектор a×b перпендикулярен обоим (на рисунке показан направлением, не в масштабе).'},
+  phi:{tag:'Угол между',p:'Угол φ между векторами находят из скалярного произведения: cosφ = (a·b)/(|a||b|). Перпендикулярным векторам соответствует φ = 90°, сонаправленным — φ = 0°.'},
+  sum:{tag:'Сумма векторов',p:'Сумму a+b складывают покоординатно: каждая координата суммы равна сумме координат. Геометрически — это диагональ параллелограмма, построенного на a и b (правило параллелограмма).'},
+},
+kz:{
+  la:{tag:'Вектор ұзындығы',p:'a векторының ұзындығы (модулі) — координат басынан оның ұшына дейінгі қашықтық. Кеңістіктегі Пифагор бойынша |a| = √(x² + y² + z²).'},
+  lb:{tag:'Вектор ұзындығы',p:'b векторының ұзындығы солай есептеледі: |b| = √(x² + y² + z²). Ұзындық әрқашан теріс емес.'},
+  dot:{tag:'Скаляр көбейтінді',p:'Скаляр көбейтінді a·b = aₓbₓ + a_yb_y + a_zb_z — сан (скаляр). Геометриялық тұрғыдан a·b = |a||b|cosφ. a·b = 0 болса, векторлар перпендикуляр.'},
+  cross:{tag:'Векторлық көбейтінді',p:'Векторлық көбейтінді ұзындығы |a×b| = |a||b|sinφ — a мен b векторларына салынған параллелограмм ауданына тең. a×b векторы екеуіне де перпендикуляр.'},
+  phi:{tag:'Аралық бұрыш',p:'Векторлар арасындағы φ бұрышы скаляр көбейтіндіден табылады: cosφ = (a·b)/(|a||b|). Перпендикуляр векторларда φ = 90°.'},
+  sum:{tag:'Векторлар қосындысы',p:'a+b қосындысы координаталар бойынша қосылады. Геометриялық тұрғыдан — a мен b-ға салынған параллелограмм диагоналі.'},
+},
+en:{
+  la:{tag:'Vector length',p:'The length (magnitude) of vector a is the distance from the origin to its tip. By the 3-D Pythagorean theorem |a| = √(x² + y² + z²), where x, y, z are the components.'},
+  lb:{tag:'Vector length',p:'The length of vector b is found the same way: |b| = √(x² + y² + z²). Length is never negative and is zero only for the zero vector.'},
+  dot:{tag:'Dot product',p:'The dot product a·b = aₓbₓ + a_yb_y + a_zb_z is a number (scalar). Geometrically a·b = |a||b|cosφ. If a·b = 0 the vectors are perpendicular; >0 means an acute angle, <0 obtuse.'},
+  cross:{tag:'Cross product',p:'The length of the cross product |a×b| = |a||b|sinφ equals the area of the parallelogram spanned by a and b. The vector a×b is perpendicular to both (shown by direction, not to scale).'},
+  phi:{tag:'Angle between',p:'The angle φ between the vectors comes from the dot product: cosφ = (a·b)/(|a||b|). Perpendicular vectors give φ = 90°, parallel ones φ = 0°.'},
+  sum:{tag:'Vector sum',p:'The sum a+b is added component-by-component. Geometrically it is the diagonal of the parallelogram built on a and b (the parallelogram rule).'},
+}
+};
+const DETAIL=DETAIL_ALL[LANG]||DETAIL_ALL.ru;
+
+let savedSum=true,savedCross=false,savedPhi=false;
+function openDetail(key){
+  const d=DETAIL[key];if(!d)return;
+  const m=METRICS.find(x=>x.key===key);
+  if(!document.getElementById('panel-left').classList.contains('detail')){savedSum=showSum;savedCross=showCross;savedPhi=showPhi;}
+  document.querySelectorAll('.metric').forEach(el=>el.classList.toggle('active',el.dataset.key===key));
+  hiKey=key;
+  if(key==='sum'&&!showSum)window.toggleSum();
+  else if(key==='cross'&&!showCross)window.toggleCross();
+  else if(key==='phi'&&!showPhi)window.togglePhi();
+  else buildDyn();
+  const {a,b}=window.A,D=dot(),cr=crossVA();
+  const calc={
+    la:`|a| = √(${f1(a[0])}² + ${f1(a[1])}² + ${f1(a[2])}²)\n   = ${f2(magA(a))}`,
+    lb:`|b| = √(${f1(b[0])}² + ${f1(b[1])}² + ${f1(b[2])}²)\n   = ${f2(magA(b))}`,
+    dot:`a·b = ${f1(a[0])}·${f1(b[0])} + ${f1(a[1])}·${f1(b[1])} + ${f1(a[2])}·${f1(b[2])}\n   = ${f1(D)}`,
+    cross:`a×b = (${f1(cr[0])}; ${f1(cr[1])}; ${f1(cr[2])})\n|a×b| = ${f2(magA(cr))}`,
+    phi:`cos φ = a·b / (|a|·|b|)\n   = ${f1(D)} / ${f2(magA(a)*magA(b))} → φ = ${f1(phiA())}°`,
+    sum:`a+b = (${f1(a[0]+b[0])}; ${f1(a[1]+b[1])}; ${f1(a[2]+b[2])})\n|a+b| = ${f2(magA(sumVA()))}`,
+  }[key];
+  document.getElementById('detail-content').innerHTML=`
+    <div class="d-tag">${d.tag}</div>
+    <div class="d-title">${tr(m.i)}</div>
+    <div class="d-bigval"><b>${m.fmt()}</b><span>${tr(m.unit)}</span></div>
+    <div class="d-formula">${calc}</div>
+    <div class="d-para">${d.p}</div>`;
+  document.getElementById('panel-left').classList.add('detail');
+  currentDetail=key;markInteract();
+}
+function dot(){const {a,b}=window.A;return a[0]*b[0]+a[1]*b[1]+a[2]*b[2];}
+let currentDetail=null;
+window.openDetail=openDetail;
+window.showList=function(){
+  document.getElementById('panel-left').classList.remove('detail');currentDetail=null;
+  document.querySelectorAll('.metric').forEach(m=>m.classList.remove('active'));
+  hiKey=null;
+  if(showSum!==savedSum)window.toggleSum();
+  if(showCross!==savedCross)window.toggleCross();
+  if(showPhi!==savedPhi)window.togglePhi();
+  buildDyn();
+};
+
+/* ── CONTROLS ── */
+window.setComp=function(vn,i,val){
+  val=Math.max(-RNG,Math.min(RNG,Math.round(val*2)/2));
+  window.A[vn][i]=val;buildDyn();updateMetricValues();
+  if(currentDetail)openDetail(currentDetail);
+  markInteract();
+};
+window.toggleSum=function(){showSum=!showSum;document.getElementById('chip-sum').classList.toggle('on',showSum);buildDyn();markInteract();};
+window.toggleCross=function(){showCross=!showCross;document.getElementById('chip-cross').classList.toggle('on',showCross);buildDyn();markInteract();};
+window.togglePhi=function(){showPhi=!showPhi;document.getElementById('chip-phi').classList.toggle('on',showPhi);buildDyn();markInteract();};
+
+/* ── RAYCAST + drag tips ── */
+const ray=new THREE.Raycaster(),m2=new THREE.Vector2();
+function pick(e,objs){m2.x=(e.clientX/innerWidth)*2-1;m2.y=-(e.clientY/innerHeight)*2+1;ray.setFromCamera(m2,camera);return ray.intersectObjects(objs,false);}
+function planePoint(e,throughLocal){
+  m2.x=(e.clientX/innerWidth)*2-1;m2.y=-(e.clientY/innerHeight)*2+1;ray.setFromCamera(m2,camera);
+  const normal=new THREE.Vector3();camera.getWorldDirection(normal);
+  const through=throughLocal.clone().applyMatrix4(obj.matrixWorld);
+  const plane=new THREE.Plane().setFromNormalAndCoplanarPoint(normal,through);
+  const hit=new THREE.Vector3();if(!ray.ray.intersectPlane(plane,hit))return null;
+  return hit.applyMatrix4(new THREE.Matrix4().copy(obj.matrixWorld).invert());
+}
+
+let mode=null,dragVN=null,last={x:0,y:0},dd=0,isDragging=false,rotX=0.5,rotY=0.7;
+let lastInteract=performance.now()-16000,autoSpeed=0;const AUTO_TARGET=0.0010,IDLE_MS=15000;
+function markInteract(){lastInteract=performance.now();}
+
+canvas.addEventListener('mousedown',e=>{
+  markInteract();
+  const h=pick(e,[tipA,tipB].filter(Boolean));
+  if(h.length>0){mode='tip';dragVN=h[0].object.userData.tip;canvas.style.cursor='grabbing';return;}
+  mode='rotate';last={x:e.clientX,y:e.clientY};isDragging=false;dd=0;
+});
+canvas.addEventListener('mousemove',e=>{
+  if(mode==='tip'){
+    const p=planePoint(e,VA(window.A[dragVN]));
+    if(p){window.A[dragVN]=[Math.max(-RNG,Math.min(RNG,Math.round(p.x*2)/2)),Math.max(-RNG,Math.min(RNG,Math.round(p.y*2)/2)),Math.max(-RNG,Math.min(RNG,Math.round(p.z*2)/2))];
+      buildDyn();updateMetricValues();if(currentDetail)openDetail(currentDetail);}
+    markInteract();return;
+  }
+  if(mode==='rotate'){
+    dd=Math.hypot(e.clientX-last.x,e.clientY-last.y);if(dd>4)isDragging=true;
+    if(isDragging){rotY+=(e.clientX-last.x)*0.008;rotX=Math.max(-1.4,Math.min(1.4,rotX+(e.clientY-last.y)*0.008));markInteract();}
+    last={x:e.clientX,y:e.clientY};return;
+  }
+  const h=pick(e,[tipA,tipB].filter(Boolean));canvas.style.cursor=h.length>0?'grab':'default';
+});
+window.addEventListener('mouseup',()=>{if(mode==='tip')canvas.style.cursor='default';mode=null;dragVN=null;});
+canvas.addEventListener('wheel',e=>{e.preventDefault();userZoom=Math.max(0.6,Math.min(1.7,userZoom+e.deltaY*0.0015));markInteract();},{passive:false});
+window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+
+/* ── LOOP ── */
+let t=0;
+function animate(){
+  requestAnimationFrame(animate);t+=0.016;
+  const idle=performance.now()-lastInteract;
+  if(idle>IDLE_MS)autoSpeed+=(AUTO_TARGET-autoSpeed)*0.025;else autoSpeed+=(0-autoSpeed)*0.18;
+  rotY+=autoSpeed;
+  camDistTarget=computeCamTarget();camDist+=(camDistTarget-camDist)*0.18;applyCamera();
+  renderer.render(scene,camera);
+  obj.updateWorldMatrix(true,false);
+  updateLabels();
+}
+
+buildDyn();updateMetricValues();
+camDistTarget=computeCamTarget();camDist=camDistTarget;applyCamera();
+animate();
+</script>
+</body>
+</html>

@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="page_title">Строение семени — анатомическая модель</title>
+    <link rel="stylesheet" href="_poster.css">
+</head>
+<body>
+<div id="canvas-container"></div>
+<div id="header">
+    <h1 data-i18n="header_title">Строение семени</h1>
+    <p data-i18n="header_subtitle">Интерактивная модель — 5 анатомических структур</p>
+</div>
+<div id="hint" data-i18n="hint">Кликните по любой части семени, чтобы узнать больше</div>
+<button id="reset-btn" data-i18n="reset_btn" data-i18n-title="reset_btn_title" title="Сбросить вид">↺ Сбросить вид</button>
+<div id="info-panel" aria-hidden="true"></div>
+<div id="legend"></div>
+<div id="hover-label"></div>
+<div id="loading"><div class="spinner"></div><div id="loading-text" data-i18n="loading">Загрузка модели…</div></div>
+
+<script type="importmap">
+    { "imports": { "three": "../../libs/vendor/three-0.160.0/three.module.js", "three/addons/": "../../libs/vendor/three-0.160.0/addons/" } }
+</script>
+
+<script type="module">
+    import { initPoster } from './_poster_lib.js';
+
+    const I18N = {
+        ru: {
+            page_title: 'Строение семени — анатомическая модель',
+            header_title: 'Строение семени',
+            header_subtitle: 'Интерактивная модель — 5 анатомических структур',
+            hint: 'Кликните по любой части семени, чтобы узнать больше',
+            reset_btn: '↺ Сбросить вид', reset_btn_title: 'Сбросить вид', close_btn_label: 'Закрыть',
+            loading: 'Загрузка модели…', error_load: 'Не удалось загрузить seed.glb', error_no_mesh: 'В модели нет меша',
+            facts_label: 'Интересный факт',
+            zones: {
+                seed_coat: { title: 'Семенная кожура', desc: 'Внешняя защитная оболочка семени, образующаяся из покровов семязачатка. У разных растений она бывает тонкой и кожистой (бобы) или твёрдой и деревянистой (косточки персика, грецкий орех). Защищает зародыш от высыхания, механических повреждений и микробов.', facts: 'Семенная кожура некоторых растений настолько прочна, что для прорастания нужны экстремальные условия — например, семена эвкалипта прорастают только после лесных пожаров, когда жар трескает оболочку.' },
+                cotyledons: { title: 'Семядоли', desc: 'Первые листья зародыша, в которых запасены питательные вещества (крахмал, белки, жиры). У двудольных растений (фасоль, тыква) две семядоли, у однодольных (пшеница, кукуруза) — одна. При прорастании семядоли часто выносятся на поверхность и становятся первыми зелёными листьями.', facts: 'Семядоли кокоса — самые крупные в растительном мире: они весят до 2 кг и могут питать молодое растение более 6 месяцев, пока оно не отрастит настоящие корни и листья.' },
+                embryo: { title: 'Зародыш', desc: 'Миниатюрное будущее растение внутри семени. Состоит из зародышевого корешка, зародышевого стебелька (гипокотиль), почки с зачатками первых листьев (эпикотиль) и семядолей. По сути, это «спящее» растение, готовое начать рост при подходящих условиях.', facts: 'Зародыш семени может оставаться живым десятилетиями и даже тысячелетиями. В 2005 году учёные прорастили семена финиковой пальмы возрастом 2000 лет, найденные в Израиле.' },
+                radicle: { title: 'Зародышевый корешок', desc: 'Зачаток будущего главного корня растения. При прорастании именно он первым прорывает семенную кожуру и устремляется вниз, в почву, в поисках воды и минеральных веществ. Корешок всегда растёт по направлению силы тяжести — это явление называется геотропизмом.', facts: 'Зародышевый корешок развивает удивительную силу: он способен пробить асфальт и поднять вес, в 100 раз превышающий его собственный — это давление кончика растущего корня.' },
+                endosperm: { title: 'Эндосперм', desc: 'Запасающая ткань семени, окружающая зародыш. Богата крахмалом, белками и маслами — это «продовольственный склад» для прорастания. У злаков (пшеница, рис, кукуруза) эндосперм составляет до 80% массы зерна — именно его мы и едим в виде муки и круп.', facts: 'Эндосперм пшеничного зерна состоит на 70% из крахмала и обеспечивает мировое сельское хозяйство, кормя миллиарды людей. Из 1 г пшеничного эндосперма можно получить около 4 ккал энергии.' }
+            }
+        },
+        kz: {
+            page_title: 'Тұқым құрылысы — анатомиялық модель',
+            header_title: 'Тұқымның құрылысы',
+            header_subtitle: 'Интерактивті модель — 5 анатомиялық құрылым',
+            hint: 'Толығырақ білу үшін тұқымның кез келген бөлігіне басыңыз',
+            reset_btn: '↺ Көріністі қалпына келтіру', reset_btn_title: 'Көріністі қалпына келтіру', close_btn_label: 'Жабу',
+            loading: 'Модель жүктелуде…', error_load: 'seed.glb файлын жүктеу мүмкін болмады', error_no_mesh: 'Модельде меш табылмады',
+            facts_label: 'Қызықты факт',
+            zones: {
+                seed_coat: { title: 'Тұқым қабығы', desc: 'Тұқымның сыртқы қорғаныштық қабығы. Әр түрлі өсімдіктерде жұқа және теріше (бұршақтар) немесе қатты және ағаштай (шабдалы сүйектері, грек жаңғағы) болуы мүмкін. Ұрықты кеуіп қалудан, механикалық зақымдалудан және микробтардан қорғайды.', facts: 'Кейбір өсімдіктердің тұқым қабығы өте берік — мысалы, эвкалипт тұқымдары тек орман өрттерінен кейін ыстықпен қабық жарылған соң ғана өнеді.' },
+                cotyledons: { title: 'Тұқым жарнақтары', desc: 'Ұрықтың алғашқы жапырақтары, оларда қоректік заттар (крахмал, белок, май) жинақталған. Қос жарнақты өсімдіктерде екі жарнақ, бір жарнақтыларда — бір. Өскен кезде көбіне жер бетіне шығып, алғашқы жасыл жапырақтарға айналады.', facts: 'Кокос жарнақтары — өсімдіктер әлеміндегі ең ірі: салмағы 2 кг-ға дейін жетеді, жас өсімдікті 6 айдан астам уақыт қоректендіреді.' },
+                embryo: { title: 'Ұрық', desc: 'Тұқым ішіндегі болашақ өсімдіктің кішірейтілген түрі. Ұрық тамыршадан, ұрық сабақшасынан (гипокотиль), бүршіктен (эпикотиль) және жарнақтардан тұрады. Іс жүзінде бұл — өсуге дайын «ұйықтап жатқан» өсімдік.', facts: 'Тұқым ұрығы ондаған жыл, тіпті мыңдаған жыл бойы тірі қала алады. 2005 жылы ғалымдар Израильден табылған 2000 жыл өткен құрма пальмасының тұқымдарын өсіріп шығарды.' },
+                radicle: { title: 'Ұрық тамыршасы', desc: 'Өсімдіктің болашақ басты тамырының бастамасы. Өну кезінде тұқым қабығын бірінші болып жарып, су мен минералды заттар іздеп топыраққа қарай төмен өседі. Геотропизм деп аталатын құбылыс — тамыр әрқашан ауырлық күшіне қарай өседі.', facts: 'Ұрық тамыршасы керемет күш дамыта алады: ол асфальтты тесіп өтіп, өзінен 100 есе ауыр салмақты көтере алады.' },
+                endosperm: { title: 'Эндосперм', desc: 'Ұрықты қоршаған тұқымның қор тіні. Крахмалға, белокқа және майға бай — өну кезеңі үшін «азық қоймасы». Дәнді дақылдарда (бидай, күріш, жүгері) эндосперм дәннің массасының 80%-ына жетеді.', facts: 'Бидай дәнінің эндоспермі 70% крахмалдан тұрады және миллиардтаған адамды тамақтандырып, әлемдік ауыл шаруашылығының негізін құрайды.' }
+            }
+        },
+        en: {
+            page_title: 'Seed Anatomy — Anatomical Model',
+            header_title: 'Seed Anatomy',
+            header_subtitle: 'Interactive model — 5 anatomical structures',
+            hint: 'Click any part of the seed to learn more',
+            reset_btn: '↺ Reset view', reset_btn_title: 'Reset view', close_btn_label: 'Close',
+            loading: 'Loading model…', error_load: 'Failed to load seed.glb', error_no_mesh: 'No mesh found in the model',
+            facts_label: 'Did you know?',
+            zones: {
+                seed_coat: { title: 'Seed Coat (Testa)', desc: 'The outer protective layer of the seed, formed from the ovule integuments. In different plants it may be thin and leathery (beans) or hard and woody (peach pits, walnuts). Protects the embryo from drying, mechanical damage, and microbes.', facts: 'Some seed coats are so tough that germination requires extreme conditions — eucalyptus seeds germinate only after wildfires, when heat cracks the coat.' },
+                cotyledons: { title: 'Cotyledons', desc: 'The first embryonic leaves, storing nutrients (starch, proteins, fats). Dicotyledons (beans, squash) have two cotyledons; monocots (wheat, corn) have one. During germination, cotyledons often emerge above ground as the first green leaves.', facts: 'Coconut cotyledons are the largest in the plant kingdom: weighing up to 2 kg, they nourish the young plant for more than 6 months.' },
+                embryo: { title: 'Embryo', desc: 'The miniature future plant inside the seed. Consists of the embryonic root (radicle), embryonic stem (hypocotyl), bud with first leaf primordia (epicotyl), and cotyledons. Essentially a "sleeping" plant ready to grow under favorable conditions.', facts: 'A seed embryo can stay alive for decades and even millennia. In 2005, scientists germinated 2,000-year-old date palm seeds found in Israel.' },
+                radicle: { title: 'Radicle (Embryonic Root)', desc: 'The precursor of the future main root. During germination it is the first structure to break through the seed coat, growing downward into the soil in search of water and minerals. Roots always grow with gravity — a phenomenon called geotropism.', facts: 'The radicle develops astonishing force: it can break through asphalt and lift 100 times its own weight — the pressure of a growing root tip.' },
+                endosperm: { title: 'Endosperm', desc: 'The storage tissue surrounding the embryo. Rich in starch, proteins, and oils — the "food warehouse" for germination. In cereals (wheat, rice, corn) endosperm makes up to 80% of grain mass — that\'s what we eat as flour and grain.', facts: 'Wheat endosperm is 70% starch and feeds billions of people worldwide. 1 g of wheat endosperm yields about 4 kcal of energy.' }
+            }
+        }
+    };
+
+    const ZONES = [
+        { id: 'seed_coat',  subtitle: 'Testa',       color: 0x8b5a3c },
+        { id: 'cotyledons', subtitle: 'Cotyledones', color: 0x6bcb77 },
+        { id: 'embryo',     subtitle: 'Embryo',      color: 0xff6b6b },
+        { id: 'radicle',    subtitle: 'Radicula',    color: 0xffd93d },
+        { id: 'endosperm',  subtitle: 'Endospermium', color: 0xc77dff }
+    ];
+    const SEEDS = {
+    "seed_coat": [
+        [-0.272, -1.073, 0.208],
+        [0.141, -1.037, 0.021],
+        [0.461, -0.843, 0.446],
+        [-0.512, -0.752, 0.466],
+        [-0.436, 0.912, 0.373],
+        [0.346, 0.778, 0.463],
+        [0.346, 1.042, 0.182],
+        [-0.059, 1.012, -0.042]
+    ],
+    "cotyledons": [
+        [-0.5, 0.318, 0.319],
+        [0.226, 0.385, -0.49],
+        [0.313, 0.306, 0.622],
+        [0.249, 0.634, 0.453],
+        [0.32, 0.467, 0.524],
+        [0.381, 0.378, 0.578],
+        [0.382, 0.223, 0.551],
+        [0.487, 0.264, 0.57]
+    ],
+    "embryo": [
+        [0.007, -0.019, -0.697],
+        [0, -0.031, -0.123],
+        [-0.001, 0.125, -0.054],
+        [-0.006, -0.015, 0.149],
+        [0.064, 0.092, 0.232],
+        [-0.015, 0.188, 0.191],
+        [0.028, -0.192, 0.209],
+        [-0.071, -0.139, 0.242]
+    ],
+    "radicle": [
+        [-0.379, -0.436, 0.499],
+        [-0.157, -0.447, -0.531],
+        [0.013, -0.486, 0.251],
+        [0, -0.728, 0.172],
+        [-0.007, -0.788, -0.047],
+        [0.587, -0.391, -0.349],
+        [0.318, -0.401, 0.609],
+        [0.414, -0.331, 0.603]
+    ],
+    "endosperm": [
+        [-0.595, 0.091, 0.395],
+        [-0.527, -0.132, 0.507],
+        [0.023, 0.253, -0.517],
+        [0.016, 0.691, 0.09],
+        [0.403, -0.17, 0.59],
+        [0.351, 0.125, 0.575],
+        [0.567, 0.105, 0.508],
+        [0.63, -0.112, 0.376]
+    ]
+};
+
+    initPoster({ modelFile: 'seed.glb', zones: ZONES, seeds: SEEDS, i18n: I18N });
+</script>
+</body>
+</html>

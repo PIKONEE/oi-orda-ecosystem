@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="page_title">Скелет птицы — анатомическая модель</title>
+    <link rel="stylesheet" href="_poster.css">
+</head>
+<body>
+<div id="canvas-container"></div>
+<div id="header">
+    <h1 data-i18n="header_title">Скелет птицы</h1>
+    <p data-i18n="header_subtitle">Интерактивная анатомическая модель — 6 отделов</p>
+</div>
+<div id="hint" data-i18n="hint">Кликните по любой части скелета, чтобы узнать больше</div>
+<button id="reset-btn" data-i18n="reset_btn" data-i18n-title="reset_btn_title" title="Сбросить вид">↺ Сбросить вид</button>
+<div id="info-panel" aria-hidden="true"></div>
+<div id="legend"></div>
+<div id="hover-label"></div>
+<div id="loading"><div class="spinner"></div><div id="loading-text" data-i18n="loading">Загрузка модели…</div></div>
+
+<script type="importmap">
+    { "imports": { "three": "../../libs/vendor/three-0.160.0/three.module.js", "three/addons/": "../../libs/vendor/three-0.160.0/addons/" } }
+</script>
+
+<script type="module">
+    import { initPoster } from './_poster_lib.js';
+
+    const I18N = {
+        ru: {
+            page_title: 'Скелет птицы — анатомическая модель',
+            header_title: 'Скелет птицы',
+            header_subtitle: 'Интерактивная анатомическая модель — 6 отделов',
+            hint: 'Кликните по любой части скелета, чтобы узнать больше',
+            reset_btn: '↺ Сбросить вид', reset_btn_title: 'Сбросить вид', close_btn_label: 'Закрыть',
+            loading: 'Загрузка модели…', error_load: 'Не удалось загрузить bird_skeleton.glb', error_no_mesh: 'В модели нет меша',
+            facts_label: 'Интересный факт',
+            zones: {
+                skull: { title: 'Череп и клюв', desc: 'Череп птицы лёгкий, с большими глазницами и беззубым клювом, покрытым роговым чехлом. Кости черепа срастаются в раннем возрасте. Клюв — главный «инструмент» птицы для добычи и обработки пищи, чистки перьев и строительства гнёзд.', facts: 'У некоторых видов клюв растёт всю жизнь со скоростью 1–3 мм в месяц и стачивается о твёрдую пищу. Череп страуса весит всего 0,1% от массы тела.' },
+                spine: { title: 'Позвоночник', desc: 'Шейный отдел очень подвижен (от 11 до 25 позвонков — у сов 14), что компенсирует неподвижность глаз в орбитах. Грудные позвонки срастаются для жёсткости при полёте. Поясничные, крестцовые и часть хвостовых сливаются в сложный крестец.', facts: 'Совы могут поворачивать голову на 270°, потому что в их шее 14 позвонков (у человека всего 7), а сонные артерии защищены особыми кольцами.' },
+                wings: { title: 'Крылья', desc: 'Видоизменённые передние конечности. Состоят из плечевой кости, локтевой и лучевой костей предплечья, пястных костей и фаланг (3 пальца, сросшихся в кисть). К крыльям крепятся маховые перья — главный аэродинамический элемент.', facts: 'Размах крыльев странствующего альбатроса достигает 3,5 м — рекорд среди современных птиц. Крылья колибри совершают до 80 взмахов в секунду.' },
+                sternum: { title: 'Грудина с килем', desc: 'Массивная грудина с выростом-килем — характерная черта летающих птиц. К килю прикрепляются мощные грудные мышцы, опускающие крылья при взмахе. У нелетающих птиц (страусы, киви) киль отсутствует.', facts: 'Грудные мышцы летающих птиц составляют до 25% массы тела — самые крупные мышцы по соотношению к телу среди позвоночных.' },
+                pelvis: { title: 'Тазовый пояс', desc: 'Образован тазовыми костями, сросшимися с пояснично-крестцовым отделом позвоночника в сложный крестец. Это обеспечивает жёсткую опору при ходьбе на двух ногах и при приземлении после полёта.', facts: 'У большинства птиц лобковые кости таза не срастаются спереди (открытый таз) — это нужно, чтобы откладывать крупные яйца.' },
+                legs: { title: 'Ноги', desc: 'Состоят из бедра, голени (сросшаяся большеберцовая с верхней частью предплюсны) и цевки (сросшиеся плюсневые кости и нижняя часть предплюсны). Заканчиваются пальцами с когтями. Обычно 4 пальца: 3 вперёд, 1 назад.', facts: 'Птицы могут спать стоя на одной ноге — сухожилия пальцев автоматически сжимаются под весом тела, обеспечивая надёжный захват ветки.' }
+            }
+        },
+        kz: {
+            page_title: 'Құстың қаңқасы — анатомиялық модель',
+            header_title: 'Құстың қаңқасы',
+            header_subtitle: 'Интерактивті анатомиялық модель — 6 бөлім',
+            hint: 'Толығырақ білу үшін қаңқаның кез келген бөлігіне басыңыз',
+            reset_btn: '↺ Көріністі қалпына келтіру', reset_btn_title: 'Көріністі қалпына келтіру', close_btn_label: 'Жабу',
+            loading: 'Модель жүктелуде…', error_load: 'bird_skeleton.glb файлын жүктеу мүмкін болмады', error_no_mesh: 'Модельде меш табылмады',
+            facts_label: 'Қызықты факт',
+            zones: {
+                skull: { title: 'Бас сүйегі және тұмсық', desc: 'Құс бас сүйегі жеңіл, үлкен көз ұялары мен мүйізді қабықпен жабылған тіссіз тұмсығы бар. Тұмсық — құстың тамақ алу, өңдеу, қанаттарын тазалау және ұя салудың басты «құралы».', facts: 'Кейбір түрлерде тұмсық бүкіл өмір бойы айына 1–3 мм жылдамдықпен өсіп, қатты азыққа үйкеліп тозып отырады.' },
+                spine: { title: 'Омыртқа жотасы', desc: 'Мойын бөлімі өте икемді (11-ден 25-ке дейін омыртқа), бұл көздердің көз ұясында қозғалмайтындығын өтейді. Кеуде омыртқалары ұшу кезіндегі қаттылық үшін бірігіп кеткен.', facts: 'Жапалақтар басын 270°-қа айналдыра алады, өйткені олардың мойынында 14 омыртқа бар (адамда небәрі 7).' },
+                wings: { title: 'Қанаттар', desc: 'Өзгерген алдыңғы аяқтар. Иық сүйегінен, білек сүйектерінен, алақан сүйектерінен және фалангалардан (қол сүйектеріне біріккен 3 саусақ) тұрады. Қанаттарға аэродинамикалық қауырсындар бекітіледі.', facts: 'Кезбе альбатростың қанаттарының жайылуы 3,5 м-ге жетеді. Кәдімгі балкөктің қанаттары секундына 80 рет қағады.' },
+                sternum: { title: 'Кильмен төс сүйегі', desc: 'Кильмен қос төс сүйегі — ұшатын құстардың ерекше белгісі. Кильге қанаттарды түсіретін қуатты кеуде бұлшықеттері бекиді. Ұшпайтын құстарда (түйеқұс, киви) киль жоқ.', facts: 'Ұшатын құстардың кеуде бұлшықеттері дене салмағының 25%-ына дейін жетеді — омыртқалылар арасындағы дене салмағына қатысты ең үлкен бұлшықет.' },
+                pelvis: { title: 'Жамбас белдеуі', desc: 'Жамбас сүйектерінен құралған, бел-сегізкөз омыртқалармен бірігіп күрделі сегізкөз түзеді. Бұл екі аяқпен жүруде қатты тіреуді қамтамасыз етеді.', facts: 'Көптеген құстарда жамбас сүйектері алдыңғы жағында бірікпейді (ашық жамбас) — бұл ірі жұмыртқа табу үшін қажет.' },
+                legs: { title: 'Аяқтар', desc: 'Сан, балтыр (үлкен жіліншікпен біріккен), цевка (біріккен табан сүйектері) және саусақтардан тұрады. Әдетте 4 саусақ: 3-і алға, 1-і артқа.', facts: 'Құстар бір аяқта тұрып ұйықтай алады — саусақ сіңірлері дене салмағынан автоматты түрде қысылып, бұтаққа сенімді ілінуді қамтамасыз етеді.' }
+            }
+        },
+        en: {
+            page_title: 'Bird Skeleton — Anatomical Model',
+            header_title: 'Bird Skeleton',
+            header_subtitle: 'Interactive anatomical model — 6 sections',
+            hint: 'Click any part of the skeleton to learn more',
+            reset_btn: '↺ Reset view', reset_btn_title: 'Reset view', close_btn_label: 'Close',
+            loading: 'Loading model…', error_load: 'Failed to load bird_skeleton.glb', error_no_mesh: 'No mesh found in the model',
+            facts_label: 'Did you know?',
+            zones: {
+                skull: { title: 'Skull & Beak', desc: 'A bird skull is light, with large eye sockets and a toothless beak covered with a horny sheath. The beak is the bird\'s main "tool" for feeding, preening, and nest building.', facts: 'In some species the beak grows throughout life at 1–3 mm per month and wears down against hard food. An ostrich skull is only 0.1% of body mass.' },
+                spine: { title: 'Spine', desc: 'The cervical section is very flexible (11 to 25 vertebrae), compensating for eyes fixed in their sockets. Thoracic vertebrae are fused for rigidity during flight.', facts: 'Owls can rotate their head 270° because they have 14 cervical vertebrae (humans have only 7).' },
+                wings: { title: 'Wings', desc: 'Modified forelimbs. Consist of humerus, radius and ulna, metacarpals, and phalanges (3 fingers fused into a hand). Flight feathers attach to the wings — the main aerodynamic element.', facts: 'The wingspan of the wandering albatross reaches 3.5 m. Hummingbird wings beat up to 80 times per second.' },
+                sternum: { title: 'Sternum with Keel', desc: 'A massive sternum with a keel projection — a hallmark of flying birds. Powerful pectoral muscles that lower the wings attach to the keel. Flightless birds (ostriches, kiwis) lack a keel.', facts: 'Pectoral muscles of flying birds make up to 25% of body mass — the largest muscle-to-body ratio among vertebrates.' },
+                pelvis: { title: 'Pelvic Girdle', desc: 'Formed by pelvic bones fused with the lumbo-sacral spine into a complex sacrum. Provides rigid support for bipedal walking and landing after flight.', facts: 'In most birds the pubic bones do not fuse in front (open pelvis) — necessary for laying large eggs.' },
+                legs: { title: 'Legs', desc: 'Consist of femur, tibiotarsus (fused tibia with upper tarsus), tarsometatarsus (fused metatarsals), ending with toes and claws. Usually 4 toes: 3 forward, 1 back.', facts: 'Birds can sleep standing on one leg — toe tendons automatically clench under body weight, ensuring a secure grip on a branch.' }
+            }
+        }
+    };
+
+    const ZONES = [
+        { id: 'skull',   subtitle: 'Cranium et rostrum',  color: 0xff6b6b },
+        { id: 'spine',   subtitle: 'Columna vertebralis', color: 0x4d96ff },
+        { id: 'wings',   subtitle: 'Alae',                color: 0xffd93d },
+        { id: 'sternum', subtitle: 'Sternum + Carina',    color: 0xc77dff },
+        { id: 'pelvis',  subtitle: 'Pelvis',              color: 0x6bcb77 },
+        { id: 'legs',    subtitle: 'Membra inferiora',    color: 0xff9f45 }
+    ];
+    const SEEDS = {
+    "skull": [
+        [-0.004, 0.777, 0.113],
+        [-0.001, 0.656, 0.131],
+        [0.087, 0.866, 0.217],
+        [-0.069, 0.966, 0.293],
+        [-0.074, 0.815, 0.264],
+        [0.053, 0.83, 0.338],
+        [-0.008, 0.829, 0.439],
+        [0, 0.752, 0.598]
+    ],
+    "spine": [
+        [-0.257, -0.227, 0.006],
+        [-0.219, -0.006, -0.038],
+        [-0.219, -0.109, 0.224],
+        [-0.021, 0.078, -0.184],
+        [0.133, 0.196, -0.064],
+        [0.231, -0.136, 0.097],
+        [-0.068, 0.241, -0.03],
+        [0, 0.489, 0.164]
+    ],
+    "wings": [
+        [-1.111, -0.098, 0.128],
+        [-0.846, 0.37, 0.143],
+        [-0.582, -0.001, 0.054],
+        [-0.381, -0.602, 0.278],
+        [0.389, -0.595, 0.267],
+        [0.59, 0.046, 0.063],
+        [0.836, 0.386, 0.145],
+        [1.106, -0.082, 0.132]
+    ],
+    "sternum": [
+        [-0.234, 0.115, 0.166],
+        [-0.189, 0.309, 0.145],
+        [-0.155, 0.09, 0.374],
+        [0.002, 0.33, 0.103],
+        [0.019, 0.122, 0.427],
+        [0.177, 0.064, 0.365],
+        [0.184, 0.308, 0.152],
+        [0.232, 0.112, 0.147]
+    ],
+    "pelvis": [
+        [0.011, -0.252, -0.349],
+        [-0.142, -0.115, -0.207],
+        [-0.044, -0.22, -0.276],
+        [0.042, -0.077, -0.242],
+        [0.185, -0.116, -0.167],
+        [0.188, -0.231, 0.093],
+        [-0.166, -0.137, 0.267],
+        [0.125, -0.098, 0.356]
+    ],
+    "legs": [
+        [-0.001, -0.457, -0.545],
+        [-0.012, -0.387, -0.325],
+        [0.009, -0.672, -0.368],
+        [-0.021, -0.891, -0.396],
+        [0.036, -0.52, -0.146],
+        [-0.248, -0.638, 0.187],
+        [0.158, -0.39, 0.145],
+        [0.244, -0.706, 0.233]
+    ]
+};
+
+    initPoster({ modelFile: 'bird_skeleton.glb', zones: ZONES, seeds: SEEDS, i18n: I18N });
+</script>
+</body>
+</html>

@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Паровая турбина</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { width: 100%; height: 100%; overflow: hidden; }
+        body { font-family: 'Segoe UI','Inter',system-ui,sans-serif; background: linear-gradient(135deg,#eef3fb 0%,#e6edf8 100%); color:#16233f; }
+        #canvas-container { position: absolute; inset: 0; }
+        #labels { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+        .label3d { position: absolute; transform: translate(-50%,-50%); font-size: 12px; font-weight: 800; padding: 2px 9px; border-radius: 7px; background: rgba(255,255,255,0.93); border: 1.5px solid rgba(150,170,205,0.6); box-shadow: 0 2px 8px rgba(40,60,110,0.16); white-space: nowrap; }
+        .label3d.hot { color:#dc2626; border-color:#f3a3a3; } .label3d.cold { color:#2563eb; border-color:#a3c0f5; }
+
+        .header { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); text-align: center; z-index: 6; pointer-events: none; width: 92%; }
+        .header h1 { font-size: 25px; font-weight: 800; color:#1b2a4a; text-shadow: 0 1px 0 rgba(255,255,255,0.7); }
+        .header p { font-size: 13.5px; color:#5a6b8c; margin-top: 4px; font-weight: 600; }
+
+        .panel { position: absolute; z-index: 7; background: rgba(255,255,255,0.82);   border: 1px solid rgba(150,170,205,0.5); border-radius: 16px; box-shadow: 0 10px 34px rgba(40,60,110,0.14); }
+        .control-panel { top: 88px; left: 22px; width: 316px; padding: 16px 18px; }
+        .info-panel { top: 88px; right: 22px; width: 300px; padding: 16px 18px; }
+
+        .param-group { margin-bottom: 13px; }
+        .param-label { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+        .param-name { font-size: 13px; font-weight: 700; color:#33405e; display: flex; align-items: center; gap: 6px; }
+        .param-value { font-size: 15px; font-weight: 800; color:#dc2626; font-variant-numeric: tabular-nums; }
+
+        input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; border-radius: 6px; outline: none; cursor: pointer; background: linear-gradient(90deg,#fde0d0,#f5a98a); }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; border-radius: 50%; background:#fff; border: 3px solid #dc2626; box-shadow: 0 2px 7px rgba(220,38,38,0.4); cursor: pointer; }
+        #vac-slider { background: linear-gradient(90deg,#cfe0f5,#8ab0e0); } #vac-slider::-webkit-slider-thumb { border-color:#2563eb; }
+
+        .toggle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
+        .toggle-btn { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 9px 6px; border-radius: 10px; border: 1.5px solid rgba(150,170,205,0.6); background: rgba(255,255,255,0.55); color:#44537a; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.16s; }
+        .toggle-btn .dot { width: 9px; height: 9px; border-radius: 50%; background:#b7c2d8; transition: all 0.16s; }
+        .toggle-btn.active { background: rgba(220,38,38,0.12); border-color:#dc2626; color:#1b2a4a; }
+        .toggle-btn.active .dot { background:#dc2626; box-shadow: 0 0 7px rgba(220,38,38,0.8); }
+
+        .action-row { display: flex; gap: 8px; margin-top: 11px; }
+        .btn { flex: 1; padding: 9px; border: none; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.16s; color:#fff; }
+        .btn-play { background: linear-gradient(135deg,#16a34a,#15803d); } .btn-reset { background: linear-gradient(135deg,#64748b,#475569); }
+        .btn:hover { filter: brightness(1.07); transform: translateY(-1px); }
+
+        .info-title { font-size: 15px; font-weight: 800; color:#1b2a4a; margin-bottom: 10px; display: flex; align-items: center; gap: 7px; }
+        .chart-wrap { background:#0e1730; border-radius: 11px; padding: 8px 8px 4px; margin-bottom: 11px; }
+        #pchart { width: 100%; height: 96px; display: block; }
+        .chart-cap { font-size: 10.5px; color:#9fb2d8; text-align:center; margin-top:3px; }
+        .readout { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px dashed rgba(150,170,205,0.45); font-size: 13px; }
+        .readout:last-child { border-bottom: none; }
+        .ro-name { color:#5a6b8c; font-weight: 600; } .ro-val { font-weight: 800; color:#1b2a4a; font-variant-numeric: tabular-nums; }
+
+        .formula-panel { position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 7; background: rgba(27,42,74,0.93); color:#eaf0fb; padding: 10px 22px; border-radius: 13px; box-shadow: 0 10px 30px rgba(20,35,70,0.34); text-align: center; max-width: 74%; }
+        .formula { font-size: 15px; font-weight: 600; } .formula b.h { color:#ffb38a; } .formula b.c { color:#7fb3ff; }
+        .formula-note { font-size: 12px; color:#9fb2d8; margin-top: 4px; }
+        .hint { position: absolute; bottom: 16px; left: 22px; z-index: 7; font-size: 12px; color:#5a6b8c; background: rgba(255,255,255,0.72); padding: 7px 13px; border-radius: 9px; border: 1px solid rgba(150,170,205,0.45); }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div id="labels"></div>
+
+    <div class="header">
+        <h1>♨️ Паровая турбина</h1>
+        <p><span id="h-sub">Многоступенчатое расширение пара • энергия пара → вращение вала</span></p>
+    </div>
+
+    <div class="panel control-panel">
+        <div class="param-group">
+            <div class="param-label"><span class="param-name">🔥 <span data-i18n="pLabel">Давление пара на входе</span></span><span class="param-value" id="p-value">150 бар</span></div>
+            <input type="range" id="p-slider" min="10" max="250" value="150">
+        </div>
+        <div class="param-group">
+            <div class="param-label"><span class="param-name">❄️ <span data-i18n="vacLabel">Вакуум в конденсаторе</span></span><span class="param-value" id="vac-value" style="color:#2563eb">90%</span></div>
+            <input type="range" id="vac-slider" min="0" max="100" value="90">
+        </div>
+
+        <div class="toggle-grid">
+            <button class="toggle-btn active" id="t-cut"><span class="dot"></span><span data-i18n="tCut">Разрез корпуса</span></button>
+            <button class="toggle-btn active" id="t-steam"><span class="dot"></span><span data-i18n="tSteam">Поток пара</span></button>
+            <button class="toggle-btn active" id="t-vanes"><span class="dot"></span><span data-i18n="tVanes">Направл. лопатки</span></button>
+            <button class="toggle-btn active" id="t-labels"><span class="dot"></span><span data-i18n="tLabels">Подписи</span></button>
+        </div>
+
+        <div class="action-row">
+            <button class="btn btn-play" id="btn-play" data-i18n="pause">⏸ Пауза</button>
+            <button class="btn btn-reset" id="btn-reset" data-i18n="reset">↺ Вид</button>
+        </div>
+    </div>
+
+    <div class="panel info-panel">
+        <div class="info-title">📉 <span data-i18n="infoTitle">Падение давления по ступеням</span></div>
+        <div class="chart-wrap"><canvas id="pchart" width="264" height="96"></canvas><div class="chart-cap" id="chart-cap">ступени турбины → конденсатор</div></div>
+        <div class="readout"><span class="ro-name" data-i18n="roRpm">Обороты вала</span><span class="ro-val" id="ro-rpm">2324 об/мин</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roPow">Мощность</span><span class="ro-val" id="ro-pow">540 МВт</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roTin">Темп. пара</span><span class="ro-val" id="ro-tin" style="color:#dc2626">560 °C</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roTout">Выхлоп (конденсатор)</span><span class="ro-val" id="ro-tout" style="color:#2563eb">33 °C</span></div>
+    </div>
+
+    <div class="formula-panel">
+        <div class="formula"><b class="h">пар высокого давления</b> → ступени → <b class="c">конденсатор</b> &nbsp;|&nbsp; P = ṁ·Δh·η</div>
+        <div class="formula-note" data-i18n="note">Пар расширяется и охлаждается, передавая энергию лопаткам; давление падает от ступени к ступени</div>
+    </div>
+
+    <div class="hint"><span data-i18n="hint">ЛКМ — вращение • ПКМ — перемещение • Колесо — зум</span></div>
+
+    <script src="../../libs/vendor/three-r128/three.min.js"></script>
+    <script>
+    const LANG = (new URLSearchParams(window.location.search).get('lang')) || 'ru';
+    const I18N = {
+        ru: { headH:'♨️ Паровая турбина', headS:'Многоступенчатое расширение пара • энергия пара → вращение вала',
+              pLabel:'Давление пара на входе', vacLabel:'Вакуум в конденсаторе', tCut:'Разрез корпуса', tSteam:'Поток пара', tVanes:'Направл. лопатки', tLabels:'Подписи',
+              pause:'⏸ Пауза', play:'▶ Пуск', reset:'↺ Вид', infoTitle:'Падение давления по ступеням',
+              roRpm:'Обороты вала', roPow:'Мощность', roTin:'Темп. пара', roTout:'Выхлоп (конденсатор)',
+              cap:'ступени турбины → конденсатор',
+              note:'Пар расширяется и охлаждается, передавая энергию лопаткам; давление падает от ступени к ступени',
+              hint:'ЛКМ — вращение • ПКМ — перемещение • Колесо — зум',
+              lIn:'Впуск пара (ВД)', lRotor:'Рабочие лопатки (ротор)', lStator:'Направляющие лопатки', lShaft:'Вал', lGen:'Генератор', lExh:'Выхлоп → конденсатор',
+              uBar:' бар', uRpm:' об/мин', uMW:' МВт', uC:' °C' },
+        kz: { headH:'♨️ Бу турбинасы', headS:'Будың көпсатылы кеңеюі • бу энергиясы → білік айналуы',
+              pLabel:'Кірістегі бу қысымы', vacLabel:'Конденсатордағы вакуум', tCut:'Корпус қимасы', tSteam:'Бу ағыны', tVanes:'Бағыттаушы қалақтар', tLabels:'Жазулар',
+              pause:'⏸ Кідіріс', play:'▶ Бастау', reset:'↺ Көрініс', infoTitle:'Сатылар бойынша қысымның түсуі',
+              roRpm:'Білік айналымы', roPow:'Қуат', roTin:'Бу темп.', roTout:'Шығыс (конденсатор)',
+              cap:'турбина сатылары → конденсатор',
+              note:'Бу кеңейіп, салқындап, қалақтарға энергия береді; қысым сатыдан сатыға төмендейді',
+              hint:'СБ — айналдыру • ОБ — жылжыту • Дөңгелек — масштаб',
+              lIn:'Бу кірісі (ЖҚ)', lRotor:'Жұмыс қалақтары (ротор)', lStator:'Бағыттаушы қалақтар', lShaft:'Білік', lGen:'Генератор', lExh:'Шығыс → конденсатор',
+              uBar:' бар', uRpm:' айн/мин', uMW:' МВт', uC:' °C' },
+        en: { headH:'♨️ Steam Turbine', headS:'Multi-stage steam expansion • steam energy → shaft rotation',
+              pLabel:'Inlet steam pressure', vacLabel:'Condenser vacuum', tCut:'Casing cutaway', tSteam:'Steam flow', tVanes:'Guide vanes', tLabels:'Labels',
+              pause:'⏸ Pause', play:'▶ Play', reset:'↺ View', infoTitle:'Pressure drop across stages',
+              roRpm:'Shaft speed', roPow:'Power', roTin:'Steam temp.', roTout:'Exhaust (condenser)',
+              cap:'turbine stages → condenser',
+              note:'Steam expands and cools, giving energy to the blades; pressure falls from stage to stage',
+              hint:'LMB — rotate • RMB — pan • Wheel — zoom',
+              lIn:'Steam inlet (HP)', lRotor:'Rotor blades', lStator:'Stator guide vanes', lShaft:'Shaft', lGen:'Generator', lExh:'Exhaust → condenser',
+              uBar:' bar', uRpm:' rpm', uMW:' MW', uC:' °C' },
+    };
+    const L = I18N[LANG] || I18N.ru;
+
+    const PMAX = 250;
+    // 4 rotor stages along +X (inlet narrow -> exhaust wide)
+    const STAGES = [
+        { x:-4.5, blade:0.7,  vane:-3.25 },
+        { x:-2.0, blade:1.0,  vane:-0.75 },
+        { x: 0.5, blade:1.35, vane: 1.75 },
+        { x: 3.0, blade:1.75, vane: null }
+    ];
+    const HUB_R = 0.85;
+
+    let pressure = 150, vacuum = 90, playing = true;
+    let showSteam = true, showVanes = true, showLabels = true, cutaway = true;
+    let flow = 0, rpm = 0, powerMW = 0, Tin = 0, Tout = 0, spin = 0;
+
+    let scene, camera, renderer, root;
+    let shaft, rotorGroup, statorGroup, casingGroup, generator;
+    let steam = [];
+    const labelDefs = [];
+    const clock = new THREE.Clock();
+    const container = document.getElementById('canvas-container');
+    const labelLayer = document.getElementById('labels');
+    const pchart = document.getElementById('pchart'); const pctx = pchart.getContext('2d');
+
+    let camTheta = 0.78, camPhi = 1.08, camRadius = 17;
+    const camTarget = new THREE.Vector3(0, 0.2, 0);
+    let dragMode = 0, lastX = 0, lastY = 0;
+
+    function init() {
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xeef3fb);
+        scene.fog = new THREE.Fog(0xeef3fb, 26, 58);
+        camera = new THREE.PerspectiveCamera(48, window.innerWidth/window.innerHeight, 0.1, 200);
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        container.appendChild(renderer.domElement);
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.88));
+        const key = new THREE.DirectionalLight(0xffffff, 0.6); key.position.set(7,13,9); scene.add(key);
+        const fill = new THREE.DirectionalLight(0xbcd4ff, 0.3); fill.position.set(-8,5,-7); scene.add(fill);
+
+        root = new THREE.Group(); scene.add(root);
+        const grid = new THREE.GridHelper(40, 20, 0xc2cee4, 0xdde5f1); grid.position.y = -3.4; root.add(grid);
+
+        buildShaftAndRotor();
+        buildStator();
+        buildCasing();
+        buildInletExhaust();
+        buildGenerator();
+        initSteam();
+        makeLabels();
+        applyI18N();
+        setupControls();
+        recompute();
+        updateCamera();
+        animate();
+    }
+
+    function mat(c,m,r,o){ return new THREE.MeshStandardMaterial(Object.assign({color:c,metalness:m,roughness:r},o||{})); }
+
+    function buildBladeWheel(R, bladeLen, n, color, twist, width) {
+        const g = new THREE.Group();
+        const hub = new THREE.Mesh(new THREE.CylinderGeometry(R, R, width, 28), mat(0x8a93a0,0.7,0.35));
+        hub.rotation.z = Math.PI/2; g.add(hub);
+        const bmat = mat(color, 0.6, 0.35, {side:THREE.DoubleSide});
+        for (let i=0;i<n;i++){
+            const a = i/n*Math.PI*2;
+            const holder = new THREE.Group(); holder.rotation.x = a; g.add(holder);
+            const blade = new THREE.Mesh(new THREE.BoxGeometry(width*0.8, bladeLen, 0.06), bmat);
+            blade.position.y = R + bladeLen/2;
+            blade.rotation.y = twist;       // pitch the blade
+            holder.add(blade);
+        }
+        return g;
+    }
+
+    function buildShaftAndRotor() {
+        shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.38,0.38,15,24), mat(0xb9c0c9,0.85,0.25));
+        shaft.rotation.z = Math.PI/2; root.add(shaft);
+        rotorGroup = new THREE.Group(); root.add(rotorGroup);
+        STAGES.forEach((s,i)=>{
+            const wheel = buildBladeWheel(HUB_R, s.blade, 26, 0xd06a3a, 0.5, 0.7);
+            wheel.position.x = s.x; rotorGroup.add(wheel);
+            if (i===0) labelDefs.push({ key:'lRotor', pos:new THREE.Vector3(s.x, HUB_R+s.blade+0.5, 0) });
+        });
+        labelDefs.push({ key:'lShaft', pos:new THREE.Vector3(-6.2, -0.1, 0) });
+    }
+
+    function buildStator() {
+        statorGroup = new THREE.Group(); root.add(statorGroup);
+        STAGES.forEach((s,i)=>{
+            if (s.vane===null) return;
+            const len = (s.blade + STAGES[i+1].blade)/2 * 0.9;
+            const ring = buildBladeWheel(HUB_R+0.05, len, 24, 0x5a82b8, -0.6, 0.4);
+            ring.position.x = s.vane; statorGroup.add(ring);
+            if (i===0) labelDefs.push({ key:'lStator', pos:new THREE.Vector3(s.vane, HUB_R+len+0.5, 0) });
+        });
+    }
+
+    function buildCasing() {
+        casingGroup = new THREE.Group(); root.add(casingGroup);
+        const cmat = mat(0x9aa7bd, 0.5, 0.45, { side:THREE.DoubleSide, transparent:true, opacity:0.4 });
+        // stepped half-shells widening downstream
+        const segs = [
+            { x0:-5.6, x1:-3.25, r:1.7 }, { x0:-3.25, x1:-0.75, r:2.1 },
+            { x0:-0.75, x1:1.75, r:2.5 }, { x0:1.75, x1:4.4, r:3.0 }
+        ];
+        segs.forEach(s=>{
+            const len = s.x1 - s.x0;
+            const shell = new THREE.Mesh(new THREE.CylinderGeometry(s.r, s.r, len, 36, 1, true, Math.PI*0.12, Math.PI*1.76), cmat);
+            shell.rotation.z = Math.PI/2; shell.position.x = (s.x0+s.x1)/2; casingGroup.add(shell);
+            // end rings
+            const ring = new THREE.Mesh(new THREE.TorusGeometry(s.r, 0.05, 8, 36, Math.PI*1.76), mat(0x6b7890,0.6,0.4));
+            ring.rotation.y = Math.PI/2; ring.rotation.z = Math.PI*0.12; ring.position.x = s.x1; casingGroup.add(ring);
+        });
+    }
+
+    function buildInletExhaust() {
+        // inlet pipe (top-left, hot)
+        const inMat = mat(0xc0392b, 0.5, 0.4, {emissive:0x3a0a06, emissiveIntensity:0.25});
+        const inlet = new THREE.Mesh(new THREE.CylinderGeometry(0.7,0.7,3.2,20), inMat);
+        inlet.position.set(-6.0, 2.2, 0); root.add(inlet);
+        const elbow = new THREE.Mesh(new THREE.TorusGeometry(0.7,0.7,12,20,Math.PI/2), inMat);
+        elbow.position.set(-5.3, 0.8, 0); elbow.rotation.z = Math.PI; root.add(elbow);
+        labelDefs.push({ key:'lIn', cls:'hot', pos:new THREE.Vector3(-6.0, 4.1, 0) });
+
+        // exhaust (bottom-right, cold, downward to condenser)
+        const exMat = mat(0x3a6ea5, 0.5, 0.4);
+        const exhaust = new THREE.Mesh(new THREE.CylinderGeometry(1.9,1.4,2.6,24), exMat);
+        exhaust.position.set(4.0, -2.4, 0); root.add(exhaust);
+        labelDefs.push({ key:'lExh', cls:'cold', pos:new THREE.Vector3(4.0, -4.1, 0) });
+    }
+
+    function buildGenerator() {
+        generator = new THREE.Group(); generator.position.set(6.4,0,0); root.add(generator);
+        const body = new THREE.Mesh(new THREE.CylinderGeometry(1.5,1.5,2.6,28), mat(0x2f6f4f,0.5,0.5));
+        body.rotation.z = Math.PI/2; generator.add(body);
+        const cap = new THREE.Mesh(new THREE.CylinderGeometry(1.55,1.55,0.2,28), mat(0x244f3a,0.5,0.5));
+        cap.rotation.z = Math.PI/2; cap.position.x = -1.3; generator.add(cap);
+        labelDefs.push({ key:'lGen', pos:new THREE.Vector3(6.4, 1.9, 0) });
+    }
+
+    function initSteam() {
+        const geo = new THREE.SphereGeometry(0.16, 8, 8);
+        for (let i=0;i<150;i++){
+            const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color:0xff7a33, transparent:true, opacity:0.0 }));
+            m.visible = false; root.add(m);
+            steam.push({ mesh:m, active:false, ang:0, rad:0, x:0, vx:0 });
+        }
+    }
+    function spawnSteam() {
+        const p = steam.find(s=>!s.active); if(!p) return;
+        p.active = true; p.mesh.visible = showSteam;
+        p.x = -5.4; p.ang = Math.random()*Math.PI*2; p.rad = 0.9 + Math.random()*0.7;
+        p.vx = 1.0;
+    }
+    function steamColor(xn) {
+        // xn 0(inlet hot) .. 1(exhaust cold)
+        const hot = new THREE.Color(0xff5a1f), mid = new THREE.Color(0xffd23f), cold = new THREE.Color(0x6fa8e0);
+        if (xn < 0.5) return hot.clone().lerp(mid, xn/0.5);
+        return mid.clone().lerp(cold, (xn-0.5)/0.5);
+    }
+
+    function makeLabels(){ labelDefs.forEach(d=>{ const el=document.createElement('div'); el.className='label3d'+(d.cls?(' '+d.cls):''); labelLayer.appendChild(el); d.el=el; }); }
+    function updateLabels(){
+        labelDefs.forEach(d=>{
+            const txt=L[d.key]||d.key; if(d.el.textContent!==txt) d.el.textContent=txt;
+            if(!showLabels){ d.el.style.display='none'; return; }
+            const v=d.pos.clone().project(camera);
+            if(v.z>1){ d.el.style.display='none'; return; }
+            d.el.style.display='block'; d.el.style.left=(v.x*0.5+0.5)*window.innerWidth+'px'; d.el.style.top=(-v.y*0.5+0.5)*window.innerHeight+'px';
+        });
+    }
+
+    function recompute() {
+        flow = Math.sqrt(pressure/PMAX) * (0.4 + 0.6*vacuum/100);
+        rpm = Math.round(3000 * flow);
+        powerMW = Math.round(950 * flow * (pressure/PMAX) * (0.5 + 0.5*vacuum/100));
+        Tin = Math.round(260 + (pressure/PMAX)*340);
+        Tout = Math.round(60 - (vacuum/100)*30);
+        document.getElementById('p-value').textContent = pressure + L.uBar;
+        document.getElementById('vac-value').textContent = vacuum + '%';
+        document.getElementById('ro-rpm').textContent = rpm + L.uRpm;
+        document.getElementById('ro-pow').textContent = powerMW + L.uMW;
+        document.getElementById('ro-tin').textContent = Tin + L.uC;
+        document.getElementById('ro-tout').textContent = Tout + L.uC;
+        drawChart();
+    }
+
+    function drawChart() {
+        const w=pchart.width, h=pchart.height; pctx.clearRect(0,0,w,h);
+        const stagesP = [pressure, pressure*0.5, pressure*0.25, pressure*0.1, pressure*0.03];
+        const n = stagesP.length, bw = w/n;
+        for (let i=0;i<n;i++){
+            const ph = stagesP[i]/PMAX;
+            const bh = Math.max(3, ph*(h-16));
+            const x = i*bw+5, y = h-bh-2;
+            const col = steamColor(i/(n-1));
+            pctx.fillStyle = '#'+col.getHexString();
+            pctx.fillRect(x, y, bw-10, bh);
+            pctx.fillStyle = '#cdd8ee'; pctx.font='9px monospace'; pctx.textAlign='center';
+            pctx.fillText(Math.round(stagesP[i])+'', x+(bw-10)/2, h-bh-5<10? 10 : h-bh-6);
+        }
+        // descending connecting line
+        pctx.strokeStyle='rgba(255,255,255,0.5)'; pctx.lineWidth=1.5; pctx.beginPath();
+        for(let i=0;i<n;i++){ const ph=stagesP[i]/PMAX; const x=i*bw+5+(bw-10)/2; const y=h-Math.max(3,ph*(h-16))-2; if(i===0)pctx.moveTo(x,y); else pctx.lineTo(x,y); }
+        pctx.stroke();
+    }
+
+    function setupControls() {
+        document.getElementById('p-slider').addEventListener('input', e=>{ pressure=+e.target.value; recompute(); });
+        document.getElementById('vac-slider').addEventListener('input', e=>{ vacuum=+e.target.value; recompute(); });
+        const tog=(id,fn)=>{ const el=document.getElementById(id); el.addEventListener('click',()=>{ el.classList.toggle('active'); fn(el.classList.contains('active')); }); };
+        tog('t-cut', v=>{ cutaway=v; casingGroup.children.forEach(c=>{ if(c.material){ c.material.opacity = v?0.4:0.92; } }); });
+        tog('t-steam', v=>{ showSteam=v; });
+        tog('t-vanes', v=>{ showVanes=v; statorGroup.visible=v; });
+        tog('t-labels', v=>showLabels=v);
+        const play=document.getElementById('btn-play'); play.addEventListener('click',()=>{ playing=!playing; play.textContent=playing?L.pause:L.play; });
+        document.getElementById('btn-reset').addEventListener('click',()=>{ camTheta=0.78; camPhi=1.08; camRadius=17; camTarget.set(0,0.2,0); updateCamera(); });
+
+        const el=renderer.domElement;
+        el.addEventListener('contextmenu', e=>e.preventDefault());
+        el.addEventListener('mousedown', e=>{ dragMode=(e.button===2||e.shiftKey)?2:1; lastX=e.clientX; lastY=e.clientY; });
+        window.addEventListener('mousemove', e=>{ if(!dragMode)return; const dx=e.clientX-lastX,dy=e.clientY-lastY; lastX=e.clientX; lastY=e.clientY; if(dragMode===1){camTheta-=dx*0.005; camPhi=Math.max(0.16,Math.min(Math.PI-0.16,camPhi-dy*0.005));} else {const ps=camRadius*0.0016; const right=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,0); const up=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,1); camTarget.addScaledVector(right,-dx*ps); camTarget.addScaledVector(up,dy*ps);} updateCamera(); });
+        window.addEventListener('mouseup', ()=>dragMode=0);
+        el.addEventListener('wheel', e=>{ e.preventDefault(); camRadius=Math.max(9,Math.min(38,camRadius+e.deltaY*0.013)); updateCamera(); }, {passive:false});
+        el.addEventListener('touchstart', e=>{ const t=e.touches[0]; dragMode=1; lastX=t.clientX; lastY=t.clientY; }, {passive:true});
+        el.addEventListener('touchmove', e=>{ if(!dragMode)return; const t=e.touches[0]; const dx=t.clientX-lastX,dy=t.clientY-lastY; lastX=t.clientX; lastY=t.clientY; camTheta-=dx*0.006; camPhi=Math.max(0.16,Math.min(Math.PI-0.16,camPhi-dy*0.006)); updateCamera(); e.preventDefault(); }, {passive:false});
+        window.addEventListener('touchend', ()=>dragMode=0);
+        window.addEventListener('resize', ()=>{ camera.aspect=window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+    }
+
+    function updateCamera(){ const sp=Math.sin(camPhi),cp=Math.cos(camPhi),st=Math.sin(camTheta),ct=Math.cos(camTheta); camera.position.set(camTarget.x+camRadius*sp*ct, camTarget.y+camRadius*cp, camTarget.z+camRadius*sp*st); camera.lookAt(camTarget); camera.updateMatrixWorld(true); }
+
+    function applyI18N(){
+        document.querySelectorAll('[data-i18n]').forEach(el=>{ const k=el.getAttribute('data-i18n'); if(L[k]!=null) el.textContent=L[k]; });
+        document.querySelector('.header h1').textContent=L.headH;
+        document.getElementById('h-sub').textContent=L.headS;
+        document.getElementById('chart-cap').textContent=L.cap;
+        document.title=L.headH.replace(/^[^\wА-Яа-яЁё]+/, ''); document.documentElement.lang=LANG;
+    }
+
+    let spawnAcc=0;
+    function animate(){
+        requestAnimationFrame(animate);
+        const dt = Math.min(clock.getDelta(), 0.05);
+        if (playing) {
+            spin += (rpm/3000) * dt * 7;
+            rotorGroup.rotation.x = spin;
+            // spawn steam ∝ flow
+            spawnAcc += dt * flow * 60;
+            while (spawnAcc>=1){ spawnSteam(); spawnAcc-=1; }
+            steam.forEach(p=>{
+                if(!p.active) return;
+                p.mesh.visible = showSteam;
+                const speed = (1.4 + p.x*0.0 + flow*3.0) * (1 + (p.x+5.4)/10); // accelerates downstream
+                p.x += dt * speed;
+                p.ang += dt * (2.5 + flow*3);
+                const xn = Math.min(1, Math.max(0, (p.x+5.4)/9.8));
+                p.rad = 0.9 + xn*1.6;     // expands outward downstream
+                let yx = p.x, yy = p.rad*Math.cos(p.ang), yz = p.rad*Math.sin(p.ang);
+                if (p.x > 3.6) { // divert to exhaust (downward)
+                    const f=(p.x-3.6)/1.6; yy = p.rad*Math.cos(p.ang) - f*3.0; yx = 3.6 + f*0.5;
+                }
+                p.mesh.position.set(yx, yy, yz);
+                p.mesh.material.color.copy(steamColor(xn));
+                p.mesh.material.opacity = showSteam ? (0.7*(1-xn*0.4)) : 0;
+                p.mesh.scale.setScalar(0.7 + xn*0.9);
+                if (p.x > 4.6) { p.active=false; p.mesh.visible=false; }
+            });
+        }
+        // generator spins with rotor
+        generator.rotation.x = spin;
+        updateLabels();
+        renderer.render(scene, camera);
+    }
+
+    init();
+    </script>
+</body>
+</html>

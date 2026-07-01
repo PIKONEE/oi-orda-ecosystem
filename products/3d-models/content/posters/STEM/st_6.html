@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Сейсмостойкость и Демпферы</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            color: #e2e8f0;
+        }
+
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        /* Header */
+        .header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 20px 30px;
+            background: linear-gradient(180deg, rgba(15, 23, 42, 0.9) 0%, transparent 100%);
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .header h1 {
+            color: #f59e0b; /* Amber/Gold */
+            font-size: 26px;
+            font-weight: 700;
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 15px rgba(245, 158, 11, 0.4);
+        }
+
+        .header p {
+            color: #94a3b8;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        /* Control Panel */
+        .control-panel {
+            position: absolute;
+            top: 100px;
+            left: 20px;
+            width: 340px;
+            background: rgba(30, 41, 59, 0.9);
+            
+            border-radius: 12px;
+            padding: 24px;
+            z-index: 10;
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            border-left: 4px solid #f59e0b;
+            max-height: calc(100vh - 140px);
+            overflow-y: auto;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+        }
+
+        .section-title {
+            color: #e2e8f0;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+            padding-bottom: 8px;
+            margin-top: 20px;
+        }
+
+        .section-title:first-child {
+            margin-top: 0;
+        }
+
+        /* Sliders */
+        .slider-group {
+            margin-bottom: 20px;
+        }
+
+        .slider-group label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            color: #cbd5e1;
+            margin-bottom: 8px;
+        }
+
+        .slider-group label span.value {
+            color: #f59e0b;
+            font-weight: 600;
+            font-family: 'Consolas', monospace;
+        }
+
+        .slider-group input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+            height: 6px;
+            border-radius: 3px;
+            -webkit-appearance: none;
+            background: #475569;
+        }
+
+        .slider-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #f8fafc;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+            border: 2px solid #f59e0b;
+            transition: transform 0.1s;
+        }
+
+        .slider-group input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+        }
+
+        /* Checkboxes */
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+            border: 1px solid transparent;
+        }
+
+        .checkbox-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .checkbox-item.active {
+            background: rgba(34, 197, 94, 0.1);
+            border-color: #22c55e;
+        }
+
+        .checkbox-item input {
+            accent-color: #f59e0b;
+            cursor: pointer;
+            width: 18px;
+            height: 18px;
+        }
+
+        .checkbox-item label {
+            cursor: pointer;
+            font-size: 14px;
+            color: #fff;
+            flex: 1;
+            font-weight: 500;
+        }
+
+        /* Info Panel */
+        .info-panel {
+            position: absolute;
+            top: 100px;
+            right: 20px;
+            width: 300px;
+            background: rgba(30, 41, 59, 0.9);
+            
+            border-radius: 12px;
+            padding: 20px;
+            z-index: 10;
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            border-right: 4px solid #ef4444;
+        }
+
+        .info-panel h3 {
+            color: #f1f5f9;
+            font-size: 16px;
+            margin: 0 0 15px;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+            padding-bottom: 10px;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            align-items: center;
+        }
+
+        .stat-label {
+            color: #94a3b8;
+            font-size: 13px;
+        }
+
+        .stat-value {
+            color: #f1f5f9;
+            font-weight: 700;
+            font-family: 'Consolas', monospace;
+            font-size: 14px;
+        }
+
+        /* Graph */
+        #graph-container {
+            width: 100%;
+            height: 80px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid #475569;
+            border-radius: 6px;
+            margin-top: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        canvas.graph {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .hint {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            color: rgba(148, 163, 184, 0.6);
+            font-size: 12px;
+            pointer-events: none;
+        }
+
+        /* Stress Legend */
+        .legend {
+            display: flex;
+            gap: 5px;
+            margin-top: 10px;
+            height: 8px;
+            border-radius: 4px;
+            background: linear-gradient(to right, #3b82f6, #ffff00, #ef4444);
+            width: 100%;
+        }
+
+        .legend-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            color: #94a3b8;
+            margin-top: 4px;
+        }
+    </style>
+</head>
+<body>
+<script>
+/* i18n */
+(function(){
+  var lang=new URLSearchParams(location.search).get('lang')||'ru';
+  var T={
+    ru:{title:'🏢 Сейсмостойкость (TMD)',subtitle:'Инженерия • Динамика • Гасители колебаний',
+      sec1:'📉 Землетрясение',sec2:'🛡️ Защита',sec3:'👁️ Визуализация',
+      lbl_mag:'Магнитуда (Амплитуда):',lbl_freq:'Частота (Гц):',
+      cb_damper:'Включить Демпфер (TMD)',
+      damper_desc:'Инерционный гаситель (золотой шар) движется в противофазе зданию, поглощая энергию колебаний.',
+      cb_stress:'Карта напряжений',leg_low:'Низкое',leg_crit:'Критическое',
+      info_h3:'📊 Мониторинг',sl_disp:'Смещение крыши:',sl_stress:'Напряжение (макс):',sl_status:'Состояние:',
+      seismo:'Сейсмограмма (Крыша vs Земля):',
+      hint:'ЛКМ - Вращение • ПКМ - Панорама • Колесо - Зум',
+      s_ok:'НОРМА',s_warn:'ВНИМАНИЕ',s_crit:'КРИТИЧЕСКОЕ',
+      mUnit:' м',hzUnit:' Гц'},
+    kz:{title:'🏢 Сейсмотұрақтылық (TMD)',subtitle:'Инженерия • Динамика • Тербеліс сөндіргіштер',
+      sec1:'📉 Жер сілкінісі',sec2:'🛡️ Қорғаныс',sec3:'👁️ Визуализация',
+      lbl_mag:'Магнитуда (Амплитуда):',lbl_freq:'Жиілік (Гц):',
+      cb_damper:'Демпферді қосу (TMD)',
+      damper_desc:'Инерциялық сөндіргіш (алтын шар) ғимаратқа қарама-қарсы фазада қозғалып, тербеліс энергиясын сіңіреді.',
+      cb_stress:'Кернеу картасы',leg_low:'Төмен',leg_crit:'Критикалық',
+      info_h3:'📊 Мониторинг',sl_disp:'Шатыр жылжуы:',sl_stress:'Кернеу (макс):',sl_status:'Күй:',
+      seismo:'Сейсмограмма (Шатыр vs Жер):',
+      hint:'СТ - Айналу • ОТ - Панорама • Доңғалақ - Зум',
+      s_ok:'НОРМА',s_warn:'ЕСКЕРТУ',s_crit:'КРИТИКАЛЫҚ',
+      mUnit:' м',hzUnit:' Гц'},
+    en:{title:'🏢 Seismic Resistance (TMD)',subtitle:'Engineering • Dynamics • Vibration Dampers',
+      sec1:'📉 Earthquake',sec2:'🛡️ Protection',sec3:'👁️ Visualization',
+      lbl_mag:'Magnitude (Amplitude):',lbl_freq:'Frequency (Hz):',
+      cb_damper:'Enable Damper (TMD)',
+      damper_desc:'The inertial damper (gold ball) moves out of phase with the building, absorbing vibration energy.',
+      cb_stress:'Stress map',leg_low:'Low',leg_crit:'Critical',
+      info_h3:'📊 Monitoring',sl_disp:'Roof displacement:',sl_stress:'Stress (max):',sl_status:'Status:',
+      seismo:'Seismogram (Roof vs Ground):',
+      hint:'LMB - Rotate • RMB - Pan • Wheel - Zoom',
+      s_ok:'NORMAL',s_warn:'WARNING',s_crit:'CRITICAL',
+      mUnit:' m',hzUnit:' Hz'}
+  };
+  window._t=T[lang]||T.ru;
+  document.addEventListener('DOMContentLoaded',function(){
+    var t=window._t;
+    var h1=document.querySelector('.header h1');if(h1)h1.textContent=t.title;
+    var p=document.querySelector('.header p');if(p)p.textContent=t.subtitle;
+    var secs=document.querySelectorAll('.section-title');
+    if(secs[0])secs[0].textContent=t.sec1;
+    if(secs[1])secs[1].textContent=t.sec2;
+    if(secs[2])secs[2].textContent=t.sec3;
+    var sl=document.querySelectorAll('.slider-group label > span:first-child');
+    if(sl[0])sl[0].textContent=t.lbl_mag;
+    if(sl[1])sl[1].textContent=t.lbl_freq;
+    var cb=document.querySelectorAll('.checkbox-item label');
+    if(cb[0])cb[0].textContent=t.cb_damper;
+    if(cb[1])cb[1].textContent=t.cb_stress;
+    var dd=document.querySelector('#btn-damper + div');if(dd)dd.textContent=t.damper_desc;
+    var ll=document.querySelectorAll('.legend-labels span');
+    if(ll[0])ll[0].textContent=t.leg_low;
+    if(ll[1])ll[1].textContent=t.leg_crit;
+    var h3=document.querySelector('.info-panel h3');if(h3)h3.textContent=t.info_h3;
+    var st=document.querySelectorAll('.stat-label');
+    if(st[0])st[0].textContent=t.sl_disp;
+    if(st[1])st[1].textContent=t.sl_stress;
+    if(st[2])st[2].textContent=t.sl_status;
+    var sm=document.querySelector('.info-panel [style*="font-size:12px"]');if(sm)sm.textContent=t.seismo;
+    var ss=document.getElementById('stat-status');if(ss)ss.textContent=t.s_ok;
+    var hint=document.querySelector('.hint');if(hint)hint.textContent=t.hint;
+  });
+})();
+</script>
+
+<div id="canvas-container"></div>
+
+<div class="header">
+    <h1>🏢 Сейсмостойкость (TMD)</h1>
+    <p>Инженерия • Динамика • Гасители колебаний</p>
+</div>
+
+<div class="control-panel">
+    <div class="section-title">📉 Землетрясение</div>
+    <div class="slider-group">
+        <label><span>Магнитуда (Амплитуда):</span><span class="value" id="val-mag">0.0</span></label>
+        <input type="range" id="input-mag" min="0" max="10" step="0.1" value="0">
+    </div>
+
+    <div class="slider-group">
+        <label><span>Частота (Гц):</span><span class="value" id="val-freq">1.0 Гц</span></label>
+        <input type="range" id="input-freq" min="0.5" max="3.0" step="0.1" value="1.0">
+    </div>
+
+    <div class="section-title">🛡️ Защита</div>
+    <div class="checkbox-item" id="btn-damper">
+        <input type="checkbox" id="check-damper">
+        <label for="check-damper">Включить Демпфер (TMD)</label>
+    </div>
+    <div style="font-size:11px; color:#94a3b8; margin-top:5px; line-height:1.4;">
+        Инерционный гаситель (золотой шар) движется в противофазе зданию, поглощая энергию колебаний.
+    </div>
+
+    <div class="section-title">👁️ Визуализация</div>
+    <div class="checkbox-item">
+        <input type="checkbox" id="check-stress" checked>
+        <label for="check-stress">Карта напряжений</label>
+    </div>
+    <div class="legend"></div>
+    <div class="legend-labels"><span>Низкое</span><span>Критическое</span></div>
+</div>
+
+<div class="info-panel">
+    <h3>📊 Мониторинг</h3>
+    <div class="stat-row">
+        <span class="stat-label">Смещение крыши:</span>
+        <span class="stat-value" id="stat-disp">0.00 м</span>
+    </div>
+    <div class="stat-row">
+        <span class="stat-label">Напряжение (макс):</span>
+        <span class="stat-value" id="stat-stress">0 %</span>
+    </div>
+    <div class="stat-row">
+        <span class="stat-label">Состояние:</span>
+        <span class="stat-value" id="stat-status" style="color:#22c55e">НОРМА</span>
+    </div>
+
+    <div style="margin-top:15px; font-size:12px; color:#94a3b8;">Сейсмограмма (Крыша vs Земля):</div>
+    <div id="graph-container">
+        <canvas id="seismo-graph" width="260" height="80"></canvas>
+    </div>
+</div>
+
+<div class="hint">ЛКМ - Вращение • ПКМ - Панорама • Колесо - Зум</div>
+
+<!-- Three.js -->
+<script type="importmap">
+    {
+        "imports": {
+            "three": "../../libs/vendor/three-0.160.0/three.module.js",
+            "three/addons/": "../../libs/vendor/three-0.160.0/addons/"
+        }
+    }
+</script>
+
+<script type="module">
+    import * as THREE from 'three';
+    import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+
+    // --- Configuration ---
+    const CONFIG = {
+        floors: 8,
+        floorHeight: 4,
+        width: 10,
+        depth: 10,
+        colorSteel: 0x64748b,
+        colorGlass: 0x94a3b8,
+        colorDamper: 0xf59e0b, // Gold
+        colorGround: 0x334155,
+        // Physics constants tuned for 1.0Hz resonance
+        m1: 100, // Building effective mass
+        k1: 4000, // Stiffness (tuned for ~1Hz natural freq)
+        c1: 10,  // Structural damping
+        m2: 10, // Mass of damper (10% of building)
+        k2: 400, // Tuned spring for damper (tuned to match building freq)
+        c2: 5    // Damping of TMD
+    };
+
+    // --- State ---
+    let state = {
+        magnitude: 0,
+        frequency: 1.0,
+        damperEnabled: false,
+        time: 0,
+        groundPos: 0,
+        buildingPos: 0, // Roof displacement relative to ground
+        buildingVel: 0,
+        tmdPos: 0, // Damper displacement relative to ground
+        tmdVel: 0
+    };
+
+    // --- Globals ---
+    let scene, camera, renderer, controls;
+    let groundGroup, buildingGroup, tmdGroup, tmdMassMesh;
+    let floorMeshes = [];
+    let columnMeshes = [];
+    let springMeshes = []; // Connecting springs/pistons
+    let graphCtx;
+    let historyGround = [];
+    let historyRoof = [];
+
+    // --- Initialization ---
+    function init() {
+        // Scene
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0f172a);
+        scene.fog = new THREE.FogExp2(0x0f172a, 0.015);
+
+        // Camera
+        const aspect = window.innerWidth / window.innerHeight;
+        camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 500);
+        camera.position.set(40, 40, 60);
+        camera.lookAt(0, 15, 0);
+
+        // Renderer
+        renderer = new THREE.WebGLRenderer({antialias: true, alpha: true});
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = false;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        // Lights
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        dirLight.position.set(20, 50, 30);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
+        scene.add(dirLight);
+
+        const spotLight = new THREE.SpotLight(0xf59e0b, 0.8);
+        spotLight.position.set(-20, 40, -10);
+        spotLight.lookAt(0, 40, 0);
+        scene.add(spotLight);
+
+        // Controls
+        controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.maxPolarAngle = Math.PI / 2 - 0.05;
+        controls.minDistance = 20;
+        controls.maxDistance = 150;
+        controls.target.set(0, 15, 0);
+
+        // Canvas Graph
+        const c = document.getElementById('seismo-graph');
+        graphCtx = c.getContext('2d');
+
+        // Build Scene
+        createScene();
+
+        // Listeners
+        window.addEventListener('resize', onWindowResize, false);
+        setupUI();
+
+        // Start
+        animate();
+    }
+
+    // --- Scene Construction ---
+
+    function createScene() {
+        // 1. Moving Ground Platform
+        groundGroup = new THREE.Group();
+        scene.add(groundGroup);
+
+        const groundGeo = new THREE.BoxGeometry(60, 2, 60);
+        const groundMat = new THREE.MeshStandardMaterial({
+            color: CONFIG.colorGround,
+            roughness: 0.9,
+            map: createGridTexture()
+        });
+        const ground = new THREE.Mesh(groundGeo, groundMat);
+        ground.position.y = -1;
+        ground.receiveShadow = true;
+        groundGroup.add(ground);
+
+        // 2. Building Structure
+        buildingGroup = new THREE.Group();
+        groundGroup.add(buildingGroup); // Attached to ground
+
+        const floorGeo = new THREE.BoxGeometry(CONFIG.width, 0.5, CONFIG.depth);
+        const floorMat = new THREE.MeshStandardMaterial({color: 0x475569});
+
+        const colGeo = new THREE.CylinderGeometry(0.4, 0.4, CONFIG.floorHeight, 8);
+        const colMat = new THREE.MeshStandardMaterial({color: CONFIG.colorSteel}); // Will change color
+
+        for (let i = 0; i <= CONFIG.floors; i++) {
+            // Floor Slab
+            const slab = new THREE.Mesh(floorGeo, floorMat);
+            slab.position.y = i * CONFIG.floorHeight;
+            slab.castShadow = true;
+            slab.receiveShadow = true;
+
+            // Store ref for animation (shear deformation)
+            slab.userData.baseY = slab.position.y;
+            floorMeshes.push(slab);
+            buildingGroup.add(slab);
+
+            // Columns (below slab, except ground)
+            if (i > 0) {
+                // 4 Columns
+                const offsets = [
+                    {x: -1, z: -1}, {x: 1, z: -1},
+                    {x: -1, z: 1}, {x: 1, z: 1}
+                ];
+
+                offsets.forEach(off => {
+                    const col = new THREE.Mesh(colGeo, colMat.clone()); // Clone for individual coloring
+                    // Position relative to floor i-1
+                    col.position.set(
+                            off.x * (CONFIG.width / 2 - 1),
+                            (i - 1) * CONFIG.floorHeight + CONFIG.floorHeight / 2,
+                            off.z * (CONFIG.depth / 2 - 1)
+                    );
+                    col.userData.basePos = col.position.clone();
+                    col.userData.floorIndex = i; // Belongs to floor i
+
+                    columnMeshes.push(col);
+                    buildingGroup.add(col);
+                });
+            }
+        }
+
+        // 3. Tuned Mass Damper (TMD) Visuals
+        tmdGroup = new THREE.Group();
+        // Position on roof
+        const roofY = CONFIG.floors * CONFIG.floorHeight;
+        tmdGroup.position.set(0, roofY, 0);
+        buildingGroup.add(tmdGroup); // Attached to building frame
+
+        // Rails (sliding mechanism)
+        const railGeo = new THREE.CylinderGeometry(0.2, 0.2, 8, 8);
+        const railMat = new THREE.MeshStandardMaterial({color: 0x94a3b8});
+
+        const rail1 = new THREE.Mesh(railGeo, railMat);
+        rail1.rotation.z = Math.PI / 2;
+        rail1.position.set(0, 1, 2);
+        tmdGroup.add(rail1);
+
+        const rail2 = new THREE.Mesh(railGeo, railMat);
+        rail2.rotation.z = Math.PI / 2;
+        rail2.position.set(0, 1, -2);
+        tmdGroup.add(rail2);
+
+        // Frame posts for rails
+        const postGeo = new THREE.BoxGeometry(0.5, 2, 6);
+        const post1 = new THREE.Mesh(postGeo, floorMat);
+        post1.position.set(-4, 1, 0);
+        tmdGroup.add(post1);
+        const post2 = new THREE.Mesh(postGeo, floorMat);
+        post2.position.set(4, 1, 0);
+        tmdGroup.add(post2);
+
+        // The Mass (Block sliding on rails)
+        const massGeo = new THREE.BoxGeometry(3, 2.5, 5);
+        const massMat = new THREE.MeshPhysicalMaterial({
+            color: CONFIG.colorDamper,
+            metalness: 0.8,
+            roughness: 0.2,
+            clearcoat: 1.0
+        });
+        tmdMassMesh = new THREE.Mesh(massGeo, massMat);
+        tmdMassMesh.position.y = 1; // Center on rails
+        tmdMassMesh.castShadow = true;
+        tmdGroup.add(tmdMassMesh);
+
+        // Springs/Pistons visualization
+        // Left Spring/Damper
+        createConnector(-4, -1.5);
+        // Right Spring/Damper
+        createConnector(4, 1.5);
+    }
+
+    function createConnector(frameX, massOffsetX) {
+        // Hydraulic Piston style
+        const cyl1 = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 1, 16), new THREE.MeshStandardMaterial({color: 0x64748b}));
+        const cyl2 = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 1, 16), new THREE.MeshStandardMaterial({color: 0x94a3b8}));
+
+        cyl1.rotation.z = Math.PI / 2;
+        cyl2.rotation.z = Math.PI / 2;
+
+        tmdGroup.add(cyl1);
+        tmdGroup.add(cyl2);
+
+        springMeshes.push({
+            outer: cyl1,
+            inner: cyl2,
+            frameX: frameX,
+            massOffsetX: massOffsetX // side of the mass block
+        });
+    }
+
+    function createGridTexture() {
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 512;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#334155';
+        ctx.fillRect(0, 0, 512, 512);
+        ctx.strokeStyle = '#475569';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        for (let i = 0; i <= 512; i += 64) {
+            ctx.moveTo(i, 0);
+            ctx.lineTo(i, 512);
+            ctx.moveTo(0, i);
+            ctx.lineTo(512, i);
+        }
+        ctx.stroke();
+        return new THREE.CanvasTexture(canvas);
+    }
+
+    // --- Physics Simulation ---
+
+    function updatePhysics(dt) {
+        state.time += dt;
+
+        // 1. Ground Motion (Seismic Wave)
+        const amplitude = state.magnitude * 0.8;
+        const w = state.frequency * Math.PI * 2; // rad/s
+
+        const groundX = amplitude * Math.sin(w * state.time);
+        const groundVel = amplitude * w * Math.cos(w * state.time);
+        const groundAcc = -amplitude * w * w * Math.sin(w * state.time);
+
+        state.groundPos = groundX;
+        groundGroup.position.x = groundX;
+
+        // 2. Building Physics (SDOF Model)
+        // Physics logic:
+        // Equation 1 (Building): m1*x1'' + c1*x1' + k1*x1 = k2*(x2-x1) + c2*(v2-v1) - m1*xg''
+        // Equation 2 (TMD):      m2*x2'' + c2*(v2-v1) + k2*(x2-x1) = -m2*xg''
+        // x1, x2 are relative displacements to ground.
+
+        // Use CONFIG values
+        const k2 = state.damperEnabled ? CONFIG.k2 : 0;
+        const c2 = state.damperEnabled ? CONFIG.c2 : 0;
+        // If damper disabled, mass just tracks building (locked) or floats loosely.
+        // Let's lock it: stiff spring, high damping
+        const effectiveK2 = state.damperEnabled ? CONFIG.k2 : 5000;
+        const effectiveC2 = state.damperEnabled ? CONFIG.c2 : 100;
+
+        // Forces on Building (M1)
+        const restoringForce1 = -CONFIG.k1 * state.buildingPos;
+        const dampingForce1 = -CONFIG.c1 * state.buildingVel;
+
+        // Interaction force from TMD onto Building (pulls building towards TMD)
+        const relativePos = state.tmdPos - state.buildingPos;
+        const relativeVel = state.tmdVel - state.buildingVel;
+        const interactionForce = effectiveK2 * relativePos + effectiveC2 * relativeVel;
+
+        const seismicForce1 = -CONFIG.m1 * groundAcc;
+
+        const acc1 = (restoringForce1 + dampingForce1 + interactionForce + seismicForce1) / CONFIG.m1;
+        state.buildingVel += acc1 * dt;
+        state.buildingPos += state.buildingVel * dt;
+
+        // Forces on TMD (M2)
+        // Force from building onto TMD (pulls TMD towards building) is -InteractionForce
+        const springForce2 = -effectiveK2 * relativePos;
+        const dampForce2 = -effectiveC2 * relativeVel;
+        const seismicForce2 = -CONFIG.m2 * groundAcc;
+
+        const acc2 = (springForce2 + dampForce2 + seismicForce2) / CONFIG.m2;
+        state.tmdVel += acc2 * dt;
+        state.tmdPos += state.tmdVel * dt;
+
+        // Update Visuals
+
+        // Floors (Shear)
+        floorMeshes.forEach((mesh, i) => {
+            const ratio = i / CONFIG.floors;
+            mesh.position.x = state.buildingPos * Math.pow(ratio, 1.5);
+        });
+
+        // Columns
+        columnMeshes.forEach(mesh => {
+            const i = mesh.userData.floorIndex;
+            const ratioBottom = (i - 1) / CONFIG.floors;
+            const ratioTop = i / CONFIG.floors;
+
+            const xBottom = state.buildingPos * Math.pow(ratioBottom, 1.5);
+            const xTop = state.buildingPos * Math.pow(ratioTop, 1.5);
+            const xMid = (xBottom + xTop) / 2;
+
+            mesh.position.x = mesh.userData.basePos.x + xMid;
+
+            const dx = xTop - xBottom;
+            const dy = CONFIG.floorHeight;
+            const angle = -Math.atan2(dx, dy);
+            mesh.rotation.z = angle;
+
+            // Stress Color
+            if (document.getElementById('check-stress').checked) {
+                const stress = Math.abs(dx) / 1.5;
+                const color = new THREE.Color().lerpColors(
+                        new THREE.Color(0x3b82f6),
+                        new THREE.Color(0xef4444),
+                        Math.min(stress, 1)
+                );
+                mesh.material.color = color;
+            } else {
+                mesh.material.color.setHex(CONFIG.colorSteel);
+            }
+        });
+
+        // TMD Position
+        // tmdPos is relative displacement from ground.
+        // Roof is at buildingPos relative to ground.
+        // tmdMass local position relative to roof = tmdPos - buildingPos.
+        const tmdLocalX = state.tmdPos - state.buildingPos;
+
+        // Clamp visual range so it stays on rails
+        // tmdMassMesh.position.x = Math.max(-3.5, Math.min(3.5, tmdLocalX));
+        tmdMassMesh.position.x = tmdLocalX;
+
+        // Update Springs/Pistons
+        springMeshes.forEach(s => {
+            // frameX is fixed on roof (e.g. -4). massOffsetX is fixed on mass (e.g. -1.5).
+            // Distance between frame post and mass connection point
+            const massPointX = tmdMassMesh.position.x + s.massOffsetX;
+            const dist = massPointX - s.frameX;
+            const center = (massPointX + s.frameX) / 2;
+            const len = Math.abs(dist);
+
+            // Stretch cylinder
+            s.outer.position.x = s.frameX + dist / 2 - (dist > 0 ? 0.25 : -0.25) * len; // Anchor to frame roughly
+            s.outer.scale.y = len * 0.6; // Outer tube
+
+            s.inner.position.x = center;
+            s.inner.scale.y = len; // Inner rod
+
+            // Better visual:
+            // Point A = s.frameX
+            // Point B = tmdMassMesh.position.x
+            // Outer attached to A, Inner attached to B
+            s.outer.position.x = s.frameX;
+            s.outer.scale.y = 2; // Fixed size housing
+            s.outer.rotation.z = Math.PI / 2;
+
+            // Rod moves with mass
+            // s.inner.position.x = tmdMassMesh.position.x; // No, relative to tmdGroup
+            // Actually, let's just make them stretch for simplicity
+            s.inner.position.x = center;
+            s.inner.scale.y = len;
+        });
+
+        // --- Update UI Data ---
+        updateGraph();
+        document.getElementById('stat-disp').innerText = Math.abs(state.buildingPos).toFixed(2) + (window._t?window._t.mUnit:' м');
+
+        const stressVal = Math.min(Math.abs(state.buildingPos) * 20, 100);
+        document.getElementById('stat-stress').innerText = Math.round(stressVal) + " %";
+        const statusEl = document.getElementById('stat-status');
+
+        var _s=window._t||{s_crit:'КРИТИЧЕСКОЕ',s_warn:'ВНИМАНИЕ',s_ok:'НОРМА'};
+        if (stressVal > 80) {
+            statusEl.innerText = _s.s_crit;
+            statusEl.style.color = "#ef4444";
+        } else if (stressVal > 40) {
+            statusEl.innerText = _s.s_warn;
+            statusEl.style.color = "#facc15";
+        } else {
+            statusEl.innerText = _s.s_ok;
+            statusEl.style.color = "#22c55e";
+        }
+    }
+
+    function updateGraph() {
+        historyGround.push(state.groundPos);
+        historyRoof.push(state.groundPos + state.buildingPos);
+        if (historyGround.length > 100) historyGround.shift(); // More history
+        if (historyRoof.length > 100) historyRoof.shift();
+
+        const w = graphCtx.canvas.width;
+        const h = graphCtx.canvas.height;
+
+        graphCtx.clearRect(0, 0, w, h);
+
+        // Draw Ground (Grey)
+        drawHistory(historyGround, '#64748b', 2);
+        // Draw Roof (Blue/Red depending on stress)
+        drawHistory(historyRoof, '#38bdf8', 2);
+    }
+
+    function drawHistory(data, color, lw) {
+        graphCtx.beginPath();
+        graphCtx.strokeStyle = color;
+        graphCtx.lineWidth = lw;
+
+        const step = graphCtx.canvas.width / 100;
+        const scaleY = 3; // Scale factor
+        const midY = graphCtx.canvas.height / 2;
+
+        for (let i = 0; i < data.length; i++) {
+            const x = i * step;
+            const y = midY - data[i] * scaleY;
+            if (i === 0) graphCtx.moveTo(x, y);
+            else graphCtx.lineTo(x, y);
+        }
+        graphCtx.stroke();
+    }
+
+    // --- UI Setup ---
+    function setupUI() {
+        const magSlider = document.getElementById('input-mag');
+        magSlider.addEventListener('input', (e) => {
+            state.magnitude = parseFloat(e.target.value);
+            document.getElementById('val-mag').innerText = state.magnitude;
+        });
+
+        const freqSlider = document.getElementById('input-freq');
+        freqSlider.addEventListener('input', (e) => {
+            state.frequency = parseFloat(e.target.value);
+            document.getElementById('val-freq').innerText = state.frequency + (window._t?window._t.hzUnit:' Гц');
+        });
+
+        document.getElementById('check-damper').addEventListener('change', (e) => {
+            state.damperEnabled = e.target.checked;
+            // Visual toggle
+            const btn = document.getElementById('btn-damper');
+            if (state.damperEnabled) btn.classList.add('active');
+            else btn.classList.remove('active');
+        });
+    }
+
+    function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    let lastTime = 0;
+
+    function animate(time) {
+        requestAnimationFrame(animate);
+        const dt = (time - lastTime) / 1000 || 0;
+        lastTime = time;
+
+        updatePhysics(Math.min(dt, 0.05));
+
+        controls.update();
+        renderer.render(scene, camera);
+    }
+
+    // Start
+    init();
+
+</script>
+</body>
+</html>

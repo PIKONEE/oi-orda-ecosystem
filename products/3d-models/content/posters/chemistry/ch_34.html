@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Пептидная связь — образование дипептида</title>
+<style>
+
+
+*{margin:0;padding:0;box-sizing:border-box;}
+
+:root{
+  --bg:#f5f4f0;
+  --surface:rgba(255,255,255,0.90);
+  --border:rgba(0,0,0,0.08);
+  --text:#1c1917;
+  --muted:#78716c;
+  --indigo:#4f46e5;
+  --indigo-light:#e0e7ff;
+  --c-carbon:#374151;
+  --c-nitrogen:#3b82f6;
+  --c-oxygen:#ef4444;
+  --c-hydrogen:#e2e8f0;
+  --c-radical:#16a34a;
+  --shadow:0 2px 20px rgba(0,0,0,0.07);
+  --shadow-lg:0 8px 44px rgba(0,0,0,0.11);
+}
+
+body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);overflow:hidden;height:100vh;}
+
+body::before{
+  content:'';position:fixed;inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='%23f5f4f0'/%3E%3Ccircle cx='1' cy='1' r='0.6' fill='rgba(0,0,0,0.025)'/%3E%3C/svg%3E");
+  pointer-events:none;z-index:0;
+}
+
+#canvas-container{position:fixed;inset:0;z-index:1;}
+
+/* ── HEADER ── */
+.header{
+  position:fixed;top:0;left:0;right:0;z-index:200;
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  padding:0 48px;height:92px;
+  display:flex;align-items:center;gap:14px;
+  box-shadow:var(--shadow);
+}
+.h-formula{font-family:'DM Mono',monospace;font-size:34px;font-weight:500;letter-spacing:-0.5px;}
+.h-c{color:var(--c-carbon);}
+.h-o{color:var(--c-oxygen);}
+.h-n{color:var(--c-nitrogen);}
+.h-dash{color:var(--muted);}
+.header-title{font-size:26px;font-weight:700;margin-left:12px;}
+.header-sub{font-size:14px;color:var(--muted);margin-left:auto;text-align:right;line-height:1.5;}
+
+/* ── LEFT PANEL ── */
+.panel-left{
+  position:fixed;left:24px;top:108px;z-index:100;
+  width:315px;
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:24px;
+  padding:20px 22px;
+  box-shadow:var(--shadow-lg);
+  max-height:calc(100vh - 128px);overflow-y:auto;
+}
+.panel-left::-webkit-scrollbar{width:4px;}
+.panel-left::-webkit-scrollbar-track{background:transparent;}
+.panel-left::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.13);border-radius:4px;}
+.panel-left h3{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.1px;color:var(--muted);margin-bottom:12px;margin-top:4px;}
+
+.formula-badge{
+  display:flex;align-items:center;justify-content:center;
+  background:var(--indigo-light);
+  border-radius:12px;padding:10px 8px;margin-bottom:14px;
+  font-family:'DM Mono',monospace;font-size:16px;font-weight:500;
+  color:var(--text);letter-spacing:0.5px;
+}
+
+.group-item{
+  display:flex;align-items:flex-start;gap:10px;
+  font-size:13.5px;color:#374151;
+  padding:8px 10px;border-radius:10px;background:rgba(0,0,0,0.025);
+  margin-bottom:7px;line-height:1.35;
+}
+.group-dot{width:13px;height:13px;border-radius:50%;flex-shrink:0;margin-top:3px;box-shadow:0 1px 3px rgba(0,0,0,0.2);}
+.group-item b{font-family:'DM Mono',monospace;font-weight:500;}
+.group-item .gtxt{flex:1;}
+.group-item .gsub{display:block;color:var(--muted);font-size:11.5px;margin-top:1px;}
+
+.divider{height:1px;background:var(--border);margin:14px 0;}
+
+.note-box{
+  font-size:13px;line-height:1.55;color:#374151;
+  background:rgba(79,70,229,0.06);border-radius:12px;
+  padding:11px 13px;margin-top:6px;
+}
+.note-box b{color:var(--indigo);}
+.note-box .mono{font-family:'DM Mono',monospace;font-size:12.5px;}
+
+/* ── RIGHT PANEL ── */
+.panel-right{
+  position:fixed;right:24px;top:108px;z-index:100;
+  width:290px;
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:24px;
+  padding:20px 20px;
+  box-shadow:var(--shadow-lg);
+  display:flex;flex-direction:column;gap:9px;
+  max-height:calc(100vh - 128px);overflow-y:auto;
+}
+.panel-right::-webkit-scrollbar{width:4px;}
+.panel-right::-webkit-scrollbar-track{background:transparent;}
+.panel-right::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.13);border-radius:4px;}
+.panel-right h3{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.1px;color:var(--muted);margin-bottom:3px;margin-top:4px;}
+
+.btn{
+  width:100%;padding:11px 14px;border-radius:14px;
+  font-family:'Syne',sans-serif;font-size:15px;font-weight:600;
+  border:none;cursor:pointer;transition:all .18s;text-align:center;
+}
+.btn-primary{background:linear-gradient(135deg,#4f46e5,#818cf8);color:#fff;box-shadow:0 4px 14px rgba(79,70,229,0.30);}
+.btn-primary:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 20px rgba(79,70,229,0.40);}
+.btn-primary:disabled{opacity:0.45;cursor:not-allowed;transform:none;}
+.btn-secondary{background:rgba(79,70,229,0.09);color:var(--indigo);}
+.btn-secondary:hover{background:rgba(79,70,229,0.16);}
+.btn-secondary.active{background:var(--indigo);color:#fff;}
+.btn-ghost{background:rgba(0,0,0,0.05);color:var(--text);}
+.btn-ghost:hover{background:rgba(0,0,0,0.09);}
+.btn-ghost.active{background:rgba(79,70,229,0.12);color:var(--indigo);}
+
+.sep{height:1px;background:var(--border);margin:2px 0;}
+.note-small{font-size:12px;color:var(--muted);text-align:center;}
+
+/* ── PROGRESS BAR ── */
+.progress-wrap{
+  margin:2px 0 4px;
+}
+.progress-track{
+  width:100%;height:7px;border-radius:6px;
+  background:rgba(0,0,0,0.07);overflow:hidden;
+}
+.progress-fill{
+  height:100%;border-radius:6px;width:0%;
+  background:linear-gradient(90deg,#4f46e5,#818cf8);
+  transition:width .08s linear;
+}
+
+/* ── STAGE LABEL ── */
+.stage-label{
+  position:fixed;bottom:100px;left:50%;transform:translateX(-50%);
+  z-index:150;
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:30px;
+  padding:9px 26px;font-size:15px;font-weight:600;
+  box-shadow:var(--shadow);
+  transition:opacity .3s;pointer-events:none;
+}
+.stage-label .mono{font-family:'DM Mono',monospace;color:var(--indigo);}
+
+/* ── BOTTOM HINT ── */
+.hint-bar{
+  position:fixed;bottom:28px;left:50%;transform:translateX(-50%);
+  z-index:150;display:flex;gap:16px;
+}
+.hint-pill{
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:20px;
+  padding:7px 18px;font-size:13px;color:var(--muted);
+  box-shadow:var(--shadow);white-space:nowrap;
+}
+.hint-pill span{color:var(--text);font-weight:600;}
+
+/* ── 3D LABELS (projected) ── */
+#label-layer{position:fixed;inset:0;z-index:90;pointer-events:none;}
+.atom-label{
+  position:absolute;transform:translate(-50%,-50%);
+  font-family:'DM Mono',monospace;font-size:13px;font-weight:500;
+  background:rgba(255,255,255,0.92);
+  border:1px solid var(--border);border-radius:9px;
+  padding:3px 9px;white-space:nowrap;
+  box-shadow:0 2px 10px rgba(0,0,0,0.10);
+  transition:opacity .25s;
+}
+.atom-label .sub{font-size:10px;color:var(--muted);font-family:'Syne',sans-serif;font-weight:500;}
+.atom-label.lab-nh2{color:#2563eb;border-color:rgba(59,130,246,0.4);}
+.atom-label.lab-cooh{color:#dc2626;border-color:rgba(239,68,68,0.4);}
+.atom-label.lab-r{color:#15803d;border-color:rgba(22,163,74,0.4);}
+.atom-label.lab-peptide{color:var(--indigo);border-color:rgba(79,70,229,0.5);background:var(--indigo-light);font-weight:600;}
+.atom-label.lab-water{color:#0891b2;border-color:rgba(8,145,178,0.4);}
+
+/* ── INFO PANEL ── */
+.info-panel{
+  position:fixed;right:24px;top:108px;z-index:300;
+  width:420px;max-height:calc(100vh - 140px);
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:26px;
+  padding:24px 26px;
+  box-shadow:var(--shadow-lg);
+  overflow-y:auto;
+  transform:translateX(460px);
+  transition:transform .38s cubic-bezier(.22,1,.36,1);
+}
+.info-panel.open{transform:translateX(0);}
+.info-close{
+  position:absolute;top:16px;right:18px;
+  width:30px;height:30px;border-radius:50%;
+  background:rgba(0,0,0,0.07);border:none;cursor:pointer;
+  font-size:16px;color:var(--muted);
+  display:flex;align-items:center;justify-content:center;
+}
+.info-close:hover{background:rgba(0,0,0,0.13);}
+.info-tag{
+  display:inline-block;background:var(--indigo-light);color:var(--indigo);
+  border-radius:10px;padding:3px 10px;font-size:12px;font-weight:600;margin-bottom:12px;
+}
+.info-panel h2{font-size:19px;font-weight:700;margin-bottom:6px;}
+.info-section{margin-top:12px;}
+.info-section h4{font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--indigo);margin-bottom:6px;}
+.info-section p{font-size:14px;line-height:1.65;color:#374151;}
+.info-mono{font-family:'DM Mono',monospace;font-size:13px;background:rgba(79,70,229,0.07);border-radius:6px;padding:7px 11px;margin-top:6px;color:var(--text);line-height:1.55;}
+.info-panel::-webkit-scrollbar{width:4px;}
+.info-panel::-webkit-scrollbar-track{background:transparent;}
+.info-panel::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.13);border-radius:4px;}
+
+/* ── LOADING ── */
+#loading{
+  position:fixed;inset:0;z-index:500;background:var(--bg);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;
+}
+.spinner{
+  width:48px;height:48px;border-radius:50%;
+  border:4px solid rgba(79,70,229,0.15);border-top-color:var(--indigo);
+  animation:spin .9s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+#loading p{font-size:15px;color:var(--muted);}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loading">
+  <div class="spinner"></div>
+  <p>Собираем аминокислоты…</p>
+</div>
+
+<!-- CANVAS -->
+<div id="canvas-container"></div>
+
+<!-- PROJECTED LABELS -->
+<div id="label-layer"></div>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="h-formula">
+    <span class="h-dash">–</span><span class="h-c">C</span><span class="h-o">O</span><span class="h-dash">–</span><span class="h-n">N</span><span class="h-h" style="color:#3b82f6;">H</span><span class="h-dash">–</span>
+  </div>
+  <div class="header-title" data-i18n="header_title">Пептидная связь</div>
+  <div class="header-sub" data-i18n-html="header_sub">
+    Образование дипептида · реакция конденсации<br>
+    <span style="font-family:'DM Mono',monospace;font-size:13px;">H₂N–CHR–COOH + H₂N–CHR′–COOH</span>
+  </div>
+</header>
+
+<!-- LEFT PANEL -->
+<div class="panel-left">
+  <h3 data-i18n="blocks_title">Строительные блоки</h3>
+  <div class="formula-badge">H₂N – CHR – COOH</div>
+
+  <div class="group-item">
+    <div class="group-dot" style="background:#3b82f6;"></div>
+    <div class="gtxt"><b data-i18n="block_nh2_name">–NH₂</b> <span data-i18n="block_nh2">аминогруппа</span>
+      <span class="gsub" data-i18n="block_nh2_sub">основный центр, присоединяет H⁺</span>
+    </div>
+  </div>
+  <div class="group-item">
+    <div class="group-dot" style="background:#ef4444;"></div>
+    <div class="gtxt"><b data-i18n="block_cooh_name">–COOH</b> <span data-i18n="block_cooh">карбоксильная группа</span>
+      <span class="gsub" data-i18n="block_cooh_sub">кислотный центр, отдаёт –OH и H⁺</span>
+    </div>
+  </div>
+  <div class="group-item">
+    <div class="group-dot" style="background:#16a34a;"></div>
+    <div class="gtxt"><b data-i18n="block_r_name">R</b> <span data-i18n="block_r">радикал (боковая цепь)</span>
+      <span class="gsub" data-i18n="block_r_sub">определяет свойства аминокислоты</span>
+    </div>
+  </div>
+  <div class="group-item">
+    <div class="group-dot" style="background:#374151;"></div>
+    <div class="gtxt"><b data-i18n="block_ca_name">Cα</b> <span data-i18n="block_ca">α-углерод</span>
+      <span class="gsub" data-i18n="block_ca_sub">центр, связывает все 4 группы</span>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <h3 data-i18n="reaction_title">Суть реакции</h3>
+  <div class="note-box" data-i18n-html="reaction_desc_1">
+    Карбоксильная группа –COOH одной аминокислоты и аминогруппа
+    –NH₂ другой соединяются с <b>отщеплением воды</b> H₂O.
+    Возникает амидная <b>пептидная связь</b>:
+    <div class="mono" style="margin-top:6px;color:var(--indigo);">–CO–NH–</div>
+  </div>
+  <div class="note-box" style="margin-top:8px;" data-i18n-html="reaction_desc_2">
+    Всего <b>20 протеиногенных</b> аминокислот. Их разная
+    последовательность строит <b>все белки</b> живых организмов.
+  </div>
+</div>
+
+<!-- RIGHT PANEL -->
+<div class="panel-right">
+  <h3 data-i18n="anim_title">Анимация</h3>
+  <button class="btn btn-primary" id="btn-form">▶ Образовать связь</button>
+  <button class="btn btn-ghost" id="btn-reset" data-i18n="btn_reset">↺ Сбросить</button>
+  <div class="progress-wrap">
+    <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+  </div>
+
+  <div class="sep"></div>
+  <h3 data-i18n="display_title">Отображение</h3>
+  <button class="btn btn-ghost active" id="btn-labels">Подписи вкл.</button>
+  <button class="btn btn-ghost active" id="btn-water">Вода H₂O вкл.</button>
+  <button class="btn btn-ghost active" id="btn-rotate">Вращение вкл.</button>
+
+  <div class="sep"></div>
+  <h3 data-i18n="more_title">Подробнее</h3>
+  <button class="btn btn-primary" id="info-amino" data-i18n="btn_amino">Что такое аминокислота?</button>
+  <button class="btn btn-secondary" id="info-peptide" data-i18n="btn_peptide">Пептидная связь</button>
+  <button class="btn btn-secondary" id="info-condens" data-i18n="btn_condens">Реакция конденсации</button>
+  <button class="btn btn-secondary" id="info-structure" data-i18n="btn_structure">Уровни структуры белка</button>
+</div>
+
+<!-- STAGE LABEL -->
+<div class="stage-label" id="stage-label">Сближение молекул</div>
+
+<!-- HINTS -->
+<div class="hint-bar">
+  <div class="hint-pill"><span data-i18n="hint_drag_label">Drag</span> — <span data-i18n="hint_drag">вращение</span></div>
+  <div class="hint-pill"><span data-i18n="hint_zoom_label">Scroll</span> — <span data-i18n="hint_zoom">зум</span></div>
+  <div class="hint-pill"><span data-i18n="hint_click_label">Click</span> — <span data-i18n="hint_click">деталь</span></div>
+</div>
+
+<!-- INFO PANEL -->
+<div class="info-panel" id="info-panel">
+  <button class="info-close" id="info-close">✕</button>
+  <div id="info-content"></div>
+</div>
+
+<script>
+const I18N = {
+  ru: {
+    page_title: "Пептидная связь — образование дипептида",
+    header_title: "Пептидная связь",
+    header_sub: "Образование дипептида · реакция конденсации<br>H₂N–CHR–COOH + H₂N–CHR′–COOH",
+    blocks_title: "Строительные блоки",
+    block_nh2: "аминогруппа",
+    block_nh2_sub: "основный центр, присоединяет H⁺",
+    block_cooh: "карбоксильная группа",
+    block_cooh_sub: "кислотный центр, отдаёт –OH и H⁺",
+    block_r: "радикал (боковая цепь)",
+    block_r_sub: "определяет свойства аминокислоты",
+    block_ca: "α-углерод",
+    block_ca_sub: "центр, связывает все 4 группы",
+    reaction_title: "Суть реакции",
+    reaction_desc_1: "Карбоксильная группа –COOH одной аминокислоты и аминогруппа –NH₂ другой соединяются с <b>отщеплением воды</b> H₂O. Возникает амидная <b>пептидная связь</b>:<div class=\"mono\" style=\"margin-top:6px;color:var(--indigo);\">–CO–NH–</div>",
+    reaction_desc_2: "Всего <b>20 протеиногенных</b> аминокислот. Их разная последовательность строит <b>все белки</b> живых организмов.",
+    anim_title: "Анимация",
+    btn_form_idle: "▶ Образовать связь",
+    btn_form_done: "✓ Связь образована",
+    btn_reset: "↺ Сбросить",
+    display_title: "Отображение",
+    btn_labels_on: "Подписи вкл.",
+    btn_labels_off: "Подписи выкл.",
+    btn_water_on: "Вода H₂O вкл.",
+    btn_water_off: "Вода H₂O выкл.",
+    btn_rot_on: "Вращение вкл.",
+    btn_rot_off: "Вращение выкл.",
+    more_title: "Подробнее",
+    btn_amino: "Что такое аминокислота?",
+    btn_peptide: "Пептидная связь",
+    btn_condens: "Реакция конденсации",
+    btn_structure: "Уровни структуры белка",
+    stage_approach: "Сближение молекул",
+    stage_water: "Отщепление воды <span class=\"mono\">H₂O</span>",
+    stage_bonded: "Пептидная связь образована <span class=\"mono\">–CO–NH–</span>",
+    hint_drag: "вращение",
+    hint_zoom: "зум",
+    hint_click: "деталь",
+    hint_drag_label: "Drag",
+    hint_zoom_label: "Scroll",
+    hint_click_label: "Click",
+    lab_amino: "амино",
+    lab_carboxyl: "карбоксил",
+    lab_radical: "радикал",
+    lab_peptide: "пептидная связь –CO–NH–"
+  },
+  kz: {
+    page_title: "Пептидтік байланыс — дипептидтің түзілуі",
+    header_title: "Пептидтік байланыс",
+    header_sub: "Дипептидтің түзілуі · конденсация реакциясы<br>H₂N–CHR–COOH + H₂N–CHR′–COOH",
+    blocks_title: "Құрылыс блоктары",
+    block_nh2: "амин тобы",
+    block_nh2_sub: "негіздік орталық, H⁺ қосып алады",
+    block_cooh: "карбоксил тобы",
+    block_cooh_sub: "қышқылдық орталық, –OH пен H⁺ бөліп шығарады",
+    block_r: "радикал (бүйір тізбек)",
+    block_r_sub: "аминқышқылының қасиеттерін анықтайды",
+    block_ca: "α-көміртек",
+    block_ca_sub: "барлық 4 топты байланыстыратын орталық",
+    reaction_title: "Реакцияның мәні",
+    reaction_desc_1: "Бір аминқышқылының карбоксил –COOH тобы мен екіншісінің амин –NH₂ тобы <b>су молекуласын</b> H₂O бөле отырып жалғасады. Амидті <b>пептидтік байланыс</b> түзіледі:<div class=\"mono\" style=\"margin-top:6px;color:var(--indigo);\">–CO–NH–</div>",
+    reaction_desc_2: "Барлығы <b>20 протеиногенді</b> аминқышқылы бар. Олардың әртүрлі реттілігі тірі ағзалардың <b>барлық белоктарын</b> құрайды.",
+    anim_title: "Анимация",
+    btn_form_idle: "▶ Байланыс түзу",
+    btn_form_done: "✓ Байланыс түзілді",
+    btn_reset: "↺ Бастапқы күй",
+    display_title: "Бейнелеу",
+    btn_labels_on: "Белгілер қосулы",
+    btn_labels_off: "Белгілер өшірулі",
+    btn_water_on: "Су H₂O қосулы",
+    btn_water_off: "Су H₂O өшірулі",
+    btn_rot_on: "Айналу қосулы",
+    btn_rot_off: "Айналу өшірулі",
+    more_title: "Толығырақ",
+    btn_amino: "Аминқышқылы деген не?",
+    btn_peptide: "Пептидтік байланыс",
+    btn_condens: "Конденсация реакциясы",
+    btn_structure: "Белок құрылымының деңгейлері",
+    stage_approach: "Молекулалардың жақындасуы",
+    stage_water: "Судың <span class=\"mono\">H₂O</span> бөлінуі",
+    stage_bonded: "Пептидтік байланыс түзілді <span class=\"mono\">–CO–NH–</span>",
+    hint_drag: "айналдыру",
+    hint_zoom: "масштаб",
+    hint_click: "бөлшек",
+    hint_drag_label: "Тарту",
+    hint_zoom_label: "Дөңгелек",
+    hint_click_label: "Шертпе",
+    lab_amino: "амин",
+    lab_carboxyl: "карбоксил",
+    lab_radical: "радикал",
+    lab_peptide: "пептидтік байланыс –CO–NH–"
+  },
+  en: {
+    page_title: "Peptide Bond — Dipeptide Formation",
+    header_title: "Peptide Bond",
+    header_sub: "Dipeptide formation · condensation reaction<br>H₂N–CHR–COOH + H₂N–CHR′–COOH",
+    blocks_title: "Building Blocks",
+    block_nh2: "amino group",
+    block_nh2_sub: "basic center, accepts H⁺",
+    block_cooh: "carboxyl group",
+    block_cooh_sub: "acidic center, donates –OH and H⁺",
+    block_r: "radical (side chain)",
+    block_r_sub: "determines amino acid properties",
+    block_ca: "α-carbon",
+    block_ca_sub: "chiral center, binds all 4 groups",
+    reaction_title: "Reaction Essence",
+    reaction_desc_1: "The carboxyl group –COOH of one amino acid and the amino group –NH₂ of another connect, <b>releasing water</b> H₂O. This forms an amide <b>peptide bond</b>:<div class=\"mono\" style=\"margin-top:6px;color:var(--indigo);\">–CO–NH–</div>",
+    reaction_desc_2: "There are only <b>20 proteinogenic</b> amino acids. Their different sequences build <b>all proteins</b> in living organisms.",
+    anim_title: "Animation",
+    btn_form_idle: "▶ Form Bond",
+    btn_form_done: "✓ Bond Formed",
+    btn_reset: "↺ Reset",
+    display_title: "Display",
+    btn_labels_on: "Labels on",
+    btn_labels_off: "Labels off",
+    btn_water_on: "Water H₂O on",
+    btn_water_off: "Water H₂O off",
+    btn_rot_on: "Rotation on",
+    btn_rot_off: "Rotation off",
+    more_title: "Details",
+    btn_amino: "What is an amino acid?",
+    btn_peptide: "Peptide bond",
+    btn_condens: "Condensation reaction",
+    btn_structure: "Protein structure levels",
+    stage_approach: "Molecules approaching",
+    stage_water: "Water <span class=\"mono\">H₂O</span> release",
+    stage_bonded: "Peptide bond formed <span class=\"mono\">–CO–NH–</span>",
+    hint_drag: "rotate",
+    hint_zoom: "zoom",
+    hint_click: "detail",
+    hint_drag_label: "Drag",
+    hint_zoom_label: "Scroll",
+    hint_click_label: "Click",
+    lab_amino: "amino",
+    lab_carboxyl: "carboxyl",
+    lab_radical: "radical",
+    lab_peptide: "peptide bond –CO–NH–"
+  }
+};
+
+const LANG = (() => {
+  const q = new URLSearchParams(location.search).get('lang');
+  return (q && I18N[q]) ? q : 'ru';
+})();
+
+const tr = (key) => (I18N[LANG] && I18N[LANG][key]) ?? (I18N.ru[key]);
+
+function applyStaticI18N() {
+  document.documentElement.lang = LANG;
+  const tv = tr('page_title');
+  if (tv) document.title = tv;
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const v = tr(el.getAttribute('data-i18n'));
+    if (v) el.textContent = v;
+  });
+  document.querySelectorAll('[data-i18n-html]').forEach(el => {
+    const v = tr(el.getAttribute('data-i18n-html'));
+    if (v) el.innerHTML = v;
+  });
+}
+applyStaticI18N();
+</script>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "../../libs/vendor/three-0.160.0/three.module.js",
+    "three/addons/": "../../libs/vendor/three-0.160.0/addons/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ── COLORS ─────────────────────────────────────────────────────────────────────
+const COL_C = 0x374151; // carbon — gray
+const COL_N = 0x3b82f6; // nitrogen — blue
+const COL_O = 0xef4444; // oxygen — red
+const COL_H = 0xe2e8f0; // hydrogen — light
+const COL_R = 0x16a34a; // radical — green
+const COL_BOND = 0x9ca3af;
+const COL_PEPTIDE = 0x4f46e5; // indigo glow
+
+// Atom radii
+const R_HEAVY = 0.30;
+const R_R     = 0.42;
+const R_H     = 0.18;
+
+// ── RENDERER ─────────────────────────────────────────────────────────────────
+const W = () => window.innerWidth, H = () => window.innerHeight;
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setSize(W(), H());
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, W() / H(), 0.1, 200);
+camera.position.set(0, 1.5, 16);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 7;
+controls.maxDistance = 34;
+controls.target.set(0, 0, 0);
+
+// ── LIGHTS ─────────────────────────────────────────────────────────────────────
+scene.add(new THREE.AmbientLight(0xffffff, 0.85));
+const dir1 = new THREE.DirectionalLight(0xffffff, 1.15);
+dir1.position.set(7, 11, 9);
+scene.add(dir1);
+const dir2 = new THREE.DirectionalLight(0xfff0e0, 0.4);
+dir2.position.set(-9, -3, -6);
+scene.add(dir2);
+const point1 = new THREE.PointLight(0xc7d2fe, 0.5, 45);
+point1.position.set(0, 2, 6);
+scene.add(point1);
+
+// ── MAIN GROUP (rotates) ────────────────────────────────────────────────────────
+const mainGroup = new THREE.Group();
+scene.add(mainGroup);
+
+// ── MATERIAL + GEOMETRY HELPERS ──────────────────────────────────────────────────
+function makeMat(color, opts = {}) {
+  return new THREE.MeshStandardMaterial({
+    color,
+    roughness: opts.roughness ?? 0.4,
+    metalness: opts.metalness ?? 0.1,
+    transparent: opts.transparent ?? false,
+    opacity: opts.opacity ?? 1,
+    emissive: opts.emissive ?? 0x000000,
+    emissiveIntensity: opts.emissiveIntensity ?? 0,
+  });
+}
+
+function makeSphere(r, mat) {
+  return new THREE.Mesh(new THREE.SphereGeometry(r, 28, 22), mat);
+}
+
+// Cylinder bond between two Vector3 points, oriented via quaternion
+function makeBond(from, to, radius, mat) {
+  const dir = new THREE.Vector3().subVectors(to, from);
+  const len = dir.length();
+  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, len, 14, 1), mat);
+  const mid = new THREE.Vector3().addVectors(from, to).multiplyScalar(0.5);
+  mesh.position.copy(mid);
+  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
+  mesh.userData.baseLen = len || 1; // geometry's intrinsic length, for updateBond scaling
+  return mesh;
+}
+
+// Re-orient an existing bond mesh to span from->to (used in animation)
+function updateBond(mesh, from, to, radius) {
+  const dir = new THREE.Vector3().subVectors(to, from);
+  const len = dir.length();
+  mesh.scale.set(1, len / mesh.userData.baseLen, 1);
+  const mid = new THREE.Vector3().addVectors(from, to).multiplyScalar(0.5);
+  mesh.position.copy(mid);
+  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
+//  GEOMETRY DEFINITIONS
+//  Amino acid 1 (LEFT, glycine-like, R = H represented as small radical for clarity)
+//  Amino acid 2 (RIGHT, alanine-like, R = CH3 shown as green radical sphere)
+//  Layout in local coordinates; the two acids are placed in their own subgroups
+//  so we can drift them together during the animation.
+// ───────────────────────────────────────────────────────────────────────────────
+
+// We define key positions for acid 1 (left). Cα at origin of its subgroup.
+// Backbone roughly:  H2N — Cα — C(=O) — OH    with R + H on Cα.
+const A1 = {
+  N:    new THREE.Vector3(-2.4,  0.9, 0),
+  HN1:  new THREE.Vector3(-3.3,  1.4, 0.3),
+  HN2:  new THREE.Vector3(-2.7,  0.6, -0.9), // this H stays
+  Ca:   new THREE.Vector3(-1.3,  0.0, 0),
+  R:    new THREE.Vector3(-1.7, -1.2, 0.5),  // radical
+  HCa:  new THREE.Vector3(-1.5,  0.2, -1.0),
+  C:    new THREE.Vector3( 0.0,  0.4, 0),    // carboxyl carbon
+  Od:   new THREE.Vector3( 0.2,  1.6, 0),    // double-bond O (C=O)
+  Ooh:  new THREE.Vector3( 1.0, -0.4, 0),    // hydroxyl O (the one that leaves)
+  Hoh:  new THREE.Vector3( 2.0, -0.1, 0),    // hydroxyl H (the one that leaves)
+};
+
+// Amino acid 2 (right) — mirrored arrangement; its N is on the LEFT side facing acid 1
+const A2 = {
+  N:    new THREE.Vector3( 2.4, -0.9, 0),    // amino N (will bond to A1.C)
+  HN1:  new THREE.Vector3( 1.6, -0.7, 0.8),  // this H leaves (with A1's OH → water)
+  HN2:  new THREE.Vector3( 2.8, -1.9, 0.2),  // stays on N
+  Ca:   new THREE.Vector3( 3.6,  0.0, 0),
+  R:    new THREE.Vector3( 4.0,  1.2, 0.5),  // radical
+  HCa:  new THREE.Vector3( 3.8, -0.2, -1.0),
+  C:    new THREE.Vector3( 4.9, -0.5, 0),    // carboxyl carbon
+  Od:   new THREE.Vector3( 4.8, -1.7, 0),    // C=O
+  Ooh:  new THREE.Vector3( 5.9, -0.1, 0),    // hydroxyl O
+  Hoh:  new THREE.Vector3( 6.8, -0.5, 0),    // hydroxyl H
+};
+
+// Subgroups so each acid can drift toward the centre
+const acid1 = new THREE.Group();
+const acid2 = new THREE.Group();
+mainGroup.add(acid1);
+mainGroup.add(acid2);
+
+// store atom meshes for label projection + click info
+const atoms = {}; // key -> mesh
+
+function addAtom(parent, key, pos, r, color, infoKey) {
+  const mat = makeMat(color, { roughness: 0.34 });
+  const m = makeSphere(r, mat);
+  m.position.copy(pos);
+  m.userData.info = infoKey;
+  parent.add(m);
+  atoms[key] = m;
+  return m;
+}
+
+function buildAcid1() {
+  addAtom(acid1, 'a1_N',  A1.N,  R_HEAVY, COL_N, 'amino');
+  addAtom(acid1, 'a1_HN1',A1.HN1,R_H,     COL_H, 'amino');
+  addAtom(acid1, 'a1_HN2',A1.HN2,R_H,     COL_H, 'amino');
+  addAtom(acid1, 'a1_Ca', A1.Ca, R_HEAVY, COL_C, 'amino');
+  addAtom(acid1, 'a1_R',  A1.R,  R_R,     COL_R, 'radical');
+  addAtom(acid1, 'a1_HCa',A1.HCa,R_H,     COL_H, 'amino');
+  addAtom(acid1, 'a1_C',  A1.C,  R_HEAVY, COL_C, 'carboxyl');
+  addAtom(acid1, 'a1_Od', A1.Od, R_HEAVY, COL_O, 'carboxyl');
+  addAtom(acid1, 'a1_Ooh',A1.Ooh,R_HEAVY, COL_O, 'carboxyl');
+  addAtom(acid1, 'a1_Hoh',A1.Hoh,R_H,     COL_H, 'carboxyl');
+
+  // bonds
+  bond(acid1, A1.N, A1.HN1);
+  bond(acid1, A1.N, A1.HN2);
+  bond(acid1, A1.N, A1.Ca);
+  bond(acid1, A1.Ca, A1.R);
+  bond(acid1, A1.Ca, A1.HCa);
+  bond(acid1, A1.Ca, A1.C);
+  bondDouble(acid1, A1.C, A1.Od);
+  bond(acid1, A1.C, A1.Ooh);
+  bond(acid1, A1.Ooh, A1.Hoh);
+}
+
+function buildAcid2() {
+  addAtom(acid2, 'a2_N',  A2.N,  R_HEAVY, COL_N, 'amino');
+  addAtom(acid2, 'a2_HN1',A2.HN1,R_H,     COL_H, 'amino');
+  addAtom(acid2, 'a2_HN2',A2.HN2,R_H,     COL_H, 'amino');
+  addAtom(acid2, 'a2_Ca', A2.Ca, R_HEAVY, COL_C, 'amino');
+  addAtom(acid2, 'a2_R',  A2.R,  R_R,     COL_R, 'radical');
+  addAtom(acid2, 'a2_HCa',A2.HCa,R_H,     COL_H, 'amino');
+  addAtom(acid2, 'a2_C',  A2.C,  R_HEAVY, COL_C, 'carboxyl');
+  addAtom(acid2, 'a2_Od', A2.Od, R_HEAVY, COL_O, 'carboxyl');
+  addAtom(acid2, 'a2_Ooh',A2.Ooh,R_HEAVY, COL_O, 'carboxyl');
+  addAtom(acid2, 'a2_Hoh',A2.Hoh,R_H,     COL_H, 'carboxyl');
+
+  bond(acid2, A2.N, A2.HN1);
+  bond(acid2, A2.N, A2.HN2);
+  bond(acid2, A2.N, A2.Ca);
+  bond(acid2, A2.Ca, A2.R);
+  bond(acid2, A2.Ca, A2.HCa);
+  bond(acid2, A2.Ca, A2.C);
+  bondDouble(acid2, A2.C, A2.Od);
+  bond(acid2, A2.C, A2.Ooh);
+  bond(acid2, A2.Ooh, A2.Hoh);
+}
+
+// generic single bond helper (adds to parent)
+function bond(parent, a, b) {
+  const m = makeBond(a, b, 0.075, makeMat(COL_BOND, { roughness: 0.55 }));
+  parent.add(m);
+  return m;
+}
+// double bond = two thinner parallel cylinders
+function bondDouble(parent, a, b) {
+  const dir = new THREE.Vector3().subVectors(b, a).normalize();
+  // a perpendicular offset vector
+  let perp = new THREE.Vector3(0, 0, 1).cross(dir);
+  if (perp.lengthSq() < 0.01) perp = new THREE.Vector3(1, 0, 0).cross(dir);
+  perp.normalize().multiplyScalar(0.11);
+  const m1 = makeBond(a.clone().add(perp), b.clone().add(perp), 0.055, makeMat(COL_BOND, { roughness: 0.55 }));
+  const m2 = makeBond(a.clone().sub(perp), b.clone().sub(perp), 0.055, makeMat(COL_BOND, { roughness: 0.55 }));
+  parent.add(m1); parent.add(m2);
+}
+
+buildAcid1();
+buildAcid2();
+
+// ── PEPTIDE BOND (created later, between A1.C and A2.N) ──────────────────────────
+const peptideBondMat = makeMat(COL_PEPTIDE, { roughness: 0.3, emissive: COL_PEPTIDE, emissiveIntensity: 0 });
+const peptideBond = makeBond(A1.C, A2.N, 0.10, peptideBondMat);
+peptideBond.userData.baseLen = new THREE.Vector3().subVectors(A2.N, A1.C).length();
+peptideBond.userData.info = 'peptide';
+peptideBond.visible = false;
+mainGroup.add(peptideBond);
+
+// ── WATER MOLECULE (assembled from leaving OH + leaving H) ───────────────────────
+const waterGroup = new THREE.Group();
+const waterO  = makeSphere(R_HEAVY, makeMat(COL_O, { roughness: 0.34, transparent: true, opacity: 1 }));
+const waterH1 = makeSphere(R_H, makeMat(COL_H, { roughness: 0.4, transparent: true, opacity: 1 }));
+const waterH2 = makeSphere(R_H, makeMat(COL_H, { roughness: 0.4, transparent: true, opacity: 1 }));
+const waterBond1 = makeBond(new THREE.Vector3(0,0,0), new THREE.Vector3(0.6,0.45,0), 0.06, makeMat(COL_BOND, { roughness: 0.55, transparent: true, opacity: 1 }));
+const waterBond2 = makeBond(new THREE.Vector3(0,0,0), new THREE.Vector3(-0.6,0.45,0), 0.06, makeMat(COL_BOND, { roughness: 0.55, transparent: true, opacity: 1 }));
+waterGroup.add(waterO, waterH1, waterH2, waterBond1, waterBond2);
+waterGroup.visible = false;
+waterO.userData.info = 'condens';
+mainGroup.add(waterGroup);
+
+const waterMats = [waterO.material, waterH1.material, waterH2.material, waterBond1.material, waterBond2.material];
+
+// store leaving-atom references so we can hide originals during water assembly
+const leavingAtoms = [atoms.a1_Ooh, atoms.a1_Hoh, atoms.a2_HN1];
+
+// ───────────────────────────────────────────────────────────────────────────────
+//  ANIMATION STATE
+// ───────────────────────────────────────────────────────────────────────────────
+let animT = 0;        // 0 → 1
+let playing = false;  // forward play active
+let rotating = true;
+let labelsOn = true;
+let waterOn = true;
+
+const DRIFT = 1.05; // how far each acid moves toward centre during phase 1
+
+function easeInOut(t) {
+  t = Math.max(0, Math.min(1, t));
+  return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+}
+function clamp01(x){ return Math.max(0, Math.min(1, x)); }
+
+// Apply the whole scene state for a given animT (0..1). Pure function of animT.
+function applyState(t) {
+  const te = easeInOut(t);
+
+  // ── Phase 1 (0→0.4): the two acids drift toward each other ──
+  const driftT = easeInOut(clamp01(t / 0.4));
+  acid1.position.x =  DRIFT * driftT;
+  acid2.position.x = -DRIFT * driftT;
+
+  // The leaving OH (acid1) and H (acid2.N) creep toward the meeting point
+  // meeting point ~ midway between A1.Ooh(+drift) and A2.HN1(-drift)
+  // We move the leaving atoms in their OWN local frames toward a shared world spot.
+  // For simplicity move them along to a local target.
+  // acid1.Ooh local target -> toward acid2; acid1.Hoh follows.
+  const a1OohTarget = new THREE.Vector3(1.7, -0.3, 0.0); // local to acid1
+  const a1HohTarget = new THREE.Vector3(2.3,  0.1, 0.2);
+  const a2HN1Target = new THREE.Vector3(1.0, -0.4, 0.4); // local to acid2
+
+  atoms.a1_Ooh.position.lerpVectors(A1.Ooh, a1OohTarget, driftT * 0.55);
+  atoms.a1_Hoh.position.lerpVectors(A1.Hoh, a1HohTarget, driftT * 0.55);
+  atoms.a2_HN1.position.lerpVectors(A2.HN1, a2HN1Target, driftT * 0.55);
+
+  // ── Phase 2 (0.4→0.7): water assembles + drifts away fading out ──
+  if (t >= 0.4) {
+    const wT = easeInOut(clamp01((t - 0.4) / 0.3));
+    // hide the original leaving atoms, show water
+    atoms.a1_Ooh.visible = false;
+    atoms.a1_Hoh.visible = false;
+    atoms.a2_HN1.visible = false;
+    if (waterOn) waterGroup.visible = true;
+
+    // water assembly position: world coordinate near the meeting point, then drift down
+    // start centre (just below the forming bond), drift downward + back
+    const startC = new THREE.Vector3(0.0, -1.4, 0.6);
+    const endC   = new THREE.Vector3(-0.4, -5.4, 1.6);
+    const wc = new THREE.Vector3().lerpVectors(startC, endC, wT);
+    waterGroup.position.copy(wc);
+
+    // local atom layout of water (bent ~104.5°)
+    waterO.position.set(0, 0, 0);
+    waterH1.position.set(0.62, 0.46, 0);
+    waterH2.position.set(-0.62, 0.46, 0);
+    updateBond(waterBond1, new THREE.Vector3(0,0,0), waterH1.position, 0.06);
+    updateBond(waterBond2, new THREE.Vector3(0,0,0), waterH2.position, 0.06);
+    waterGroup.rotation.z = wT * 1.4;
+
+    // fade out toward the end of phase 2 / phase 3
+    let op = 1;
+    if (t > 0.55) op = 1 - easeInOut(clamp01((t - 0.55) / 0.4));
+    waterMats.forEach(m => { m.opacity = op; });
+    if (op <= 0.01) waterGroup.visible = false;
+  } else {
+    atoms.a1_Ooh.visible = true;
+    atoms.a1_Hoh.visible = true;
+    atoms.a2_HN1.visible = true;
+    waterGroup.visible = false;
+    waterMats.forEach(m => { m.opacity = 1; });
+  }
+
+  // ── Phase 3 (0.7→1.0): peptide bond C–N forms with indigo glow ──
+  // compute world positions of A1.C and A2.N (they're inside drifting subgroups)
+  const cWorld = atoms.a1_C.getWorldPosition(new THREE.Vector3());
+  const nWorld = atoms.a2_N.getWorldPosition(new THREE.Vector3());
+  // peptideBond lives in mainGroup space; convert world → mainGroup local
+  const cLocal = mainGroup.worldToLocal(cWorld.clone());
+  const nLocal = mainGroup.worldToLocal(nWorld.clone());
+
+  if (t >= 0.62) {
+    const pT = easeInOut(clamp01((t - 0.62) / 0.38));
+    peptideBond.visible = true;
+    updateBond(peptideBond, cLocal, nLocal, 0.10);
+    peptideBondMat.emissiveIntensity = 0.15 + 0.55 * pT;
+    // slightly bring the C=O double character O closer (cosmetic): pull Od of acid1 a touch
+  } else {
+    peptideBond.visible = false;
+    peptideBondMat.emissiveIntensity = 0;
+  }
+}
+
+// ── PROGRESS + STAGE ─────────────────────────────────────────────────────────────
+const progressFill = document.getElementById('progress-fill');
+const stageLabel = document.getElementById('stage-label');
+
+function updateStage(t) {
+  progressFill.style.width = (t * 100).toFixed(1) + '%';
+  let txt;
+  if (t < 0.4)       txt = tr('stage_approach');
+  else if (t < 0.72) txt = tr('stage_water');
+  else               txt = tr('stage_bonded');
+  stageLabel.innerHTML = txt;
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
+//  PROJECTED DOM LABELS
+// ───────────────────────────────────────────────────────────────────────────────
+const labelLayer = document.getElementById('label-layer');
+const LABELS = [
+  { cls: 'lab-nh2',  anchor: 'a1_N',  html: `NH₂ <span class="sub">${tr('lab_amino')}</span>` },
+  { cls: 'lab-cooh', anchor: 'a1_C',  html: `COOH <span class="sub">${tr('lab_carboxyl')}</span>` },
+  { cls: 'lab-r',    anchor: 'a1_R',  html: `R <span class="sub">${tr('lab_radical')}</span>` },
+  { cls: 'lab-r',    anchor: 'a2_R',  html: `R′ <span class="sub">${tr('lab_radical')}</span>` },
+  { cls: 'lab-cooh', anchor: 'a2_C',  html: `COOH <span class="sub">${tr('lab_carboxyl')}</span>` },
+  { cls: 'lab-nh2',  anchor: 'a2_N',  html: `NH₂ <span class="sub">${tr('lab_amino')}</span>` },
+];
+const labelEls = LABELS.map(L => {
+  const el = document.createElement('div');
+  el.className = 'atom-label ' + L.cls;
+  el.innerHTML = L.html;
+  labelLayer.appendChild(el);
+  return el;
+});
+// peptide label
+const peptideLabel = document.createElement('div');
+peptideLabel.className = 'atom-label lab-peptide';
+peptideLabel.innerHTML = tr('lab_peptide');
+peptideLabel.style.opacity = '0';
+labelLayer.appendChild(peptideLabel);
+// water label
+const waterLabel = document.createElement('div');
+waterLabel.className = 'atom-label lab-water';
+waterLabel.innerHTML = (LANG === 'kz') ? 'H₂O <span class="sub">бөлініп жатыр</span>' : (LANG === 'en') ? 'H₂O <span class="sub">releasing</span>' : 'H₂O <span class="sub">отщепляется</span>';
+waterLabel.style.opacity = '0';
+labelLayer.appendChild(waterLabel);
+
+const tmpV = new THREE.Vector3();
+function projectLabels() {
+  if (!labelsOn) return;
+  // group labels
+  LABELS.forEach((L, i) => {
+    const m = atoms[L.anchor];
+    m.getWorldPosition(tmpV);
+    tmpV.project(camera);
+    const x = (tmpV.x * 0.5 + 0.5) * W();
+    const y = (-tmpV.y * 0.5 + 0.5) * H();
+    const el = labelEls[i];
+    const behind = tmpV.z > 1;
+    el.style.left = x + 'px';
+    el.style.top = (y - 26) + 'px';
+    el.style.opacity = behind ? '0' : '1';
+  });
+  // peptide label between C and N when bond exists
+  if (peptideBond.visible) {
+    const c = atoms.a1_C.getWorldPosition(new THREE.Vector3());
+    const n = atoms.a2_N.getWorldPosition(new THREE.Vector3());
+    const mid = c.add(n).multiplyScalar(0.5);
+    mid.project(camera);
+    peptideLabel.style.left = ((mid.x * 0.5 + 0.5) * W()) + 'px';
+    peptideLabel.style.top  = ((-mid.y * 0.5 + 0.5) * H() - 34) + 'px';
+    peptideLabel.style.opacity = (mid.z > 1) ? '0' : String(peptideBondMat.emissiveIntensity > 0.25 ? 1 : 0);
+  } else {
+    peptideLabel.style.opacity = '0';
+  }
+  // water label while water visible
+  if (waterGroup.visible && waterOn) {
+    waterGroup.getWorldPosition(tmpV);
+    tmpV.project(camera);
+    waterLabel.style.left = ((tmpV.x * 0.5 + 0.5) * W()) + 'px';
+    waterLabel.style.top  = ((-tmpV.y * 0.5 + 0.5) * H() - 30) + 'px';
+    waterLabel.style.opacity = String(Math.min(1, waterMats[0].opacity));
+  } else {
+    waterLabel.style.opacity = '0';
+  }
+}
+function setLabelVisibility() {
+  const v = labelsOn ? '' : 'none';
+  labelEls.forEach(el => el.style.display = v);
+  peptideLabel.style.display = v;
+  waterLabel.style.display = v;
+}
+
+// ── ─────────────────────────────────────────────────────────────────────────────
+//  CONTROLS / BUTTONS
+// ── ─────────────────────────────────────────────────────────────────────────────
+const btnForm = document.getElementById('btn-form');
+const btnReset = document.getElementById('btn-reset');
+const btnLabels = document.getElementById('btn-labels');
+const btnWater = document.getElementById('btn-water');
+const btnRotate = document.getElementById('btn-rotate');
+
+// Initialize button texts at start
+btnForm.textContent = tr('btn_form_idle');
+btnLabels.textContent = tr('btn_labels_on');
+btnWater.textContent = tr('btn_water_on');
+btnRotate.textContent = tr('btn_rot_on');
+document.querySelector('#loading p').textContent = (LANG === 'kz') ? 'Сахна жүктелуде…' : (LANG === 'en') ? 'Loading scene...' : 'Загрузка сцены…';
+
+btnForm.addEventListener('click', () => {
+  if (animT >= 1) { animT = 0; applyState(0); }
+  playing = true;
+  btnForm.disabled = true;
+});
+
+btnReset.addEventListener('click', () => {
+  playing = false;
+  animT = 0;
+  applyState(0);
+  updateStage(0);
+  btnForm.disabled = false;
+  btnForm.textContent = tr('btn_form_idle');
+});
+
+btnLabels.addEventListener('click', () => {
+  labelsOn = !labelsOn;
+  btnLabels.textContent = labelsOn ? tr('btn_labels_on') : tr('btn_labels_off');
+  btnLabels.classList.toggle('active', labelsOn);
+  setLabelVisibility();
+});
+
+btnWater.addEventListener('click', () => {
+  waterOn = !waterOn;
+  btnWater.textContent = waterOn ? tr('btn_water_on') : tr('btn_water_off');
+  btnWater.classList.toggle('active', waterOn);
+  if (!waterOn) waterGroup.visible = false;
+});
+
+btnRotate.addEventListener('click', () => {
+  rotating = !rotating;
+  btnRotate.textContent = rotating ? tr('btn_rot_on') : tr('btn_rot_off');
+  btnRotate.classList.toggle('active', rotating);
+});
+
+// ── ─────────────────────────────────────────────────────────────────────────────
+//  INFO PANEL
+// ── ─────────────────────────────────────────────────────────────────────────────
+const INFO_TRANS = {
+  ru: {
+    amino: {
+      tag: 'СТРОЕНИЕ', title: 'Что такое аминокислота?',
+      sections: [
+        { h: 'Общая формула', p: 'Аминокислота содержит две функциональные группы у одного α-углерода: основную аминогруппу –NH₂ и кислотную карбоксильную –COOH, а также атом водорода и боковой радикал R.', mono: 'H₂N–CHR–COOH\nR — боковая цепь (радикал)' },
+        { h: 'Амфотерность', p: 'Наличие и кислотной (–COOH), и основной (–NH₂) групп делает аминокислоту амфотерной: она реагирует и с кислотами, и со щелочами.' },
+        { h: 'Цвиттер-ион', p: 'В водном растворе аминокислота существует в виде биполярного иона: –COOH отдаёт H⁺ группе –NH₂. Молекула в целом нейтральна, но несёт два разноимённых заряда.', mono: '⁺H₃N–CHR–COO⁻  (цвиттер-ион)' },
+        { h: '20 протеиногенных', p: 'Все белки живых организмов построены всего из 20 стандартных α-аминокислот. Они различаются только радикалом R — от простого H (глицин) до сложных колец (триптофан).' }
+      ]
+    },
+    peptide: {
+      tag: 'СВЯЗЬ', title: 'Пептидная связь –CO–NH–',
+      sections: [
+        { h: 'Амидная связь', p: 'Пептидная связь — это амидная связь между карбонильным углеродом C (от –COOH) одной аминокислоты и атомом азота N (от –NH₂) другой.', mono: '...–Cα–C(=O)–N(H)–Cα–...' },
+        { h: 'Частично двойной характер', p: 'Из-за резонанса (сопряжения неподелённой пары N с π-связью C=O) связь C–N имеет частично двойной характер. Поэтому вращение вокруг неё затруднено.', mono: '–C(=O)–N–  ↔  –C(–O⁻)=N⁺(H)–' },
+        { h: 'Копланарность и транс', p: 'Шесть атомов пептидной группы (Cα–C(=O)–N(H)–Cα) лежат практически в одной плоскости. Энергетически выгодна транс-конфигурация: соседние Cα по разные стороны связи.' },
+        { h: 'Прочность', p: 'Пептидная связь весьма прочна (энергия ~ 300–400 кДж/моль) и устойчива в обычных условиях. Её гидролиз в организме требует специальных ферментов — пептидаз.' }
+      ]
+    },
+    condens: {
+      tag: 'РЕАКЦИЯ', title: 'Реакция конденсации',
+      sections: [
+        { h: 'Отщепление воды', p: 'При образовании пептидной связи от карбоксильной группы отщепляется –OH, а от аминогруппы — один атом H. Вместе они образуют молекулу воды.', mono: 'R–COOH + H₂N–R′ →\n   R–CO–NH–R′ + H₂O' },
+        { h: 'Реакция конденсации', p: 'Так как реакция идёт с выделением низкомолекулярного продукта (H₂O), это типичная реакция конденсации. Многократное повторение даёт полипептид (поликонденсация).' },
+        { h: 'Обратная реакция — гидролиз', p: 'Присоединение воды к пептидной связи разрывает её обратно на аминокислоты. Это гидролиз белков — основа переваривания пищи.', mono: '–CO–NH– + H₂O → –COOH + H₂N–' },
+        { h: 'В живой клетке', p: 'В клетке синтез белка идёт не самопроизвольно: пептидные связи образуются на рибосоме с участием тРНК и затратой энергии (ГТФ). Реакцию катализирует пептидилтрансфераза.' }
+      ]
+    },
+    structure: {
+      tag: 'БЕЛОК', title: 'Уровни структуры белка',
+      sections: [
+        { h: 'Первичная', p: 'Линейная последовательность аминокислотных остатков, соединённых пептидными связями. Именно она закодирована в гене и определяет все остальные уровни.' },
+        { h: 'Вторичная', p: 'Локальное укладывание цепи за счёт водородных связей между группами C=O и N–H пептидного остова. Основные мотивы — α-спираль и β-складчатый лист (β-структура).' },
+        { h: 'Третичная', p: 'Пространственная укладка всей полипептидной цепи в компактную глобулу. Стабилизируется водородными, ионными, гидрофобными взаимодействиями и дисульфидными мостиками –S–S–.' },
+        { h: 'Четвертичная', p: 'Объединение нескольких полипептидных субъединиц в единый комплекс. Пример — гемоглобин из 4 субъединиц. Денатурация разрушает высшие уровни, не затрагивая первичный.' }
+      ]
+    }
+  },
+  kz: {
+    amino: {
+      tag: 'ҚҰРЫЛЫМЫ', title: 'Аминқышқылы деген не?',
+      sections: [
+        { h: 'Жалпы формуласы', p: 'Аминқышқылының молекуласында бір α-көміртек атомымен байланысқан екі функционалдық топ болады: негіздік амин тобы –NH₂ және қышқылдық карбоксил тобы –COOH, сондай-ақ сутек атомы мен бүйірлік радикал R.', mono: 'H₂N–CHR–COOH\nR — бүйір тізбек (радикал)' },
+        { h: 'Амфотерлігі', p: 'Құрамында әрі қышқылдық (–COOH), әрі негіздік (–NH₂) топтардың болуы аминқышқылдарына амфотерлік қасиет береді: олар қышқылдармен де, сілтілермен де әрекеттесе береді.' },
+        { h: 'Цвиттер-ион', p: 'Сулы ерітінділерде аминқышқылдары қосүйекті ион (цвиттер-ион) күйінде болады: –COOH тобы H⁺ ионын бөліп шығарып, оны –NH₂ тобы қосып алады. Жалпы молекула бейтарап болғанымен, екі түрлі қарама-қарсы зарядқа ие болады.', mono: '⁺H₃N–CHR–COO⁻  (цвиттер-ион)' },
+        { h: '20 протеиногенді аминқышқылы', p: 'Тірі ағзалардың барлық белоктары негізгі 20 стандартты α-аминқышқылынан құралған. Олар бір-бірінен тек R радикалы арқылы ерекшеленеді — ең қарапайым H атомынан (глицин) күрделі циклді құрылымдарға (триптофан) дейін болады.' }
+      ]
+    },
+    peptide: {
+      tag: 'БАЙЛАНЫС', title: 'Пептидтік байланыс –CO–NH–',
+      sections: [
+        { h: 'Амидтік байланыс', p: 'Пептидтік байланыс — бұл бір аминқышқылының карбонилді көміртегі C (–COOH тобынан) мен екінші аминқышқылының азот атомы N (–NH₂ тобынан) арасындағы амидтік байланыс.', mono: '...–Cα–C(=O)–N(H)–Cα–...' },
+        { h: 'Жартылай қос байланыс сипаты', p: 'Пептидтік топтағы азот атомының бөлінбеген электрон жұбы мен карбонил тобының π-электрондары арасындағы сопряжение (делокализация) нәтижесінде C–N байланысы жартылай қос байланыс сипатына ие болады. Осыған байланысты бұл байланыс төңірегінде айналу қиынға соғады.', mono: '–C(=O)–N–  ↔  –C(–O⁻)=N⁺(H)–' },
+        { h: 'Копланарлық және транс-конфигурация', p: 'Пептид тобындағы алты атом (Cα–C(=O)–N(H)–Cα) бір жазықтықта жатады. Энергетикалық тұрғыдан транс-конфигурация тиімдірек: көршілес Cα атомдары байланыстың екі жағында орналасады.' },
+        { h: 'Беріктігі', p: 'Пептидтік байланыс өте берік (энергиясы ~ 300–400 кДж/моль) және қалыпты жағдайда өте тұрақты. Ағзада оның гидролизденуі үшін арнайы пептидаза ферменттері қажет болады.' }
+      ]
+    },
+    condens: {
+      tag: 'РЕАКЦИЯ', title: 'Конденсация реакциясы',
+      sections: [
+        { h: 'Судың бөлінуі', p: 'Пептидтік байланыс түзілгенде карбоксил тобынан –OH, ал амин тобынан бір H атомы бөлініп шығады. Олар бірігіп су молекуласын түзеді.', mono: 'R–COOH + H₂N–R′ →\n   R–CO–NH–R′ + H₂O' },
+        { h: 'Конденсация реакциясы', p: 'Реакция барысында төмен молекулалы қосымша өнім (H₂O) бөлініп шығатындықтан, бұл конденсация реакциясы болып табылады. Процестің көп рет қайталануы полипептид түзеді (поликонденсация).' },
+        { h: 'Кері реакция — гидролиз', p: 'Пептидтік байланысқа су қосылғанда байланыс үзіліп, қайтадан бастапқы аминқышқылдары түзіледі. Бұл белоктардың гидролизі — тағам қорытудың негізі болып табылады.', mono: '–CO–NH– + H₂O → –COOH + H₂N–' },
+        { h: 'Тірі жасушада', p: 'Жасуша ішіндегі белок синтезі өздігінен жүрмейді: пептидтік байланыстар рибосомаларда тРНҚ қатысуымен және энергия (ГТФ) шығынымен түзіледі. Реакцияны пептидилтрансфераза ферменті катализдейді.' }
+      ]
+    },
+    structure: {
+      tag: 'БЕЛОК', title: 'Белок құрылымының деңгейлері',
+      sections: [
+        { h: 'Біріншілік құрылым', p: 'Пептидтік байланыстармен жалғасқан аминқышқылдары қалдықтарының сызықтық тізбегі. Ол генде кодталған және белоктың барлық қалған деңгейлерін анықтайды.' },
+        { h: 'Екіншілік құрылым', p: 'Пептидтік остовтағы C=O және N–H топтарының арасында сутектік байланыстардың түзілуінен полипептид тізбегінің кеңістіктегі жиырылуы. Негізгі типтері — α-спираль және β-бүктемелі парақ.' },
+        { h: 'Үшіншілік құрылым', p: 'Жиырылған полипептид тізбегінің одан әрі тығыз глобулаға уақталуы. Ол сутектік, иондық, гидрофобтық байланыстармен және –S–S– дисульфидтік көпіршелермен тұрақтандырылады.' },
+        { h: 'Төртіншілік құрылым', p: 'Бірнеше полипептид тізбектерінің (суббөліктердің) бірігіп біртұтас кешен құруы. Мысалы — 4 суббөліктен тұратын гемоглобин. Денатурация кезінде біріншілік құрылым бұзылмай, жоғары деңгейдегі құрылымдар бұзылады.' }
+      ]
+    }
+  },
+  en: {
+    amino: {
+      tag: 'STRUCTURE', title: 'What is an amino acid?',
+      sections: [
+        { h: 'General Formula', p: 'An amino acid contains two functional groups at the same α-carbon: a basic amino group –NH₂ and an acidic carboxyl group –COOH, as well as a hydrogen atom and a side chain radical R.', mono: 'H₂N–CHR–COOH\nR — side chain (radical)' },
+        { h: 'Amphotericity', p: 'The presence of both acidic (–COOH) and basic (–NH₂) groups makes amino acids amphoteric: they react with both acids and bases.' },
+        { h: 'Zwitterion', p: 'In aqueous solution, amino acids exist as dipolar ions (zwitterions): –COOH donates H⁺ to the –NH₂ group. The molecule is overall neutral but carries two opposite charges.', mono: '⁺H₃N–CHR–COO⁻  (zwitterion)' },
+        { h: '20 Proteinogenic', p: 'All proteins in living organisms are built from just 20 standard α-amino acids. They differ only by the radical R — from simple H (glycine) to complex rings (tryptophan).' }
+      ]
+    },
+    peptide: {
+      tag: 'BOND', title: 'Peptide Bond –CO–NH–',
+      sections: [
+        { h: 'Amide Linkage', p: 'A peptide bond is an amide bond between the carbonyl carbon C (from –COOH) of one amino acid and the nitrogen atom N (from –NH₂) of another.', mono: '...–Cα–C(=O)–N(H)–Cα–...' },
+        { h: 'Partial Double Bond Character', p: 'Due to resonance (conjugation of N\'s lone pair with the C=O π-bond), the C–N bond has partial double bond character. This restricts rotation around it.', mono: '–C(=O)–N–  ↔  –C(–O⁻)=N⁺(H)–' },
+        { h: 'Coplanarity and Trans', p: 'The six atoms of the peptide group (Cα–C(=O)–N(H)–Cα) lie practically in a single plane. The trans-configuration is energetically favored: neighboring Cα are on opposite sides of the bond.' },
+        { h: 'Strength', p: 'Peptide bonds are highly stable (energy ~ 300–400 kJ/mol) and resistant under normal conditions. Their hydrolysis in the body requires specific enzymes — peptidases.' }
+      ]
+    },
+    condens: {
+      tag: 'REACTION', title: 'Condensation Reaction',
+      sections: [
+        { h: 'Water Release', p: 'During peptide bond formation, –OH is cleaved from the carboxyl group and one H is cleaved from the amino group. Together, they form a water molecule.', mono: 'R–COOH + H₂N–R′ →\n   R–CO–NH–R′ + H₂O' },
+        { h: 'Condensation Reaction', p: 'Since the reaction proceeds with the elimination of a low-molecular-weight byproduct (H₂O), it is a typical condensation reaction. Repeated continuation yields a polypeptide (polycondensation).' },
+        { h: 'Reverse Reaction — Hydrolysis', p: 'Adding water to the peptide bond breaks it back into amino acids. This is protein hydrolysis — the foundation of digestion.', mono: '–CO–NH– + H₂O → –COOH + H₂N–' },
+        { h: 'In the Living Cell', p: 'Inside the cell, protein synthesis is not spontaneous: peptide bonds are formed on ribosomes with the help of tRNA and require energy (GTP). The reaction is catalyzed by peptidyl transferase.' }
+      ]
+    },
+    structure: {
+      tag: 'PROTEIN', title: 'Protein Structure Levels',
+      sections: [
+        { h: 'Primary Structure', p: 'The linear sequence of amino acid residues linked by peptide bonds. It is encoded in the gene and determines all subsequent structural levels.' },
+        { h: 'Secondary Structure', p: 'Local folding of the chain due to hydrogen bonding between C=O and N–H groups of the peptide backbone. The main motifs are the α-helix and β-pleated sheet.' },
+        { h: 'Tertiary Structure', p: 'Three-dimensional folding of the entire polypeptide chain into a compact globule. It is stabilized by hydrogen, ionic, hydrophobic interactions, and –S–S– disulfide bridges.' },
+        { h: 'Quaternary Structure', p: 'Assembly of several polypeptide subunits into a single functional complex. An example is hemoglobin with 4 subunits. Denaturation destroys higher structural levels without affecting the primary sequence.' }
+      ]
+    }
+  }
+};
+
+const infoPanel = document.getElementById('info-panel');
+function openInfo(key) {
+  const d = (INFO_TRANS[LANG] || INFO_TRANS.ru)[key];
+  if (!d) return;
+  let html = `<div class="info-tag">${d.tag}</div><h2>${d.title}</h2>`;
+  d.sections.forEach(s => {
+    html += `<div class="info-section"><h4>${s.h}</h4>`;
+    if (s.p) html += `<p>${s.p}</p>`;
+    if (s.mono) html += `<div class="info-mono">${s.mono.replace(/\n/g, '<br>')}</div>`;
+    html += `</div>`;
+  });
+  document.getElementById('info-content').innerHTML = html;
+  infoPanel.classList.add('open');
+}
+document.getElementById('info-close').addEventListener('click', () => infoPanel.classList.remove('open'));
+document.getElementById('info-amino').addEventListener('click', () => openInfo('amino'));
+document.getElementById('info-peptide').addEventListener('click', () => openInfo('peptide'));
+document.getElementById('info-condens').addEventListener('click', () => openInfo('condens'));
+document.getElementById('info-structure').addEventListener('click', () => openInfo('structure'));
+
+// ── RAYCASTER (click atoms → info) ───────────────────────────────────────────────
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+
+function onClick(ev) {
+  if (controls._dragMoved) { controls._dragMoved = false; return; }
+  mouse.x = (ev.clientX / W()) * 2 - 1;
+  mouse.y = -(ev.clientY / H()) * 2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+  const targets = [];
+  mainGroup.traverse(o => { if (o.isMesh && o.userData.info) targets.push(o); });
+  const hits = raycaster.intersectObjects(targets, false);
+  if (hits.length) openInfo(hits[0].object.userData.info);
+}
+// track drag so a drag doesn't trigger a click
+let downX = 0, downY = 0;
+renderer.domElement.addEventListener('pointerdown', e => { downX = e.clientX; downY = e.clientY; controls._dragMoved = false; });
+renderer.domElement.addEventListener('pointerup', e => {
+  if (Math.abs(e.clientX - downX) > 5 || Math.abs(e.clientY - downY) > 5) controls._dragMoved = true;
+  onClick(e);
+});
+
+// ───────────────────────────────────────────────────────────────────────────────
+//  ANIMATION LOOP
+// ───────────────────────────────────────────────────────────────────────────────
+applyState(0);
+updateStage(0);
+
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+
+  if (rotating) mainGroup.rotation.y += 0.0015;
+
+  if (playing) {
+    animT += 0.0045;
+    if (animT >= 1) {
+      animT = 1;
+      playing = false;
+      btnForm.disabled = false;
+      btnForm.textContent = tr('btn_form_done');
+    }
+    applyState(animT);
+    updateStage(animT);
+  }
+
+  // gentle peptide-bond glow pulse once formed
+  if (animT >= 1) {
+    peptideBondMat.emissiveIntensity = 0.55 + 0.2 * Math.sin(performance.now() * 0.003);
+  }
+
+  projectLabels();
+  renderer.render(scene, camera);
+}
+
+// ── RESIZE ────────────────────────────────────────────────────────────────────
+window.addEventListener('resize', () => {
+  camera.aspect = W() / H();
+  camera.updateProjectionMatrix();
+  renderer.setSize(W(), H());
+});
+
+// ── INIT (hide loading, start) ───────────────────────────────────────────────────
+document.getElementById('loading').style.display = 'none';
+animate();
+</script>
+</body>
+</html>

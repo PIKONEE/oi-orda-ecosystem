@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="page_title">Скелет человека — анатомическая модель</title>
+    <link rel="stylesheet" href="_poster.css">
+</head>
+<body>
+<div id="canvas-container"></div>
+<div id="header">
+    <h1 data-i18n="header_title">Скелет человека</h1>
+    <p data-i18n="header_subtitle">Интерактивная анатомическая модель — 6 отделов скелета</p>
+</div>
+<div id="hint" data-i18n="hint">Кликните по любой кости, чтобы узнать больше</div>
+<button id="reset-btn" data-i18n="reset_btn" data-i18n-title="reset_btn_title" title="Сбросить вид">↺ Сбросить вид</button>
+<div id="info-panel" aria-hidden="true"></div>
+<div id="legend"></div>
+<div id="hover-label"></div>
+<div id="loading"><div class="spinner"></div><div id="loading-text" data-i18n="loading">Загрузка модели…</div></div>
+
+<script type="importmap">
+    { "imports": { "three": "../../libs/vendor/three-0.160.0/three.module.js", "three/addons/": "../../libs/vendor/three-0.160.0/addons/" } }
+</script>
+
+<script type="module">
+    import { initPoster } from './_poster_lib.js';
+
+    const I18N = {
+        ru: {
+            page_title: 'Скелет человека — анатомическая модель',
+            header_title: 'Скелет человека',
+            header_subtitle: 'Интерактивная анатомическая модель — 6 отделов скелета',
+            hint: 'Кликните по любой кости, чтобы узнать больше',
+            reset_btn: '↺ Сбросить вид', reset_btn_title: 'Сбросить вид', close_btn_label: 'Закрыть',
+            loading: 'Загрузка модели…', error_load: 'Не удалось загрузить skeleton.glb', error_no_mesh: 'В модели нет меша',
+            facts_label: 'Интересный факт',
+            zones: {
+                skull: { title: 'Череп', desc: 'Костный каркас головы, состоящий из 22 костей. Защищает головной мозг, органы зрения, слуха и обоняния. Делится на мозговой отдел (8 костей) и лицевой (14 костей). Соединения между костями черепа называются швами и неподвижны у взрослых.', facts: 'Единственная подвижная кость черепа — нижняя челюсть. У новорождённых между костями черепа есть мягкие участки — роднички, которые закрываются к 1,5–2 годам.' },
+                spine: { title: 'Позвоночник', desc: 'Главная опора тела, состоит из 33–34 позвонков: 7 шейных, 12 грудных, 5 поясничных, 5 сросшихся крестцовых и 3–5 копчиковых. Имеет 4 физиологических изгиба, амортизирующих нагрузку при ходьбе.', facts: 'Между позвонками находятся 23 межпозвоночных диска, благодаря которым человек к вечеру становится на 1–2 см ниже, чем утром.' },
+                ribs: { title: 'Грудная клетка', desc: 'Состоит из грудины и 12 пар рёбер. Защищает сердце, лёгкие, крупные сосуды и часть органов брюшной полости. Верхние 7 пар рёбер крепятся к грудине напрямую (истинные), 8–10 — через хрящ (ложные), 11–12 — свободные (плавающие).', facts: 'При вдохе объём грудной клетки увеличивается за счёт подъёма рёбер; здоровые лёгкие совершают около 23 000 таких движений в день.' },
+                arms: { title: 'Верхние конечности', desc: 'Включают плечевой пояс (ключица и лопатка) и свободную верхнюю конечность: плечевая кость, лучевая и локтевая кости предплечья, 8 костей запястья, 5 пястных и 14 фаланг пальцев. Всего 32 кости в каждой руке.', facts: 'Кисти рук содержат более четверти всех костей тела человека — 54 кости в двух кистях из 206 в скелете.' },
+                pelvis: { title: 'Таз', desc: 'Костное кольцо, образованное двумя тазовыми костями (срастаются из подвздошной, лобковой и седалищной), крестцом и копчиком. Поддерживает внутренние органы и передаёт вес тела на нижние конечности. У женщин таз шире и ниже, что связано с деторождением.', facts: 'У детей тазовая кость состоит из трёх отдельных костей; они срастаются в одну только к 15–17 годам.' },
+                legs: { title: 'Нижние конечности', desc: 'Самые крупные кости тела: бедренная (самая длинная и прочная), надколенник, большеберцовая и малоберцовая кости голени, 7 костей предплюсны (включая пяточную и таранную), 5 плюсневых и 14 фаланг. 30 костей в каждой ноге.', facts: 'Бедренная кость выдерживает нагрузку до 1500 кг при сжатии — в 30 раз больше веса взрослого человека.' }
+            }
+        },
+        kz: {
+            page_title: 'Адам қаңқасы — анатомиялық модель',
+            header_title: 'Адам қаңқасы',
+            header_subtitle: 'Интерактивті анатомиялық модель — қаңқаның 6 бөлімі',
+            hint: 'Толығырақ білу үшін кез келген сүйекке басыңыз',
+            reset_btn: '↺ Көріністі қалпына келтіру', reset_btn_title: 'Көріністі қалпына келтіру', close_btn_label: 'Жабу',
+            loading: 'Модель жүктелуде…', error_load: 'skeleton.glb файлын жүктеу мүмкін болмады', error_no_mesh: 'Модельде меш табылмады',
+            facts_label: 'Қызықты факт',
+            zones: {
+                skull: { title: 'Бас сүйегі', desc: '22 сүйектен тұратын бастың сүйекті қаңқасы. Ми, көру, есту және иіс сезу мүшелерін қорғайды. Ми бөліміне (8 сүйек) және бет бөліміне (14 сүйек) бөлінеді.', facts: 'Бас сүйегінің жалғыз қозғалмалы сүйегі — астыңғы жақ. Жаңа туылған нәрестелердегі бас сүйегінің жұмсақ жерлері — еңбектер 1,5–2 жасқа дейін бітеді.' },
+                spine: { title: 'Омыртқа жотасы', desc: 'Дененің басты тірегі, 33–34 омыртқадан тұрады: 7 мойын, 12 көкірек, 5 бел, 5 біріккен сегізкөз және 3–5 құйымшақ. Жүру кезіндегі жүкті жеңілдететін 4 физиологиялық иілісі бар.', facts: 'Омыртқалар арасында 23 омыртқа аралық диск бар, осының арқасында адам кешке таңертеңге қарағанда 1–2 см қысқа болады.' },
+                ribs: { title: 'Кеуде клеткасы', desc: 'Төс және 12 жұп қабырғадан тұрады. Жүректі, өкпені, ірі тамырларды және құрсақ қуысының бір бөлігін қорғайды.', facts: 'Дем алу кезінде кеуде клеткасының көлемі қабырғалардың көтерілуінен ұлғаяды; сау өкпе тәулігіне шамамен 23 000 осындай қозғалыс жасайды.' },
+                arms: { title: 'Жоғарғы аяқтар', desc: 'Иық белдеуін (бұғана мен жауырын) және еркін жоғарғы аяқты қамтиды: иық сүйегі, білек сүйектері, 8 шынтақ сүйегі, 5 алақан және 14 саусақ фалангалары. Бір қолда барлығы 32 сүйек.', facts: 'Қол ұштарында адам денесіндегі барлық сүйектердің төрттен бірінен астамы орналасқан — қаңқадағы 206 сүйектің 54-і екі қол ұшында.' },
+                pelvis: { title: 'Жамбас', desc: 'Екі жамбас сүйегінен, сегізкөзден және құйымшақтан құралған сүйекті сақина. Ішкі ағзаларды ұстап тұрады және дене салмағын төменгі аяқтарға беріп тұрады.', facts: 'Балаларда жамбас сүйегі үш бөлек сүйектен тұрады; олар 15–17 жасқа дейін біртұтас сүйекке бірігеді.' },
+                legs: { title: 'Төменгі аяқтар', desc: 'Дененің ең ірі сүйектері: сан сүйегі (ең ұзын және берік), тізе тобығы, үлкен және кіші жіліншік, 7 табан алды сүйегі, 5 табан және 14 фаланга. Бір аяқта 30 сүйек.', facts: 'Сан сүйегі қысуға 1500 кг-ға дейін шыдамды — ересек адамның салмағынан 30 есе көп.' }
+            }
+        },
+        en: {
+            page_title: 'Human Skeleton — Anatomical Model',
+            header_title: 'Human Skeleton',
+            header_subtitle: 'Interactive anatomical model — 6 sections of the skeleton',
+            hint: 'Click any bone to learn more',
+            reset_btn: '↺ Reset view', reset_btn_title: 'Reset view', close_btn_label: 'Close',
+            loading: 'Loading model…', error_load: 'Failed to load skeleton.glb', error_no_mesh: 'No mesh found in the model',
+            facts_label: 'Did you know?',
+            zones: {
+                skull: { title: 'Skull', desc: 'The bony framework of the head, consisting of 22 bones. Protects the brain, organs of vision, hearing, and smell. Divided into the cranial section (8 bones) and the facial section (14 bones).', facts: 'The only movable bone of the skull is the lower jaw. Newborns have soft spots between skull bones — fontanelles, which close by 1.5–2 years of age.' },
+                spine: { title: 'Spine', desc: 'The main support of the body, consisting of 33–34 vertebrae: 7 cervical, 12 thoracic, 5 lumbar, 5 fused sacral, and 3–5 coccygeal. Has 4 physiological curves that cushion the load when walking.', facts: 'There are 23 intervertebral discs between the vertebrae, which is why a person is 1–2 cm shorter in the evening than in the morning.' },
+                ribs: { title: 'Rib Cage', desc: 'Consists of the sternum and 12 pairs of ribs. Protects the heart, lungs, major vessels, and part of the abdominal organs.', facts: 'During inhalation, the rib cage volume increases as the ribs rise; healthy lungs make about 23,000 such movements per day.' },
+                arms: { title: 'Upper Limbs', desc: 'Include the shoulder girdle (clavicle and scapula) and the free upper limb: humerus, radius and ulna, 8 carpal bones, 5 metacarpals, and 14 finger phalanges. 32 bones in each arm.', facts: 'The hands contain more than a quarter of all the bones in the human body — 54 bones in two hands out of 206 in the skeleton.' },
+                pelvis: { title: 'Pelvis', desc: 'A bony ring formed by the two hip bones, sacrum, and coccyx. Supports internal organs and transfers body weight to the lower limbs. In women, the pelvis is wider and lower due to childbearing.', facts: 'In children, the hip bone consists of three separate bones; they fuse into a single bone by the age of 15–17.' },
+                legs: { title: 'Lower Limbs', desc: 'The largest bones of the body: femur (the longest and strongest), patella, tibia and fibula, 7 tarsal bones, 5 metatarsals, and 14 phalanges. 30 bones in each leg.', facts: 'The femur can withstand a compressive load of up to 1500 kg — 30 times the weight of an adult.' }
+            }
+        }
+    };
+
+    const ZONES = [
+        { id: 'skull',  subtitle: 'Cranium',           color: 0xff6b6b },
+        { id: 'spine',  subtitle: 'Columna vertebralis', color: 0x4d96ff },
+        { id: 'ribs',   subtitle: 'Thorax / Costae',   color: 0xffd93d },
+        { id: 'arms',   subtitle: 'Membrum superius',  color: 0x6bcb77 },
+        { id: 'pelvis', subtitle: 'Pelvis',            color: 0xc77dff },
+        { id: 'legs',   subtitle: 'Membrum inferius',  color: 0xff9f45 }
+    ];
+
+    const SEEDS = {
+        "skull": [
+            [0.032, 1.054, 0.06],
+            [0.002, 0.92, 0.112],
+            [-0.047, 0.991, -0.087],
+            [0.081, 1.049, -0.092],
+            [-0.048, 1.135, -0.113],
+            [-0.058, 0.955, 0.057],
+            [0.072, 0.958, 0.032],
+            [-0.023, 1.157, 0.07],
+            [0.017, 1.083, -0.141],
+            [0.038, 1.187, -0.046],
+            [-0.088, 1.13, 0.022]
+        ],
+        "spine": [
+            [0.001, 0.853, -0.079],
+            [-0.001, 0.747, -0.114],
+            [-0.011, 0.617, -0.131],
+            [-0.011, 0.491, -0.115],
+            [0.002, 0.344, -0.089],
+            [-0.007, 0.226, -0.094]
+        ],
+        "ribs": [
+            [-0.155, 0.687, -0.035],
+            [0.129, 0.619, 0.068],
+            [0.158, 0.466, 0.048],
+            [-0.074, 0.698, 0.06],
+            [-0.128, 0.569, 0.079],
+            [-0.163, 0.459, 0.038],
+            [-0.01, 0.551, 0.104],
+            [0.118, 0.562, -0.127],
+            [0.087, 0.754, -0.111],
+            [-0.1, 0.791, -0.082],
+            [0.156, 0.698, -0.04]
+        ],
+        "arms": [
+            [0.258, 0.7, -0.055],
+            [0.256, 0.585, -0.077],
+            [0.264, 0.471, -0.09],
+            [0.274, 0.371, -0.093],
+            [0.285, 0.257, -0.092],
+            [0.299, 0.141, -0.061],
+            [0.329, 0.028, -0.006],
+            [0.321, -0.08, 0.023],
+            [0.318, -0.183, 0.014],
+            [-0.317, -0.185, -0.02],
+            [-0.335, -0.106, -0.05],
+            [-0.328, 0.026, -0.004],
+            [-0.315, 0.163, -0.035],
+            [-0.295, 0.269, -0.071],
+            [-0.272, 0.373, -0.093],
+            [-0.262, 0.491, -0.089],
+            [-0.26, 0.597, -0.077],
+            [-0.263, 0.714, -0.054]
+        ],
+        "pelvis": [
+            [0.139, 0.205, -0.026],
+            [0.124, 0.088, 0.047],
+            [0.033, 0.017, 0.054],
+            [-0.08, 0.045, 0.049],
+            [-0.126, 0.124, 0.037],
+            [-0.117, 0.217, -0.043],
+            [-0.002, 0.052, -0.118],
+            [-0.083, 0.116, -0.065],
+            [0.077, 0.126, -0.058]
+        ],
+        "legs": [
+            [0.144, -0.024, 0.004],
+            [0.131, -0.164, 0.011],
+            [0.125, -0.265, 0.014],
+            [0.114, -0.363, 0.012],
+            [0.109, -0.436, 0.006],
+            [0.105, -0.525, -0.005],
+            [0.125, -0.641, -0.033],
+            [0.128, -0.757, -0.061],
+            [0.109, -0.868, -0.075],
+            [0.114, -0.983, -0.096],
+            [-0.169, -0.034, 0.009],
+            [-0.152, -0.157, 0.011],
+            [-0.139, -0.27, 0.013],
+            [-0.126, -0.393, 0.008],
+            [-0.115, -0.512, -0.004],
+            [-0.132, -0.604, -0.028],
+            [-0.128, -0.713, -0.049],
+            [-0.128, -0.835, -0.082],
+            [-0.109, -0.954, -0.088],
+            [-0.116, -1.009, -0.099],
+            [0.13, -0.541, -0.094],
+            [-0.127, -0.545, -0.101]
+        ]
+    };
+
+    initPoster({ modelFile: 'skeleton.glb', zones: ZONES, seeds: SEEDS, i18n: I18N });
+</script>
+</body>
+</html>

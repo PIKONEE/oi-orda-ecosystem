@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Электрический генератор</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { width: 100%; height: 100%; overflow: hidden; }
+        body {
+            font-family: 'Segoe UI', 'Inter', system-ui, sans-serif;
+            background: linear-gradient(135deg, #eef3fb 0%, #e6edf8 100%);
+            color: #16233f;
+        }
+        #canvas-container { position: absolute; inset: 0; }
+        #labels { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+        .label3d {
+            position: absolute; transform: translate(-50%, -50%);
+            font-size: 12.5px; font-weight: 800; padding: 2px 8px; border-radius: 7px;
+            background: rgba(255,255,255,0.92); border: 1px solid rgba(150,170,205,0.6);
+            box-shadow: 0 2px 8px rgba(40,60,110,0.16); white-space: nowrap;
+        }
+        .label3d.np { color: #dc2626; } .label3d.sp { color: #2563eb; }
+        .label3d.coil { color: #b45309; } .label3d.fld { color: #0891b2; } .label3d.out { color: #15803d; }
+        .pole-letter {
+            position: absolute; transform: translate(-50%, -50%); font-size: 30px; font-weight: 900;
+            text-shadow: 0 2px 6px rgba(0,0,0,0.25); pointer-events: none;
+        }
+        .pole-letter.n { color: #fecaca; } .pole-letter.s { color: #bfdbfe; }
+
+        .header {
+            position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+            text-align: center; z-index: 6; pointer-events: none; width: 92%;
+        }
+        .header h1 { font-size: 26px; font-weight: 800; color: #1b2a4a; text-shadow: 0 1px 0 rgba(255,255,255,0.7); }
+        .header p { font-size: 14px; color: #5a6b8c; margin-top: 4px; font-weight: 600; }
+
+        .panel {
+            position: absolute; z-index: 7; background: rgba(255,255,255,0.82);
+             
+            border: 1px solid rgba(150,170,205,0.5); border-radius: 16px;
+            box-shadow: 0 10px 34px rgba(40,60,110,0.14);
+        }
+        .control-panel { top: 92px; left: 22px; width: 316px; padding: 15px 18px; }
+        .info-panel { top: 92px; right: 22px; width: 296px; padding: 15px 18px; }
+
+        .seg { display: flex; gap: 8px; margin-bottom: 13px; }
+        .seg button {
+            flex: 1; padding: 9px 6px; border-radius: 10px; border: 1.5px solid rgba(150,170,205,0.6);
+            background: rgba(255,255,255,0.55); color: #44537a; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.16s;
+        }
+        .seg button.active { background: rgba(37,99,235,0.13); border-color: #2563eb; color: #1b2a4a; }
+
+        .param-group { margin-bottom: 12px; }
+        .param-label { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+        .param-name { font-size: 13px; font-weight: 700; color: #33405e; display: flex; align-items: center; gap: 6px; }
+        .param-icon { font-size: 15px; }
+        .param-value { font-size: 15px; font-weight: 800; color: #2563eb; font-variant-numeric: tabular-nums; }
+
+        input[type=range] {
+            -webkit-appearance: none; appearance: none; width: 100%; height: 6px;
+            border-radius: 6px; outline: none; cursor: pointer;
+            background: linear-gradient(90deg, #c4d2ec, #aebfe0);
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none; width: 18px; height: 18px;
+            border-radius: 50%; background: #fff; border: 3px solid #2563eb;
+            box-shadow: 0 2px 7px rgba(37,99,235,0.4); cursor: pointer;
+        }
+
+        .toggle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
+        .toggle-btn {
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+            padding: 9px 6px; border-radius: 10px; border: 1.5px solid rgba(150,170,205,0.6);
+            background: rgba(255,255,255,0.55); color: #44537a; font-size: 12.5px; font-weight: 700;
+            cursor: pointer; transition: all 0.16s;
+        }
+        .toggle-btn .dot { width: 9px; height: 9px; border-radius: 50%; background: #b7c2d8; transition: all 0.16s; }
+        .toggle-btn.active { background: rgba(37,99,235,0.12); border-color: #2563eb; color: #1b2a4a; }
+        .toggle-btn.active .dot { background: #2563eb; box-shadow: 0 0 7px rgba(37,99,235,0.8); }
+
+        .action-row { display: flex; gap: 8px; margin-top: 11px; }
+        .btn { flex: 1; padding: 9px; border: none; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.16s; color: #fff; }
+        .btn-play { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
+        .btn-reset { background: linear-gradient(135deg, #64748b, #475569); }
+        .btn:hover { filter: brightness(1.07); transform: translateY(-1px); }
+
+        .info-title { font-size: 15px; font-weight: 800; color: #1b2a4a; margin-bottom: 10px; display: flex; align-items: center; gap: 7px; }
+        .readout { display: flex; justify-content: space-between; align-items: center; padding: 5.5px 0; border-bottom: 1px dashed rgba(150,170,205,0.45); font-size: 13px; }
+        .ro-name { color: #5a6b8c; font-weight: 600; }
+        .ro-val { font-weight: 800; color: #1b2a4a; font-variant-numeric: tabular-nums; }
+        .ro-val.emf { color: #15803d; } .ro-val.flux { color: #7c3aed; }
+
+        .status-box { margin-top: 10px; padding: 9px 11px; border-radius: 10px; font-size: 12.5px; font-weight: 700; text-align: center; }
+        .status-ac { background: rgba(37,99,235,0.12); color: #1d4ed8; }
+        .status-dc { background: rgba(180,83,9,0.14); color: #b45309; }
+
+        .wave-panel { right: 22px; bottom: 20px; width: 304px; padding: 10px 12px 8px; }
+        .wave-title { font-size: 12px; font-weight: 700; color: #5a6b8c; margin-bottom: 4px; display: flex; justify-content: space-between; }
+        .wave-title .e { color: #15803d; }
+        #wave { width: 100%; height: 88px; display: block; border-radius: 8px; background: rgba(244,247,252,0.7); }
+
+        .formula-panel {
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 7;
+            background: rgba(27,42,74,0.93); color: #eaf0fb; padding: 11px 22px; border-radius: 14px;
+            box-shadow: 0 10px 30px rgba(20,35,70,0.34); text-align: center; max-width: 58%;
+        }
+        .formula { font-family: 'Cambria Math','Times New Roman', serif; font-size: 18px; font-weight: 600; }
+        .formula .sep { color: #6b7da6; margin: 0 12px; }
+        .formula-note { font-size: 12.5px; color: #9fb2d8; margin-top: 5px; }
+
+        .hint {
+            position: absolute; bottom: 18px; left: 22px; z-index: 7; font-size: 12px; color: #5a6b8c;
+            background: rgba(255,255,255,0.72); padding: 7px 13px; border-radius: 9px;
+            border: 1px solid rgba(150,170,205,0.45);
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div id="labels"></div>
+
+    <div class="header">
+        <h1>⚙️ Электрический генератор</h1>
+        <p><span>Вращение рамки в магнитном поле • ЭДС индукции • переменный и постоянный ток</span></p>
+    </div>
+
+    <div class="panel control-panel">
+        <div class="seg">
+            <button id="md-ac" class="active" data-i18n="acMode">Переменный (AC)</button>
+            <button id="md-dc" data-i18n="dcMode">Постоянный (DC)</button>
+        </div>
+
+        <div class="param-group">
+            <div class="param-label">
+                <span class="param-name"><span class="param-icon">🔄</span><span data-i18n="wLabel">Скорость вращения ω</span></span>
+                <span class="param-value" id="w-value">3.0 рад/с</span>
+            </div>
+            <input type="range" id="omega" min="0.5" max="6" step="0.1" value="3">
+        </div>
+        <div class="param-group">
+            <div class="param-label">
+                <span class="param-name"><span class="param-icon">🧲</span><span data-i18n="bLabel">Магнитное поле B</span></span>
+                <span class="param-value" id="b-value">0.50 Тл</span>
+            </div>
+            <input type="range" id="bfield" min="0.1" max="1" step="0.01" value="0.5">
+        </div>
+        <div class="param-group">
+            <div class="param-label">
+                <span class="param-name"><span class="param-icon">🌀</span><span data-i18n="nLabel">Число витков N</span></span>
+                <span class="param-value" id="n-value">20</span>
+            </div>
+            <input type="range" id="nturns" min="1" max="50" step="1" value="20">
+        </div>
+
+        <div class="toggle-grid">
+            <button class="toggle-btn active" id="t-fld"><span class="dot"></span><span data-i18n="tFld">Поле B</span></button>
+            <button class="toggle-btn active" id="t-lbl"><span class="dot"></span><span data-i18n="tLbl">Подписи</span></button>
+        </div>
+
+        <div class="action-row">
+            <button class="btn btn-play" id="btn-play" data-i18n="pause">⏸ Пауза</button>
+            <button class="btn btn-reset" id="btn-reset" data-i18n="reset">↺ Сброс</button>
+        </div>
+    </div>
+
+    <div class="panel info-panel">
+        <div class="info-title">📊 <span data-i18n="infoTitle">Параметры</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roAngle">Угол поворота θ</span><span class="ro-val" id="ro-angle">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roFlux">Магнитный поток Φ</span><span class="ro-val flux" id="ro-flux">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roEmf">ЭДС ε (мгновенная)</span><span class="ro-val emf" id="ro-emf">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roPeak">Амплитуда ε₀</span><span class="ro-val" id="ro-peak">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roFreq">Частота f</span><span class="ro-val" id="ro-freq">—</span></div>
+        <div class="status-box status-ac" id="status">—</div>
+    </div>
+
+    <div class="panel wave-panel">
+        <div class="wave-title"><span class="e" data-i18n="wvE">ЭДС ε(t)</span><span id="wave-rpm">—</span></div>
+        <canvas id="wave" width="304" height="88"></canvas>
+    </div>
+
+    <div class="formula-panel">
+        <div class="formula">
+            ε = N·B·A·ω·sin(ωt)
+            <span class="sep">|</span>
+            Φ = B·A·cos(ωt)
+        </div>
+        <div class="formula-note" data-i18n="note">ЭДС максимальна, когда рамка параллельна полю (Φ = 0)</div>
+    </div>
+
+    <div class="hint"><span data-i18n="hint">ЛКМ — вращение • ПКМ — перемещение • Колесо — зум</span></div>
+
+    <script src="../../libs/vendor/three-r128/three.min.js"></script>
+    <script>
+    const LANG = (new URLSearchParams(window.location.search).get('lang')) || 'ru';
+    const I18N = {
+        ru: { headH:'⚙️ Электрический генератор', headS:'Вращение рамки в магнитном поле • ЭДС индукции • переменный и постоянный ток',
+              acMode:'Переменный (AC)', dcMode:'Постоянный (DC)',
+              wLabel:'Скорость вращения ω', bLabel:'Магнитное поле B', nLabel:'Число витков N',
+              tFld:'Поле B', tLbl:'Подписи', pause:'⏸ Пауза', play:'▶ Пуск', reset:'↺ Сброс', infoTitle:'Параметры',
+              roAngle:'Угол поворота θ', roFlux:'Магнитный поток Φ', roEmf:'ЭДС ε (мгновенная)', roPeak:'Амплитуда ε₀', roFreq:'Частота f',
+              note:'ЭДС максимальна, когда рамка параллельна полю (Φ = 0)',
+              hint:'ЛКМ — вращение • ПКМ — перемещение • Колесо — зум', wvE:'ЭДС ε(t)',
+              ac:'Переменный ток — кольца', dc:'Постоянный ток — коллектор',
+              wb:'Вб', volt:'В', hz:'Гц', rpm:'об/мин',
+              lN:'N (северный)', lS:'S (южный)', lCoil:'Рамка (N витков)', lFld:'Поле B', lLamp:'Нагрузка', lRing:'Кольца + щётки' },
+        kz: { headH:'⚙️ Электр генераторы', headS:'Магнит өрісінде рамканың айналуы • индукция ЭҚК • айнымалы және тұрақты ток',
+              acMode:'Айнымалы (AC)', dcMode:'Тұрақты (DC)',
+              wLabel:'Айналу жылдамдығы ω', bLabel:'Магнит өрісі B', nLabel:'Орам саны N',
+              tFld:'Өріс B', tLbl:'Жазулар', pause:'⏸ Кідіріс', play:'▶ Бастау', reset:'↺ Қайтару', infoTitle:'Параметрлер',
+              roAngle:'Бұрылу бұрышы θ', roFlux:'Магнит ағыны Φ', roEmf:'ЭҚК ε (лездік)', roPeak:'Амплитуда ε₀', roFreq:'Жиілік f',
+              note:'Рамка өріске параллель болғанда ЭҚК максималды (Φ = 0)',
+              hint:'СБ — айналдыру • ОБ — жылжыту • Дөңгелек — масштаб', wvE:'ЭҚК ε(t)',
+              ac:'Айнымалы ток — сақиналар', dc:'Тұрақты ток — коллектор',
+              wb:'Вб', volt:'В', hz:'Гц', rpm:'айн/мин',
+              lN:'N (солтүстік)', lS:'S (оңтүстік)', lCoil:'Рамка (N орам)', lFld:'Өріс B', lLamp:'Жүктеме', lRing:'Сақина + щётка' },
+        en: { headH:'⚙️ Electric Generator', headS:'Rotating coil in a magnetic field • induced EMF • alternating and direct current',
+              acMode:'Alternating (AC)', dcMode:'Direct (DC)',
+              wLabel:'Rotation speed ω', bLabel:'Magnetic field B', nLabel:'Number of turns N',
+              tFld:'Field B', tLbl:'Labels', pause:'⏸ Pause', play:'▶ Play', reset:'↺ Reset', infoTitle:'Parameters',
+              roAngle:'Rotation angle θ', roFlux:'Magnetic flux Φ', roEmf:'EMF ε (instant)', roPeak:'Amplitude ε₀', roFreq:'Frequency f',
+              note:'EMF is maximal when the coil is parallel to the field (Φ = 0)',
+              hint:'LMB — rotate • RMB — pan • Wheel — zoom', wvE:'EMF ε(t)',
+              ac:'Alternating current — slip rings', dc:'Direct current — commutator',
+              wb:'Wb', volt:'V', hz:'Hz', rpm:'rpm',
+              lN:'N (north)', lS:'S (south)', lCoil:'Coil (N turns)', lFld:'Field B', lLamp:'Load', lRing:'Rings + brushes' }
+    };
+    const L = I18N[LANG] || I18N.ru;
+
+    // ---- physics state ----
+    let mode = 'ac';          // 'ac' (slip rings) | 'dc' (commutator)
+    let omega = 3.0;          // rad/s
+    let Bfield = 0.5;         // Tesla
+    let Nturns = 20;
+    const AREA = 0.05;        // m^2 (coil area, fixed)
+    let playing = true, showFld = true, showLbl = true;
+    let theta = 0;            // rotation angle (rad)
+
+    function peakEMF() { return Nturns * Bfield * AREA * omega; }
+    function flux(th) { return Bfield * AREA * Math.cos(th); }       // Φ = B A cos θ
+    function emfAC(th) { return Nturns * Bfield * AREA * omega * Math.sin(th); } // ε = -N dΦ/dt
+    function emfOut(th) { return mode === 'dc' ? Math.abs(emfAC(th)) : emfAC(th); }
+
+    // ---- three.js ----
+    let scene, camera, renderer, root;
+    let coilPivot, coilMesh, arrowA, arrowB, fieldGroup, lampMesh, lampMat, lampGlow, ringTop, ringBot;
+    const clock = new THREE.Clock();
+    const container = document.getElementById('canvas-container');
+    const labelLayer = document.getElementById('labels');
+
+    let camTheta = 0.7, camPhi = 1.1, camRadius = 16;
+    const camTarget = new THREE.Vector3(0, 0.2, 0);
+    let dragMode = 0, lastX = 0, lastY = 0;
+
+    // geometry
+    const GAP = 2.3, COIL_H = 3.0, COIL_W = 2.4, AXIS_BOT = -3.6;
+
+    function init() {
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xeef3fb);
+        scene.fog = new THREE.Fog(0xeef3fb, 24, 56);
+
+        camera = new THREE.PerspectiveCamera(47, window.innerWidth / window.innerHeight, 0.1, 200);
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        container.appendChild(renderer.domElement);
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.86));
+        const key = new THREE.DirectionalLight(0xffffff, 0.6); key.position.set(6, 12, 9); scene.add(key);
+        const fill = new THREE.DirectionalLight(0xbcd4ff, 0.3); fill.position.set(-8, 4, -6); scene.add(fill);
+
+        root = new THREE.Group(); scene.add(root);
+        const grid = new THREE.GridHelper(38, 19, 0xc2cee4, 0xdde5f1);
+        grid.position.y = -5.0; root.add(grid);
+
+        buildMagnets();
+        buildField();
+        buildCoil();
+        buildRingsAndOutput();
+
+        makeLabels();
+        applyI18N();
+        setupControls();
+        rebuildCoil();
+        updateReadouts();
+        updateCamera();
+        animate();
+    }
+
+    function buildMagnets() {
+        const mkPole = (x, color) => {
+            const g = new THREE.Group();
+            const body = new THREE.Mesh(new THREE.BoxGeometry(1.5, 3.2, 2.8), new THREE.MeshStandardMaterial({ color, metalness: 0.4, roughness: 0.5 }));
+            body.position.x = x > 0 ? x + 0.75 : x - 0.75;
+            const face = new THREE.Mesh(new THREE.BoxGeometry(0.25, 3.2, 2.8), new THREE.MeshStandardMaterial({ color, metalness: 0.5, roughness: 0.4, emissive: color, emissiveIntensity: 0.12 }));
+            face.position.x = x;
+            g.add(body); g.add(face);
+            return g;
+        };
+        root.add(mkPole(-GAP, 0xdc2626));   // N (left)
+        root.add(mkPole(GAP, 0x2563eb));    // S (right)
+    }
+
+    function buildField() {
+        fieldGroup = new THREE.Group();
+        const ys = [-1.0, 0, 1.0], zs = [-0.9, 0, 0.9];
+        const mat = new THREE.MeshStandardMaterial({ color: 0x0891b2, emissive: 0x0891b2, emissiveIntensity: 0.25, metalness: 0.2, roughness: 0.5, transparent: true, opacity: 0.8 });
+        const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(1, 0, 0)); // cone +Y -> +X
+        ys.forEach(y => zs.forEach(z => {
+            // shaft
+            const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, GAP * 1.7, 8), mat);
+            shaft.rotation.z = -Math.PI / 2; shaft.position.set(0, y, z); fieldGroup.add(shaft);
+            const head = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.34, 10), mat);
+            head.quaternion.copy(q); head.position.set(GAP * 0.72, y, z); fieldGroup.add(head);
+        }));
+        root.add(fieldGroup);
+    }
+
+    function buildCoil() {
+        coilPivot = new THREE.Group();
+        coilMesh = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshStandardMaterial({ color: 0xc97a3a, metalness: 0.7, roughness: 0.32 }));
+        coilPivot.add(coilMesh);
+        // current-direction arrows on the two vertical conductors (local z = ±COIL_W/2)
+        const amat = () => new THREE.MeshStandardMaterial({ color: 0x15803d, emissive: 0x15803d, emissiveIntensity: 0.4, metalness: 0.2, roughness: 0.4 });
+        arrowA = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.5, 12), amat());
+        arrowB = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.5, 12), amat());
+        arrowA.position.set(0, 0, COIL_W / 2);
+        arrowB.position.set(0, 0, -COIL_W / 2);
+        coilPivot.add(arrowA); coilPivot.add(arrowB);
+        root.add(coilPivot);
+    }
+    function rebuildCoil() {
+        // rectangle loop in local Y-Z plane (normal = local X); rendered with slight multi-turn look
+        const h = COIL_H / 2, w = COIL_W / 2;
+        const loops = Math.max(1, Math.min(6, Math.round(Nturns / 9)));
+        const pts = [];
+        const corners = [[h, -w], [h, w], [-h, w], [-h, -w]];
+        const turnsGap = 0.12;
+        for (let t = 0; t < loops; t++) {
+            const off = (t - (loops - 1) / 2) * turnsGap;
+            for (let c = 0; c <= 4; c++) {
+                const cc = corners[c % 4];
+                pts.push(new THREE.Vector3(off, cc[0], cc[1]));
+            }
+        }
+        const curve = new THREE.CatmullRomCurve3(pts, false);
+        coilMesh.geometry.dispose();
+        coilMesh.geometry = new THREE.TubeGeometry(curve, loops * 40, 0.075, 8, false);
+    }
+
+    function buildRingsAndOutput() {
+        // shaft down from coil to slip rings
+        const shaftMat = new THREE.MeshStandardMaterial({ color: 0x8a96aa, metalness: 0.6, roughness: 0.4 });
+        const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 1.6, 12), shaftMat);
+        shaft.position.set(0, -COIL_H / 2 - 0.8, 0); root.add(shaft);
+        // slip rings
+        const ringMat = new THREE.MeshStandardMaterial({ color: 0xd9a441, metalness: 0.75, roughness: 0.3 });
+        ringTop = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.07, 12, 28), ringMat);
+        ringBot = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.07, 12, 28), ringMat);
+        ringTop.rotation.x = Math.PI / 2; ringTop.position.set(0, AXIS_BOT + 0.55, 0);
+        ringBot.rotation.x = Math.PI / 2; ringBot.position.set(0, AXIS_BOT + 0.15, 0);
+        root.add(ringTop); root.add(ringBot);
+        // brushes
+        const brMat = new THREE.MeshStandardMaterial({ color: 0x4b5563, metalness: 0.3, roughness: 0.6 });
+        [[0.55], [0.15]].forEach((yy, i) => {
+            const b = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.14, 0.14), brMat);
+            b.position.set(0.5, AXIS_BOT + yy[0], 0); root.add(b);
+        });
+        // output wires to lamp
+        const wmat = new THREE.LineBasicMaterial({ color: 0x15803d });
+        const wpts = [new THREE.Vector3(0.6, AXIS_BOT + 0.55, 0), new THREE.Vector3(3.6, AXIS_BOT + 0.55, 0), new THREE.Vector3(3.6, -0.2, 0)];
+        root.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(wpts), wmat));
+        const wpts2 = [new THREE.Vector3(0.6, AXIS_BOT + 0.15, 0), new THREE.Vector3(4.2, AXIS_BOT + 0.15, 0), new THREE.Vector3(4.2, -0.2, 0)];
+        root.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(wpts2), wmat));
+        // lamp
+        const base = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.26, 0.36, 16), new THREE.MeshStandardMaterial({ color: 0x9aa7bd, metalness: 0.6, roughness: 0.4 }));
+        base.position.set(3.9, -0.4, 0); root.add(base);
+        lampMat = new THREE.MeshStandardMaterial({ color: 0xfff4cf, emissive: 0xffcc44, emissiveIntensity: 0.15, metalness: 0.1, roughness: 0.25, transparent: true, opacity: 0.92 });
+        lampMesh = new THREE.Mesh(new THREE.SphereGeometry(0.5, 24, 18), lampMat);
+        lampMesh.position.set(3.9, 0.15, 0); root.add(lampMesh);
+        lampGlow = new THREE.PointLight(0xffcc55, 0, 7); lampGlow.position.copy(lampMesh.position); root.add(lampGlow);
+    }
+
+    // ---- labels ----
+    let lblCoil, lblFld, lblLamp, lblRing;
+    let pl_n, pl_s;
+    function makeLabels() {
+        const mk = (cls) => { const d = document.createElement('div'); d.className = 'label3d ' + cls; labelLayer.appendChild(d); return d; };
+        lblCoil = mk('coil'); lblFld = mk('fld'); lblLamp = mk('out'); lblRing = mk('coil');
+        const mkP = (cls, t) => { const d = document.createElement('div'); d.className = 'pole-letter ' + cls; d.textContent = t; labelLayer.appendChild(d); return d; };
+        pl_n = mkP('n', 'N'); pl_s = mkP('s', 'S');
+    }
+    function proj(el, pos, show, text) {
+        if (!show) { el.style.display = 'none'; return; }
+        const v = pos.clone().project(camera);
+        if (v.z > 1) { el.style.display = 'none'; return; }
+        el.style.display = 'block'; if (text != null) el.textContent = text;
+        el.style.left = (v.x * 0.5 + 0.5) * window.innerWidth + 'px';
+        el.style.top = (-v.y * 0.5 + 0.5) * window.innerHeight + 'px';
+    }
+    function updateLabels() {
+        const on = showLbl;
+        proj(lblCoil, new THREE.Vector3(0, COIL_H / 2 + 0.7, 0), on, L.lCoil);
+        proj(lblFld, new THREE.Vector3(0, 1.7, 0.9), on && showFld, L.lFld);
+        proj(lblLamp, new THREE.Vector3(3.9, 0.9, 0), on, L.lLamp);
+        proj(lblRing, new THREE.Vector3(1.2, AXIS_BOT + 0.35, 0), on, L.lRing);
+        proj(pl_n, new THREE.Vector3(-GAP - 0.1, 0, 1.45), true);
+        proj(pl_s, new THREE.Vector3(GAP + 0.1, 0, 1.45), true);
+    }
+
+    function updateReadouts() {
+        const th = theta % (2 * Math.PI);
+        setTxt('ro-angle', (th * 180 / Math.PI).toFixed(0) + '°');
+        setTxt('ro-flux', flux(theta).toFixed(4) + ' ' + L.wb);
+        setTxt('ro-emf', emfOut(theta).toFixed(2) + ' ' + L.volt);
+        setTxt('ro-peak', peakEMF().toFixed(2) + ' ' + L.volt);
+        setTxt('ro-freq', (omega / (2 * Math.PI)).toFixed(2) + ' ' + L.hz);
+        const st = document.getElementById('status');
+        if (mode === 'dc') { st.textContent = L.dc; st.className = 'status-box status-dc'; }
+        else { st.textContent = L.ac; st.className = 'status-box status-ac'; }
+    }
+    function setTxt(id, v) { const el = document.getElementById(id); if (el) el.textContent = v; }
+
+    // ---- waveform (scrolling history) ----
+    const wcv = document.getElementById('wave'), wctx = wcv.getContext('2d');
+    const WV_W = 304, WV_H = 88;
+    let hist = new Array(WV_W).fill(0);
+    function pushWave() {
+        hist.push(emfOut(theta)); if (hist.length > WV_W) hist.shift();   // store raw EMF (V)
+    }
+    function drawWave() {
+        const mid = WV_H / 2;
+        const sc = (WV_H / 2 - 6) / Math.max(peakEMF(), 1e-3);            // auto-scale to current peak
+        wctx.clearRect(0, 0, WV_W, WV_H);
+        wctx.strokeStyle = 'rgba(150,170,205,0.5)'; wctx.lineWidth = 1;
+        wctx.beginPath(); wctx.moveTo(0, mid); wctx.lineTo(WV_W, mid); wctx.stroke();
+        wctx.strokeStyle = '#15803d'; wctx.lineWidth = 2; wctx.beginPath();
+        for (let x = 0; x < hist.length; x++) {
+            const y = mid - hist[x] * sc;
+            x === 0 ? wctx.moveTo(x, y) : wctx.lineTo(x, y);
+        }
+        wctx.stroke();
+    }
+
+    // ---- camera ----
+    function updateCamera() {
+        const sp = Math.sin(camPhi), cp = Math.cos(camPhi), st = Math.sin(camTheta), ct = Math.cos(camTheta);
+        camera.position.set(camTarget.x + camRadius * sp * ct, camTarget.y + camRadius * cp, camTarget.z + camRadius * sp * st);
+        camera.lookAt(camTarget);
+    }
+
+    function setupControls() {
+        const setMode = (m) => {
+            mode = m;
+            document.getElementById('md-ac').classList.toggle('active', m === 'ac');
+            document.getElementById('md-dc').classList.toggle('active', m === 'dc');
+            hist = new Array(WV_W).fill(0); updateReadouts();
+        };
+        document.getElementById('md-ac').addEventListener('click', () => setMode('ac'));
+        document.getElementById('md-dc').addEventListener('click', () => setMode('dc'));
+
+        document.getElementById('omega').addEventListener('input', e => { omega = +e.target.value; setTxt('w-value', omega.toFixed(1) + ' рад/с'); updateReadouts(); });
+        document.getElementById('bfield').addEventListener('input', e => { Bfield = +e.target.value; setTxt('b-value', Bfield.toFixed(2) + ' Тл'); updateReadouts(); });
+        document.getElementById('nturns').addEventListener('input', e => { Nturns = +e.target.value; setTxt('n-value', Nturns); rebuildCoil(); updateReadouts(); });
+
+        const tog = (id, fn) => { const el = document.getElementById(id); el.addEventListener('click', () => { el.classList.toggle('active'); fn(el.classList.contains('active')); }); };
+        tog('t-fld', v => { showFld = v; fieldGroup.visible = v; });
+        tog('t-lbl', v => showLbl = v);
+
+        const playBtn = document.getElementById('btn-play');
+        playBtn.addEventListener('click', () => { playing = !playing; playBtn.textContent = playing ? L.pause : L.play; });
+        document.getElementById('btn-reset').addEventListener('click', () => {
+            mode = 'ac'; omega = 3; Bfield = 0.5; Nturns = 20; playing = true; showFld = true; showLbl = true; theta = 0;
+            document.getElementById('md-ac').classList.add('active'); document.getElementById('md-dc').classList.remove('active');
+            document.getElementById('omega').value = 3; document.getElementById('bfield').value = 0.5; document.getElementById('nturns').value = 20;
+            setTxt('w-value', '3.0 рад/с'); setTxt('b-value', '0.50 Тл'); setTxt('n-value', 20);
+            document.getElementById('t-fld').classList.add('active'); document.getElementById('t-lbl').classList.add('active');
+            fieldGroup.visible = true; playBtn.textContent = L.pause; hist = new Array(WV_W).fill(0);
+            camTheta = 0.7; camPhi = 1.1; camRadius = 16; camTarget.set(0, 0.2, 0);
+            rebuildCoil(); updateReadouts(); updateCamera();
+        });
+
+        const el = renderer.domElement;
+        el.addEventListener('contextmenu', e => e.preventDefault());
+        el.addEventListener('mousedown', e => { dragMode = (e.button === 2 || e.shiftKey) ? 2 : 1; lastX = e.clientX; lastY = e.clientY; });
+        window.addEventListener('mousemove', e => {
+            if (!dragMode) return;
+            const dx = e.clientX - lastX, dy = e.clientY - lastY; lastX = e.clientX; lastY = e.clientY;
+            if (dragMode === 1) { camTheta -= dx * 0.005; camPhi = Math.max(0.25, Math.min(Math.PI - 0.25, camPhi - dy * 0.005)); }
+            else { const ps = camRadius * 0.0016; const right = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0); const up = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 1); camTarget.addScaledVector(right, -dx * ps); camTarget.addScaledVector(up, dy * ps); }
+            updateCamera();
+        });
+        window.addEventListener('mouseup', () => dragMode = 0);
+        el.addEventListener('wheel', e => { e.preventDefault(); camRadius = Math.max(8, Math.min(38, camRadius + e.deltaY * 0.014)); updateCamera(); }, { passive: false });
+        el.addEventListener('touchstart', e => { const t = e.touches[0]; dragMode = 1; lastX = t.clientX; lastY = t.clientY; }, { passive: true });
+        el.addEventListener('touchmove', e => { if (!dragMode) return; const t = e.touches[0]; const dx = t.clientX - lastX, dy = t.clientY - lastY; lastX = t.clientX; lastY = t.clientY; camTheta -= dx * 0.006; camPhi = Math.max(0.25, Math.min(Math.PI - 0.25, camPhi - dy * 0.006)); updateCamera(); e.preventDefault(); }, { passive: false });
+        window.addEventListener('touchend', () => dragMode = 0);
+        window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+    }
+
+    function applyI18N() {
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const k = el.getAttribute('data-i18n');
+            if (L[k] != null) { if (k === 'note') el.innerHTML = L[k]; else el.textContent = L[k]; }
+        });
+        document.querySelector('.header h1').textContent = L.headH;
+        document.querySelector('.header p span').textContent = L.headS;
+        document.title = L.headH.replace(/^[^\wА-Яа-яЁё]+/, '');
+        document.documentElement.lang = LANG;
+    }
+
+    let waveAccum = 0;
+    function animate() {
+        requestAnimationFrame(animate);
+        const dt = Math.min(clock.getDelta(), 0.05);
+        if (playing) { theta += omega * dt; coilPivot.rotation.y = theta; }
+
+        // current arrows flip with EMF sign (coil current alternates)
+        const e = emfAC(theta);
+        const peak = Math.max(peakEMF(), 1e-3);
+        const sgn = e >= 0 ? 1 : -1;
+        arrowA.scale.set(1, sgn, 1); arrowB.scale.set(1, -sgn, 1);
+        const mag = Math.min(1, Math.abs(e) / peak);
+        arrowA.material.emissiveIntensity = arrowB.material.emissiveIntensity = 0.3 + mag;
+
+        // lamp brightness ~ instantaneous power: flicker (ε/ε₀)² scaled by absolute power level
+        const flicker = (emfOut(theta) / peak) ** 2;          // 0..1 over the cycle
+        const powerFactor = Math.max(0.3, Math.min(1, peak / 4));
+        lampMat.emissiveIntensity = 0.1 + 2.4 * flicker * powerFactor;
+        lampGlow.intensity = 2.2 * flicker * powerFactor;
+
+        // waveform throttled to ~60 samples/s
+        waveAccum += dt;
+        if (waveAccum >= 1 / 60) { pushWave(); waveAccum = 0; }
+        drawWave();
+        setTxt('wave-rpm', (omega * 60 / (2 * Math.PI)).toFixed(0) + ' ' + L.rpm);
+
+        if (playing) updateReadouts();
+        updateLabels();
+        renderer.render(scene, camera);
+    }
+
+    init();
+    </script>
+</body>
+</html>

@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="page_title">Кристаллическая решётка NaCl</title>
+    <style>
+        
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg: #f5f4f0;
+            --surface: rgba(255,255,255,0.90);
+            --border: rgba(0,0,0,0.08);
+            --text: #1c1917;
+            --muted: #78716c;
+            --na: #7c3aed;
+            --cl: #15803d;
+            --shadow: 0 2px 20px rgba(0,0,0,0.07);
+            --shadow-lg: 0 8px 44px rgba(0,0,0,0.11);
+        }
+
+        body {
+            font-family: 'Syne', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        body::before {
+            content: '';
+            position: fixed; inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='%23f5f4f0'/%3E%3Ccircle cx='1' cy='1' r='0.6' fill='rgba(0,0,0,0.025)'/%3E%3C/svg%3E");
+            pointer-events: none; z-index: 0;
+        }
+
+        #canvas-container { position: fixed; inset: 0; z-index: 1; }
+
+        /* ── HEADER ─────────────────────────────────── */
+        .header {
+            position: fixed; top: 0; left: 0; right: 0;
+            z-index: 200;
+            background: var(--surface);
+            
+            border-bottom: 1px solid var(--border);
+            padding: 0 48px; height: 92px;
+            display: flex; align-items: center; gap: 14px;
+            box-shadow: var(--shadow);
+        }
+
+        .h-na {
+            font-family: 'DM Mono', monospace;
+            font-size: 38px; font-weight: 500;
+            color: var(--na); letter-spacing: -1px;
+        }
+        .h-sep {
+            font-size: 30px; color: var(--muted); font-weight: 300;
+            margin: 0 2px;
+        }
+        .h-cl {
+            font-family: 'DM Mono', monospace;
+            font-size: 38px; font-weight: 500;
+            color: var(--cl); letter-spacing: -1px;
+        }
+        .header-title { font-size: 26px; font-weight: 700; margin-left: 10px; }
+        .header-sub { font-size: 16px; color: var(--muted); margin-left: auto; }
+
+        /* ── PROPS PANEL ───────────────────────────── */
+        .props-panel {
+            position: fixed; top: 108px; left: 32px;
+            z-index: 200;
+            background: var(--surface); 
+            border: 1px solid var(--border); border-radius: 26px;
+            padding: 26px 28px; width: 330px;
+            box-shadow: var(--shadow);
+        }
+
+        .panel-label {
+            font-size: 13px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 1.2px;
+            color: var(--muted); margin-bottom: 16px;
+        }
+
+        .prop-row {
+            display: flex; justify-content: space-between; align-items: baseline;
+            padding: 9px 0; border-bottom: 1px solid rgba(0,0,0,0.04);
+            font-size: 17px;
+        }
+        .prop-row:last-child { border: none; }
+        .prop-key { color: var(--muted); }
+        .prop-val { font-family: 'DM Mono', monospace; font-size: 15px; font-weight: 500; }
+
+        /* ── LEGEND ────────────────────────────────── */
+        .legend {
+            position: fixed; bottom: 110px; left: 32px;
+            z-index: 200;
+            background: var(--surface); 
+            border: 1px solid var(--border); border-radius: 26px;
+            padding: 22px 26px; box-shadow: var(--shadow);
+        }
+
+        .legend-item {
+            display: flex; align-items: center; gap: 14px;
+            font-size: 17px; font-weight: 500;
+            padding: 8px 0; cursor: pointer;
+            transition: transform 0.2s; color: var(--text);
+        }
+        .legend-item:hover { transform: translateX(4px); }
+
+        .legend-dot {
+            width: 24px; height: 24px; border-radius: 50%;
+            flex-shrink: 0; box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .legend-charge {
+            font-family: 'DM Mono', monospace; font-size: 13px;
+            background: rgba(0,0,0,0.06); border-radius: 6px;
+            padding: 2px 8px; margin-left: auto; color: var(--muted);
+        }
+
+        /* ── VIEW PANEL ────────────────────────────── */
+        .view-panel {
+            position: fixed; top: 108px; right: 32px;
+            z-index: 200;
+            background: var(--surface); 
+            border: 1px solid var(--border); border-radius: 26px;
+            padding: 24px; width: 286px;
+            box-shadow: var(--shadow);
+        }
+
+        .v-btn {
+            display: flex; align-items: center; gap: 12px;
+            width: 100%; padding: 14px 18px; margin: 7px 0;
+            background: rgba(0,0,0,0.03);
+            border: 1px solid transparent; border-radius: 15px;
+            font-family: 'Syne', sans-serif; font-size: 17px; font-weight: 600;
+            color: var(--text); cursor: pointer; transition: all 0.2s; text-align: left;
+        }
+        .v-btn:hover { background: rgba(0,0,0,0.06); }
+        .v-btn.active { border-color: rgba(0,0,0,0.12); background: rgba(0,0,0,0.06); }
+
+        .v-btn.dissolve-btn {
+            background: rgba(220,38,38,0.06);
+            border-color: rgba(220,38,38,0.15);
+            color: #b91c1c;
+        }
+        .v-btn.dissolve-btn:hover { background: rgba(220,38,38,0.10); }
+        .v-btn.dissolve-btn.active {
+            background: rgba(220,38,38,0.12);
+            border-color: rgba(220,38,38,0.30);
+        }
+
+        /* ── COORD BADGE ───────────────────────────── */
+        .coord-badge {
+            position: fixed; bottom: 110px; right: 32px;
+            z-index: 200;
+            background: var(--surface); 
+            border: 1px solid var(--border); border-radius: 26px;
+            padding: 18px 24px; box-shadow: var(--shadow);
+            text-align: center; min-width: 190px;
+            opacity: 0; transform: translateY(8px);
+            transition: all 0.3s;
+            pointer-events: none;
+        }
+        .coord-badge.visible {
+            opacity: 1; transform: translateY(0);
+        }
+        .coord-num {
+            font-family: 'DM Mono', monospace;
+            font-size: 46px; font-weight: 500;
+            line-height: 1; display: block;
+        }
+        .coord-label { font-size: 14px; color: var(--muted); margin-top: 4px; }
+        .coord-sub { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+        /* ── HINT ──────────────────────────────────── */
+        .hint {
+            position: fixed; bottom: 28px; left: 50%;
+            transform: translateX(-50%);
+            z-index: 200;
+            background: var(--surface); 
+            border: 1px solid var(--border); border-radius: 60px;
+            padding: 15px 36px; font-size: 16px; color: var(--muted);
+            box-shadow: var(--shadow); white-space: nowrap;
+        }
+        .hint kbd {
+            background: rgba(0,0,0,0.07); border-radius: 6px;
+            padding: 2px 10px; font-family: 'DM Mono', monospace;
+            font-size: 14px; color: var(--text);
+        }
+
+        /* ── INFO PANEL ────────────────────────────── */
+        .info-panel {
+            position: fixed; top: 0; bottom: 0; right: -460px; width: 420px;
+            background: rgba(255,255,255,0.97); 
+            border-left: 1px solid var(--border);
+            box-shadow: -8px 0 48px rgba(0,0,0,0.08);
+            z-index: 500; overflow-y: auto;
+            transition: right 0.4s cubic-bezier(0.34,1.56,0.64,1);
+            padding: 32px;
+        }
+        .info-panel.open { right: 0; }
+
+        .ip-header {
+            display: flex; align-items: flex-start;
+            justify-content: space-between; margin-bottom: 10px;
+        }
+        .ip-title { font-size: 28px; font-weight: 700; line-height: 1.3; }
+
+        .close-btn {
+            width: 42px; height: 42px; border-radius: 12px;
+            background: rgba(0,0,0,0.05); border: none; font-size: 22px;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: background 0.2s; flex-shrink: 0; color: var(--text);
+        }
+        .close-btn:hover { background: rgba(0,0,0,0.1); }
+
+        .ip-tag {
+            display: inline-block; font-size: 14px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.6px;
+            padding: 5px 16px; border-radius: 20px; margin-bottom: 22px;
+        }
+        .ip-tag.na { background: rgba(124,58,237,0.10); color: #6d28d9; }
+        .ip-tag.cl { background: rgba(21,128,61,0.10); color: #166534; }
+        .ip-tag.crystal { background: rgba(0,0,0,0.06); color: var(--text); }
+
+        .ip-sec {
+            padding: 18px 20px; border-radius: 16px;
+            background: rgba(0,0,0,0.02); border-left: 3px solid #e5e7eb;
+            margin-bottom: 14px;
+        }
+        .ip-sec.na { border-color: #7c3aed; }
+        .ip-sec.cl { border-color: #15803d; }
+        .ip-sec.crystal { border-color: #f59e0b; }
+
+        .ip-sec strong {
+            display: block; font-size: 13px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.6px;
+            color: var(--muted); margin-bottom: 8px;
+        }
+        .ip-sec p { font-size: 17px; line-height: 1.75; color: var(--text); }
+
+
+        /* ── FORMULA OVERLAY ───────────────────────── */
+        .dissolve-eq {
+            position: fixed; top: 108px; left: 50%;
+            transform: translateX(-50%);
+            z-index: 150;
+            font-family: 'DM Mono', monospace;
+            font-size: 20px; font-weight: 500;
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 16px; padding: 12px 24px;
+            box-shadow: var(--shadow);
+            opacity: 0; transition: opacity 0.4s;
+            pointer-events: none; white-space: nowrap;
+        }
+        .dissolve-eq.visible { opacity: 1; }
+        .dissolve-eq .arrow { color: var(--muted); }
+        .dissolve-eq .ion-na { color: var(--na); }
+        .dissolve-eq .ion-cl { color: var(--cl); }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <span class="h-na">Na</span><span class="h-sep">+</span><span class="h-cl">Cl</span>
+    <span class="header-title" data-i18n="header_title">Кристаллическая решётка</span>
+    <span class="header-sub" data-i18n="header_sub">Ионный кристалл · кликните на ион</span>
+</div>
+
+<div class="props-panel">
+    <div class="panel-label" data-i18n="props_label">Свойства NaCl</div>
+    <div class="prop-row"><span class="prop-key" data-i18n="k_type">Тип решётки</span><span class="prop-val" data-i18n="v_type">ионная FCC</span></div>
+    <div class="prop-row"><span class="prop-key" data-i18n="k_param">Параметр ячейки</span><span class="prop-val">5.64 Å</span></div>
+    <div class="prop-row"><span class="prop-key" data-i18n="k_energy">Энергия решётки</span><span class="prop-val" data-i18n="v_energy">787 кДж/моль</span></div>
+    <div class="prop-row"><span class="prop-key" data-i18n="k_mp">Т. плавления</span><span class="prop-val">801 °C</span></div>
+    <div class="prop-row"><span class="prop-key" data-i18n="k_bp">Т. кипения</span><span class="prop-val">1413 °C</span></div>
+    <div class="prop-row"><span class="prop-key" data-i18n="k_dens">Плотность</span><span class="prop-val">2.165 г/см³</span></div>
+    <div class="prop-row"><span class="prop-key" data-i18n="k_sol">Растворимость</span><span class="prop-val">360 г/л</span></div>
+    <div class="prop-row"><span class="prop-key" data-i18n="k_madel">Число Маделунга</span><span class="prop-val">1.7476</span></div>
+</div>
+
+<div class="legend">
+    <div class="panel-label" data-i18n="legend_title">Ионы</div>
+    <div class="legend-item" onclick="highlightType('na')">
+        <div class="legend-dot" style="background:#7c3aed;"></div>
+        <span data-i18n="leg_na">Na⁺ — натрий</span>
+        <span class="legend-charge" id="na-count">×63</span>
+    </div>
+    <div class="legend-item" onclick="highlightType('cl')">
+        <div class="legend-dot" style="background:#15803d;"></div>
+        <span data-i18n="leg_cl">Cl⁻ — хлорид</span>
+        <span class="legend-charge" id="cl-count">×62</span>
+    </div>
+</div>
+
+<div class="view-panel">
+    <div class="panel-label" data-i18n="ctrl_title">Управление</div>
+    <button class="v-btn active" id="btn-spin"      onclick="toggleSpin()"><span data-i18n="btn_pause">⏸ Пауза</span></button>
+    <button class="v-btn active" id="btn-bonds"     onclick="toggleBonds()"><span data-i18n="btn_bonds">🔗 Связи</span></button>
+    <button class="v-btn"        id="btn-cell"      onclick="toggleCell()"><span data-i18n="btn_cell">⬜ Элементарная ячейка</span></button>
+    <button class="v-btn"        id="btn-space"     onclick="toggleSpace()"><span data-i18n="btn_space">⚫ Пространственная модель</span></button>
+    <button class="v-btn dissolve-btn" id="btn-dis" onclick="toggleDissolve()"><span data-i18n="btn_dissolve">💧 Растворение</span></button>
+</div>
+
+<div class="coord-badge" id="coord-badge">
+    <span class="coord-num" id="coord-num">6</span>
+    <div class="coord-label" data-i18n="coord_label">координационное число</div>
+    <div class="coord-sub" id="coord-sub">—</div>
+</div>
+
+<div class="dissolve-eq" id="dissolve-eq">
+    NaCl &nbsp;<span class="arrow">──H₂O→</span>&nbsp;
+    <span class="ion-na">Na⁺</span> &nbsp;+&nbsp; <span class="ion-cl">Cl⁻</span>
+</div>
+
+<div class="hint" data-i18n-html="hint">🖱 Перетащить — вращать &nbsp;·&nbsp; <kbd>Scroll</kbd> — масштаб &nbsp;·&nbsp; Кликните на ион — увидите координацию</div>
+
+<div id="canvas-container"></div>
+
+<div class="info-panel" id="info-panel">
+    <div class="ip-header">
+        <div class="ip-title" id="ip-title">—</div>
+        <button class="close-btn" onclick="closeInfo()">✕</button>
+    </div>
+    <div id="ip-tag" class="ip-tag">—</div>
+    <div id="ip-body"></div>
+</div>
+
+<script>
+const I18N={
+ru:{
+page_title:'Кристаллическая решётка NaCl',header_title:'Кристаллическая решётка',header_sub:'Ионный кристалл · кликните на ион',
+props_label:'Свойства NaCl',k_type:'Тип решётки',v_type:'ионная FCC',k_param:'Параметр ячейки',k_energy:'Энергия решётки',v_energy:'787 кДж/моль',
+k_mp:'Т. плавления',k_bp:'Т. кипения',k_dens:'Плотность',k_sol:'Растворимость',k_madel:'Число Маделунга',
+legend_title:'Ионы',leg_na:'Na⁺ — натрий',leg_cl:'Cl⁻ — хлорид',
+ctrl_title:'Управление',btn_pause:'⏸ Пауза',btn_start:'▶ Старт',btn_bonds:'🔗 Связи',btn_cell:'⬜ Элементарная ячейка',btn_space:'⚫ Пространственная модель',btn_dissolve:'💧 Растворение',
+coord_label:'координационное число',
+hint:'🖱 Перетащить — вращать &nbsp;·&nbsp; <kbd>Scroll</kbd> — масштаб &nbsp;·&nbsp; Кликните на ион — увидите координацию'
+},
+kz:{
+page_title:'NaCl кристалдық торы',header_title:'Кристалдық тор',header_sub:'Иондық кристалл · ионды басыңыз',
+props_label:'NaCl қасиеттері',k_type:'Тор түрі',v_type:'иондық FCC',k_param:'Ұяшық параметрі',k_energy:'Тор энергиясы',v_energy:'787 кДж/моль',
+k_mp:'Балқу т.',k_bp:'Қайнау т.',k_dens:'Тығыздығы',k_sol:'Ерігіштігі',k_madel:'Маделунг саны',
+legend_title:'Иондар',leg_na:'Na⁺ — натрий',leg_cl:'Cl⁻ — хлорид',
+ctrl_title:'Басқару',btn_pause:'⏸ Кідірту',btn_start:'▶ Бастау',btn_bonds:'🔗 Байланыстар',btn_cell:'⬜ Элементар ұяшық',btn_space:'⚫ Кеңістіктік модель',btn_dissolve:'💧 Еріту',
+coord_label:'координация саны',
+hint:'🖱 Сүйреу — айналдыру &nbsp;·&nbsp; <kbd>Scroll</kbd> — масштаб &nbsp;·&nbsp; Ионды басыңыз — координацияны көресіз'
+},
+en:{
+page_title:'NaCl Crystal Lattice',header_title:'Crystal Lattice',header_sub:'Ionic crystal · click on an ion',
+props_label:'NaCl Properties',k_type:'Lattice type',v_type:'ionic FCC',k_param:'Unit cell',k_energy:'Lattice energy',v_energy:'787 kJ/mol',
+k_mp:'Melting point',k_bp:'Boiling point',k_dens:'Density',k_sol:'Solubility',k_madel:'Madelung number',
+legend_title:'Ions',leg_na:'Na⁺ — sodium',leg_cl:'Cl⁻ — chloride',
+ctrl_title:'Controls',btn_pause:'⏸ Pause',btn_start:'▶ Start',btn_bonds:'🔗 Bonds',btn_cell:'⬜ Unit cell',btn_space:'⚫ Space-filling',btn_dissolve:'💧 Dissolution',
+coord_label:'coordination number',
+hint:'🖱 Drag — rotate &nbsp;·&nbsp; <kbd>Scroll</kbd> — zoom &nbsp;·&nbsp; Click an ion to see coordination'
+}
+};
+const LANG=(()=>{const q=new URLSearchParams(location.search).get('lang');return(q&&I18N[q])?q:'ru';})();
+const t=(key)=>(I18N[LANG]&&I18N[LANG][key])??(I18N.ru[key]);
+function applyStaticI18N(){
+  document.documentElement.lang=LANG;
+  const tv=t('page_title');if(tv)document.title=tv;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{const v=t(el.getAttribute('data-i18n'));if(v)el.textContent=v;});
+  document.querySelectorAll('[data-i18n-html]').forEach(el=>{const v=t(el.getAttribute('data-i18n-html'));if(v)el.innerHTML=v;});
+}
+applyStaticI18N();
+</script>
+
+<script type="importmap">
+{ "imports": { "three": "../../libs/vendor/three-0.160.0/three.module.js" } }
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+// ─── INFO DATA ────────────────────────────────────────────────────────────────
+const INFO_ALL = {
+  ru: {
+    na: { title:'Ион натрия Na⁺', tag:'Na⁺ · катион', tagClass:'na', body:`<div class="ip-sec na"><strong>Строение иона</strong><p>Na (Z=11): [Ne]3s¹. Теряя электрон, Na⁺ приобретает конфигурацию неона. <b>Ионный радиус: 1.16 Å</b> — меньше атомного (1.86 Å).</p></div><div class="ip-sec na"><strong>Место в решётке</strong><p>Каждый Na⁺ окружён <b>шестью Cl⁻</b> в октаэдрической координации. Координационное число = 6. Расстояние Na⁺–Cl⁻ = 2.82 Å.</p></div><div class="ip-sec na"><strong>Биологическая роль</strong><p>Na⁺ — основной катион внеклеточной жидкости. Na⁺/K⁺-АТФаза перекачивает 3 Na⁺ наружу и 2 K⁺ внутрь клетки.</p></div>` },
+    cl: { title:'Ион хлорида Cl⁻', tag:'Cl⁻ · анион', tagClass:'cl', body:`<div class="ip-sec cl"><strong>Строение иона</strong><p>Cl (Z=17): [Ne]3s²3p⁵. Присоединив электрон, Cl⁻ принимает конфигурацию аргона. <b>Ионный радиус: 1.67 Å</b> — больше атомного (0.99 Å).</p></div><div class="ip-sec cl"><strong>Место в решётке</strong><p>Каждый Cl⁻ окружён <b>шестью Na⁺</b> в октаэдрическом порядке. Анионная подрешётка образует ГЦК-упаковку.</p></div><div class="ip-sec cl"><strong>В природе</strong><p>Cl⁻ — анион желудочного сока (HCl, рН 1–2). Морская вода ≈ 19.4 г/л Cl⁻.</p></div>` },
+    crystal: { title:'Ионная решётка NaCl', tag:'Кристалл · FCC', tagClass:'crystal', body:`<div class="ip-sec crystal"><strong>Тип структуры</strong><p>Кубическая FCC-решётка с двухатомным базисом — две взаимопроникающие FCC-решётки Na⁺ и Cl⁻.</p></div><div class="ip-sec crystal"><strong>Энергия решётки</strong><p>787 кДж/моль. Число Маделунга M = 1.7476 учитывает все взаимодействия ионов.</p></div><div class="ip-sec crystal"><strong>Растворение</strong><p>Гидратационная энергия (784 кДж/моль) почти компенсирует энергию решётки → NaCl растворяется эндотермически (ΔH = +3.9 кДж/моль).</p></div>` }
+  },
+  kz: {
+    na: { title:'Натрий ионы Na⁺', tag:'Na⁺ · катион', tagClass:'na', body:`<div class="ip-sec na"><strong>Ион құрылымы</strong><p>Na (Z=11): [Ne]3s¹. Электронын жоғалтып, Na⁺ неон конфигурациясын алады. <b>Ион радиусы: 1.16 Å</b> — атомдық радиустан (1.86 Å) кіші.</p></div><div class="ip-sec na"><strong>Тордағы орны</strong><p>Әрбір Na⁺ октаэдрлік координацияда <b>алты Cl⁻</b>-мен қоршалған. Координация саны = 6. Na⁺–Cl⁻ қашықтығы = 2.82 Å.</p></div><div class="ip-sec na"><strong>Биологиялық рөлі</strong><p>Na⁺ — жасушадан тыс сұйықтықтың негізгі катионы. Na⁺/K⁺-АТФаза 3 Na⁺-ны сыртқа, 2 K⁺-ны жасуша ішіне айдайды.</p></div>` },
+    cl: { title:'Хлорид ионы Cl⁻', tag:'Cl⁻ · анион', tagClass:'cl', body:`<div class="ip-sec cl"><strong>Ион құрылымы</strong><p>Cl (Z=17): [Ne]3s²3p⁵. Электрон қосып, Cl⁻ аргон конфигурациясын алады. <b>Ион радиусы: 1.67 Å</b> — атомдық радиустан (0.99 Å) үлкен.</p></div><div class="ip-sec cl"><strong>Тордағы орны</strong><p>Әрбір Cl⁻ октаэдрлік ретте <b>алты Na⁺</b>-мен қоршалған. Аниондық қосалқы тор ГЦК-жинақтау құрайды.</p></div><div class="ip-sec cl"><strong>Табиғатта</strong><p>Cl⁻ — асқазан сөлінің анионы (HCl, рН 1–2). Теңіз суы ≈ 19.4 г/л Cl⁻.</p></div>` },
+    crystal: { title:'NaCl иондық торы', tag:'Кристалл · FCC', tagClass:'crystal', body:`<div class="ip-sec crystal"><strong>Құрылым типі</strong><p>Екі атомды базисті кубтық FCC-тор — Na⁺ пен Cl⁻-дің екі өзара ену FCC-торлары.</p></div><div class="ip-sec crystal"><strong>Тор энергиясы</strong><p>787 кДж/моль. Маделунг саны M = 1.7476 иондардың барлық өзара әрекеттесулерін ескереді.</p></div><div class="ip-sec crystal"><strong>Еру</strong><p>Гидратация энергиясы (784 кДж/моль) тор энергиясын дерлік өтейді → NaCl эндотермиялық ериді (ΔH = +3.9 кДж/моль).</p></div>` }
+  },
+  en: {
+    na: { title:'Sodium Ion Na⁺', tag:'Na⁺ · cation', tagClass:'na', body:`<div class="ip-sec na"><strong>Ion structure</strong><p>Na (Z=11): [Ne]3s¹. Losing one electron, Na⁺ acquires neon configuration. <b>Ionic radius: 1.16 Å</b> — smaller than atomic (1.86 Å).</p></div><div class="ip-sec na"><strong>Position in lattice</strong><p>Each Na⁺ is surrounded by <b>six Cl⁻</b> in octahedral coordination. Coordination number = 6. Na⁺–Cl⁻ distance = 2.82 Å.</p></div><div class="ip-sec na"><strong>Biological role</strong><p>Na⁺ — main cation of extracellular fluid. Na⁺/K⁺-ATPase pumps 3 Na⁺ out and 2 K⁺ into the cell.</p></div>` },
+    cl: { title:'Chloride Ion Cl⁻', tag:'Cl⁻ · anion', tagClass:'cl', body:`<div class="ip-sec cl"><strong>Ion structure</strong><p>Cl (Z=17): [Ne]3s²3p⁵. Adding one electron, Cl⁻ adopts argon configuration. <b>Ionic radius: 1.67 Å</b> — larger than atomic (0.99 Å).</p></div><div class="ip-sec cl"><strong>Position in lattice</strong><p>Each Cl⁻ is surrounded by <b>six Na⁺</b> in octahedral order. Anion sublattice forms FCC packing.</p></div><div class="ip-sec cl"><strong>In nature</strong><p>Cl⁻ — anion of gastric juice (HCl, pH 1–2). Seawater ≈ 19.4 g/L Cl⁻.</p></div>` },
+    crystal: { title:'NaCl Ionic Lattice', tag:'Crystal · FCC', tagClass:'crystal', body:`<div class="ip-sec crystal"><strong>Structure type</strong><p>Cubic FCC lattice with two-atom basis — two interpenetrating FCC lattices of Na⁺ and Cl⁻.</p></div><div class="ip-sec crystal"><strong>Lattice energy</strong><p>787 kJ/mol. Madelung number M = 1.7476 accounts for all ion interactions.</p></div><div class="ip-sec crystal"><strong>Dissolution</strong><p>Hydration energy (784 kJ/mol) nearly compensates lattice energy → NaCl dissolves endothermically (ΔH = +3.9 kJ/mol).</p></div>` }
+  }
+};
+const INFO = INFO_ALL[LANG] || INFO_ALL.ru;
+
+// ─── SCENE ────────────────────────────────────────────────────────────────────
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf5f4f0);
+
+const camera = new THREE.PerspectiveCamera(48, innerWidth / innerHeight, 0.1, 300);
+camera.position.set(0, 2, 20);
+camera.lookAt(0, 0, 0);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = false;
+document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+// ─── LIGHTING ─────────────────────────────────────────────────────────────────
+scene.add(new THREE.AmbientLight(0xffffff, 1.1));
+const sun = new THREE.DirectionalLight(0xfff8f0, 1.8);
+sun.position.set(12, 18, 12); sun.castShadow = true;
+scene.add(sun);
+const fill = new THREE.DirectionalLight(0xe8e0ff, 0.5);
+fill.position.set(-10, 5, -8); scene.add(fill);
+const rimG = new THREE.PointLight(0xbbf7d0, 0.4, 50);
+rimG.position.set(-8, -8, 5); scene.add(rimG);
+
+// ─── CRYSTAL GROUP ────────────────────────────────────────────────────────────
+const crystal = new THREE.Group();
+scene.add(crystal);
+
+const A        = 2.1;  // lattice spacing (visual)
+const N        = 2;    // grid from -N to +N → (2N+1)^3 = 125 atoms
+const R_NA_BS  = 0.34; // Na ball-and-stick radius
+const R_CL_BS  = 0.50; // Cl ball-and-stick radius
+const R_NA_SF  = 0.74; // Na space-fill radius
+const R_CL_SF  = 1.07; // Cl space-fill radius
+
+const C_NA = 0x7c3aed;
+const C_CL = 0x15803d;
+
+let atomData   = []; // { mesh, pos, isNa, ix, iy, iz, origPos, dispPos }
+let bondMeshes = [];
+let cellLines  = null;
+let clickables = [];
+
+let selectedAtom = null;
+let hoveredAtom  = null;
+
+// ─── BUILD LATTICE ────────────────────────────────────────────────────────────
+function buildLattice() {
+    atomData   = [];
+    bondMeshes = [];
+    clickables = [];
+    let naCount = 0, clCount = 0;
+
+    for (let ix = -N; ix <= N; ix++) {
+        for (let iy = -N; iy <= N; iy++) {
+            for (let iz = -N; iz <= N; iz++) {
+                const isNa = Math.abs(ix + iy + iz) % 2 === 0;
+
+                // Fade outer atoms
+                const d2 = ix*ix + iy*iy + iz*iz;
+                const opacity = d2 <= 3 ? 1.0 : (d2 <= 8 ? 0.80 : 0.50);
+
+                const mat = new THREE.MeshStandardMaterial({
+                    color: isNa ? C_NA : C_CL,
+                    roughness: 0.20,
+                    metalness: 0.08,
+                    transparent: opacity < 1.0,
+                    opacity
+                });
+
+                const r   = isNa ? R_NA_BS : R_CL_BS;
+                const geo = new THREE.SphereGeometry(r, 22, 22);
+                const m   = new THREE.Mesh(geo, mat);
+                const pos = new THREE.Vector3(ix * A, iy * A, iz * A);
+                m.position.copy(pos);
+                m.castShadow = true;
+                m.userData   = { isNa, ix, iy, iz };
+                crystal.add(m);
+
+                // Random dissolved target (sphere of radius ~9)
+                const theta = Math.random() * Math.PI * 2;
+                const phi   = Math.acos(2 * Math.random() - 1);
+                const rr    = 7 + Math.random() * 5;
+                const dispPos = new THREE.Vector3(
+                    rr * Math.sin(phi) * Math.cos(theta),
+                    rr * Math.sin(phi) * Math.sin(theta),
+                    rr * Math.cos(phi)
+                );
+
+                atomData.push({ mesh: m, pos: pos.clone(), isNa, ix, iy, iz, dispPos });
+                clickables.push(m);
+                isNa ? naCount++ : clCount++;
+            }
+        }
+    }
+
+    document.getElementById('na-count').textContent = `×${naCount}`;
+    document.getElementById('cl-count').textContent = `×${clCount}`;
+
+    // ── Bonds ──────────────────────────────────────────────────────────────────
+    for (let i = 0; i < atomData.length; i++) {
+        for (let j = i + 1; j < atomData.length; j++) {
+            const d = atomData[i].pos.distanceTo(atomData[j].pos);
+            if (d < A * 1.05) {
+                const dir = new THREE.Vector3().subVectors(atomData[j].pos, atomData[i].pos);
+                const len = dir.length();
+                const mid = new THREE.Vector3().addVectors(atomData[i].pos, atomData[j].pos).multiplyScalar(0.5);
+                const geo = new THREE.CylinderGeometry(0.07, 0.07, len, 12);
+                const mat = new THREE.MeshStandardMaterial({
+                    color: 0xc4b5fd,
+                    roughness: 0.6,
+                    transparent: true,
+                    opacity: 0.55
+                });
+                const b = new THREE.Mesh(geo, mat);
+                b.position.copy(mid);
+                b.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), dir.normalize());
+                crystal.add(b);
+                bondMeshes.push(b);
+
+                // Link each bond to both atoms for dissolve
+                atomData[i].bonds = atomData[i].bonds || [];
+                atomData[j].bonds = atomData[j].bonds || [];
+                atomData[i].bonds.push(b);
+                atomData[j].bonds.push(b);
+            }
+        }
+    }
+}
+
+// ─── UNIT CELL WIREFRAME ──────────────────────────────────────────────────────
+function buildUnitCell() {
+    // NaCl conventional unit cell = 2*A side
+    const s = A;
+    const corners = [
+        [-s,-s,-s],[s,-s,-s],[s,s,-s],[-s,s,-s],
+        [-s,-s, s],[s,-s, s],[s,s, s],[-s,s, s]
+    ].map(([x,y,z]) => new THREE.Vector3(x,y,z));
+
+    const edges = [
+        [0,1],[1,2],[2,3],[3,0], // bottom face
+        [4,5],[5,6],[6,7],[7,4], // top face
+        [0,4],[1,5],[2,6],[3,7]  // verticals
+    ];
+
+    const pts = [];
+    edges.forEach(([a,b]) => { pts.push(corners[a]); pts.push(corners[b]); });
+
+    const geo  = new THREE.BufferGeometry().setFromPoints(pts);
+    const line = new THREE.LineSegments(geo,
+        new THREE.LineBasicMaterial({ color: 0xf59e0b, linewidth: 2, transparent: true, opacity: 0.9 })
+    );
+    line.visible = false;
+    crystal.add(line);
+    return line;
+}
+
+buildLattice();
+cellLines = buildUnitCell();
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let spinning      = true;
+let showBonds     = true;
+let showCell      = false;
+let spaceMode     = false;
+let dissolving    = false;
+let dissolveT     = 0;  // 0=crystal, 1=dissolved
+let isDragging    = false;
+let dragStart     = { x: 0, y: 0 };
+let pulseList     = []; // { atom, startTime }
+
+// ─── COORDINATION HIGHLIGHT ───────────────────────────────────────────────────
+function getNeighbors(ad) {
+    return atomData.filter(a =>
+        a !== ad && a.pos.distanceTo(ad.pos) < A * 1.05
+    );
+}
+
+function resetHighlights() {
+    atomData.forEach(a => {
+        a.mesh.material.emissive = new THREE.Color(0x000000);
+        a.mesh.material.emissiveIntensity = 0;
+    });
+    pulseList = [];
+    selectedAtom = null;
+}
+
+function selectAtom(ad) {
+    resetHighlights();
+    selectedAtom = ad;
+
+    // Glow selected
+    ad.mesh.material.emissive = new THREE.Color(ad.isNa ? 0x7c3aed : 0x15803d);
+    ad.mesh.material.emissiveIntensity = 0.9;
+
+    // Pulse neighbors
+    const nbrs = getNeighbors(ad);
+    nbrs.forEach(n => {
+        n.mesh.material.emissive = new THREE.Color(0xf59e0b);
+        n.mesh.material.emissiveIntensity = 0.55;
+        pulseList.push({ atom: n, startTime: performance.now() });
+    });
+
+    // Badge
+    const badge = document.getElementById('coord-badge');
+    badge.classList.add('visible');
+    document.getElementById('coord-num').textContent = nbrs.length;
+    document.getElementById('coord-num').style.color = ad.isNa ? '#7c3aed' : '#15803d';
+    document.getElementById('coord-sub').textContent =
+        `${ad.isNa ? 'Na⁺' : 'Cl⁻'} → 6 × ${ad.isNa ? 'Cl⁻' : 'Na⁺'} (октаэдр)`;
+
+    openInfo(ad.isNa ? 'na' : 'cl');
+}
+
+// ─── CONTROLS ─────────────────────────────────────────────────────────────────
+window.toggleSpin = function() {
+    spinning = !spinning;
+    const b = document.getElementById('btn-spin');
+    b.textContent = spinning ? '⏸ Пауза' : '▶ Старт';
+    b.classList.toggle('active', !spinning);
+};
+
+window.toggleBonds = function() {
+    showBonds = !showBonds;
+    bondMeshes.forEach(b => b.visible = showBonds && !spaceMode);
+    document.getElementById('btn-bonds').classList.toggle('active', showBonds);
+};
+
+window.toggleCell = function() {
+    showCell = !showCell;
+    cellLines.visible = showCell;
+    document.getElementById('btn-cell').classList.toggle('active', showCell);
+};
+
+window.toggleSpace = function() {
+    spaceMode = !spaceMode;
+    atomData.forEach(a => {
+        const r = a.isNa
+            ? (spaceMode ? R_NA_SF : R_NA_BS)
+            : (spaceMode ? R_CL_SF : R_CL_BS);
+        a.mesh.geometry.dispose();
+        a.mesh.geometry = new THREE.SphereGeometry(r, 22, 22);
+    });
+    bondMeshes.forEach(b => b.visible = showBonds && !spaceMode);
+    document.getElementById('btn-space').classList.toggle('active', spaceMode);
+};
+
+window.toggleDissolve = function() {
+    dissolving = !dissolving;
+    const btn = document.getElementById('btn-dis');
+    btn.classList.toggle('active', dissolving);
+    btn.textContent = dissolving ? '🔁 Восстановить' : '💧 Растворение';
+    document.getElementById('dissolve-eq').classList.toggle('visible', dissolving);
+    resetHighlights();
+    document.getElementById('coord-badge').classList.remove('visible');
+    closeInfo();
+};
+
+window.highlightType = function(type) {
+    resetHighlights();
+    atomData.forEach(a => {
+        if ((type === 'na' && a.isNa) || (type === 'cl' && !a.isNa)) {
+            a.mesh.material.emissive = new THREE.Color(a.isNa ? 0x7c3aed : 0x15803d);
+            a.mesh.material.emissiveIntensity = 0.6;
+        }
+    });
+    setTimeout(() => {
+        atomData.forEach(a => {
+            a.mesh.material.emissive = new THREE.Color(0x000000);
+            a.mesh.material.emissiveIntensity = 0;
+        });
+    }, 900);
+};
+
+// ─── INFO PANEL ───────────────────────────────────────────────────────────────
+window.closeInfo = function() {
+    document.getElementById('info-panel').classList.remove('open');
+};
+
+function openInfo(type) {
+    const d = INFO[type];
+    if (!d) return;
+    document.getElementById('ip-title').textContent = d.title;
+    const tag = document.getElementById('ip-tag');
+    tag.textContent = d.tag;
+    tag.className   = 'ip-tag ' + d.tagClass;
+    document.getElementById('ip-body').innerHTML = d.body;
+    document.getElementById('info-panel').classList.add('open');
+}
+
+// ─── MOUSE ────────────────────────────────────────────────────────────────────
+const raycaster = new THREE.Raycaster();
+const mouse2    = new THREE.Vector2();
+
+renderer.domElement.addEventListener('mousedown', e => {
+    isDragging = false;
+    dragStart  = { x: e.clientX, y: e.clientY };
+});
+
+renderer.domElement.addEventListener('mousemove', e => {
+    if (e.buttons === 1) {
+        const dx = e.clientX - dragStart.x;
+        const dy = e.clientY - dragStart.y;
+        if (Math.abs(dx) + Math.abs(dy) > 3) isDragging = true;
+        crystal.rotation.y += dx * 0.008;
+        crystal.rotation.x += dy * 0.008;
+        dragStart = { x: e.clientX, y: e.clientY };
+    }
+
+    mouse2.x = (e.clientX / innerWidth)  *  2 - 1;
+    mouse2.y = -(e.clientY / innerHeight) *  2 + 1;
+    raycaster.setFromCamera(mouse2, camera);
+    const hits = raycaster.intersectObjects(clickables.filter(m => m.visible));
+    renderer.domElement.style.cursor = hits.length && !dissolving ? 'pointer' : 'default';
+});
+
+renderer.domElement.addEventListener('click', e => {
+    if (isDragging || dissolving) return;
+    mouse2.x = (e.clientX / innerWidth)  *  2 - 1;
+    mouse2.y = -(e.clientY / innerHeight) *  2 + 1;
+    raycaster.setFromCamera(mouse2, camera);
+    const hits = raycaster.intersectObjects(clickables.filter(m => m.visible));
+    if (hits.length) {
+        const clickedMesh = hits[0].object;
+        const ad = atomData.find(a => a.mesh === clickedMesh);
+        if (ad) selectAtom(ad);
+    } else {
+        resetHighlights();
+        document.getElementById('coord-badge').classList.remove('visible');
+        openInfo('crystal');
+    }
+});
+
+renderer.domElement.addEventListener('wheel', e => {
+    e.preventDefault();
+    camera.position.z = Math.max(8, Math.min(36, camera.position.z + e.deltaY * 0.015));
+}, { passive: false });
+
+window.addEventListener('resize', () => {
+    camera.aspect = innerWidth / innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+});
+
+// ─── ANIMATION ────────────────────────────────────────────────────────────────
+const PULSE_DURATION = 900; // ms
+
+let t = 0;
+function animate() {
+    requestAnimationFrame(animate);
+    t += 0.016;
+
+    // Rotation
+    if (spinning && !isDragging) crystal.rotation.y += 0.0015;
+
+    // Dissolve animation
+    if (dissolving && dissolveT < 1) {
+        dissolveT = Math.min(1, dissolveT + 0.008);
+    } else if (!dissolving && dissolveT > 0) {
+        dissolveT = Math.max(0, dissolveT - 0.012);
+    }
+
+    if (dissolveT > 0 || (!dissolving && dissolveT < 1)) {
+        const eased = dissolveT < 0.5
+            ? 2 * dissolveT * dissolveT
+            : 1 - Math.pow(-2 * dissolveT + 2, 2) / 2; // ease-in-out
+        atomData.forEach(a => {
+            a.mesh.position.lerpVectors(a.pos, a.dispPos, eased);
+        });
+        bondMeshes.forEach(b => {
+            b.visible = dissolveT < 0.15 && showBonds && !spaceMode;
+        });
+    } else {
+        bondMeshes.forEach(b => {
+            b.visible = showBonds && !spaceMode;
+        });
+    }
+
+    // Pulse animation for coordination neighbors
+    const now = performance.now();
+    pulseList.forEach(({ atom, startTime }) => {
+        const elapsed = now - startTime;
+        if (elapsed < PULSE_DURATION) {
+            const phase = elapsed / PULSE_DURATION;
+            const s = 1 + 0.28 * Math.sin(phase * Math.PI);
+            atom.mesh.scale.setScalar(s);
+        } else {
+            atom.mesh.scale.setScalar(1);
+        }
+    });
+
+    renderer.render(scene, camera);
+}
+
+animate();
+</script>
+</body>
+</html>

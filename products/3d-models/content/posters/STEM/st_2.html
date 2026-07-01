@@ -1,0 +1,1476 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Типы передач — Шестерни, Ремни, Цепи</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #eef2f7;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            color: #1e293b;
+        }
+
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        .header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 22px 36px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.97) 0%, rgba(255,255,255,0) 100%);
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .header h1 {
+            color: #1e40af;
+            font-size: 34px;
+            font-weight: 800;
+            margin: 0;
+        }
+
+        .header p {
+            color: #64748b;
+            font-size: 18px;
+            margin-top: 4px;
+        }
+
+        .control-panel {
+            position: absolute;
+            top: 100px;
+            left: 24px;
+            width: 360px;
+            background: rgba(255,255,255,0.96);
+            
+            border-radius: 18px;
+            padding: 24px;
+            z-index: 10;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+            max-height: calc(100vh - 120px);
+            overflow-y: auto;
+        }
+
+        .control-panel::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .control-panel::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        .section-label {
+            color: #64748b;
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin: 18px 0 10px;
+        }
+
+        .section-label:first-child {
+            margin-top: 0;
+        }
+
+        .type-buttons {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 14px;
+        }
+
+        .type-btn {
+            flex: 1;
+            padding: 14px 8px;
+            border: 2px solid #e2e8f0;
+            background: #f8fafc;
+            color: #64748b;
+            border-radius: 14px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .type-btn:hover {
+            border-color: #94a3b8;
+            color: #334155;
+        }
+
+        .type-btn.active {
+            border-color: #3b82f6;
+            background: #eff6ff;
+            color: #1d4ed8;
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+        }
+
+        .type-btn .icon {
+            font-size: 26px;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .param-group {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 16px;
+            border: 1px solid #e2e8f0;
+            margin-bottom: 10px;
+        }
+
+        .param-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .param-name {
+            color: #475569;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .param-value {
+            color: #1d4ed8;
+            font-size: 20px;
+            font-weight: 700;
+            font-family: 'Consolas', monospace;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            -webkit-appearance: none;
+            background: #e2e8f0;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(59,130,246,0.4);
+        }
+
+        .ratio-display {
+            text-align: center;
+            padding: 20px;
+            background: linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%);
+            border-radius: 14px;
+            margin-bottom: 18px;
+            border: 1px solid #dbeafe;
+        }
+
+        .ratio-label {
+            color: #64748b;
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .ratio-value {
+            font-size: 48px;
+            font-weight: 800;
+            font-family: 'Consolas', monospace;
+            color: #1d4ed8;
+            line-height: 1.3;
+        }
+
+        .ratio-sub {
+            color: #64748b;
+            font-size: 15px;
+        }
+
+        .stats-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .stat-box {
+            flex: 1;
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 14px;
+            border: 1px solid #e2e8f0;
+            text-align: center;
+        }
+
+        .stat-val {
+            font-size: 26px;
+            font-weight: 800;
+            font-family: 'Consolas', monospace;
+            color: #d97706;
+        }
+
+        .stat-label {
+            font-size: 13px;
+            color: #64748b;
+            font-weight: 500;
+            margin-top: 2px;
+        }
+
+        .info-panel {
+            position: absolute;
+            top: 100px;
+            right: 24px;
+            width: 380px;
+            background: rgba(255,255,255,0.96);
+            
+            border-radius: 18px;
+            padding: 24px;
+            z-index: 10;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+            max-height: calc(100vh - 120px);
+            overflow-y: auto;
+        }
+
+        .info-panel::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .info-panel::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        .info-title {
+            color: #15803d;
+            font-size: 22px;
+            font-weight: 800;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .info-block {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 16px;
+            border: 1px solid #e2e8f0;
+            margin-bottom: 10px;
+        }
+
+        .info-block-title {
+            color: #64748b;
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        .info-block p {
+            color: #334155;
+            font-size: 15px;
+            line-height: 1.65;
+        }
+
+        .pros-cons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .pros, .cons {
+            flex: 1;
+        }
+
+        .pros-title {
+            color: #15803d;
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .cons-title {
+            color: #dc2626;
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .pros li, .cons li {
+            color: #475569;
+            font-size: 14px;
+            line-height: 1.6;
+            list-style: none;
+            padding-left: 14px;
+            position: relative;
+        }
+
+        .pros li::before {
+            content: '+';
+            position: absolute;
+            left: 0;
+            color: #15803d;
+            font-weight: bold;
+        }
+
+        .cons li::before {
+            content: '−';
+            position: absolute;
+            left: 0;
+            color: #dc2626;
+            font-weight: bold;
+        }
+
+        .usage-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .usage-tag {
+            background: #e0f2fe;
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #0369a1;
+            font-weight: 600;
+        }
+
+        .formula-box {
+            text-align: center;
+            padding: 12px;
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+
+        .formula-box .formula {
+            font-family: 'Times New Roman', serif;
+            font-size: 22px;
+            color: #1e293b;
+        }
+
+        .formula-box .formula-desc {
+            font-size: 13px;
+            color: #64748b;
+            margin-top: 4px;
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+
+        .comparison-table th {
+            text-align: left;
+            color: #64748b;
+            font-weight: 700;
+            padding: 8px 10px;
+            border-bottom: 2px solid #e2e8f0;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+
+        .comparison-table td {
+            color: #334155;
+            padding: 8px 10px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .hint {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            text-align: center;
+            font-size: 15px;
+            color: #94a3b8;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 20px;
+            background: rgba(255,255,255,0.95);
+            padding: 14px 30px;
+            border-radius: 14px;
+            z-index: 10;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 15px;
+            color: #475569;
+            font-weight: 600;
+        }
+
+        .legend-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+        }
+    </style>
+</head>
+<body>
+<script>
+(function(){
+  var lang = new URLSearchParams(location.search).get('lang') || 'ru';
+  var T = {
+    ru: {
+      title:'⚙️ Типы механических передач', subtitle:'Шестерни • Ремни • Цепи — Сравнение и принцип работы',
+      lbl_type:'Тип передачи', btn_gear:'Шестерни', btn_belt:'Ремень', btn_chain:'Цепь',
+      lbl_ratio:'Передаточное отношение', ratio_slower:'Ведомая медленнее, но сильнее', ratio_faster:'Ведомая быстрее, но слабее', ratio_equal:'Скорости равны',
+      lbl_rpm_drive:'Ведущая (об/м)', lbl_rpm_driven:'Ведомая (об/м)', lbl_params:'Параметры',
+      lbl_speed:'Скорость вращения', lbl_teeth_drive:'Зубья ведущей', lbl_teeth_driven:'Зубья ведомой',
+      leg_drive:'Ведущая (вход)', leg_driven:'Ведомая (выход)', leg_elem:'Передающий элемент',
+      info_desc:'Описание', info_principle:'Принцип работы', info_pros_cons:'Преимущества и недостатки',
+      info_usage:'Применение в робототехнике', info_specs:'Характеристики',
+      info_pros_title:'✓ Плюсы', info_cons_title:'✗ Минусы', info_param_col:'Параметр', info_val_col:'Значение',
+      lbl_drive_gear:'Ведущая', lbl_driven_gear:'Ведомая', lbl_drive_pulley:'Ведущий шкив', lbl_driven_pulley:'Ведомый шкив',
+      lbl_drive_sprocket:'Ведущая звёздочка', lbl_driven_sprocket:'Ведомая звёздочка',
+      infoData:{
+        gear:{icon:'⚙️',title:'Зубчатая передача',description:'Зубчатая (шестерёнчатая) передача — механизм, в котором вращение передаётся за счёт зацепления зубьев двух колёс. Это самый точный и надёжный тип механической передачи. Шестерни обеспечивают жёсткую кинематическую связь — ведомое колесо вращается строго синхронно с ведущим, без проскальзывания.',principle:'Ведущая шестерня вращается от двигателя и своими зубьями толкает зубья ведомой шестерни. Передаточное отношение определяется соотношением числа зубьев. При зацеплении направление вращения меняется на противоположное.',formula:'i = Z<sub>2</sub> / Z<sub>1</sub> = n<sub>1</sub> / n<sub>2</sub>',formulaDesc:'i — передаточное отношение, Z — число зубьев, n — частота вращения',pros:['Точная передача','Высокий КПД (96–99%)','Компактность','Большие нагрузки','Долговечность'],cons:['Шум при работе','Нужна смазка','Жёсткое расстояние','Сложность изготовления'],usage:['Редукторы роботов','Сервоприводы','Дифференциал','Рулевое управление','Манипуляторы','Часовые механизмы'],specs:[['КПД','96–99%'],['Макс. передаточное число','1:6 (одна ступень)'],['Тип контакта','Прямое зацепление'],['Проскальзывание','Отсутствует'],['Материалы','Сталь, латунь, пластик'],['Смазка','Обязательна'],['Уровень шума','Средний–высокий']]},
+        belt:{icon:'🔄',title:'Ременная передача',description:'Ременная передача — механизм, где вращение передаётся с помощью гибкого ремня, натянутого между двумя шкивами. Ремень охватывает оба шкива и за счёт силы трения передаёт крутящий момент.',principle:'Ведущий шкив вращается и за счёт трения увлекает за собой ремень, который вращает ведомый шкив. Передаточное отношение определяется соотношением диаметров шкивов. Оба шкива вращаются в одном направлении.',formula:'i = D<sub>2</sub> / D<sub>1</sub> = n<sub>1</sub> / n<sub>2</sub>',formulaDesc:'i — передаточное отношение, D — диаметр шкива, n — частота вращения',pros:['Тихая работа','Гасит вибрации','Большие расстояния','Защита от перегрузки','Простой монтаж'],cons:['Проскальзывание','Растяжение ремня','Ниже КПД (90–96%)','Менее точная передача'],usage:['3D-принтеры (GT2)','ЧПУ-станки','Конвейеры','Привод колёс','Лазерные граверы','Вентиляторы'],specs:[['КПД','90–96%'],['Макс. передаточное число','1:5'],['Тип контакта','Трение / зубчатый'],['Проскальзывание','Возможно (гладкий)'],['Материалы ремня','Резина, полиуретан, неопрен'],['Смазка','Не требуется'],['Уровень шума','Низкий']]},
+        chain:{icon:'⛓️',title:'Цепная передача',description:'Цепная передача — механизм, в котором вращение передаётся с помощью цепи, зацепляющейся за зубья звёздочек. Цепь состоит из шарнирно соединённых звеньев. Надёжный способ передачи больших усилий без проскальзывания.',principle:'Ведущая звёздочка при вращении тянет цепь, которая входит в зацепление с зубьями ведомой звёздочки и передаёт вращение. Передаточное отношение определяется числом зубьев звёздочек.',formula:'i = Z<sub>2</sub> / Z<sub>1</sub> = n<sub>1</sub> / n<sub>2</sub>',formulaDesc:'i — передаточное отношение, Z — число зубьев звёздочки, n — обороты',pros:['Нет проскальзывания','Большие нагрузки','Большие расстояния','Высокий КПД (95–98%)','Долговечность'],cons:['Необходима смазка','Шум и вибрации','Растяжение цепи','Тяжелее ремня','Неравномерность хода'],usage:['Велосипеды','Мотоциклы','Конвейеры','Гусеничные роботы','Подъёмники','Промышленные роботы'],specs:[['КПД','95–98%'],['Макс. передаточное число','1:7'],['Тип контакта','Зацепление звеньев'],['Проскальзывание','Отсутствует'],['Материалы цепи','Сталь, нержавеющая сталь'],['Смазка','Обязательна'],['Уровень шума','Средний–высокий']]}
+      }
+    },
+    kz: {
+      title:'⚙️ Механикалық беріліс түрлері', subtitle:'Тісті дөңгелектер • Ремендер • Шынжырлар — Салыстыру және жұмыс принципі',
+      lbl_type:'Беріліс түрі', btn_gear:'Тісті', btn_belt:'Ремень', btn_chain:'Шынжыр',
+      lbl_ratio:'Беріліс қатынасы', ratio_slower:'Жетектелгені баяу, бірақ күштірек', ratio_faster:'Жетектелгені жылдам, бірақ әлсіз', ratio_equal:'Жылдамдықтар тең',
+      lbl_rpm_drive:'Жетекші (айн/м)', lbl_rpm_driven:'Жетектелгені (айн/м)', lbl_params:'Параметрлер',
+      lbl_speed:'Айналу жылдамдығы', lbl_teeth_drive:'Жетекшінің тістері', lbl_teeth_driven:'Жетектелгенінің тістері',
+      leg_drive:'Жетекші (кіріс)', leg_driven:'Жетектелгені (шығыс)', leg_elem:'Беру элементі',
+      info_desc:'Сипаттама', info_principle:'Жұмыс принципі', info_pros_cons:'Артықшылықтары мен кемшіліктері',
+      info_usage:'Робототехникадағы қолданылуы', info_specs:'Сипаттамалар',
+      info_pros_title:'✓ Артықшылықтар', info_cons_title:'✗ Кемшіліктер', info_param_col:'Параметр', info_val_col:'Мән',
+      lbl_drive_gear:'Жетекші', lbl_driven_gear:'Жетектелгені', lbl_drive_pulley:'Жетекші шкив', lbl_driven_pulley:'Жетектелетін шкив',
+      lbl_drive_sprocket:'Жетекші жұлдызша', lbl_driven_sprocket:'Жетектелетін жұлдызша',
+      infoData:{
+        gear:{icon:'⚙️',title:'Тісті беріліс',description:'Тісті беріліс — екі дөңгелектің тістерінің тартысымен айналысты беретін механизм. Бұл ең дәл және сенімді механикалық беріліс түрі. Тісті дөңгелектер қатаң кинематикалық байланысты қамтамасыз етеді — жетектелетін дөңгелек жетекшімен синхронды айналады, сырғымайды.',principle:'Жетекші тісті дөңгелек қозғалтқыштан айналып, тістерімен жетектелетін дөңгелектің тістерін итереді. Беріліс қатынасы тіс санының қатынасымен анықталады. Тартысу кезінде айналу бағыты өзгереді.',formula:'i = Z<sub>2</sub> / Z<sub>1</sub> = n<sub>1</sub> / n<sub>2</sub>',formulaDesc:'i — беріліс қатынасы, Z — тіс саны, n — айналу жиілігі',pros:['Дәл беру','Жоғары ПӘК (96–99%)','Компакттылық','Үлкен жүктемелер','Ұзақ мерзімділік'],cons:['Жұмыс кезінде шу','Майлауды қажет етеді','Қатаң арақашықтық','Дайындаудың күрделілігі'],usage:['Роботтардың редукторлары','Сервоприводтар','Дифференциал','Рульдік басқару','Манипуляторлар','Сағат механизмдері'],specs:[['ПӘК','96–99%'],['Макс. беріліс санын','1:6 (бір сатысы)'],['Байланыс түрі','Тікелей тартысу'],['Сырғу','Жоқ'],['Материалдар','Болат, жез, пластик'],['Майлау','Міндетті'],['Шу деңгейі','Орташа–жоғары']]},
+        belt:{icon:'🔄',title:'Ремінді беріліс',description:'Ремінді беріліс — айналысты екі шкив арасына созылған икемді ремень арқылы беретін механизм. Ремень екі шкивті де қамтып, үйкеліс күші арқылы айналу моментін береді.',principle:'Жетекші шкив айналып, үйкеліс арқылы ременді тартады, ол жетектелетін шкивті айналдырады. Беріліс қатынасы шкивтердің диаметрлерінің қатынасымен анықталады. Шкивтер бір бағытта айналады.',formula:'i = D<sub>2</sub> / D<sub>1</sub> = n<sub>1</sub> / n<sub>2</sub>',formulaDesc:'i — беріліс қатынасы, D — шкив диаметрі, n — айналу жиілігі',pros:['Жұмсақ жұмыс','Тербелістерді сөндіреді','Үлкен қашықтықтар','Шамадан тыс жүктеуден қорғайды','Қарапайым монтаж'],cons:['Сырғу','Ременнің созылуы','ПӘК төменірек (90–96%)','Дәлдігі аз'],usage:['3D-принтерлер (GT2)','ЧПУ-станоктар','Конвейерлер','Доңғалақ жетегі','Лазерлік гравюралар','Желдеткіштер'],specs:[['ПӘК','90–96%'],['Макс. беріліс санын','1:5'],['Байланыс түрі','Үйкеліс / тісті'],['Сырғу','Мүмкін (тегіс)'],['Ремень материалдары','Резеңке, полиуретан, неопрен'],['Майлау','Қажет емес'],['Шу деңгейі','Төмен']]},
+        chain:{icon:'⛓️',title:'Шынжырлы беріліс',description:'Шынжырлы беріліс — айналысты жұлдызшалардың тістерімен тартысатын шынжыр арқылы беретін механизм. Шынжыр бұрандалы жалғанған буындардан тұрады. Сырғымасыз үлкен күштерді беретін сенімді жол.',principle:'Жетекші жұлдызша айналу кезінде шынжырды тартады, ол жетектелетін жұлдызшаның тістерімен тартысып айналысты береді. Беріліс қатынасы жұлдызшалардың тіс санымен анықталады. Айналу бағыты бірдей.',formula:'i = Z<sub>2</sub> / Z<sub>1</sub> = n<sub>1</sub> / n<sub>2</sub>',formulaDesc:'i — беріліс қатынасы, Z — жұлдызша тіс саны, n — айналым',pros:['Сырғу жоқ','Үлкен жүктемелер','Үлкен қашықтықтар','Жоғары ПӘК (95–98%)','Ұзақ мерзімділік'],cons:['Майлауды қажет етеді','Шу мен тербелістер','Шынжырдың созылуы','Ременнен ауыр','Жүрісте біркелкісіздік'],usage:['Велосипедтер','Мотоциклдер','Конвейерлер','Гусеницалы роботтар','Көтергіштер','Өнеркәсіптік роботтар'],specs:[['ПӘК','95–98%'],['Макс. беріліс санын','1:7'],['Байланыс түрі','Буындар тартысуы'],['Сырғу','Жоқ'],['Шынжыр материалдары','Болат, тот баспайтын болат'],['Майлау','Міндетті'],['Шу деңгейі','Орташа–жоғары']]}
+      }
+    },
+    en: {
+      title:'⚙️ Mechanical Drive Types', subtitle:'Gears • Belts • Chains — Comparison and Operating Principles',
+      lbl_type:'Drive Type', btn_gear:'Gears', btn_belt:'Belt', btn_chain:'Chain',
+      lbl_ratio:'Gear Ratio', ratio_slower:'Driven rotates slower, more torque', ratio_faster:'Driven rotates faster, less torque', ratio_equal:'Speeds are equal',
+      lbl_rpm_drive:'Drive (rpm)', lbl_rpm_driven:'Driven (rpm)', lbl_params:'Parameters',
+      lbl_speed:'Rotation Speed', lbl_teeth_drive:'Drive Teeth', lbl_teeth_driven:'Driven Teeth',
+      leg_drive:'Drive (input)', leg_driven:'Driven (output)', leg_elem:'Transfer Element',
+      info_desc:'Description', info_principle:'Operating Principle', info_pros_cons:'Pros & Cons',
+      info_usage:'Robotics Applications', info_specs:'Specifications',
+      info_pros_title:'✓ Pros', info_cons_title:'✗ Cons', info_param_col:'Parameter', info_val_col:'Value',
+      lbl_drive_gear:'Drive', lbl_driven_gear:'Driven', lbl_drive_pulley:'Drive Pulley', lbl_driven_pulley:'Driven Pulley',
+      lbl_drive_sprocket:'Drive Sprocket', lbl_driven_sprocket:'Driven Sprocket',
+      infoData:{
+        gear:{icon:'⚙️',title:'Gear Transmission',description:'A gear transmission is a mechanism where rotation is transferred through the meshing of teeth on two wheels. It is the most precise and reliable type of mechanical drive. Gears provide a rigid kinematic link — the driven gear rotates in strict synchrony with the drive gear, without slipping.',principle:'The drive gear rotates from a motor and its teeth push the teeth of the driven gear. The gear ratio is determined by the ratio of tooth counts. When meshing, the direction of rotation reverses.',formula:'i = Z<sub>2</sub> / Z<sub>1</sub> = n<sub>1</sub> / n<sub>2</sub>',formulaDesc:'i — gear ratio, Z — number of teeth, n — rotational speed',pros:['Precise transmission','High efficiency (96–99%)','Compact design','High load capacity','Durability'],cons:['Noise during operation','Requires lubrication','Fixed center distance','Complex manufacturing'],usage:['Robot gearboxes','Servo drives','Differentials','Steering systems','Manipulators','Watch mechanisms'],specs:[['Efficiency','96–99%'],['Max gear ratio','1:6 (single stage)'],['Contact type','Direct meshing'],['Slipping','None'],['Materials','Steel, brass, plastic'],['Lubrication','Required'],['Noise level','Medium–High']]},
+        belt:{icon:'🔄',title:'Belt Drive',description:'A belt drive is a mechanism where rotation is transferred by a flexible belt stretched between two pulleys. The belt wraps around both pulleys and transmits torque through friction. Widely used in modern machinery.',principle:'The drive pulley rotates and drags the belt by friction, which in turn rotates the driven pulley. The gear ratio is determined by the ratio of pulley diameters. Both pulleys rotate in the same direction.',formula:'i = D<sub>2</sub> / D<sub>1</sub> = n<sub>1</sub> / n<sub>2</sub>',formulaDesc:'i — gear ratio, D — pulley diameter, n — rotational speed',pros:['Quiet operation','Absorbs vibrations','Long distances','Overload protection','Easy installation'],cons:['Slipping','Belt stretching','Lower efficiency (90–96%)','Less precise'],usage:['3D Printers (GT2)','CNC machines','Conveyors','Wheel drive','Laser engravers','Fans'],specs:[['Efficiency','90–96%'],['Max gear ratio','1:5'],['Contact type','Friction / toothed'],['Slipping','Possible (smooth)'],['Belt materials','Rubber, polyurethane, neoprene'],['Lubrication','Not required'],['Noise level','Low']]},
+        chain:{icon:'⛓️',title:'Chain Drive',description:'A chain drive is a mechanism where rotation is transferred by a chain meshing with the teeth of sprockets. The chain consists of pivotally connected links. It reliably transmits large forces over significant distances without slipping.',principle:'The drive sprocket pulls the chain during rotation, which meshes with the driven sprocket teeth and transfers rotation. The gear ratio is determined by the number of sprocket teeth. Rotation direction is the same.',formula:'i = Z<sub>2</sub> / Z<sub>1</sub> = n<sub>1</sub> / n<sub>2</sub>',formulaDesc:'i — gear ratio, Z — number of sprocket teeth, n — rpm',pros:['No slipping','High loads','Long distances','High efficiency (95–98%)','Durability'],cons:['Requires lubrication','Noise and vibrations','Chain elongation','Heavier than belt','Uneven running'],usage:['Bicycles','Motorcycles','Conveyors','Tracked robots','Hoists','Industrial robots'],specs:[['Efficiency','95–98%'],['Max gear ratio','1:7'],['Contact type','Link meshing'],['Slipping','None'],['Chain materials','Steel, stainless steel'],['Lubrication','Required'],['Noise level','Medium–High']]}
+      }
+    }
+  };
+  window._t = T[lang] || T.ru;
+  document.addEventListener('DOMContentLoaded', function(){
+    var t = window._t;
+    document.querySelector('.header h1').textContent = t.title;
+    document.querySelector('.header p').textContent = t.subtitle;
+    document.getElementById('lbl-type').textContent = t.lbl_type;
+    document.getElementById('lbl-btn-gear').textContent = t.btn_gear;
+    document.getElementById('lbl-btn-belt').textContent = t.btn_belt;
+    document.getElementById('lbl-btn-chain').textContent = t.btn_chain;
+    document.getElementById('ratio-label').textContent = t.lbl_ratio;
+    document.getElementById('stat-lbl-drive').textContent = t.lbl_rpm_drive;
+    document.getElementById('stat-lbl-driven').textContent = t.lbl_rpm_driven;
+    document.getElementById('lbl-params').textContent = t.lbl_params;
+    document.getElementById('param-lbl-speed').textContent = t.lbl_speed;
+    document.getElementById('param-lbl-teeth-drive').textContent = t.lbl_teeth_drive;
+    document.getElementById('param-lbl-teeth-driven').textContent = t.lbl_teeth_driven;
+    document.getElementById('leg-drive').textContent = t.leg_drive;
+    document.getElementById('leg-driven').textContent = t.leg_driven;
+    document.getElementById('leg-elem').textContent = t.leg_elem;
+  });
+})();
+</script>
+
+<div id="canvas-container"></div>
+
+<div class="header">
+    <h1>⚙️ Типы механических передач</h1>
+    <p>Шестерни • Ремни • Цепи — Сравнение и принцип работы</p>
+</div>
+
+<div class="control-panel">
+    <div class="section-label" id="lbl-type">Тип передачи</div>
+    <div class="type-buttons">
+        <button class="type-btn active" id="btn-gear" onclick="switchType('gear')">
+            <span class="icon">⚙️</span><span id="lbl-btn-gear">Шестерни</span>
+        </button>
+        <button class="type-btn" id="btn-belt" onclick="switchType('belt')">
+            <span class="icon">🔄</span><span id="lbl-btn-belt">Ремень</span>
+        </button>
+        <button class="type-btn" id="btn-chain" onclick="switchType('chain')">
+            <span class="icon">⛓️</span><span id="lbl-btn-chain">Цепь</span>
+        </button>
+    </div>
+
+    <div class="ratio-display">
+        <div class="ratio-label" id="ratio-label">Передаточное отношение</div>
+        <div class="ratio-value" id="ratio-value">2 : 1</div>
+        <div class="ratio-sub" id="ratio-sub">Ведомая вращается медленнее</div>
+    </div>
+
+    <div class="stats-row">
+        <div class="stat-box">
+            <div class="stat-val" id="rpm-drive">120</div>
+            <div class="stat-label" id="stat-lbl-drive">Ведущая (об/м)</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-val" id="rpm-driven">60</div>
+            <div class="stat-label" id="stat-lbl-driven">Ведомая (об/м)</div>
+        </div>
+    </div>
+
+    <div class="section-label" id="lbl-params">Параметры</div>
+
+    <div class="param-group">
+        <div class="param-header">
+            <span class="param-name" id="param-lbl-speed">Скорость вращения</span>
+            <span class="param-value" id="speed-val">50%</span>
+        </div>
+        <input type="range" id="speed-slider" min="0" max="100" value="50">
+    </div>
+
+    <div class="param-group">
+        <div class="param-header">
+            <span class="param-name" id="param-lbl-teeth-drive">Зубья ведущей</span>
+            <span class="param-value" id="teeth-drive-val">12</span>
+        </div>
+        <input type="range" id="teeth-drive-slider" min="8" max="24" value="12">
+    </div>
+
+    <div class="param-group">
+        <div class="param-header">
+            <span class="param-name" id="param-lbl-teeth-driven">Зубья ведомой</span>
+            <span class="param-value" id="teeth-driven-val">24</span>
+        </div>
+        <input type="range" id="teeth-driven-slider" min="8" max="36" value="24">
+    </div>
+</div>
+
+<div class="info-panel" id="info-panel">
+    <!-- Content is dynamically set -->
+</div>
+
+<div class="legend">
+    <div class="legend-item">
+        <div class="legend-dot" style="background:#facc15"></div>
+        <span id="leg-drive">Ведущая (вход)</span>
+    </div>
+    <div class="legend-item">
+        <div class="legend-dot" style="background:#38bdf8"></div>
+        <span id="leg-driven">Ведомая (выход)</span>
+    </div>
+    <div class="legend-item">
+        <div class="legend-dot" style="background:#94a3b8"></div>
+        <span id="leg-elem">Передающий элемент</span>
+    </div>
+</div>
+
+<script type="importmap">
+    {
+        "imports": {
+            "three": "../../libs/vendor/three-0.160.0/three.module.js",
+            "three/addons/": "../../libs/vendor/three-0.160.0/addons/"
+        }
+    }
+</script>
+
+<script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    // ======================== STATE ========================
+    let currentType = 'gear';
+    let speed = 0.5;
+    let teethDrive = 12;
+    let teethDriven = 24;
+    let scene, camera, renderer, controls;
+    let transmissionGroup;
+    let driveAngle = 0;
+
+    // References to animated parts
+    let driveWheel, drivenWheel;
+    let beltMesh, chainLinks = [];
+
+    // ======================== INIT ========================
+    function init() {
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xeef2f7);
+
+        camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 26, 0.1);
+        camera.lookAt(0, 0, 0);
+
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = false;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        // Lighting
+        const ambient = new THREE.AmbientLight(0xffffff, 0.9);
+        scene.add(ambient);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
+        dirLight.position.set(10, 20, 15);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.set(2048, 2048);
+        scene.add(dirLight);
+
+        const backLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        backLight.position.set(-8, 10, -5);
+        scene.add(backLight);
+
+        // Grid
+        const grid = new THREE.GridHelper(40, 40, 0xd1d5db, 0xe5e7eb);
+        grid.position.y = -3.5;
+        scene.add(grid);
+
+        const floor = new THREE.Mesh(
+            new THREE.PlaneGeometry(80, 80),
+            new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.9 })
+        );
+        floor.rotation.x = -Math.PI / 2;
+        floor.position.y = -3.51;
+        floor.receiveShadow = true;
+        scene.add(floor);
+
+        controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.08;
+        controls.minDistance = 8;
+        controls.maxDistance = 50;
+        controls.target.set(0, 0, 0);
+
+        transmissionGroup = new THREE.Group();
+        scene.add(transmissionGroup);
+
+        buildTransmission();
+        updateInfoPanel();
+
+        window.addEventListener('resize', onResize);
+        setupUI();
+        animate();
+    }
+
+    // ======================== GEAR CREATION ========================
+    function createGear(radius, teeth, thickness, color) {
+        const group = new THREE.Group();
+
+        // Hub
+        const hubRadius = radius * 0.25;
+        const hubGeo = new THREE.CylinderGeometry(hubRadius, hubRadius, thickness + 0.4, 32);
+        const hubMat = new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.8, roughness: 0.3 });
+        const hub = new THREE.Mesh(hubGeo, hubMat);
+        group.add(hub);
+
+        // Shaft hole indicator
+        const shaftGeo = new THREE.CylinderGeometry(hubRadius * 0.4, hubRadius * 0.4, thickness + 0.6, 16);
+        const shaftMat = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.9, roughness: 0.2 });
+        const shaft = new THREE.Mesh(shaftGeo, shaftMat);
+        group.add(shaft);
+
+        // Gear body (disc)
+        const bodyGeo = new THREE.CylinderGeometry(radius * 0.85, radius * 0.85, thickness, 64);
+        const bodyMat = new THREE.MeshStandardMaterial({ color: color, metalness: 0.7, roughness: 0.35 });
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        body.castShadow = true;
+        group.add(body);
+
+        // Spokes (weight reduction holes)
+        const spokeCount = Math.min(teeth > 16 ? 6 : 4, 6);
+        const spokeRadius = radius * 0.2;
+        const spokeDistance = radius * 0.55;
+        const holeGeo = new THREE.CylinderGeometry(spokeRadius, spokeRadius, thickness + 0.05, 16);
+        const holeMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
+        for (let i = 0; i < spokeCount; i++) {
+            const angle = (i / spokeCount) * Math.PI * 2;
+            const hole = new THREE.Mesh(holeGeo, holeMat);
+            hole.position.set(Math.cos(angle) * spokeDistance, 0, Math.sin(angle) * spokeDistance);
+            group.add(hole);
+        }
+
+        // Teeth
+        const toothHeight = radius * 0.15;
+        const toothWidth = (2 * Math.PI * radius) / (teeth * 2.2);
+        const toothGeo = new THREE.BoxGeometry(toothWidth, thickness * 0.95, toothHeight);
+        // Teeth positioned radially in XZ plane
+        const toothMat = new THREE.MeshStandardMaterial({ color: color, metalness: 0.7, roughness: 0.3 });
+
+        for (let i = 0; i < teeth; i++) {
+            const angle = (i / teeth) * Math.PI * 2;
+            const tooth = new THREE.Mesh(toothGeo, toothMat);
+            const tr = radius * 0.85 + toothHeight / 2;
+            tooth.position.set(Math.cos(angle) * tr, 0, Math.sin(angle) * tr);
+            tooth.rotation.y = -angle;
+            tooth.castShadow = true;
+            group.add(tooth);
+        }
+
+        // Bevel edges (chamfer ring)
+        const ringGeo = new THREE.TorusGeometry(radius * 0.85, thickness * 0.08, 8, 64);
+        const ringMat = new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.8, roughness: 0.3 });
+        const ringTop = new THREE.Mesh(ringGeo, ringMat);
+        ringTop.rotation.x = Math.PI / 2;
+        ringTop.position.y = thickness / 2;
+        group.add(ringTop);
+        const ringBot = new THREE.Mesh(ringGeo, ringMat);
+        ringBot.rotation.x = Math.PI / 2;
+        ringBot.position.y = -thickness / 2;
+        group.add(ringBot);
+
+        return group;
+    }
+
+    // ======================== PULLEY CREATION ========================
+    function createPulley(radius, thickness, color) {
+        const group = new THREE.Group();
+
+        // Pulley body
+        const bodyGeo = new THREE.CylinderGeometry(radius, radius, thickness, 48);
+        const bodyMat = new THREE.MeshStandardMaterial({ color: color, metalness: 0.6, roughness: 0.4 });
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        body.castShadow = true;
+        group.add(body);
+
+        // Groove (belt channel) — torus default is XZ, rotate to XZ around Y
+        const grooveGeo = new THREE.TorusGeometry(radius + 0.05, thickness * 0.2, 16, 48);
+        const grooveMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
+        const groove = new THREE.Mesh(grooveGeo, grooveMat);
+        groove.rotation.x = Math.PI / 2;
+        group.add(groove);
+
+        // Flanges (raised edges)
+        const flangeGeo = new THREE.TorusGeometry(radius + 0.3, 0.12, 8, 48);
+        const flangeMat = new THREE.MeshStandardMaterial({ color: color, metalness: 0.7, roughness: 0.3 });
+        const flangeTop = new THREE.Mesh(flangeGeo, flangeMat);
+        flangeTop.rotation.x = Math.PI / 2;
+        flangeTop.position.y = thickness / 2;
+        group.add(flangeTop);
+        const flangeBot = new THREE.Mesh(flangeGeo, flangeMat);
+        flangeBot.rotation.x = Math.PI / 2;
+        flangeBot.position.y = -thickness / 2;
+        group.add(flangeBot);
+
+        // Hub
+        const hubGeo = new THREE.CylinderGeometry(radius * 0.3, radius * 0.3, thickness + 0.5, 32);
+        const hubMat = new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.8, roughness: 0.3 });
+        const hub = new THREE.Mesh(hubGeo, hubMat);
+        group.add(hub);
+
+        // Shaft
+        const shaftGeo = new THREE.CylinderGeometry(radius * 0.12, radius * 0.12, thickness + 0.8, 16);
+        const shaftMat = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.9 });
+        const shaft = new THREE.Mesh(shaftGeo, shaftMat);
+        group.add(shaft);
+
+        return group;
+    }
+
+    // ======================== SPROCKET CREATION ========================
+    function createSprocket(radius, teeth, thickness, color) {
+        const group = new THREE.Group();
+
+        // Core disc
+        const coreGeo = new THREE.CylinderGeometry(radius * 0.7, radius * 0.7, thickness, 48);
+        const coreMat = new THREE.MeshStandardMaterial({ color: color, metalness: 0.75, roughness: 0.3 });
+        const core = new THREE.Mesh(coreGeo, coreMat);
+        core.castShadow = true;
+        group.add(core);
+
+        // Hub
+        const hubGeo = new THREE.CylinderGeometry(radius * 0.25, radius * 0.25, thickness + 0.4, 32);
+        const hubMat = new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.8, roughness: 0.3 });
+        const hub = new THREE.Mesh(hubGeo, hubMat);
+        group.add(hub);
+
+        // Pointed teeth — simple boxes in XZ plane
+        const toothH = radius * 0.28;
+        const toothW = 0.2;
+        const toothMat = new THREE.MeshStandardMaterial({ color: color, metalness: 0.75, roughness: 0.3 });
+        for (let i = 0; i < teeth; i++) {
+            const angle = (i / teeth) * Math.PI * 2;
+            const tr = radius * 0.7 + toothH / 2;
+            const tooth = new THREE.Mesh(
+                new THREE.BoxGeometry(toothW, thickness * 0.9, toothH),
+                toothMat
+            );
+            tooth.position.set(Math.cos(angle) * tr, 0, Math.sin(angle) * tr);
+            tooth.rotation.y = -angle;
+            tooth.castShadow = true;
+            group.add(tooth);
+        }
+
+        // Weight reduction holes
+        const holeCount = Math.min(teeth > 16 ? 5 : 3, 5);
+        const holeRad = radius * 0.12;
+        const holeDist = radius * 0.42;
+        for (let i = 0; i < holeCount; i++) {
+            const a = (i / holeCount) * Math.PI * 2;
+            const hGeo = new THREE.CylinderGeometry(holeRad, holeRad, thickness + 0.05, 16);
+            const hMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
+            const h = new THREE.Mesh(hGeo, hMat);
+            h.position.set(Math.cos(a) * holeDist, 0, Math.sin(a) * holeDist);
+            group.add(h);
+        }
+
+        return group;
+    }
+
+    // ======================== BELT CREATION ========================
+    function createBelt(r1, r2, distance) {
+        const cx1 = -distance / 2, cx2 = distance / 2;
+        const pts = [];
+
+        // Top straight (along -Z side)
+        for (let i = 0; i <= 20; i++) {
+            const t = i / 20;
+            pts.push(new THREE.Vector3(cx1 + t * distance, 0, -(r1 + (r2 - r1) * t)));
+        }
+        // Arc around right pulley (driven)
+        for (let i = 0; i <= 20; i++) {
+            const t = i / 20;
+            const a = -Math.PI / 2 + t * (-Math.PI);
+            pts.push(new THREE.Vector3(cx2 + Math.sin(a) * r2, 0, Math.cos(a) * r2));
+        }
+        // Bottom straight (along +Z side)
+        for (let i = 0; i <= 20; i++) {
+            const t = i / 20;
+            pts.push(new THREE.Vector3(cx2 - t * distance, 0, r2 + (r1 - r2) * t));
+        }
+        // Arc around left pulley (drive)
+        for (let i = 0; i <= 20; i++) {
+            const t = i / 20;
+            const a = Math.PI / 2 + t * (-Math.PI);
+            pts.push(new THREE.Vector3(cx1 + Math.sin(a) * r1, 0, Math.cos(a) * r1));
+        }
+
+        const curve = new THREE.CatmullRomCurve3(pts, true);
+        const tubeGeo = new THREE.TubeGeometry(curve, 120, 0.18, 8, true);
+        const tubeMat = new THREE.MeshStandardMaterial({
+            color: 0x333333,
+            roughness: 0.85,
+            metalness: 0.05
+        });
+        return new THREE.Mesh(tubeGeo, tubeMat);
+    }
+
+    // ======================== CHAIN CREATION ========================
+    function createChain(r1, r2, distance, linkCount) {
+        const group = new THREE.Group();
+        const cx1 = -distance / 2, cx2 = distance / 2;
+        const pts = [];
+        const seg = 40;
+
+        // Use outer radius of sprockets (core + tooth) for chain path
+        const outerR1 = r1 * 0.7 + r1 * 0.28 * 0.6;
+        const outerR2 = r2 * 0.7 + r2 * 0.28 * 0.6;
+
+        // Top straight (along -Z)
+        for (let i = 0; i <= seg; i++) {
+            const t = i / seg;
+            pts.push(new THREE.Vector3(cx1 + t * distance, 0, -(outerR1 + (outerR2 - outerR1) * t)));
+        }
+        // Arc around right sprocket
+        for (let i = 0; i <= seg; i++) {
+            const t = i / seg;
+            const a = -Math.PI / 2 + t * (-Math.PI);
+            pts.push(new THREE.Vector3(cx2 + Math.sin(a) * outerR2, 0, Math.cos(a) * outerR2));
+        }
+        // Bottom straight (along +Z)
+        for (let i = 0; i <= seg; i++) {
+            const t = i / seg;
+            pts.push(new THREE.Vector3(cx2 - t * distance, 0, outerR2 + (outerR1 - outerR2) * t));
+        }
+        // Arc around left sprocket
+        for (let i = 0; i <= seg; i++) {
+            const t = i / seg;
+            const a = Math.PI / 2 + t * (-Math.PI);
+            pts.push(new THREE.Vector3(cx1 + Math.sin(a) * outerR1, 0, Math.cos(a) * outerR1));
+        }
+
+        const curve = new THREE.CatmullRomCurve3(pts, true);
+        const linkMatOuter = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.85, roughness: 0.25 });
+        const linkMatInner = new THREE.MeshStandardMaterial({ color: 0x666666, metalness: 0.9, roughness: 0.2 });
+        const pinMat = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, metalness: 0.9, roughness: 0.15 });
+
+        chainLinks = [];
+        for (let i = 0; i < linkCount; i++) {
+            const t = i / linkCount;
+            const pos = curve.getPointAt(t);
+            const tangent = curve.getTangentAt(t);
+
+            const linkGroup = new THREE.Group();
+
+            if (i % 2 === 0) {
+                // Outer plate link — two side plates + two pins
+                const plateGeo = new THREE.BoxGeometry(0.38, 0.04, 0.22);
+                const plateTop = new THREE.Mesh(plateGeo, linkMatOuter);
+                plateTop.position.y = 0.07;
+                linkGroup.add(plateTop);
+                const plateBot = new THREE.Mesh(plateGeo, linkMatOuter);
+                plateBot.position.y = -0.07;
+                linkGroup.add(plateBot);
+                // Pins
+                const pinGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.2, 8);
+                const pin1 = new THREE.Mesh(pinGeo, pinMat);
+                pin1.position.set(0.12, 0, 0);
+                linkGroup.add(pin1);
+                const pin2 = new THREE.Mesh(pinGeo, pinMat);
+                pin2.position.set(-0.12, 0, 0);
+                linkGroup.add(pin2);
+            } else {
+                // Inner plate link — two narrower side plates + roller
+                const plateGeo = new THREE.BoxGeometry(0.28, 0.04, 0.18);
+                const plateTop = new THREE.Mesh(plateGeo, linkMatInner);
+                plateTop.position.y = 0.05;
+                linkGroup.add(plateTop);
+                const plateBot = new THREE.Mesh(plateGeo, linkMatInner);
+                plateBot.position.y = -0.05;
+                linkGroup.add(plateBot);
+                // Roller
+                const rollerGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.12, 8);
+                const roller = new THREE.Mesh(rollerGeo, pinMat);
+                linkGroup.add(roller);
+            }
+
+            linkGroup.position.copy(pos);
+            linkGroup.lookAt(pos.clone().add(tangent));
+            linkGroup.castShadow = true;
+            group.add(linkGroup);
+            chainLinks.push({ mesh: linkGroup, t: t });
+        }
+
+        return { group, curve, linkCount };
+    }
+
+    // ======================== SHAFT & BEARING ========================
+    function createShaftAssembly(height) {
+        const group = new THREE.Group();
+
+        // Vertical shaft
+        const shaftGeo = new THREE.CylinderGeometry(0.2, 0.2, height, 16);
+        const shaftMat = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.9, roughness: 0.2 });
+        const shaft = new THREE.Mesh(shaftGeo, shaftMat);
+        group.add(shaft);
+
+        // Bearing housing (bottom)
+        const bearingGeo = new THREE.CylinderGeometry(0.5, 0.5, 0.4, 16);
+        const bearingMat = new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.7 });
+        const bearing = new THREE.Mesh(bearingGeo, bearingMat);
+        bearing.position.y = -height / 2;
+        group.add(bearing);
+
+        // Base plate
+        const baseGeo = new THREE.BoxGeometry(1.2, 0.15, 1.2);
+        const baseMat = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.6 });
+        const base = new THREE.Mesh(baseGeo, baseMat);
+        base.position.y = -height / 2 - 0.3;
+        group.add(base);
+
+        return group;
+    }
+
+    // ======================== LABELS ========================
+    function createLabel(text, color) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 128;
+        const ctx = canvas.getContext('2d');
+
+        ctx.fillStyle = 'rgba(255,255,255,0.92)';
+        ctx.beginPath();
+        ctx.roundRect(0, 0, 512, 128, 16);
+        ctx.fill();
+
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.roundRect(0, 0, 512, 128, 16);
+        ctx.stroke();
+
+        ctx.fillStyle = color;
+        ctx.font = 'bold 44px Segoe UI, Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, 256, 64);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        const spriteMat = new THREE.SpriteMaterial({ map: texture });
+        const sprite = new THREE.Sprite(spriteMat);
+        sprite.scale.set(4, 1, 1);
+        return sprite;
+    }
+
+    // ======================== BUILD SCENE ========================
+    function buildTransmission() {
+        // Clear
+        while (transmissionGroup.children.length > 0) {
+            const child = transmissionGroup.children[0];
+            transmissionGroup.remove(child);
+        }
+        chainLinks = [];
+        beltMesh = null;
+        driveWheel = null;
+        drivenWheel = null;
+
+        const ratio = teethDriven / teethDrive;
+        const distance = 8;
+
+        if (currentType === 'gear') {
+            buildGearTransmission(distance);
+        } else if (currentType === 'belt') {
+            buildBeltTransmission(distance);
+        } else if (currentType === 'chain') {
+            buildChainTransmission(distance);
+        }
+    }
+
+    function buildGearTransmission(distance) {
+        const ratio = teethDriven / teethDrive;
+        const module = 0.35; // tooth module size
+        const rDrive = teethDrive * module;
+        const rDriven = teethDriven * module;
+        const toothHeight = rDrive * 0.15;
+        const actualDist = rDrive * 0.85 + rDriven * 0.85 + toothHeight;
+
+        // Drive gear (yellow)
+        driveWheel = createGear(rDrive, teethDrive, 1.2, 0xdaa520);
+        driveWheel.position.set(-actualDist / 2, 0, 0);
+        transmissionGroup.add(driveWheel);
+
+        // Driven gear (blue-steel) — offset rotation so teeth mesh into gaps
+        drivenWheel = createGear(rDriven, teethDriven, 1.2, 0x4682b4);
+        drivenWheel.position.set(actualDist / 2, 0, 0);
+        drivenWheel.rotation.y = Math.PI / teethDriven;
+        transmissionGroup.add(drivenWheel);
+
+        // Shafts
+        const shaft1 = createShaftAssembly(6);
+        shaft1.position.set(-actualDist / 2, -3, 0);
+        transmissionGroup.add(shaft1);
+
+        const shaft2 = createShaftAssembly(6);
+        shaft2.position.set(actualDist / 2, -3, 0);
+        transmissionGroup.add(shaft2);
+
+        // Labels
+        var _lg = window._t || {lbl_drive_gear:'Ведущая', lbl_driven_gear:'Ведомая'};
+        const labelDrive = createLabel(_lg.lbl_drive_gear + ' (' + teethDrive + 'z)', '#facc15');
+        labelDrive.position.set(-actualDist / 2, 5.5, 0);
+        transmissionGroup.add(labelDrive);
+
+        const labelDriven = createLabel(_lg.lbl_driven_gear + ' (' + teethDriven + 'z)', '#38bdf8');
+        labelDriven.position.set(actualDist / 2, 5.5, 0);
+        transmissionGroup.add(labelDriven);
+
+        // Direction arrows (rotation indicators)
+        addRotationArrow(-actualDist / 2, 0, rDrive + 1.5, '#facc15', true);
+        addRotationArrow(actualDist / 2, 0, rDriven + 1.5, '#38bdf8', false);
+
+        // Base plate
+        const basePlate = new THREE.Mesh(
+            new THREE.BoxGeometry(actualDist + 8, 0.3, 6),
+            new THREE.MeshStandardMaterial({ color: 0x2a3a4a, metalness: 0.5, roughness: 0.6 })
+        );
+        basePlate.position.y = -6.2;
+        basePlate.castShadow = true;
+        basePlate.receiveShadow = true;
+        transmissionGroup.add(basePlate);
+    }
+
+    function buildBeltTransmission(distance) {
+        const rDrive = teethDrive * 0.15 + 0.5;
+        const rDriven = teethDriven * 0.15 + 0.5;
+
+        // Pulleys
+        driveWheel = createPulley(rDrive, 1.0, 0xdaa520);
+        driveWheel.position.set(-distance / 2, 0, 0);
+        transmissionGroup.add(driveWheel);
+
+        drivenWheel = createPulley(rDriven, 1.0, 0x4682b4);
+        drivenWheel.position.set(distance / 2, 0, 0);
+        transmissionGroup.add(drivenWheel);
+
+        // Belt
+        beltMesh = createBelt(rDrive, rDriven, distance);
+        transmissionGroup.add(beltMesh);
+
+        // Tensioner indicator
+        const tensionerGeo = new THREE.SphereGeometry(0.15, 16, 16);
+        const tensionerMat = new THREE.MeshStandardMaterial({ color: 0xff6644, emissive: 0xff4422, emissiveIntensity: 0.3 });
+        const tensioner = new THREE.Mesh(tensionerGeo, tensionerMat);
+        tensioner.position.set(0, -(rDrive + rDriven) / 2 - 0.5, 0);
+        transmissionGroup.add(tensioner);
+
+        // Shafts
+        const shaft1 = createShaftAssembly(6);
+        shaft1.position.set(-distance / 2, -3, 0);
+        transmissionGroup.add(shaft1);
+
+        const shaft2 = createShaftAssembly(6);
+        shaft2.position.set(distance / 2, -3, 0);
+        transmissionGroup.add(shaft2);
+
+        // Labels
+        var _lb = window._t || {lbl_drive_pulley:'Ведущий шкив', lbl_driven_pulley:'Ведомый шкив'};
+        const labelDrive = createLabel(_lb.lbl_drive_pulley, '#facc15');
+        labelDrive.position.set(-distance / 2, 5.5, 0);
+        transmissionGroup.add(labelDrive);
+
+        const labelDriven = createLabel(_lb.lbl_driven_pulley, '#38bdf8');
+        labelDriven.position.set(distance / 2, 5.5, 0);
+        transmissionGroup.add(labelDriven);
+
+        addRotationArrow(-distance / 2, 0, rDrive + 1.5, '#facc15', true);
+        addRotationArrow(distance / 2, 0, rDriven + 1.5, '#38bdf8', true);
+
+        // Base plate
+        const basePlate = new THREE.Mesh(
+            new THREE.BoxGeometry(distance + 8, 0.3, 6),
+            new THREE.MeshStandardMaterial({ color: 0x2a3a4a, metalness: 0.5, roughness: 0.6 })
+        );
+        basePlate.position.y = -6.2;
+        basePlate.castShadow = true;
+        transmissionGroup.add(basePlate);
+    }
+
+    function buildChainTransmission(distance) {
+        const rDrive = teethDrive * 0.12 + 0.8;
+        const rDriven = teethDriven * 0.12 + 0.8;
+
+        // Sprockets
+        driveWheel = createSprocket(rDrive, teethDrive, 0.6, 0xdaa520);
+        driveWheel.position.set(-distance / 2, 0, 0);
+        transmissionGroup.add(driveWheel);
+
+        drivenWheel = createSprocket(rDriven, teethDriven, 0.6, 0x4682b4);
+        drivenWheel.position.set(distance / 2, 0, 0);
+        transmissionGroup.add(drivenWheel);
+
+        // Chain
+        const chainData = createChain(rDrive, rDriven, distance, 60);
+        transmissionGroup.add(chainData.group);
+        window._chainCurve = chainData.curve;
+        window._chainLinkCount = chainData.linkCount;
+
+        // Shafts
+        const shaft1 = createShaftAssembly(6);
+        shaft1.position.set(-distance / 2, -3, 0);
+        transmissionGroup.add(shaft1);
+
+        const shaft2 = createShaftAssembly(6);
+        shaft2.position.set(distance / 2, -3, 0);
+        transmissionGroup.add(shaft2);
+
+        // Labels
+        var _lc = window._t || {lbl_drive_sprocket:'Ведущая звёздочка', lbl_driven_sprocket:'Ведомая звёздочка'};
+        const labelDrive = createLabel(_lc.lbl_drive_sprocket, '#facc15');
+        labelDrive.position.set(-distance / 2, 5.5, 0);
+        transmissionGroup.add(labelDrive);
+
+        const labelDriven = createLabel(_lc.lbl_driven_sprocket, '#38bdf8');
+        labelDriven.position.set(distance / 2, 5.5, 0);
+        transmissionGroup.add(labelDriven);
+
+        addRotationArrow(-distance / 2, 0, rDrive + 1.5, '#facc15', true);
+        addRotationArrow(distance / 2, 0, rDriven + 1.5, '#38bdf8', true);
+
+        // Base plate
+        const basePlate = new THREE.Mesh(
+            new THREE.BoxGeometry(distance + 8, 0.3, 6),
+            new THREE.MeshStandardMaterial({ color: 0x2a3a4a, metalness: 0.5, roughness: 0.6 })
+        );
+        basePlate.position.y = -6.2;
+        basePlate.castShadow = true;
+        transmissionGroup.add(basePlate);
+    }
+
+    function addRotationArrow(x, z, radius, color, clockwise) {
+        const points = [];
+        const startA = clockwise ? 0.3 : -0.3;
+        const endA = clockwise ? Math.PI * 1.2 : -Math.PI * 1.2;
+        for (let i = 0; i <= 30; i++) {
+            const t = i / 30;
+            const a = startA + t * (endA - startA);
+            points.push(new THREE.Vector3(
+                x + Math.cos(a) * radius,
+                0.8,
+                z + Math.sin(a) * radius
+            ));
+        }
+        const curve = new THREE.CatmullRomCurve3(points);
+        const geo = new THREE.TubeGeometry(curve, 30, 0.06, 6, false);
+        const mat = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.6 });
+        const arrow = new THREE.Mesh(geo, mat);
+        transmissionGroup.add(arrow);
+
+        // Arrowhead
+        const last = points[points.length - 1];
+        const prev = points[points.length - 3];
+        const dir = new THREE.Vector3().subVectors(last, prev).normalize();
+        const coneGeo = new THREE.ConeGeometry(0.2, 0.5, 8);
+        const cone = new THREE.Mesh(coneGeo, new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.6 }));
+        cone.position.copy(last);
+        cone.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+        transmissionGroup.add(cone);
+    }
+
+    // ======================== INFO PANEL ========================
+    function updateInfoPanel() {
+        const panel = document.getElementById('info-panel');
+        const data = INFO_DATA[currentType];
+        var _h = window._t || {info_desc:'Описание',info_principle:'Принцип работы',info_pros_cons:'Преимущества и недостатки',info_usage:'Применение в робототехнике',info_specs:'Характеристики',info_pros_title:'✓ Плюсы',info_cons_title:'✗ Минусы',info_param_col:'Параметр',info_val_col:'Значение'};
+
+        panel.innerHTML = `
+            <div class="info-title">${data.icon} ${data.title}</div>
+
+            <div class="info-block">
+                <div class="info-block-title">${_h.info_desc}</div>
+                <p>${data.description}</p>
+            </div>
+
+            <div class="info-block">
+                <div class="info-block-title">${_h.info_principle}</div>
+                <p>${data.principle}</p>
+                <div class="formula-box">
+                    <div class="formula">${data.formula}</div>
+                    <div class="formula-desc">${data.formulaDesc}</div>
+                </div>
+            </div>
+
+            <div class="info-block">
+                <div class="info-block-title">${_h.info_pros_cons}</div>
+                <div class="pros-cons">
+                    <div class="pros">
+                        <div class="pros-title">${_h.info_pros_title}</div>
+                        <ul>${data.pros.map(p => '<li>' + p + '</li>').join('')}</ul>
+                    </div>
+                    <div class="cons">
+                        <div class="cons-title">${_h.info_cons_title}</div>
+                        <ul>${data.cons.map(c => '<li>' + c + '</li>').join('')}</ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-block">
+                <div class="info-block-title">${_h.info_usage}</div>
+                <div class="usage-tags">
+                    ${data.usage.map(u => '<span class="usage-tag">' + u + '</span>').join('')}
+                </div>
+            </div>
+
+            <div class="info-block">
+                <div class="info-block-title">${_h.info_specs}</div>
+                <table class="comparison-table">
+                    <tr><th>${_h.info_param_col}</th><th>${_h.info_val_col}</th></tr>
+                    ${data.specs.map(s => '<tr><td>' + s[0] + '</td><td>' + s[1] + '</td></tr>').join('')}
+                </table>
+            </div>
+        `;
+    }
+
+    const INFO_DATA = (window._t && window._t.infoData) || {
+        gear: {
+            icon: '⚙️',
+            title: 'Зубчатая передача',
+            description: 'Зубчатая (шестерёнчатая) передача — механизм, в котором вращение передаётся за счёт зацепления зубьев двух колёс. Это самый точный и надёжный тип механической передачи. Шестерни обеспечивают жёсткую кинематическую связь — ведомое колесо вращается строго синхронно с ведущим, без проскальзывания.',
+            principle: 'Ведущая шестерня вращается от двигателя и своими зубьями толкает зубья ведомой шестерни. Передаточное отношение определяется соотношением числа зубьев. При зацеплении направление вращения меняется на противоположное.',
+            formula: 'i = Z<sub>2</sub> / Z<sub>1</sub> = n<sub>1</sub> / n<sub>2</sub>',
+            formulaDesc: 'i — передаточное отношение, Z — число зубьев, n — частота вращения',
+            pros: ['Точная передача', 'Высокий КПД (96–99%)', 'Компактность', 'Большие нагрузки', 'Долговечность'],
+            cons: ['Шум при работе', 'Нужна смазка', 'Жёсткое расстояние', 'Сложность изготовления'],
+            usage: ['Редукторы роботов', 'Сервоприводы', 'Дифференциал', 'Рулевое управление', 'Манипуляторы', 'Часовые механизмы'],
+            specs: [
+                ['КПД', '96–99%'],
+                ['Макс. передаточное число', '1:6 (одна ступень)'],
+                ['Тип контакта', 'Прямое зацепление'],
+                ['Проскальзывание', 'Отсутствует'],
+                ['Материалы', 'Сталь, латунь, пластик'],
+                ['Смазка', 'Обязательна'],
+                ['Уровень шума', 'Средний–высокий']
+            ]
+        },
+        belt: {
+            icon: '🔄',
+            title: 'Ременная передача',
+            description: 'Ременная передача — механизм, где вращение передаётся с помощью гибкого ремня, натянутого между двумя шкивами. Ремень охватывает оба шкива и за счёт силы трения передаёт крутящий момент. Это один из древнейших типов передач, широко используемый и в современных механизмах.',
+            principle: 'Ведущий шкив вращается и за счёт трения увлекает за собой ремень, который в свою очередь вращает ведомый шкив. Передаточное отношение определяется соотношением диаметров шкивов. Оба шкива вращаются в одном направлении.',
+            formula: 'i = D<sub>2</sub> / D<sub>1</sub> = n<sub>1</sub> / n<sub>2</sub>',
+            formulaDesc: 'i — передаточное отношение, D — диаметр шкива, n — частота вращения',
+            pros: ['Тихая работа', 'Гасит вибрации', 'Большие расстояния', 'Защита от перегрузки', 'Простой монтаж'],
+            cons: ['Проскальзывание', 'Растяжение ремня', 'Ниже КПД (90–96%)', 'Менее точная передача'],
+            usage: ['3D-принтеры (GT2)', 'ЧПУ-станки', 'Конвейеры', 'Привод колёс', 'Лазерные граверы', 'Вентиляторы'],
+            specs: [
+                ['КПД', '90–96%'],
+                ['Макс. передаточное число', '1:5'],
+                ['Тип контакта', 'Трение / зубчатый'],
+                ['Проскальзывание', 'Возможно (гладкий)'],
+                ['Материалы ремня', 'Резина, полиуретан, неопрен'],
+                ['Смазка', 'Не требуется'],
+                ['Уровень шума', 'Низкий']
+            ]
+        },
+        chain: {
+            icon: '⛓️',
+            title: 'Цепная передача',
+            description: 'Цепная передача — механизм, в котором вращение передаётся с помощью цепи, зацепляющейся за зубья звёздочек. Цепь состоит из шарнирно соединённых звеньев. Это надёжный способ передачи больших усилий на значительные расстояния без проскальзывания.',
+            principle: 'Ведущая звёздочка при вращении тянет цепь, которая входит в зацепление с зубьями ведомой звёздочки и передаёт вращение. Передаточное отношение определяется числом зубьев звёздочек. Направление вращения — одинаковое.',
+            formula: 'i = Z<sub>2</sub> / Z<sub>1</sub> = n<sub>1</sub> / n<sub>2</sub>',
+            formulaDesc: 'i — передаточное отношение, Z — число зубьев звёздочки, n — обороты',
+            pros: ['Нет проскальзывания', 'Большие нагрузки', 'Большие расстояния', 'Высокий КПД (95–98%)', 'Долговечность'],
+            cons: ['Необходима смазка', 'Шум и вибрации', 'Растяжение цепи', 'Тяжелее ремня', 'Неравномерность хода'],
+            usage: ['Велосипеды', 'Мотоциклы', 'Конвейеры', 'Гусеничные роботы', 'Подъёмники', 'Промышленные роботы'],
+            specs: [
+                ['КПД', '95–98%'],
+                ['Макс. передаточное число', '1:7'],
+                ['Тип контакта', 'Зацепление звеньев'],
+                ['Проскальзывание', 'Отсутствует'],
+                ['Материалы цепи', 'Сталь, нержавеющая сталь'],
+                ['Смазка', 'Обязательна'],
+                ['Уровень шума', 'Средний–высокий']
+            ]
+        }
+    };
+
+    // ======================== UI ========================
+    function setupUI() {
+        document.getElementById('speed-slider').addEventListener('input', e => {
+            speed = parseInt(e.target.value) / 100;
+            document.getElementById('speed-val').textContent = e.target.value + '%';
+            updateStats();
+        });
+
+        document.getElementById('teeth-drive-slider').addEventListener('input', e => {
+            teethDrive = parseInt(e.target.value);
+            document.getElementById('teeth-drive-val').textContent = teethDrive;
+            buildTransmission();
+            updateStats();
+        });
+
+        document.getElementById('teeth-driven-slider').addEventListener('input', e => {
+            teethDriven = parseInt(e.target.value);
+            document.getElementById('teeth-driven-val').textContent = teethDriven;
+            buildTransmission();
+            updateStats();
+        });
+
+        updateStats();
+    }
+
+    function updateStats() {
+        const ratio = teethDriven / teethDrive;
+        const rpmDrive = Math.round(speed * 240);
+        const rpmDriven = Math.round(rpmDrive / ratio);
+
+        var _r = window._t || {ratio_slower:'Ведомая медленнее, но сильнее', ratio_faster:'Ведомая быстрее, но слабее', ratio_equal:'Скорости равны'};
+        document.getElementById('ratio-value').textContent = teethDriven + ' : ' + teethDrive;
+        document.getElementById('ratio-sub').textContent = ratio > 1 ? _r.ratio_slower : ratio < 1 ? _r.ratio_faster : _r.ratio_equal;
+        document.getElementById('rpm-drive').textContent = rpmDrive;
+        document.getElementById('rpm-driven').textContent = rpmDriven;
+    }
+
+    // ======================== SWITCH TYPE ========================
+    window.switchType = function(type) {
+        currentType = type;
+        document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('btn-' + type).classList.add('active');
+        buildTransmission();
+        updateInfoPanel();
+        updateStats();
+    };
+
+    // ======================== ANIMATION ========================
+    function animate() {
+        requestAnimationFrame(animate);
+
+        const dt = 0.016;
+        const baseSpeed = speed * 2.5;
+        const ratio = teethDriven / teethDrive;
+
+        driveAngle += baseSpeed * dt;
+
+        if (driveWheel && drivenWheel) {
+            if (currentType === 'gear') {
+                // Gears rotate in opposite directions
+                driveWheel.rotation.y = driveAngle;
+                drivenWheel.rotation.y = -driveAngle / ratio + Math.PI / teethDriven;
+            } else {
+                // Belt and chain: same direction
+                driveWheel.rotation.y = driveAngle;
+                drivenWheel.rotation.y = driveAngle / ratio;
+            }
+        }
+
+        // Animate chain links
+        if (currentType === 'chain' && chainLinks.length > 0 && window._chainCurve) {
+            const curve = window._chainCurve;
+            const offset = (driveAngle * 0.05) % 1;
+            chainLinks.forEach((linkData) => {
+                const t = (linkData.t + offset) % 1;
+                const pos = curve.getPointAt(Math.abs(t));
+                const tangent = curve.getTangentAt(Math.abs(t));
+                linkData.mesh.position.copy(pos);
+                linkData.mesh.lookAt(pos.clone().add(tangent));
+            });
+        }
+
+        controls.update();
+        renderer.render(scene, camera);
+    }
+
+    function onResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    // ======================== START ========================
+    window.onload = init;
+</script>
+</body>
+</html>

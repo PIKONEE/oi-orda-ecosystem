@@ -1,0 +1,1250 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тепловой насос: холодильный цикл — 3D Модель</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            color: #e2e8f0;
+        }
+
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+
+        .header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 20px 30px;
+            background: linear-gradient(180deg, rgba(15, 23, 42, 0.92) 0%, transparent 100%);
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .header h1 {
+            color: #2dd4bf;
+            font-size: 26px;
+            font-weight: 700;
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 15px rgba(45, 212, 191, 0.4);
+        }
+
+        .header p {
+            color: #94a3b8;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        .control-panel {
+            position: absolute;
+            top: 100px;
+            left: 20px;
+            width: 320px;
+            background: rgba(15, 23, 42, 0.9);
+            
+            border-radius: 12px;
+            padding: 22px;
+            z-index: 10;
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            border-left: 4px solid #2dd4bf;
+            max-height: calc(100vh - 140px);
+            overflow-y: auto;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+        }
+
+        .control-panel::-webkit-scrollbar { width: 6px; }
+        .control-panel::-webkit-scrollbar-thumb {
+            background: rgba(45, 212, 191, 0.4);
+            border-radius: 3px;
+        }
+
+        .section-title {
+            color: #e2e8f0;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+            padding-bottom: 8px;
+            margin-top: 22px;
+        }
+
+        .section-title:first-child { margin-top: 0; }
+
+        .btn-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .btn {
+            padding: 12px 8px;
+            background: rgba(51, 65, 85, 0.6);
+            border: 1px solid rgba(148, 163, 184, 0.15);
+            border-radius: 8px;
+            color: #cbd5e1;
+            font-size: 13px;
+            font-weight: 600;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            background: rgba(45, 212, 191, 0.15);
+            border-color: rgba(45, 212, 191, 0.4);
+        }
+
+        .btn.active {
+            background: rgba(45, 212, 191, 0.25);
+            border-color: #2dd4bf;
+            color: #fff;
+            box-shadow: 0 0 12px rgba(45, 212, 191, 0.3);
+        }
+
+        .btn.full { grid-column: 1 / -1; }
+
+        .slider-group { margin-bottom: 16px; }
+
+        .slider-group label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            color: #cbd5e1;
+            margin-bottom: 7px;
+        }
+
+        .slider-group label .value {
+            color: #2dd4bf;
+            font-weight: 700;
+            font-family: 'Consolas', monospace;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 5px;
+            cursor: pointer;
+            accent-color: #2dd4bf;
+            background: rgba(148, 163, 184, 0.2);
+            border-radius: 3px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 9px 10px;
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .checkbox-item:hover { background: rgba(255, 255, 255, 0.09); }
+
+        .checkbox-item input {
+            accent-color: #2dd4bf;
+            cursor: pointer;
+            width: 16px;
+            height: 16px;
+        }
+
+        .checkbox-item label {
+            cursor: pointer;
+            font-size: 13px;
+            color: #e2e8f0;
+            flex: 1;
+        }
+
+        .info-panel {
+            position: absolute;
+            top: 100px;
+            right: 20px;
+            width: 260px;
+            background: rgba(15, 23, 42, 0.9);
+            
+            border-radius: 12px;
+            padding: 20px;
+            z-index: 10;
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            border-right: 4px solid #2dd4bf;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+        }
+
+        .info-panel h3 {
+            color: #f1f5f9;
+            font-size: 15px;
+            margin: 0 0 15px;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+            padding-bottom: 10px;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 11px;
+            align-items: center;
+        }
+
+        .stat-label { color: #94a3b8; font-size: 12px; }
+
+        .stat-value {
+            color: #f1f5f9;
+            font-weight: 700;
+            font-family: 'Consolas', monospace;
+            font-size: 13px;
+        }
+
+        .cop-box {
+            margin-top: 14px;
+            padding: 12px;
+            border-radius: 8px;
+            background: rgba(45, 212, 191, 0.12);
+            border: 1px solid rgba(45, 212, 191, 0.35);
+            text-align: center;
+        }
+
+        .cop-box .cop-val {
+            color: #2dd4bf;
+            font-size: 26px;
+            font-weight: 800;
+            font-family: 'Consolas', monospace;
+        }
+
+        .cop-box .cop-lbl {
+            color: #94a3b8;
+            font-size: 11px;
+            text-transform: uppercase;
+            margin-top: 3px;
+            letter-spacing: 1px;
+        }
+
+        .desc-box {
+            position: absolute;
+            bottom: 64px;
+            left: 50%;
+            transform: translateX(-50%);
+            max-width: 640px;
+            width: calc(100% - 60px);
+            background: rgba(15, 23, 42, 0.92);
+            
+            border-radius: 12px;
+            padding: 16px 22px;
+            z-index: 10;
+            border: 1px solid rgba(45, 212, 191, 0.25);
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .desc-box .desc-title {
+            color: #2dd4bf;
+            font-size: 15px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .desc-box .desc-text {
+            color: #cbd5e1;
+            font-size: 13px;
+            line-height: 1.55;
+        }
+
+        .legend {
+            position: absolute;
+            bottom: 18px;
+            left: 20px;
+            background: rgba(15, 23, 42, 0.85);
+            padding: 12px 16px;
+            border-radius: 10px;
+            z-index: 10;
+            font-size: 12px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+
+        .legend-item:last-child { margin-bottom: 0; }
+
+        .legend-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+        }
+
+        .hint {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            color: rgba(148, 163, 184, 0.7);
+            font-size: 12px;
+            z-index: 5;
+            pointer-events: none;
+        }
+
+        .badge-tooltip {
+            position: absolute;
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid rgba(45, 212, 191, 0.4);
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-size: 12px;
+            color: #e2e8f0;
+            max-width: 220px;
+            pointer-events: none;
+            z-index: 50;
+            opacity: 0;
+            transition: opacity 0.15s;
+            line-height: 1.45;
+        }
+
+        .badge-tooltip.show { opacity: 1; }
+
+        .badge-tooltip b { color: #2dd4bf; }
+
+        @media (max-width: 1100px) {
+            .control-panel { width: 270px; }
+            .info-panel { width: 220px; }
+        }
+    </style>
+</head>
+<body>
+<script>
+/* i18n */
+(function(){
+  var lang=new URLSearchParams(location.search).get('lang')||'ru';
+  var T={
+    ru:{title:'❄️ Тепловой насос: холодильный цикл',subtitle:'Термодинамика • Фазовые переходы • Перенос тепла',
+      sec1:'⚙️ Режим работы',sec2:'🎚️ Параметры',sec3:'👁️ Визуализация',
+      btn_run:'▶ Запустить',btn_stop:'⏸ Пауза',
+      lbl_power:'Мощность компрессора:',lbl_room:'Темп. помещения:',lbl_speed:'Скорость потока:',
+      cb1:'Поток хладагента',cb2:'Потоки тепла (Q)',cb3:'Подписи компонентов',cb4:'Режим: тепловой насос',
+      info_h3:'📊 Состояние системы',sl_ref:'Хладагент:',sl_press:'Давление (низк/высок):',
+      sl_qhot:'Тепло отдано Q<sub>гор</sub>:',sl_qcold:'Тепло забрано Q<sub>хол</sub>:',sl_work:'Работа компрессора W:',
+      cop_cool:'COP — охлаждение (холод/работа)',cop_heat:'COP — обогрев (тепло/работа)',
+      desc_pump_title:'Режим: тепловой насос (обогрев)',
+      desc_pump_text:'Тот же цикл, но цель — отдать тепло Q_гор внутрь помещения. Снаружи испаритель забирает тепло даже из холодного воздуха. Это эффективнее прямого нагрева: COP > 1.',
+      desc_cool_title:'Холодильный цикл',
+      desc_cool_text:'Хладагент по кругу проходит 4 этапа: сжатие → отдача тепла → расширение → поглощение тепла. Кликните на любой компонент, чтобы узнать его роль. Цвет частиц показывает температуру хладагента.',
+      leg1:'Горячий газ (высокое P)',leg2:'Тёплая жидкость',leg3:'Холодный хладагент (низкое P)',
+      hint:'ЛКМ — вращение • ПКМ — панорама • Колесо — зум • Клик по детали — инфо',
+      loading:'Загрузка 3D модели...',degC:' °C',kwUnit:' кВт',barUnit:' бар',
+      components:{
+        compressor:{title:'1. Компрессор',text:'Сжимает холодный газообразный хладагент. Давление и температура резко растут — газ становится горячим. Здесь система потребляет электрическую работу W.'},
+        condenser:{title:'2. Конденсатор',text:'Горячий газ под высоким давлением отдаёт тепло Q_гор наружу и конденсируется — превращается в тёплую жидкость. Это «горячая» сторона.'},
+        valve:{title:'3. Расширительный клапан',text:'Жидкость резко расширяется (дросселирование). Давление и температура падают — хладагент становится очень холодным.'},
+        evaporator:{title:'4. Испаритель',text:'Холодный хладагент забирает тепло Q_хол из помещения и испаряется — снова превращается в газ. Это «холодная» сторона (создаёт охлаждение).'}
+      }},
+    kz:{title:'❄️ Жылу сорғысы: суыту циклі',subtitle:'Термодинамика • Фазалық өтулер • Жылу тасымалы',
+      sec1:'⚙️ Жұмыс режимі',sec2:'🎚️ Параметрлер',sec3:'👁️ Визуализация',
+      btn_run:'▶ Іске қосу',btn_stop:'⏸ Пауза',
+      lbl_power:'Компрессор қуаты:',lbl_room:'Бөлме темп.:',lbl_speed:'Ағын жылдамдығы:',
+      cb1:'Хладагент ағыны',cb2:'Жылу ағындары (Q)',cb3:'Компонент жазбалары',cb4:'Режим: жылу сорғысы',
+      info_h3:'📊 Жүйе күйі',sl_ref:'Хладагент:',sl_press:'Қысым (төм/жоғ):',
+      sl_qhot:'Берілген жылу Q<sub>ыст</sub>:',sl_qcold:'Алынған жылу Q<sub>сур</sub>:',sl_work:'Компрессор жұмысы W:',
+      cop_cool:'COP — суыту (суық/жұмыс)',cop_heat:'COP — жылыту (жылы/жұмыс)',
+      desc_pump_title:'Режим: жылу сорғысы (жылыту)',
+      desc_pump_text:'Сол цикл, бірақ мақсат — Q_ыст жылуын бөлмеге беру. Сыртта испаритель суық ауадан да жылу алады. Бұл тікелей жылытудан тиімді: COP > 1.',
+      desc_cool_title:'Суыту циклі',
+      desc_cool_text:'Хладагент 4 кезеңді өтеді: қысу → жылу беру → кеңею → жылу алу. Рөлін білу үшін кез келген компонентке басыңыз. Бөлшектер түсі хладагент температурасын көрсетеді.',
+      leg1:'Ыстық газ (жоғары P)',leg2:'Жылы сұйықтық',leg3:'Суық хладагент (төмен P)',
+      hint:'СТ — айналу • ОТ — панорама • Доңғалақ — зум • Детальге клик — ақпарат',
+      loading:'3D модель жүктелуде...',degC:' °C',kwUnit:' кВт',barUnit:' бар',
+      components:{
+        compressor:{title:'1. Компрессор',text:'Суық газ тәріздес хладагентті қысады. Қысым мен температура күрт өседі — газ ыстыққа айналады. Жүйе мұнда W электр жұмысын жұмсайды.'},
+        condenser:{title:'2. Конденсатор',text:'Жоғары қысымдағы ыстық газ Q_ыст жылуын сыртқа береді және конденсацияланады — жылы сұйықтыққа айналады. Бұл «ыстық» жақ.'},
+        valve:{title:'3. Кеңейту клапаны',text:'Сұйықтық күрт кеңейеді (дросселдеу). Қысым мен температура төмендейді — хладагент өте суыққа айналады.'},
+        evaporator:{title:'4. Испаритель',text:'Суық хладагент бөлмеден Q_сур жылуын алып, буланады — қайтадан газға айналады. Бұл «суық» жақ (суыту жасайды).'}
+      }},
+    en:{title:'❄️ Heat Pump: refrigeration cycle',subtitle:'Thermodynamics • Phase transitions • Heat transfer',
+      sec1:'⚙️ Operating mode',sec2:'🎚️ Parameters',sec3:'👁️ Visualization',
+      btn_run:'▶ Start',btn_stop:'⏸ Pause',
+      lbl_power:'Compressor power:',lbl_room:'Room temp.:',lbl_speed:'Flow speed:',
+      cb1:'Refrigerant flow',cb2:'Heat flows (Q)',cb3:'Component labels',cb4:'Mode: heat pump',
+      info_h3:'📊 System state',sl_ref:'Refrigerant:',sl_press:'Pressure (low/high):',
+      sl_qhot:'Heat released Q<sub>hot</sub>:',sl_qcold:'Heat absorbed Q<sub>cold</sub>:',sl_work:'Compressor work W:',
+      cop_cool:'COP — cooling (cold/work)',cop_heat:'COP — heating (heat/work)',
+      desc_pump_title:'Mode: heat pump (heating)',
+      desc_pump_text:'Same cycle, but the goal is to deliver Q_hot into the room. Outside, the evaporator extracts heat even from cold air. This is more efficient than direct heating: COP > 1.',
+      desc_cool_title:'Refrigeration cycle',
+      desc_cool_text:'The refrigerant passes through 4 stages: compression → heat release → expansion → heat absorption. Click any component to learn its role. Particle color shows refrigerant temperature.',
+      leg1:'Hot gas (high P)',leg2:'Warm liquid',leg3:'Cold refrigerant (low P)',
+      hint:'LMB — rotate • RMB — pan • Wheel — zoom • Click part — info',
+      loading:'Loading 3D model...',degC:' °C',kwUnit:' kW',barUnit:' bar',
+      components:{
+        compressor:{title:'1. Compressor',text:'Compresses the cold gaseous refrigerant. Pressure and temperature rise sharply — the gas becomes hot. This is where the system consumes electrical work W.'},
+        condenser:{title:'2. Condenser',text:'The hot high-pressure gas releases heat Q_hot outside and condenses — turns into warm liquid. This is the "hot" side.'},
+        valve:{title:'3. Expansion valve',text:'The liquid expands rapidly (throttling). Pressure and temperature drop — the refrigerant becomes very cold.'},
+        evaporator:{title:'4. Evaporator',text:'The cold refrigerant absorbs heat Q_cold from the room and evaporates — turns back into gas. This is the "cold" side (creates cooling).'}
+      }}
+  };
+  window._t=T[lang]||T.ru;
+  document.addEventListener('DOMContentLoaded',function(){
+    var t=window._t;
+    var h1=document.querySelector('.header h1');if(h1)h1.textContent=t.title;
+    var p=document.querySelector('.header p');if(p)p.textContent=t.subtitle;
+    var secs=document.querySelectorAll('.section-title');
+    if(secs[0])secs[0].textContent=t.sec1;
+    if(secs[1])secs[1].textContent=t.sec2;
+    if(secs[2])secs[2].textContent=t.sec3;
+    var br=document.getElementById('btn-run');if(br)br.textContent=t.btn_run;
+    var bs=document.getElementById('btn-stop');if(bs)bs.textContent=t.btn_stop;
+    var sl=document.querySelectorAll('.slider-group label > span:first-child');
+    if(sl[0])sl[0].textContent=t.lbl_power;
+    if(sl[1])sl[1].textContent=t.lbl_room;
+    if(sl[2])sl[2].textContent=t.lbl_speed;
+    var cb=document.querySelectorAll('.checkbox-item label');
+    if(cb[0])cb[0].textContent=t.cb1;
+    if(cb[1])cb[1].textContent=t.cb2;
+    if(cb[2])cb[2].textContent=t.cb3;
+    if(cb[3])cb[3].textContent=t.cb4;
+    var h3=document.querySelector('.info-panel h3');if(h3)h3.textContent=t.info_h3;
+    var st=document.querySelectorAll('.stat-label');
+    if(st[0])st[0].textContent=t.sl_ref;
+    if(st[1])st[1].textContent=t.sl_press;
+    if(st[2])st[2].innerHTML=t.sl_qhot;
+    if(st[3])st[3].innerHTML=t.sl_qcold;
+    if(st[4])st[4].textContent=t.sl_work;
+    var cl=document.getElementById('cop-label');if(cl)cl.textContent=t.cop_cool;
+    var lg=document.querySelectorAll('.legend-item span');
+    if(lg[0])lg[0].textContent=t.leg1;
+    if(lg[1])lg[1].textContent=t.leg2;
+    if(lg[2])lg[2].textContent=t.leg3;
+    var hint=document.querySelector('.hint');if(hint)hint.textContent=t.hint;
+    var dt=document.getElementById('desc-title');if(dt)dt.textContent=t.desc_cool_title;
+    var dx=document.getElementById('desc-text');if(dx)dx.textContent=t.desc_cool_text;
+  });
+})();
+</script>
+
+<div id="canvas-container"></div>
+
+<div class="header">
+    <h1>❄️ Тепловой насос: холодильный цикл</h1>
+    <p>Термодинамика • Фазовые переходы • Перенос тепла</p>
+</div>
+
+<div class="control-panel">
+    <div class="section-title">⚙️ Режим работы</div>
+    <div class="btn-row">
+        <div class="btn active" id="btn-run" onclick="toggleRun(true)">▶ Запустить</div>
+        <div class="btn" id="btn-stop" onclick="toggleRun(false)">⏸ Пауза</div>
+    </div>
+
+    <div class="section-title">🎚️ Параметры</div>
+    <div class="slider-group">
+        <label><span>Мощность компрессора:</span><span class="value" id="val-power">60 %</span></label>
+        <input type="range" id="input-power" min="20" max="100" step="5" value="60">
+    </div>
+    <div class="slider-group">
+        <label><span>Темп. помещения:</span><span class="value" id="val-room">22 °C</span></label>
+        <input type="range" id="input-room" min="-10" max="35" step="1" value="22">
+    </div>
+    <div class="slider-group">
+        <label><span>Скорость потока:</span><span class="value" id="val-speed">1.0×</span></label>
+        <input type="range" id="input-speed" min="0.3" max="2.5" step="0.1" value="1.0">
+    </div>
+
+    <div class="section-title">👁️ Визуализация</div>
+    <div class="checkbox-item">
+        <input type="checkbox" id="check-flow" checked>
+        <label for="check-flow">Поток хладагента</label>
+    </div>
+    <div class="checkbox-item">
+        <input type="checkbox" id="check-heat" checked>
+        <label for="check-heat">Потоки тепла (Q)</label>
+    </div>
+    <div class="checkbox-item">
+        <input type="checkbox" id="check-labels" checked>
+        <label for="check-labels">Подписи компонентов</label>
+    </div>
+    <div class="checkbox-item">
+        <input type="checkbox" id="check-pump">
+        <label for="check-pump">Режим: тепловой насос</label>
+    </div>
+</div>
+
+<div class="info-panel">
+    <h3>📊 Состояние системы</h3>
+    <div class="stat-row">
+        <span class="stat-label">Хладагент:</span>
+        <span class="stat-value" style="color:#2dd4bf">R-410A</span>
+    </div>
+    <div class="stat-row">
+        <span class="stat-label">Давление (низк/высок):</span>
+        <span class="stat-value" id="stat-press">8 / 30 бар</span>
+    </div>
+    <div class="stat-row">
+        <span class="stat-label">Тепло отдано Q<sub>гор</sub>:</span>
+        <span class="stat-value" id="stat-qhot" style="color:#ef4444">3.2 кВт</span>
+    </div>
+    <div class="stat-row">
+        <span class="stat-label">Тепло забрано Q<sub>хол</sub>:</span>
+        <span class="stat-value" id="stat-qcold" style="color:#3b82f6">2.4 кВт</span>
+    </div>
+    <div class="stat-row">
+        <span class="stat-label">Работа компрессора W:</span>
+        <span class="stat-value" id="stat-work" style="color:#fbbf24">0.8 кВт</span>
+    </div>
+    <div class="cop-box">
+        <div class="cop-val" id="stat-cop">4.0</div>
+        <div class="cop-lbl" id="cop-label">COP — коэфф. эффективности</div>
+    </div>
+</div>
+
+<div class="desc-box" id="desc-box">
+    <div class="desc-title" id="desc-title">Холодильный цикл</div>
+    <div class="desc-text" id="desc-text">
+        Хладагент по кругу проходит 4 этапа: сжатие → отдача тепла → расширение → поглощение тепла.
+        Кликните на любой компонент, чтобы узнать его роль. Цвет частиц показывает температуру хладагента.
+    </div>
+</div>
+
+<div class="legend">
+    <div class="legend-item">
+        <div class="legend-dot" style="background:#ef4444"></div>
+        <span>Горячий газ (высокое P)</span>
+    </div>
+    <div class="legend-item">
+        <div class="legend-dot" style="background:#f97316"></div>
+        <span>Тёплая жидкость</span>
+    </div>
+    <div class="legend-item">
+        <div class="legend-dot" style="background:#3b82f6"></div>
+        <span>Холодный хладагент (низкое P)</span>
+    </div>
+</div>
+
+<div class="hint">ЛКМ — вращение • ПКМ — панорама • Колесо — зум • Клик по детали — инфо</div>
+
+<div class="badge-tooltip" id="tooltip"></div>
+
+<script type="importmap">
+{
+    "imports": {
+        "three": "../../libs/vendor/three-0.160.0/three.module.js",
+        "three/addons/": "../../libs/vendor/three-0.160.0/addons/"
+    }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ===================== CONFIG =====================
+const CONFIG = {
+    particleCount: 90,
+    colorHot: new THREE.Color(0xef4444),     // горячий газ
+    colorWarm: new THREE.Color(0xf97316),    // тёплая жидкость
+    colorCold: new THREE.Color(0x3b82f6),    // холодный
+    colorCool: new THREE.Color(0x60a5fa)     // прохладный газ
+};
+
+// Описания компонентов (4 этапа цикла)
+const COMPONENTS = (window._t && window._t.components) || {
+    compressor: {
+        title: '1. Компрессор',
+        text: 'Сжимает холодный газообразный хладагент. Давление и температура резко растут — газ становится горячим. Здесь система потребляет электрическую работу W.'
+    },
+    condenser: {
+        title: '2. Конденсатор',
+        text: 'Горячий газ под высоким давлением отдаёт тепло Q_гор наружу и конденсируется — превращается в тёплую жидкость. Это «горячая» сторона.'
+    },
+    valve: {
+        title: '3. Расширительный клапан',
+        text: 'Жидкость резко расширяется (дросселирование). Давление и температура падают — хладагент становится очень холодным.'
+    },
+    evaporator: {
+        title: '4. Испаритель',
+        text: 'Холодный хладагент забирает тепло Q_хол из помещения и испаряется — снова превращается в газ. Это «холодная» сторона (создаёт охлаждение).'
+    }
+};
+
+// ===================== STATE =====================
+let state = {
+    running: true,
+    power: 60,          // % мощности компрессора
+    roomTemp: 22,       // °C
+    speedMul: 1.0,      // множитель скорости потока
+    showFlow: true,
+    showHeat: true,
+    showLabels: true,
+    heatPumpMode: false,
+    cycleT: 0           // позиция вдоль контура 0..1
+};
+
+// ===================== GLOBALS =====================
+let scene, camera, renderer, controls;
+let raycaster, mouse;
+let machineGroup;
+let particles = [];
+let particleMesh;
+let cyclePath;          // CatmullRomCurve3 замкнутый контур
+let labelSprites = [];
+let heatArrows = { hot: [], cold: [] };
+let clickableParts = [];
+let compressorRotor;
+let fanCondenser, fanEvaporator;
+let tooltipEl;
+let hoveredPart = null;
+
+// Ключевые точки контура (x,y,z) — прямоугольный цикл
+// Раскладка: компрессор слева-низ, конденсатор сверху, клапан справа, испаритель снизу
+const NODES = {
+    compressor:  new THREE.Vector3(-14,  -6, 0),
+    topLeft:     new THREE.Vector3(-14,   8, 0),
+    condenser:   new THREE.Vector3(  0,   8, 0),
+    topRight:    new THREE.Vector3( 14,   8, 0),
+    valve:       new THREE.Vector3( 14,  -2, 0),
+    botRight:    new THREE.Vector3( 14,  -6, 0),
+    evaporator:  new THREE.Vector3(  0,  -6, 0),
+    botLeft:     new THREE.Vector3(-14,  -6, 0)
+};
+
+// ===================== INIT =====================
+function init() {
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0f172a);
+    scene.fog = new THREE.FogExp2(0x0f172a, 0.012);
+
+    const aspect = window.innerWidth / window.innerHeight;
+    camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 300);
+    camera.position.set(0, 6, 46);
+
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = false;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.15;
+    document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+    controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.minDistance = 24;
+    controls.maxDistance = 90;
+    controls.target.set(0, 1, 0);
+
+    raycaster = new THREE.Raycaster();
+    mouse = new THREE.Vector2();
+    tooltipEl = document.getElementById('tooltip');
+
+    setupLighting();
+    buildCyclePath();
+    buildMachine();
+    createParticles();
+    createHeatArrows();
+    createLabels();
+    setupUIEvents();
+
+    window.addEventListener('resize', onWindowResize);
+    renderer.domElement.addEventListener('click', onClick);
+    renderer.domElement.addEventListener('pointermove', onPointerMove);
+
+    animate();
+
+}
+
+function setupLighting() {
+    const ambient = new THREE.AmbientLight(0x9aa5b5, 0.7);
+    scene.add(ambient);
+
+    const key = new THREE.DirectionalLight(0xffffff, 1.6);
+    key.position.set(20, 30, 30);
+    key.castShadow = true;
+    key.shadow.mapSize.set(2048, 2048);
+    key.shadow.camera.near = 1;
+    key.shadow.camera.far = 120;
+    key.shadow.camera.left = -40;
+    key.shadow.camera.right = 40;
+    key.shadow.camera.top = 40;
+    key.shadow.camera.bottom = -40;
+    key.shadow.bias = -0.0005;
+    scene.add(key);
+
+    const fill = new THREE.DirectionalLight(0x88b0ff, 0.5);
+    fill.position.set(-25, 10, -20);
+    scene.add(fill);
+
+    const rim = new THREE.PointLight(0x2dd4bf, 0.6, 80);
+    rim.position.set(0, 0, 20);
+    scene.add(rim);
+}
+
+// ===================== CYCLE PATH =====================
+function buildCyclePath() {
+    const pts = [
+        NODES.compressor,
+        NODES.topLeft,
+        NODES.condenser,
+        NODES.topRight,
+        NODES.valve,
+        NODES.botRight,
+        NODES.evaporator,
+        NODES.botLeft
+    ];
+    cyclePath = new THREE.CatmullRomCurve3(pts, true, 'catmullrom', 0.0);
+}
+
+// Цвет хладагента в зависимости от позиции в цикле (0..1)
+// 0.0–0.12 компрессор: cool->hot ; 0.12–0.5 конденсатор: hot->warm
+// 0.5–0.62 клапан: warm->cold ; 0.62–1.0 испаритель: cold->cool
+function refrigerantColor(t) {
+    const c = new THREE.Color();
+    if (t < 0.12) {
+        c.copy(CONFIG.colorCool).lerp(CONFIG.colorHot, t / 0.12);
+    } else if (t < 0.5) {
+        c.copy(CONFIG.colorHot).lerp(CONFIG.colorWarm, (t - 0.12) / 0.38);
+    } else if (t < 0.62) {
+        c.copy(CONFIG.colorWarm).lerp(CONFIG.colorCold, (t - 0.5) / 0.12);
+    } else {
+        c.copy(CONFIG.colorCold).lerp(CONFIG.colorCool, (t - 0.62) / 0.38);
+    }
+    return c;
+}
+
+// ===================== MACHINE =====================
+function buildPipe() {
+    const tubeGeo = new THREE.TubeGeometry(cyclePath, 200, 0.45, 14, true);
+    const mat = new THREE.MeshStandardMaterial({
+        color: 0x64748b, metalness: 0.85, roughness: 0.35
+    });
+    const pipe = new THREE.Mesh(tubeGeo, mat);
+    pipe.castShadow = true;
+    pipe.userData.name = 'pipe';
+    return pipe;
+}
+
+function makeLabelBadge(text) {
+    // Маленький светящийся шарик-маркер на компоненте
+    const geo = new THREE.SphereGeometry(0.55, 16, 16);
+    const mat = new THREE.MeshBasicMaterial({ color: 0x2dd4bf });
+    const m = new THREE.Mesh(geo, mat);
+    return m;
+}
+
+function buildCompressor() {
+    const g = new THREE.Group();
+    g.position.copy(NODES.compressor);
+
+    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.7, roughness: 0.4 });
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.6, 5, 32), bodyMat);
+    body.castShadow = true;
+    g.add(body);
+
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(2.6, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2), bodyMat);
+    cap.position.y = 2.5;
+    g.add(cap);
+    const cap2 = cap.clone();
+    cap2.position.y = -2.5;
+    cap2.rotation.x = Math.PI;
+    g.add(cap2);
+
+    // Вращающийся ротор внутри (виден через "окно")
+    const rotorMat = new THREE.MeshStandardMaterial({ color: 0xfbbf24, metalness: 0.8, roughness: 0.2, emissive: 0x3a2a00 });
+    compressorRotor = new THREE.Mesh(new THREE.BoxGeometry(0.5, 3.4, 0.5), rotorMat);
+    g.add(compressorRotor);
+    const rotor2 = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.5, 0.5), rotorMat);
+    compressorRotor.add(rotor2);
+
+    // Электромотор-блок сбоку
+    const motorMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.6, roughness: 0.5 });
+    const motor = new THREE.Mesh(new THREE.BoxGeometry(2.2, 2.2, 2.2), motorMat);
+    motor.position.set(0, 0, 2.8);
+    motor.castShadow = true;
+    g.add(motor);
+
+    g.userData.partKey = 'compressor';
+    g.traverse(o => { if (o.isMesh) { o.userData.partKey = 'compressor'; clickableParts.push(o); } });
+    return g;
+}
+
+function buildCoil(node, color, key) {
+    // Змеевик теплообменника (конденсатор / испаритель)
+    const g = new THREE.Group();
+    g.position.copy(node);
+
+    const coilMat = new THREE.MeshStandardMaterial({
+        color: color, metalness: 0.75, roughness: 0.35
+    });
+
+    // Серпантин из труб
+    const turns = 5;
+    const w = 9, h = 5;
+    const pts = [];
+    for (let i = 0; i <= turns; i++) {
+        const y = -h / 2 + (i / turns) * h;
+        if (i % 2 === 0) {
+            pts.push(new THREE.Vector3(-w / 2, y, 0));
+            pts.push(new THREE.Vector3(w / 2, y, 0));
+        } else {
+            pts.push(new THREE.Vector3(w / 2, y, 0));
+            pts.push(new THREE.Vector3(-w / 2, y, 0));
+        }
+    }
+    const curve = new THREE.CatmullRomCurve3(pts, false, 'catmullrom', 0.0);
+    const coilGeo = new THREE.TubeGeometry(curve, 120, 0.35, 10, false);
+    const coil = new THREE.Mesh(coilGeo, coilMat);
+    coil.castShadow = true;
+    g.add(coil);
+
+    // Рёбра охлаждения (пластины)
+    const finMat = new THREE.MeshStandardMaterial({
+        color: 0xcbd5e1, metalness: 0.6, roughness: 0.5,
+        transparent: true, opacity: 0.55, side: THREE.DoubleSide
+    });
+    for (let i = 0; i < 14; i++) {
+        const fin = new THREE.Mesh(new THREE.PlaneGeometry(w + 1, h + 1), finMat);
+        fin.position.z = -1.4 + (i / 13) * 2.8;
+        g.add(fin);
+    }
+
+    g.userData.partKey = key;
+    g.traverse(o => { if (o.isMesh) { o.userData.partKey = key; clickableParts.push(o); } });
+
+    // Вентилятор перед змеевиком
+    const fan = buildFan();
+    fan.position.set(0, 0, 3.4);
+    g.add(fan);
+
+    return { group: g, fan };
+}
+
+function buildFan() {
+    const g = new THREE.Group();
+    const hubMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.7, roughness: 0.4 });
+    const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.6, 16), hubMat);
+    hub.rotation.x = Math.PI / 2;
+    g.add(hub);
+
+    const bladeMat = new THREE.MeshStandardMaterial({
+        color: 0x94a3b8, metalness: 0.5, roughness: 0.5, side: THREE.DoubleSide
+    });
+    for (let i = 0; i < 4; i++) {
+        const blade = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.06, 0.9), bladeMat);
+        blade.position.x = 1.5;
+        const holder = new THREE.Group();
+        holder.add(blade);
+        holder.rotation.z = (i / 4) * Math.PI * 2;
+        holder.children[0].rotation.x = 0.5;
+        g.add(holder);
+    }
+    return g;
+}
+
+function buildValve() {
+    const g = new THREE.Group();
+    g.position.copy(NODES.valve);
+
+    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x6366f1, metalness: 0.7, roughness: 0.35 });
+    const body = new THREE.Mesh(new THREE.SphereGeometry(1.8, 24, 24), bodyMat);
+    body.castShadow = true;
+    g.add(body);
+
+    // Сужение (показывает дросселирование)
+    const neckMat = new THREE.MeshStandardMaterial({ color: 0x818cf8, metalness: 0.8, roughness: 0.25 });
+    const neck1 = new THREE.Mesh(new THREE.ConeGeometry(0.9, 1.4, 16), neckMat);
+    neck1.position.y = 2.0;
+    g.add(neck1);
+    const neck2 = neck1.clone();
+    neck2.position.y = -2.0;
+    neck2.rotation.x = Math.PI;
+    g.add(neck2);
+
+    // Регулировочный винт
+    const screwMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.8, roughness: 0.3 });
+    const screw = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 2.4, 12), screwMat);
+    screw.position.set(0, 0, 1.9);
+    screw.rotation.x = Math.PI / 2;
+    g.add(screw);
+
+    g.userData.partKey = 'valve';
+    g.traverse(o => { if (o.isMesh) { o.userData.partKey = 'valve'; clickableParts.push(o); } });
+    return g;
+}
+
+function buildMachine() {
+    machineGroup = new THREE.Group();
+    clickableParts = [];
+
+    machineGroup.add(buildPipe());
+
+    machineGroup.add(buildCompressor());
+
+    const cond = buildCoil(NODES.condenser, 0xef4444, 'condenser');
+    machineGroup.add(cond.group);
+    fanCondenser = cond.fan;
+
+    const evap = buildCoil(NODES.evaporator, 0x3b82f6, 'evaporator');
+    machineGroup.add(evap.group);
+    fanEvaporator = evap.fan;
+
+    machineGroup.add(buildValve());
+
+    // Платформа-основание
+    const baseMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.3, roughness: 0.8 });
+    const base = new THREE.Mesh(new THREE.BoxGeometry(40, 0.6, 16), baseMat);
+    base.position.set(0, -9.5, 0);
+    base.receiveShadow = true;
+    machineGroup.add(base);
+
+    // Разделительная стена (улица | помещение)
+    const wallMat = new THREE.MeshStandardMaterial({
+        color: 0x334155, transparent: true, opacity: 0.25, side: THREE.DoubleSide
+    });
+    const wall = new THREE.Mesh(new THREE.PlaneGeometry(16, 30), wallMat);
+    wall.rotation.y = Math.PI / 2;
+    wall.position.set(0, 0, 0);
+    machineGroup.add(wall);
+
+    scene.add(machineGroup);
+}
+
+// ===================== PARTICLES =====================
+function createParticles() {
+    const geo = new THREE.BufferGeometry();
+    const positions = new Float32Array(CONFIG.particleCount * 3);
+    const colors = new Float32Array(CONFIG.particleCount * 3);
+
+    particles = [];
+    for (let i = 0; i < CONFIG.particleCount; i++) {
+        const offset = i / CONFIG.particleCount;
+        particles.push({ t: offset });
+        const p = cyclePath.getPointAt(offset);
+        positions[i * 3] = p.x;
+        positions[i * 3 + 1] = p.y;
+        positions[i * 3 + 2] = p.z;
+        const c = refrigerantColor(offset);
+        colors[i * 3] = c.r;
+        colors[i * 3 + 1] = c.g;
+        colors[i * 3 + 2] = c.b;
+    }
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+    const mat = new THREE.PointsMaterial({
+        size: 0.9,
+        vertexColors: true,
+        transparent: true,
+        opacity: 0.95,
+        sizeAttenuation: true
+    });
+    particleMesh = new THREE.Points(geo, mat);
+    scene.add(particleMesh);
+}
+
+function updateParticles(dt) {
+    if (!particleMesh) return;
+    particleMesh.visible = state.showFlow;
+    if (!state.showFlow || !state.running) return;
+
+    const pos = particleMesh.geometry.attributes.position;
+    const col = particleMesh.geometry.attributes.color;
+    const baseSpeed = 0.06 * (state.power / 100) * state.speedMul;
+
+    for (let i = 0; i < particles.length; i++) {
+        particles[i].t = (particles[i].t + baseSpeed * dt) % 1;
+        const t = particles[i].t;
+        const p = cyclePath.getPointAt(t);
+        pos.setXYZ(i, p.x, p.y, p.z);
+        const c = refrigerantColor(t);
+        col.setXYZ(i, c.r, c.g, c.b);
+    }
+    pos.needsUpdate = true;
+    col.needsUpdate = true;
+}
+
+// ===================== HEAT ARROWS =====================
+function createHeatArrows() {
+    heatArrows = { hot: [], cold: [] };
+
+    // Конденсатор отдаёт тепло наружу (вверх-наружу, красные стрелки)
+    for (let i = -1; i <= 1; i++) {
+        const dir = new THREE.Vector3(0, 1, 0);
+        const origin = new THREE.Vector3(NODES.condenser.x + i * 3, NODES.condenser.y + 3, 3.5);
+        const a = new THREE.ArrowHelper(dir, origin, 4, 0xef4444, 1.3, 0.9);
+        scene.add(a);
+        heatArrows.hot.push(a);
+    }
+
+    // Испаритель забирает тепло из помещения (внутрь, синие стрелки)
+    for (let i = -1; i <= 1; i++) {
+        const dir = new THREE.Vector3(0, 1, 0);
+        const origin = new THREE.Vector3(NODES.evaporator.x + i * 3, NODES.evaporator.y - 7, 3.5);
+        const a = new THREE.ArrowHelper(dir, origin, 4, 0x3b82f6, 1.3, 0.9);
+        scene.add(a);
+        heatArrows.cold.push(a);
+    }
+}
+
+function updateHeatArrows() {
+    const show = state.showHeat;
+    heatArrows.hot.forEach(a => a.visible = show);
+    heatArrows.cold.forEach(a => a.visible = show);
+}
+
+// ===================== LABELS =====================
+function makeTextSprite(text) {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = 256;
+    canvas.height = 64;
+    ctx.fillStyle = 'rgba(15,23,42,0.85)';
+    roundRect(ctx, 0, 0, 256, 64, 12);
+    ctx.fill();
+    ctx.strokeStyle = '#2dd4bf';
+    ctx.lineWidth = 2;
+    roundRect(ctx, 1, 1, 254, 62, 12);
+    ctx.stroke();
+    ctx.fillStyle = '#e2e8f0';
+    ctx.font = 'bold 26px Segoe UI, Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, 128, 34);
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.minFilter = THREE.LinearFilter;
+    const mat = new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true });
+    const sprite = new THREE.Sprite(mat);
+    sprite.scale.set(7, 1.75, 1);
+    return sprite;
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+}
+
+function createLabels() {
+    labelSprites = [];
+    const defs = [
+        { key: 'compressor', text: '1 · Компрессор', node: NODES.compressor, dy: 5 },
+        { key: 'condenser',  text: '2 · Конденсатор', node: NODES.condenser, dy: 5.5 },
+        { key: 'valve',      text: '3 · Клапан', node: NODES.valve, dy: 4 },
+        { key: 'evaporator', text: '4 · Испаритель', node: NODES.evaporator, dy: -5.5 }
+    ];
+    for (const d of defs) {
+        const s = makeTextSprite(d.text);
+        s.position.set(d.node.x, d.node.y + d.dy, d.node.z + 4);
+        scene.add(s);
+        labelSprites.push(s);
+    }
+}
+
+function updateLabels() {
+    labelSprites.forEach(s => s.visible = state.showLabels);
+}
+
+// ===================== PHYSICS / COP =====================
+function updatePhysics() {
+    // Упрощённая термодинамика теплового насоса.
+    // Работа компрессора пропорциональна мощности.
+    const W = 0.4 + (state.power / 100) * 1.2;          // кВт, работа компрессора
+
+    // Разница температур: чем теплее в помещении (для охлаждения) — тем легче;
+    // используем условную модель эффективности Карно-подобную.
+    const Tcold = state.heatPumpMode ? (273 + 0)   : (273 + state.roomTemp);   // источник
+    const Thot  = state.heatPumpMode ? (273 + state.roomTemp + 20) : (273 + 40); // приёмник
+
+    let copCarnot;
+    if (state.heatPumpMode) {
+        // Тепловой насос: COP = Thot / (Thot - Tcold)
+        copCarnot = Thot / Math.max(Thot - Tcold, 1);
+    } else {
+        // Холодильник/кондиционер: COP = Tcold / (Thot - Tcold)
+        copCarnot = Tcold / Math.max(Thot - Tcold, 1);
+    }
+    // Реальный КПД ~45% от идеального Карно
+    let cop = copCarnot * 0.45;
+    cop = Math.max(1.2, Math.min(cop, 7));
+
+    let Qcold, Qhot;
+    if (state.heatPumpMode) {
+        Qhot = W * cop;            // полезное тепло в дом
+        Qcold = Qhot - W;          // забрано снаружи
+    } else {
+        Qcold = W * cop;           // забрано из помещения (охлаждение)
+        Qhot = Qcold + W;          // выброшено наружу
+    }
+
+    const lowP = 6 + (state.power / 100) * 5;
+    const highP = 22 + (state.power / 100) * 14;
+
+    document.getElementById('stat-press').textContent =
+        lowP.toFixed(0) + ' / ' + highP.toFixed(0) + ' бар';
+    document.getElementById('stat-qhot').textContent = Qhot.toFixed(2) + ' кВт';
+    document.getElementById('stat-qcold').textContent = Qcold.toFixed(2) + ' кВт';
+    document.getElementById('stat-work').textContent = W.toFixed(2) + ' кВт';
+    document.getElementById('stat-cop').textContent = cop.toFixed(1);
+    var _cop=window._t||{cop_heat:'COP — обогрев (тепло/работа)',cop_cool:'COP — охлаждение (холод/работа)'};
+    document.getElementById('cop-label').textContent =
+        state.heatPumpMode ? _cop.cop_heat : _cop.cop_cool;
+}
+
+// ===================== UI EVENTS =====================
+window.toggleRun = function(run) {
+    state.running = run;
+    document.getElementById('btn-run').classList.toggle('active', run);
+    document.getElementById('btn-stop').classList.toggle('active', !run);
+};
+
+function setupUIEvents() {
+    document.getElementById('input-power').addEventListener('input', e => {
+        state.power = parseInt(e.target.value);
+        document.getElementById('val-power').textContent = state.power + ' %';
+        updatePhysics();
+    });
+    document.getElementById('input-room').addEventListener('input', e => {
+        state.roomTemp = parseInt(e.target.value);
+        document.getElementById('val-room').textContent = state.roomTemp + (window._t?window._t.degC:' °C');
+        updatePhysics();
+    });
+    document.getElementById('input-speed').addEventListener('input', e => {
+        state.speedMul = parseFloat(e.target.value);
+        document.getElementById('val-speed').textContent = state.speedMul.toFixed(1) + '×';
+    });
+    document.getElementById('check-flow').addEventListener('change', e => {
+        state.showFlow = e.target.checked;
+    });
+    document.getElementById('check-heat').addEventListener('change', e => {
+        state.showHeat = e.target.checked;
+        updateHeatArrows();
+    });
+    document.getElementById('check-labels').addEventListener('change', e => {
+        state.showLabels = e.target.checked;
+        updateLabels();
+    });
+    document.getElementById('check-pump').addEventListener('change', e => {
+        state.heatPumpMode = e.target.checked;
+        const t = document.getElementById('desc-title');
+        const x = document.getElementById('desc-text');
+        if (state.heatPumpMode) {
+            t.textContent = window._t?window._t.desc_pump_title:'Режим: тепловой насос (обогрев)';
+            x.textContent = window._t?window._t.desc_pump_text:'Тот же цикл, но цель — отдать тепло Q_гор внутрь помещения. Снаружи испаритель забирает тепло даже из холодного воздуха. Это эффективнее прямого нагрева: COP > 1.';
+        } else {
+            t.textContent = window._t?window._t.desc_cool_title:'Холодильный цикл';
+            x.textContent = window._t?window._t.desc_cool_text:'Хладагент по кругу проходит 4 этапа: сжатие → отдача тепла → расширение → поглощение тепла. Кликните на любой компонент, чтобы узнать его роль. Цвет частиц показывает температуру хладагента.';
+        }
+        updatePhysics();
+    });
+}
+
+// ===================== INTERACTION =====================
+function onPointerMove(e) {
+    mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+    raycaster.setFromCamera(mouse, camera);
+    const hits = raycaster.intersectObjects(clickableParts, false);
+
+    if (hits.length > 0) {
+        const key = hits[0].object.userData.partKey;
+        if (key && COMPONENTS[key]) {
+            renderer.domElement.style.cursor = 'pointer';
+            hoveredPart = key;
+            const info = COMPONENTS[key];
+            tooltipEl.innerHTML = '<b>' + info.title + '</b><br>' + info.text;
+            tooltipEl.style.left = (e.clientX + 16) + 'px';
+            tooltipEl.style.top = (e.clientY + 16) + 'px';
+            tooltipEl.classList.add('show');
+            return;
+        }
+    }
+    renderer.domElement.style.cursor = 'default';
+    hoveredPart = null;
+    tooltipEl.classList.remove('show');
+}
+
+function onClick(e) {
+    raycaster.setFromCamera(mouse, camera);
+    const hits = raycaster.intersectObjects(clickableParts, false);
+    if (hits.length > 0) {
+        const key = hits[0].object.userData.partKey;
+        if (key && COMPONENTS[key]) {
+            const info = COMPONENTS[key];
+            document.getElementById('desc-title').textContent = info.title;
+            document.getElementById('desc-text').textContent = info.text;
+        }
+    }
+}
+
+// ===================== RESIZE / LOOP =====================
+function onWindowResize() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+const clock = new THREE.Clock();
+
+function animate() {
+    requestAnimationFrame(animate);
+    const dt = Math.min(clock.getDelta(), 0.05) * 60;
+
+    if (state.running) {
+        // Вращение ротора компрессора
+        if (compressorRotor) {
+            compressorRotor.rotation.z += 0.25 * (state.power / 100) * state.speedMul;
+        }
+        // Вентиляторы
+        const fanSpeed = 0.3 * (state.power / 100) * state.speedMul;
+        if (fanCondenser) fanCondenser.rotation.z += fanSpeed;
+        if (fanEvaporator) fanEvaporator.rotation.z += fanSpeed;
+    }
+
+    updateParticles(dt);
+
+    // Пульсация стрелок тепла
+    if (state.showHeat && state.running) {
+        const pulse = (Math.sin(clock.getElapsedTime() * 4) + 1) / 2;
+        heatArrows.hot.forEach((a, i) => {
+            a.setLength(3 + pulse * 1.6, 1.3, 0.9);
+        });
+        heatArrows.cold.forEach((a, i) => {
+            a.setLength(3 + pulse * 1.6, 1.3, 0.9);
+        });
+    }
+
+    controls.update();
+    renderer.render(scene, camera);
+}
+
+// Старт + первичный расчёт
+init();
+updatePhysics();
+updateHeatArrows();
+updateLabels();
+</script>
+</body>
+</html>

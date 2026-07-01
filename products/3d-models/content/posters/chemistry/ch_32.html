@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="page_title">Молекула этанола</title>
+<style>
+
+
+*{margin:0;padding:0;box-sizing:border-box;}
+
+:root{
+  --bg:#f5f4f0;
+  --surface:rgba(255,255,255,0.90);
+  --border:rgba(0,0,0,0.08);
+  --text:#1c1917;
+  --muted:#78716c;
+  --carbon:#3f3f46;
+  --hydro:#a8a29e;
+  --oxy:#dc2626;
+  --accent:#0891b2;
+  --shadow:0 2px 20px rgba(0,0,0,0.07);
+  --shadow-lg:0 8px 44px rgba(0,0,0,0.11);
+}
+
+body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);overflow:hidden;height:100vh;}
+
+body::before{
+  content:'';position:fixed;inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='%23f5f4f0'/%3E%3Ccircle cx='1' cy='1' r='0.6' fill='rgba(0,0,0,0.025)'/%3E%3C/svg%3E");
+  pointer-events:none;z-index:0;
+}
+
+#canvas-container{position:fixed;inset:0;z-index:1;}
+
+/* ── HEADER ── */
+.header{
+  position:fixed;top:0;left:0;right:0;z-index:200;
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  padding:0 48px;height:92px;
+  display:flex;align-items:center;gap:14px;
+  box-shadow:var(--shadow);
+}
+.h-icon{font-size:30px;}
+.header-title{font-size:25px;font-weight:700;}
+.header-sub{font-size:14.5px;color:var(--muted);margin-left:auto;text-align:right;line-height:1.4;}
+
+/* ── LEFT PANEL ── */
+.panel-left{
+  position:fixed;left:24px;top:108px;bottom:400px;z-index:100;
+  overflow-y:auto;
+  width:300px;
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:24px;
+  padding:20px 22px;box-shadow:var(--shadow-lg);
+}
+.panel-left h3{font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:14px;}
+.props-table{width:100%;border-collapse:collapse;}
+.props-table td{padding:8px 6px;border-bottom:1px solid rgba(0,0,0,0.05);font-size:14px;line-height:1.35;}
+.props-table tr:last-child td{border-bottom:none;}
+.props-table td:first-child{color:var(--muted);font-size:13px;width:46%;}
+.props-table td:last-child{font-weight:600;font-family:'DM Mono',monospace;font-size:13px;text-align:right;}
+
+/* ── RIGHT PANEL ── */
+.panel-right{
+  position:fixed;right:24px;top:108px;z-index:100;
+  width:288px;
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:24px;
+  padding:20px 22px;box-shadow:var(--shadow-lg);
+}
+.panel-right h3{font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:12px;}
+
+/* mode selector (inside right panel) */
+.mode-selector{display:flex;flex-direction:column;gap:8px;margin-bottom:8px;}
+.mode-btn{
+  width:100%;padding:11px 14px;border-radius:14px;text-align:left;
+  font-family:'Syne',sans-serif;font-weight:700;color:var(--text);cursor:pointer;
+  border:2px solid var(--border);background:rgba(0,0,0,0.02);
+  transition:all 0.2s;display:flex;align-items:center;gap:11px;
+}
+.mode-btn:hover{background:rgba(0,0,0,0.05);transform:translateY(-1px);}
+.mode-btn.sel{border-color:var(--accent);background:rgba(8,145,178,0.10);color:#0e7490;}
+.mode-dot{width:13px;height:13px;border-radius:50%;flex-shrink:0;}
+.mode-name{font-size:14px;font-weight:700;}
+.panel-sep{height:1px;background:var(--border);margin:14px 0;}
+
+.ctrl-btn{
+  width:100%;padding:11px 16px;margin-bottom:10px;
+  background:rgba(0,0,0,0.04);border:1.5px solid var(--border);border-radius:14px;
+  font-family:'Syne',sans-serif;font-size:14px;font-weight:600;
+  color:var(--text);cursor:pointer;text-align:left;
+  transition:all 0.2s;display:flex;align-items:center;gap:8px;
+}
+.ctrl-btn:hover{background:rgba(0,0,0,0.07);transform:translateY(-1px);}
+.ctrl-btn.active{background:rgba(8,145,178,0.10);border-color:rgba(8,145,178,0.4);color:#0e7490;}
+
+/* ── LEGEND (clickable info chips) ── */
+.panel-legend{
+  position:fixed;left:24px;bottom:64px;z-index:100;
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:20px;
+  padding:14px 16px;box-shadow:var(--shadow);
+  display:flex;flex-direction:column;gap:6px;width:252px;
+}
+.legend-head{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:4px;display:flex;align-items:center;gap:6px;}
+.leg-item{
+  display:flex;align-items:center;gap:9px;font-size:13px;font-weight:600;
+  padding:8px 11px;border-radius:11px;cursor:pointer;
+  border:1px solid var(--border);background:rgba(0,0,0,0.025);
+  transition:all 0.16s;
+}
+.leg-item:hover{background:rgba(8,145,178,0.08);border-color:rgba(8,145,178,0.35);transform:translateX(3px);}
+.leg-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0;}
+.leg-info{
+  margin-left:auto;flex-shrink:0;
+  width:18px;height:18px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:700;font-style:italic;font-family:'DM Mono',monospace;
+  background:rgba(0,0,0,0.06);color:var(--muted);transition:all 0.16s;
+}
+.leg-item:hover .leg-info{background:var(--accent);color:#fff;}
+
+/* ── HINT ── */
+.hint-bar{
+  position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:100;
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:99px;
+  padding:9px 24px;font-size:13px;color:var(--muted);
+  box-shadow:var(--shadow);white-space:nowrap;
+}
+.hint-bar kbd{background:rgba(0,0,0,0.07);border-radius:5px;padding:2px 7px;font-family:'DM Mono',monospace;font-size:12px;}
+
+/* ── OVERLAY NAME ── */
+.overlay-name{
+  position:fixed;bottom:58px;right:28px;z-index:100;
+  font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:2px;
+  color:var(--muted);opacity:0.55;pointer-events:none;
+}
+
+/* ── INFO PANEL ── */
+#info-panel{
+  position:fixed;right:-460px;top:0;bottom:0;z-index:300;
+  width:420px;
+  background:rgba(255,255,255,0.97);
+  border-left:1px solid var(--border);
+  padding:32px 28px;overflow-y:auto;
+  box-shadow:-4px 0 40px rgba(0,0,0,0.10);
+  transition:right 0.38s cubic-bezier(0.4,0,0.2,1);
+}
+#info-panel.open{right:0;}
+#info-close{
+  position:absolute;top:20px;right:20px;
+  width:36px;height:36px;border-radius:50%;
+  background:rgba(0,0,0,0.07);border:none;cursor:pointer;
+  font-size:18px;display:flex;align-items:center;justify-content:center;
+}
+#info-close:hover{background:rgba(0,0,0,0.13);}
+.info-tag{display:inline-block;padding:4px 12px;border-radius:99px;font-size:12px;font-weight:700;letter-spacing:0.5px;margin-bottom:16px;}
+.info-title{font-size:22px;font-weight:800;margin-bottom:6px;line-height:1.2;}
+.info-section{margin-top:18px;}
+.info-section h4{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:6px;}
+.info-section p{font-size:14.5px;line-height:1.65;color:#292524;}
+
+@media (max-width:1100px){
+  .panel-left{width:260px;}
+  .panel-right{width:240px;}
+}
+</style>
+</head>
+<body>
+
+<div id="canvas-container"><canvas id="c"></canvas></div>
+
+<header class="header">
+  <div class="h-icon">🧪</div>
+  <div class="header-title" data-i18n="header_title">Молекула этанола</div>
+  <div class="header-sub" data-i18n-html="header_sub">C₂H₅OH — этиловый спирт<br>кликните на атом или элемент</div>
+</header>
+
+<div class="panel-left">
+  <h3 data-i18n="props_title">Параметры</h3>
+  <table class="props-table"><tbody id="props-body"></tbody></table>
+</div>
+
+<div class="panel-right">
+  <h3 data-i18n="mode_title">Модель</h3>
+  <div class="mode-selector">
+    <button class="mode-btn sel" data-id="ball" onclick="switchTo('ball')">
+      <span class="mode-dot" style="background:#0891b2"></span><span class="mode-name" data-i18n="m_ball">Шаростержневая</span>
+    </button>
+    <button class="mode-btn" data-id="space" onclick="switchTo('space')">
+      <span class="mode-dot" style="background:#6366f1"></span><span class="mode-name" data-i18n="m_space">Масштабная</span>
+    </button>
+    <button class="mode-btn" data-id="group" onclick="switchTo('group')">
+      <span class="mode-dot" style="background:#dc2626"></span><span class="mode-name" data-i18n="m_group">Группа –OH</span>
+    </button>
+  </div>
+  <div class="panel-sep"></div>
+  <h3 data-i18n="ctrl_title">Управление</h3>
+  <button class="ctrl-btn active" id="btn-spin" onclick="toggleSpin()"><span data-i18n="btn_pause">⏸ Пауза</span></button>
+  <button class="ctrl-btn" id="btn-bond" onclick="toggleBondAngle()"><span data-i18n="btn_angle">📐 Угол связи</span></button>
+  <button class="ctrl-btn" id="btn-label" onclick="toggleLabels()"><span data-i18n="btn_label">🔤 Подписи атомов</span></button>
+</div>
+
+<div class="panel-legend">
+  <div class="legend-head" data-i18n="legend_head">👆 Нажмите для описания</div>
+  <div class="leg-item" onclick="openInfo('carbon')"><div class="leg-dot" style="background:#3f3f46;"></div><span data-i18n="leg_c">Углерод C</span><span class="leg-info">i</span></div>
+  <div class="leg-item" onclick="openInfo('oxygen')"><div class="leg-dot" style="background:#dc2626;"></div><span data-i18n="leg_o">Кислород O</span><span class="leg-info">i</span></div>
+  <div class="leg-item" onclick="openInfo('hydrogen')"><div class="leg-dot" style="background:#a8a29e;"></div><span data-i18n="leg_h">Водород H</span><span class="leg-info">i</span></div>
+  <div class="leg-item" onclick="openInfo('hydroxyl')"><div class="leg-dot" style="background:#f59e0b;"></div><span data-i18n="leg_oh">Гидроксил –OH</span><span class="leg-info">i</span></div>
+  <div class="leg-item" onclick="openInfo('bond')"><div class="leg-dot" style="background:#0891b2;"></div><span data-i18n="leg_bond">Ковалентная связь</span><span class="leg-info">i</span></div>
+  <div class="leg-item" onclick="openInfo('props')"><div class="leg-dot" style="background:#16a34a;"></div><span data-i18n="leg_props">Свойства спирта</span><span class="leg-info">i</span></div>
+</div>
+
+<div class="overlay-name" id="overlay-name">C₂H₅OH · шаростержневая</div>
+
+<div class="hint-bar" data-i18n-html="hint">Перетащите — вращение · <kbd>Колесо</kbd> — масштаб · Клик — информация</div>
+
+<div id="info-panel">
+  <button id="info-close" onclick="closeInfo()">✕</button>
+  <div class="info-tag" id="info-tag"></div>
+  <div class="info-title" id="info-title"></div>
+  <div id="info-body"></div>
+</div>
+
+<script>
+const I18N={
+ru:{
+page_title:'Молекула этанола',header_title:'Молекула этанола',
+header_sub:'C₂H₅OH — этиловый спирт<br>кликните на атом или элемент',
+props_title:'Параметры',mode_title:'Модель',ctrl_title:'Управление',legend_head:'👆 Нажмите для описания',
+m_ball:'Шаростержневая',m_space:'Масштабная',m_group:'Группа –OH',
+btn_pause:'⏸ Пауза',btn_resume:'▶ Вращение',btn_angle:'📐 Угол связи',btn_label:'🔤 Подписи атомов',
+leg_c:'Углерод C',leg_o:'Кислород O',leg_h:'Водород H',leg_oh:'Гидроксил –OH',leg_bond:'Ковалентная связь',leg_props:'Свойства спирта',
+hint:'Перетащите — вращение · <kbd>Колесо</kbd> — масштаб · Клик — информация',
+props:[['Формула','C₂H₅OH'],['Молярная масса','46 г/моль'],['Класс','Спирт (алканол)'],['Функц. группа','–OH (гидроксил)'],['Тип связи','ковал. полярная'],['t кипения','78 °C']],
+modes:{ball:{overlay:'C₂H₅OH · шаростержневая'},space:{overlay:'C₂H₅OH · масштабная'},group:{overlay:'C₂H₅OH · группа –OH'}}
+},
+kz:{
+page_title:'Этанол молекуласы',header_title:'Этанол молекуласы',
+header_sub:'C₂H₅OH — этил спирті<br>атомды немесе элементті басыңыз',
+props_title:'Параметрлер',mode_title:'Модель',ctrl_title:'Басқару',legend_head:'👆 Сипаттама үшін басыңыз',
+m_ball:'Шар-таяқша',m_space:'Масштабты',m_group:'–OH тобы',
+btn_pause:'⏸ Кідірту',btn_resume:'▶ Айналдыру',btn_angle:'📐 Байланыс бұрышы',btn_label:'🔤 Атом белгілері',
+leg_c:'Көміртек C',leg_o:'Оттек O',leg_h:'Сутек H',leg_oh:'Гидроксил –OH',leg_bond:'Ковалентті байланыс',leg_props:'Спирт қасиеттері',
+hint:'Сүйреңіз — айналдыру · <kbd>Дөңгелек</kbd> — масштаб · Басу — ақпарат',
+props:[['Формуласы','C₂H₅OH'],['Молярлық масса','46 г/моль'],['Класы','Спирт (алканол)'],['Функц. тобы','–OH (гидроксил)'],['Байланыс түрі','ковал. полярлы'],['Қайнау t','78 °C']],
+modes:{ball:{overlay:'C₂H₅OH · шар-таяқша'},space:{overlay:'C₂H₅OH · масштабты'},group:{overlay:'C₂H₅OH · –OH тобы'}}
+},
+en:{
+page_title:'Ethanol Molecule',header_title:'Ethanol Molecule',
+header_sub:'C₂H₅OH — ethyl alcohol<br>click on an atom or item',
+props_title:'Parameters',mode_title:'Model',ctrl_title:'Controls',legend_head:'👆 Click for description',
+m_ball:'Ball-and-stick',m_space:'Space-filling',m_group:'–OH group',
+btn_pause:'⏸ Pause',btn_resume:'▶ Rotate',btn_angle:'📐 Bond angle',btn_label:'🔤 Atom labels',
+leg_c:'Carbon C',leg_o:'Oxygen O',leg_h:'Hydrogen H',leg_oh:'Hydroxyl –OH',leg_bond:'Covalent bond',leg_props:'Alcohol properties',
+hint:'Drag — rotate · <kbd>Scroll</kbd> — zoom · Click — info',
+props:[['Formula','C₂H₅OH'],['Molar mass','46 g/mol'],['Class','Alcohol (alkanol)'],['Functional group','–OH (hydroxyl)'],['Bond type','polar covalent'],['Boiling point','78 °C']],
+modes:{ball:{overlay:'C₂H₅OH · ball-and-stick'},space:{overlay:'C₂H₅OH · space-filling'},group:{overlay:'C₂H₅OH · –OH group'}}
+}
+};
+const LANG=(()=>{const q=new URLSearchParams(location.search).get('lang');return(q&&I18N[q])?q:'ru';})();
+const tr=(key)=>(I18N[LANG]&&I18N[LANG][key])??(I18N.ru[key]);
+function applyStaticI18N(){
+  document.documentElement.lang=LANG;
+  const tv=tr('page_title');if(tv)document.title=tv;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{const v=tr(el.getAttribute('data-i18n'));if(v)el.textContent=v;});
+  document.querySelectorAll('[data-i18n-html]').forEach(el=>{const v=tr(el.getAttribute('data-i18n-html'));if(v)el.innerHTML=v;});
+}
+applyStaticI18N();
+</script>
+
+<script type="importmap">
+{"imports":{"three":"../../libs/vendor/three-0.160.0/three.module.js"}}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+const canvas=document.getElementById('c');
+const renderer=new THREE.WebGLRenderer({canvas,antialias: true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+
+const scene=new THREE.Scene(); scene.background=null;
+const camera=new THREE.PerspectiveCamera(45,innerWidth/innerHeight,0.1,200);
+camera.position.set(0,1.2,9); camera.lookAt(0,0,0);
+
+scene.add(new THREE.AmbientLight(0xffffff,0.68));
+const dL=new THREE.DirectionalLight(0xffffff,1.05); dL.position.set(6,10,8); scene.add(dL);
+const dL2=new THREE.DirectionalLight(0xa5b4fc,0.3); dL2.position.set(-6,-4,-6); scene.add(dL2);
+
+const V=(x,y,z)=>new THREE.Vector3(x,y,z);
+const YUP=V(0,1,0);
+
+const root=new THREE.Group(); scene.add(root);
+const modelGroup=new THREE.Group(); root.add(modelGroup);
+
+const COL={C:0x3f3f46,H:0xa8a29e,O:0xdc2626,bond:0x9ca3af,accent:0x0891b2,angle:0xf59e0b};
+
+/* ── ETHANOL GEOMETRY (C₂H₅OH) ── indices:
+ 0 C1(methyl) 1 C2 2 O 3 H(O) 4,5 H on C2 ; 6,7,8 H on C1 */
+const ATOMS=[
+  {el:'C',p:V( 1.518,-0.520, 0.000),grp:'CH3'},
+  {el:'C',p:V( 0.000, 0.719, 0.000),grp:'CH2'},
+  {el:'O',p:V(-1.518,-0.307, 0.000),grp:'OH'},
+  {el:'H',p:V(-2.457, 0.525, 0.000),grp:'OH'},
+  {el:'H',p:V( 0.059, 1.556, 1.144),grp:'CH2'},
+  {el:'H',p:V( 0.059, 1.556,-1.144),grp:'CH2'},
+  {el:'H',p:V( 2.737, 0.195, 0.000),grp:'CH3'},
+  {el:'H',p:V( 1.486,-1.352, 1.145),grp:'CH3'},
+  {el:'H',p:V( 1.486,-1.352,-1.145),grp:'CH3'}
+];
+const BONDS=[[0,1],[1,2],[2,3],[1,4],[1,5],[0,6],[0,7],[0,8]];
+const BALL_R={C:0.42,O:0.40,H:0.26};
+const VDW_R ={C:0.90,O:0.80,H:0.62};
+
+let atomMeshes=[];   // {mesh,idx}
+let labelSprites=[];
+let angleGroup=null;
+let showAngle=false, showLabel=false, spinning=true;
+
+function makeSphere(r,color,opts={}){
+  const m=new THREE.MeshPhongMaterial({color,shininess:opts.shin||80,specular:0x999999,
+    emissive:opts.emissive||0x000000,emissiveIntensity:opts.emissiveI||0,
+    transparent:opts.opacity!==undefined,opacity:opts.opacity!==undefined?opts.opacity:1});
+  return new THREE.Mesh(new THREE.SphereGeometry(r,30,22),m);
+}
+function makeCyl(from,to,radius,color,opacity=1){
+  const dir=new THREE.Vector3().subVectors(to,from); const len=dir.length();
+  const m=new THREE.MeshPhongMaterial({color,opacity,transparent:opacity<1,shininess:40});
+  const mesh=new THREE.Mesh(new THREE.CylinderGeometry(radius,radius,len,12),m);
+  mesh.position.addVectors(from,to).multiplyScalar(0.5);
+  if(len>0.001) mesh.quaternion.setFromUnitVectors(YUP,dir.normalize());
+  return mesh;
+}
+function makeLabel(text){
+  const cv=document.createElement('canvas'); cv.width=128; cv.height=128;
+  const ctx=cv.getContext('2d');
+  ctx.fillStyle='rgba(28,25,23,0.92)'; ctx.font='bold 88px DM Mono, monospace';
+  ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(text,64,68);
+  const tex=new THREE.CanvasTexture(cv);
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,depthTest:false,transparent:true}));
+  sp.scale.set(0.7,0.7,0.7);
+  return sp;
+}
+
+function clearModel(){
+  while(modelGroup.children.length) modelGroup.remove(modelGroup.children[0]);
+  atomMeshes=[]; labelSprites=[]; angleGroup=null;
+}
+
+function build(mode){
+  clearModel();
+  const isSpace=(mode==='space');
+  const isGroup=(mode==='group');
+  // bonds (hidden in space-filling)
+  if(!isSpace){
+    BONDS.forEach(([a,b])=>{
+      const inOH = (ATOMS[a].grp==='OH' && ATOMS[b].grp==='OH');
+      const col = (isGroup && inOH)?COL.accent:COL.bond;
+      const op  = (isGroup && !inOH)?0.25:0.95;
+      const cyl=makeCyl(ATOMS[a].p,ATOMS[b].p,0.085,col,op);
+      modelGroup.add(cyl);
+    });
+  }
+  // atoms
+  ATOMS.forEach((at,i)=>{
+    const r=(isSpace?VDW_R:BALL_R)[at.el];
+    const dimmed = isGroup && at.grp!=='OH';
+    const opts={shin:90};
+    if(isSpace) opts.opacity=0.96;
+    if(dimmed) opts.opacity=0.30;
+    if(isGroup && at.grp==='OH'){ opts.emissive=at.el==='O'?0xdc2626:0xf59e0b; opts.emissiveI=0.32; }
+    const s=makeSphere(r,COL[at.el],opts);
+    s.position.copy(at.p);
+    s.userData={type:({C:'carbon',O:'oxygen',H:'hydrogen'})[at.el],idx:i};
+    modelGroup.add(s);
+    atomMeshes.push({mesh:s,idx:i});
+  });
+  // labels
+  ATOMS.forEach((at,i)=>{
+    const sp=makeLabel(at.el);
+    sp.position.copy(at.p).add(V(0,(isSpace?VDW_R:BALL_R)[at.el]+0.28,0));
+    sp.visible=showLabel;
+    modelGroup.add(sp); labelSprites.push(sp);
+  });
+  if(showAngle) buildAngle();
+}
+
+/* C–O–H angle arc at oxygen (≈108.5°) plus C–C–O */
+function buildAngle(){
+  if(angleGroup){ modelGroup.remove(angleGroup); }
+  const g=new THREE.Group();
+  // emphasise C2–O and O–H with accent + arc
+  const O=ATOMS[2].p, C2=ATOMS[1].p, Ho=ATOMS[3].p;
+  const v1=new THREE.Vector3().subVectors(C2,O).normalize();
+  const v2=new THREE.Vector3().subVectors(Ho,O).normalize();
+  const steps=24, rad=0.62;
+  const pts=[];
+  for(let i=0;i<=steps;i++){
+    const t=i/steps;
+    const q=new THREE.Quaternion().slerpQuaternions(
+      new THREE.Quaternion().setFromUnitVectors(YUP,v1),
+      new THREE.Quaternion().setFromUnitVectors(YUP,v2),t);
+    const dir=YUP.clone().applyQuaternion(q).multiplyScalar(rad);
+    pts.push(O.clone().add(dir));
+  }
+  const arc=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),
+    new THREE.LineBasicMaterial({color:COL.angle,linewidth:2}));
+  g.add(arc);
+  const lab=makeLabel('108°'); lab.scale.set(1.0,1.0,1.0);
+  lab.position.copy(O).add(v1.clone().add(v2).multiplyScalar(0.55)).add(V(0,0.1,0));
+  // recolor label sprite to amber by redrawing
+  const cv=document.createElement('canvas');cv.width=256;cv.height=96;const ctx=cv.getContext('2d');
+  ctx.fillStyle='#b45309';ctx.font='bold 60px DM Mono, monospace';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('108°',128,52);
+  lab.material.map=new THREE.CanvasTexture(cv);lab.scale.set(1.1,0.41,1);
+  g.add(lab);
+  modelGroup.add(g); angleGroup=g;
+}
+
+/* ── PROPS ── */
+function renderProps(mode){
+  const L=I18N[LANG]||I18N.ru;
+  document.getElementById('props-body').innerHTML=L.props.map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join('');
+  document.getElementById('overlay-name').textContent=L.modes[mode].overlay;
+}
+
+/* ── STATE ── */
+let current='ball';
+window.switchTo=function(mode){
+  current=mode;
+  document.querySelectorAll('.mode-btn').forEach(b=>b.classList.toggle('sel',b.dataset.id===mode));
+  build(mode);
+  renderProps(mode);
+};
+window.toggleSpin=function(){
+  spinning=!spinning;
+  const b=document.getElementById('btn-spin');
+  b.classList.toggle('active',spinning);
+  b.querySelector('span').textContent=spinning?tr('btn_pause'):tr('btn_resume');
+};
+window.toggleBondAngle=function(){
+  showAngle=!showAngle;
+  document.getElementById('btn-bond').classList.toggle('active',showAngle);
+  if(showAngle) buildAngle();
+  else if(angleGroup){ modelGroup.remove(angleGroup); angleGroup=null; }
+};
+window.toggleLabels=function(){
+  showLabel=!showLabel;
+  document.getElementById('btn-label').classList.toggle('active',showLabel);
+  labelSprites.forEach(s=>s.visible=showLabel);
+};
+
+/* ── INFO DB ── */
+const INFO_ALL={
+ru:{
+  carbon:{tag:'Скелет молекулы',title:'Углерод C',sections:[
+    {h:'Два атома углерода',p:'Этанол построен на углеродном скелете из двух атомов C: метильной группы CH₃– и метиленовой группы –CH₂–. Именно к –CH₂– присоединена гидроксильная группа.'},
+    {h:'Четыре связи',p:'Каждый атом углерода образует 4 ковалентные связи и имеет sp³-гибридизацию, поэтому связи направлены к вершинам тетраэдра под углом ≈109,5°.'},
+    {h:'Класс веществ',p:'Цепочка C–C с группой –OH делает этанол представителем предельных одноатомных спиртов (алканолов), общая формула CₙH₂ₙ₊₁OH.'}
+  ]},
+  oxygen:{tag:'Электроотрицательный центр',title:'Кислород O',sections:[
+    {h:'Сердце группы –OH',p:'Атом кислорода соединяет углеродный скелет с атомом водорода гидроксила. Он имеет две неподелённые электронные пары.'},
+    {h:'Полярность',p:'Кислород гораздо электроотрицательнее углерода и водорода, поэтому стягивает к себе электронную плотность. Связи C–O и O–H становятся полярными, а на O появляется частичный отрицательный заряд δ−.'},
+    {h:'Водородные связи',p:'Благодаря полярной группе –OH молекулы этанола образуют между собой водородные связи. Поэтому этанол — жидкость с относительно высокой температурой кипения (78 °C) и хорошо смешивается с водой.'}
+  ]},
+  hydrogen:{tag:'Внешняя оболочка',title:'Водород H',sections:[
+    {h:'Шесть атомов водорода',p:'В этаноле 6 атомов H: три у метильной группы CH₃, два у –CH₂– и один в гидроксиле –OH. Каждый образует одну ковалентную связь.'},
+    {h:'Особый водород –OH',p:'Водород гидроксильной группы заметно отличается: связь O–H полярна, и этот атом H способен участвовать в водородных связях и (в реакциях с активными металлами) замещаться.'},
+    {h:'Реакция с натрием',p:'Именно подвижный H группы –OH реагирует с натрием: 2C₂H₅OH + 2Na → 2C₂H₅ONa + H₂↑. Это качественный признак спиртов.'}
+  ]},
+  hydroxyl:{tag:'Функциональная группа',title:'Гидроксил –OH',sections:[
+    {h:'Что это',p:'Гидроксильная группа –OH — функциональная группа всех спиртов. Именно она определяет химические свойства этанола, а не углеродный скелет.'},
+    {h:'Свойства',p:'Группа –OH делает молекулу полярной, обеспечивает растворимость в воде, образование водородных связей и реакции замещения водорода (с Na), а также реакции с галогеноводородами и окисление до альдегида.'},
+    {h:'Один –OH = одноатомный',p:'В этаноле одна группа –OH, поэтому это одноатомный спирт. У этиленгликоля их две, у глицерина — три (многоатомные спирты).'}
+  ]},
+  bond:{tag:'Тип связи',title:'Ковалентная связь',sections:[
+    {h:'Общие электронные пары',p:'Все связи в этаноле — ковалентные: атомы связаны общими электронными парами. Связи C–C и C–H почти неполярны, а C–O и O–H — полярные.'},
+    {h:'sp³ и тетраэдр',p:'Атомы углерода и кислорода используют sp³-гибридные орбитали, поэтому валентные углы близки к 109,5° (у кислорода чуть меньше — около 108° из-за неподелённых пар).'},
+    {h:'σ-связи',p:'В молекуле этанола только одинарные σ-связи — кратных (двойных, тройных) связей нет. Поэтому этанол — насыщенное (предельное) соединение.'}
+  ]},
+  props:{tag:'Вещество',title:'Свойства этанола',sections:[
+    {h:'Физические',p:'Бесцветная летучая жидкость с характерным запахом, t кипения 78 °C, легче воды, неограниченно с ней смешивается. Хорошо растворяет многие органические вещества.'},
+    {h:'Химические',p:'Горит синеватым пламенем: C₂H₅OH + 3O₂ → 2CO₂ + 3H₂O. Реагирует с Na (выделение H₂), окисляется до уксусного альдегида, образует сложные эфиры с кислотами (реакция этерификации).'},
+    {h:'Применение',p:'Растворитель, дезинфицирующее средство, сырьё для синтеза, компонент топлива (биоэтанол). Получают брожением сахаров или гидратацией этилена C₂H₄ + H₂O → C₂H₅OH.'}
+  ]}
+},
+kz:{
+  carbon:{tag:'Молекула қаңқасы',title:'Көміртек C',sections:[
+    {h:'Екі көміртек атомы',p:'Этанол екі C атомынан тұратын көміртек қаңқасына негізделген: метил тобы CH₃– және метилен тобы –CH₂–. Гидроксил тобы дәл –CH₂– тобына жалғанған.'},
+    {h:'Төрт байланыс',p:'Әрбір көміртек атомы 4 ковалентті байланыс түзеді және sp³-гибридтенген, сондықтан байланыстар тетраэдр төбелеріне ≈109,5° бұрышпен бағытталған.'},
+    {h:'Заттар класы',p:'–OH тобы бар C–C тізбегі этанолды қаныққан бір атомды спирттер (алканолдар) өкілі етеді, жалпы формуласы CₙH₂ₙ₊₁OH.'}
+  ]},
+  oxygen:{tag:'Электртеріс центр',title:'Оттек O',sections:[
+    {h:'–OH тобының жүрегі',p:'Оттек атомы көміртек қаңқасын гидроксил сутегімен байланыстырады. Оның екі бөлінбеген электрон жұбы бар.'},
+    {h:'Полярлық',p:'Оттек көміртек пен сутектен әлдеқайда электртеріс, сондықтан электрон тығыздығын өзіне тартады. C–O және O–H байланыстары полярлы болады, O-да жартылай теріс заряд δ− пайда болады.'},
+    {h:'Сутектік байланыстар',p:'Полярлы –OH тобының арқасында этанол молекулалары өзара сутектік байланыс түзеді. Сондықтан этанол — қайнау температурасы салыстырмалы жоғары (78 °C) сұйықтық әрі сумен жақсы араласады.'}
+  ]},
+  hydrogen:{tag:'Сыртқы қабат',title:'Сутек H',sections:[
+    {h:'Алты сутек атомы',p:'Этанолда 6 H атомы бар: CH₃ тобында үшеу, –CH₂– тобында екеу, –OH гидроксилінде біреу. Әрқайсысы бір ковалентті байланыс түзеді.'},
+    {h:'Ерекше –OH сутегі',p:'Гидроксил тобының сутегі ерекшеленеді: O–H байланысы полярлы, бұл H атомы сутектік байланысқа қатыса алады және (белсенді металдармен реакцияда) алмасады.'},
+    {h:'Натриймен реакция',p:'Дәл –OH тобының қозғалмалы H-і натриймен реакцияға түседі: 2C₂H₅OH + 2Na → 2C₂H₅ONa + H₂↑. Бұл спирттердің сапалық белгісі.'}
+  ]},
+  hydroxyl:{tag:'Функционалдық топ',title:'Гидроксил –OH',sections:[
+    {h:'Бұл не',p:'Гидроксил тобы –OH — барлық спирттердің функционалдық тобы. Этанолдың химиялық қасиеттерін көміртек қаңқасы емес, дәл осы топ анықтайды.'},
+    {h:'Қасиеттері',p:'–OH тобы молекуланы полярлы етеді, суда еруін, сутектік байланыс түзілуін, сутектің алмасу реакцияларын (Na-мен), сондай-ақ галогенсутектермен реакцияны және альдегидке дейін тотығуды қамтамасыз етеді.'},
+    {h:'Бір –OH = бір атомды',p:'Этанолда бір –OH тобы бар, сондықтан ол бір атомды спирт. Этиленгликольде екеу, глицеринде үшеу (көп атомды спирттер).'}
+  ]},
+  bond:{tag:'Байланыс түрі',title:'Ковалентті байланыс',sections:[
+    {h:'Ортақ электрон жұптары',p:'Этанолдағы барлық байланыс — ковалентті: атомдар ортақ электрон жұптарымен байланысқан. C–C және C–H байланыстары полярсызға жақын, ал C–O және O–H — полярлы.'},
+    {h:'sp³ және тетраэдр',p:'Көміртек пен оттек атомдары sp³-гибридті орбитальдарды пайдаланады, сондықтан валенттік бұрыштар 109,5°-қа жақын (оттекте сәл аз — бөлінбеген жұптарға байланысты ≈108°).'},
+    {h:'σ-байланыстар',p:'Этанол молекуласында тек жалғыз σ-байланыстар бар — еселік (қос, үштік) байланыстар жоқ. Сондықтан этанол — қаныққан қосылыс.'}
+  ]},
+  props:{tag:'Зат',title:'Этанол қасиеттері',sections:[
+    {h:'Физикалық',p:'Тән иісі бар түссіз ұшқыш сұйықтық, қайнау t 78 °C, судан жеңіл, онымен шексіз араласады. Көптеген органикалық заттарды жақсы ерітеді.'},
+    {h:'Химиялық',p:'Көкшіл жалынмен жанады: C₂H₅OH + 3O₂ → 2CO₂ + 3H₂O. Na-мен реакцияға түседі (H₂ бөлінеді), сірке альдегидіне дейін тотығады, қышқылдармен күрделі эфирлер түзеді (этерификация).'},
+    {h:'Қолданылуы',p:'Еріткіш, дезинфекциялаушы зат, синтез шикізаты, отын компоненті (биоэтанол). Қанттарды ашыту немесе этиленді гидратациялау арқылы алады: C₂H₄ + H₂O → C₂H₅OH.'}
+  ]}
+},
+en:{
+  carbon:{tag:'Molecular skeleton',title:'Carbon C',sections:[
+    {h:'Two carbon atoms',p:'Ethanol is built on a carbon skeleton of two C atoms: a methyl group CH₃– and a methylene group –CH₂–. The hydroxyl group is attached to the –CH₂– carbon.'},
+    {h:'Four bonds',p:'Each carbon atom forms 4 covalent bonds and is sp³-hybridised, so its bonds point to the corners of a tetrahedron at ≈109.5°.'},
+    {h:'Class of compounds',p:'A C–C chain bearing an –OH group makes ethanol a saturated monohydric alcohol (alkanol), general formula CₙH₂ₙ₊₁OH.'}
+  ]},
+  oxygen:{tag:'Electronegative centre',title:'Oxygen O',sections:[
+    {h:'Heart of the –OH group',p:'The oxygen atom links the carbon skeleton to the hydroxyl hydrogen. It carries two lone electron pairs.'},
+    {h:'Polarity',p:'Oxygen is much more electronegative than carbon and hydrogen, so it pulls electron density toward itself. The C–O and O–H bonds become polar, giving oxygen a partial negative charge δ−.'},
+    {h:'Hydrogen bonds',p:'Thanks to the polar –OH group, ethanol molecules form hydrogen bonds with one another. That is why ethanol is a liquid with a fairly high boiling point (78 °C) and mixes freely with water.'}
+  ]},
+  hydrogen:{tag:'Outer shell',title:'Hydrogen H',sections:[
+    {h:'Six hydrogen atoms',p:'Ethanol has 6 H atoms: three on the methyl CH₃, two on –CH₂–, and one in the –OH hydroxyl. Each forms a single covalent bond.'},
+    {h:'The special –OH hydrogen',p:'The hydroxyl hydrogen stands out: the O–H bond is polar, and this H can take part in hydrogen bonding and (with reactive metals) be replaced.'},
+    {h:'Reaction with sodium',p:'It is the mobile H of the –OH group that reacts with sodium: 2C₂H₅OH + 2Na → 2C₂H₅ONa + H₂↑. This is a qualitative test for alcohols.'}
+  ]},
+  hydroxyl:{tag:'Functional group',title:'Hydroxyl –OH',sections:[
+    {h:'What it is',p:'The hydroxyl group –OH is the functional group of all alcohols. It — not the carbon skeleton — defines the chemical behaviour of ethanol.'},
+    {h:'Properties',p:'The –OH group makes the molecule polar and gives it water solubility, hydrogen bonding, hydrogen-replacement reactions (with Na), reactions with hydrogen halides, and oxidation to an aldehyde.'},
+    {h:'One –OH = monohydric',p:'Ethanol has a single –OH group, so it is a monohydric alcohol. Ethylene glycol has two and glycerol three (polyhydric alcohols).'}
+  ]},
+  bond:{tag:'Bond type',title:'Covalent bond',sections:[
+    {h:'Shared electron pairs',p:'All bonds in ethanol are covalent: atoms are joined by shared electron pairs. The C–C and C–H bonds are nearly non-polar, while C–O and O–H are polar.'},
+    {h:'sp³ and the tetrahedron',p:'Carbon and oxygen use sp³ hybrid orbitals, so the bond angles are close to 109.5° (slightly less at oxygen — about 108° — because of its lone pairs).'},
+    {h:'σ-bonds',p:'The ethanol molecule contains only single σ-bonds — there are no multiple (double or triple) bonds. Ethanol is therefore a saturated compound.'}
+  ]},
+  props:{tag:'Substance',title:'Properties of ethanol',sections:[
+    {h:'Physical',p:'A colourless volatile liquid with a characteristic smell, boiling point 78 °C, lighter than water and miscible with it in any ratio. It dissolves many organic substances well.'},
+    {h:'Chemical',p:'Burns with a bluish flame: C₂H₅OH + 3O₂ → 2CO₂ + 3H₂O. Reacts with Na (releasing H₂), is oxidised to acetaldehyde, and forms esters with acids (esterification).'},
+    {h:'Uses',p:'Solvent, disinfectant, feedstock for synthesis, fuel component (bioethanol). Made by fermenting sugars or by hydrating ethylene: C₂H₄ + H₂O → C₂H₅OH.'}
+  ]}
+}
+};
+const INFO=INFO_ALL[LANG]||INFO_ALL.ru;
+const TAGC={carbon:{bg:'rgba(63,63,70,0.14)',c:'#3f3f46'},oxygen:{bg:'rgba(220,38,38,0.14)',c:'#dc2626'},
+  hydrogen:{bg:'rgba(168,162,158,0.20)',c:'#57534e'},hydroxyl:{bg:'rgba(245,158,11,0.16)',c:'#b45309'},
+  bond:{bg:'rgba(8,145,178,0.14)',c:'#0e7490'},props:{bg:'rgba(22,163,74,0.14)',c:'#15803d'}};
+
+window.openInfo=function(type){
+  const d=INFO[type]; if(!d) return;
+  const tagEl=document.getElementById('info-tag');
+  tagEl.textContent=d.tag;
+  const c=TAGC[type]||TAGC.carbon;
+  tagEl.style.background=c.bg; tagEl.style.color=c.c;
+  document.getElementById('info-title').textContent=d.title;
+  document.getElementById('info-body').innerHTML=d.sections.map(s=>`<div class="info-section"><h4>${s.h}</h4><p>${s.p}</p></div>`).join('');
+  document.getElementById('info-panel').classList.add('open');
+};
+window.closeInfo=function(){document.getElementById('info-panel').classList.remove('open');};
+
+/* ── RAYCAST ── */
+const raycaster=new THREE.Raycaster();
+const mouse=new THREE.Vector2();
+canvas.addEventListener('click',e=>{
+  if(isDragging) return;
+  mouse.x=(e.clientX/innerWidth)*2-1; mouse.y=-(e.clientY/innerHeight)*2+1;
+  raycaster.setFromCamera(mouse,camera);
+  const hits=raycaster.intersectObjects(atomMeshes.map(a=>a.mesh),true);
+  if(hits.length>0){ const t=hits[0].object.userData.type; if(t) openInfo(t); }
+});
+
+/* ── DRAG + ZOOM ── */
+let isDragging=false,dragStart=null,lastMouse={x:0,y:0},dragDelta=0,rotX=0.10;
+canvas.addEventListener('mousedown',e=>{dragStart={x:e.clientX,y:e.clientY};lastMouse={x:e.clientX,y:e.clientY};isDragging=false;dragDelta=0;});
+canvas.addEventListener('mousemove',e=>{
+  if(!dragStart) return;
+  dragDelta=Math.hypot(e.clientX-dragStart.x,e.clientY-dragStart.y);
+  if(dragDelta>4) isDragging=true;
+  if(isDragging){
+    root.rotation.y+=(e.clientX-lastMouse.x)*0.011;
+    rotX=Math.max(-0.9,Math.min(0.9,rotX+(e.clientY-lastMouse.y)*0.009));
+    root.rotation.x=rotX;
+  }
+  lastMouse={x:e.clientX,y:e.clientY};
+});
+canvas.addEventListener('mouseup',()=>{dragStart=null;});
+canvas.addEventListener('mouseleave',()=>{dragStart=null;isDragging=false;});
+canvas.addEventListener('wheel',e=>{e.preventDefault();camera.position.z=Math.max(5,Math.min(16,camera.position.z+e.deltaY*0.02));},{passive:false});
+window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+
+/* ── LOOP ── */
+function animate(){
+  requestAnimationFrame(animate);
+  if(spinning) root.rotation.y+=0.005;
+  root.rotation.x=rotX;
+  renderer.render(scene,camera);
+}
+
+// init
+root.rotation.x=rotX;
+switchTo('ball');
+animate();
+</script>
+</body>
+</html>

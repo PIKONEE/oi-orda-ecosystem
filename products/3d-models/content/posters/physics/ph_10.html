@@ -1,0 +1,1401 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Центростремительная сила — Круговое движение</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 20px 30px;
+            background: linear-gradient(180deg, rgba(0,0,0,0.85) 0%, transparent 100%);
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .header h1 {
+            color: white;
+            font-size: 26px;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .header p {
+            color: rgba(255,255,255,0.7);
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        .control-panel {
+            position: absolute;
+            top: 100px;
+            left: 20px;
+            width: 320px;
+            background: rgba(0,0,0,0.92);
+            
+            border-radius: 16px;
+            padding: 20px;
+            z-index: 10;
+            border: 1px solid rgba(255,255,255,0.1);
+            max-height: calc(100vh - 140px);
+            overflow-y: auto;
+        }
+
+        .section-title {
+            color: #3498db;
+            font-size: 12px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .section-title.red { color: #e74c3c; }
+        .section-title.green { color: #2ecc71; }
+        .section-title.orange { color: #f39c12; }
+        .section-title.purple { color: #9b59b6; }
+
+        .slider-group {
+            margin-bottom: 18px;
+        }
+
+        .slider-group label {
+            color: rgba(255,255,255,0.85);
+            font-size: 13px;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .slider-group label span.value {
+            color: #f39c12;
+            font-weight: 600;
+            font-family: 'Consolas', monospace;
+        }
+
+        .slider-group input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+            height: 8px;
+            border-radius: 4px;
+            -webkit-appearance: none;
+            background: rgba(255,255,255,0.15);
+        }
+
+        .slider-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #f39c12;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+        }
+
+        .slider-group.blue input[type="range"]::-webkit-slider-thumb { background: #3498db; }
+        .slider-group.green input[type="range"]::-webkit-slider-thumb { background: #2ecc71; }
+        .slider-group.purple input[type="range"]::-webkit-slider-thumb { background: #9b59b6; }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .checkbox-item:hover {
+            background: rgba(255,255,255,0.1);
+        }
+
+        .checkbox-item input {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: #3498db;
+        }
+
+        .checkbox-item label {
+            color: white;
+            font-size: 13px;
+            cursor: pointer;
+            flex: 1;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            color: white;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s;
+            margin-bottom: 10px;
+        }
+
+        .btn-play { background: linear-gradient(135deg, #2ecc71, #27ae60); }
+        .btn-pause { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+        .btn-reset { background: linear-gradient(135deg, #3498db, #2980b9); }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+        .legend {
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+
+        .legend-title {
+            color: rgba(255,255,255,0.7);
+            font-size: 11px;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 6px 0;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .legend-text {
+            color: rgba(255,255,255,0.8);
+            font-size: 12px;
+        }
+
+        .info-panel {
+            position: absolute;
+            top: 100px;
+            right: 20px;
+            width: 300px;
+            background: rgba(0,0,0,0.92);
+            
+            border-radius: 16px;
+            padding: 20px;
+            z-index: 10;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .info-panel h3 {
+            color: white;
+            font-size: 16px;
+            margin: 0 0 15px;
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .stat-item {
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            padding: 12px;
+            text-align: center;
+        }
+
+        .stat-item.wide {
+            grid-column: span 2;
+        }
+
+        .stat-value {
+            font-size: 22px;
+            font-weight: 700;
+            font-family: 'Consolas', monospace;
+        }
+
+        .stat-value.blue { color: #3498db; }
+        .stat-value.green { color: #2ecc71; }
+        .stat-value.red { color: #e74c3c; }
+        .stat-value.orange { color: #f39c12; }
+        .stat-value.purple { color: #9b59b6; }
+
+        .stat-label {
+            font-size: 10px;
+            color: rgba(255,255,255,0.6);
+            margin-top: 4px;
+            text-transform: uppercase;
+        }
+
+        .formula-box {
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+
+        .formula-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .formula-row:last-child {
+            border-bottom: none;
+        }
+
+        .formula-name {
+            color: rgba(255,255,255,0.7);
+            font-size: 12px;
+        }
+
+        .formula-eq {
+            font-family: 'Times New Roman', serif;
+            font-size: 14px;
+            color: white;
+        }
+
+        .formula-eq .blue { color: #3498db; }
+        .formula-eq .green { color: #2ecc71; }
+        .formula-eq .red { color: #e74c3c; }
+        .formula-eq .orange { color: #f39c12; }
+
+        .formula-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.9);
+            
+            border-radius: 12px;
+            padding: 15px 30px;
+            z-index: 10;
+            border: 1px solid rgba(255,255,255,0.1);
+            text-align: center;
+        }
+
+        .formula {
+            color: white;
+            font-size: 20px;
+            font-family: 'Times New Roman', serif;
+        }
+
+        .formula .fc { color: #3498db; }
+        .formula .m { color: #9b59b6; }
+        .formula .v { color: #2ecc71; }
+        .formula .r { color: #f39c12; }
+
+        .formula-desc {
+            color: rgba(255,255,255,0.6);
+            font-size: 12px;
+            margin-top: 8px;
+        }
+
+        .mode-badge {
+            position: absolute;
+            top: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(52, 152, 219, 0.9);
+            color: white;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 14px;
+            z-index: 15;
+        }
+
+        .speed-indicator {
+            position: absolute;
+            bottom: 90px;
+            right: 20px;
+            background: rgba(0,0,0,0.85);
+            border-radius: 12px;
+            padding: 15px 25px;
+            z-index: 10;
+            text-align: center;
+        }
+
+        .speed-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #2ecc71;
+            font-family: 'Consolas', monospace;
+        }
+
+        .speed-label {
+            color: rgba(255,255,255,0.6);
+            font-size: 11px;
+            margin-top: 5px;
+        }
+
+        .hint {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            color: rgba(255,255,255,0.4);
+            font-size: 12px;
+            z-index: 5;
+        }
+
+        .intensity-hint {
+            color: rgba(255,255,255,0.5);
+            font-size: 11px;
+            margin-top: 10px;
+            font-style: italic;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="canvas-container"></div>
+
+    <div class="header">
+        <h1>🔄 Центростремительная сила</h1>
+        <p><span>Круговое движение • Центростремительное ускорение • Натяжение нити</span></p>
+    </div>
+
+    <div class="mode-badge">Равномерное круговое движение</div>
+
+    <div class="control-panel">
+        <div class="section-title purple">⚙️ Параметры тела</div>
+        <div class="slider-group purple">
+            <label>
+                <span>Масса тела (m):</span>
+                <span class="value" id="mass-value">0.5 кг</span>
+            </label>
+            <input type="range" id="mass" min="0.1" max="2" step="0.1" value="0.5">
+        </div>
+
+        <div class="section-title orange">📏 Радиус вращения</div>
+        <div class="slider-group">
+            <label>
+                <span>Радиус (r):</span>
+                <span class="value" id="radius-value">1.0 м</span>
+            </label>
+            <input type="range" id="radius" min="0.5" max="2" step="0.1" value="1">
+        </div>
+
+        <div class="section-title green">⚡ Скорость вращения</div>
+        <div class="slider-group green">
+            <label>
+                <span>Угловая скорость (ω):</span>
+                <span class="value" id="omega-value">2.0 рад/с</span>
+            </label>
+            <input type="range" id="omega" min="0.5" max="6" step="0.1" value="2">
+        </div>
+
+        <div class="section-title blue">👁️ Визуализация</div>
+        <div class="checkbox-item">
+            <input type="checkbox" id="show-centripetal" checked>
+            <label for="show-centripetal">Центростремительная сила (Fц)</label>
+        </div>
+        <div class="checkbox-item">
+            <input type="checkbox" id="show-velocity" checked>
+            <label for="show-velocity">Вектор скорости (v)</label>
+        </div>
+        <div class="checkbox-item">
+            <input type="checkbox" id="show-acceleration" checked>
+            <label for="show-acceleration">Ускорение (a)</label>
+        </div>
+        <div class="checkbox-item">
+            <input type="checkbox" id="show-trail" checked>
+            <label for="show-trail">Траектория движения</label>
+        </div>
+        <div class="checkbox-item">
+            <input type="checkbox" id="show-inertia">
+            <label for="show-inertia">«Центробежная» сила (инерция)</label>
+        </div>
+
+        <div class="intensity-hint">💡 Яркость стрелок = величина силы/скорости</div>
+
+        <button class="btn btn-play" id="btn-toggle">⏸️ Пауза</button>
+        <button class="btn btn-reset" id="btn-reset">🔄 Сбросить</button>
+
+        <div class="legend">
+            <div class="legend-title">Обозначения векторов</div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #3498db;">→</div>
+                <span class="legend-text">Fц — к центру (натяжение нити)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #2ecc71;">→</div>
+                <span class="legend-text">v — по касательной (скорость)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #f39c12;">→</div>
+                <span class="legend-text">a — к центру (ускорение)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #e74c3c;">→</div>
+                <span class="legend-text">«Fцб» — от центра (инерция)</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="info-panel">
+        <h3>📊 Физические величины</h3>
+        
+        <div class="stat-grid">
+            <div class="stat-item">
+                <div class="stat-value blue" id="stat-force">2.00</div>
+                <div class="stat-label">Сила Fц (Н)</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value green" id="stat-velocity">2.00</div>
+                <div class="stat-label">Скорость v (м/с)</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value orange" id="stat-accel">4.00</div>
+                <div class="stat-label">Ускорение a (м/с²)</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value purple" id="stat-period">3.14</div>
+                <div class="stat-label">Период T (с)</div>
+            </div>
+            <div class="stat-item wide">
+                <div class="stat-value" style="color: #1abc9c;" id="stat-frequency">0.32</div>
+                <div class="stat-label">Частота ν (Гц)</div>
+            </div>
+        </div>
+
+        <div class="formula-box">
+            <div class="formula-row">
+                <span class="formula-name">Центростремительная сила</span>
+                <span class="formula-eq"><span class="blue">Fц</span> = <span class="purple">m</span>·<span class="green">v</span>²/<span class="orange">r</span></span>
+            </div>
+            <div class="formula-row">
+                <span class="formula-name">Через угловую скорость</span>
+                <span class="formula-eq"><span class="blue">Fц</span> = <span class="purple">m</span>·ω²·<span class="orange">r</span></span>
+            </div>
+            <div class="formula-row">
+                <span class="formula-name">Ускорение</span>
+                <span class="formula-eq"><span class="orange">a</span> = <span class="green">v</span>²/<span class="orange">r</span> = ω²·<span class="orange">r</span></span>
+            </div>
+            <div class="formula-row">
+                <span class="formula-name">Линейная скорость</span>
+                <span class="formula-eq"><span class="green">v</span> = ω·<span class="orange">r</span></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="speed-indicator">
+        <div class="speed-value" id="rpm-value">19</div>
+        <div class="speed-label">оборотов в минуту</div>
+    </div>
+
+    <div class="formula-panel">
+        <div class="formula">
+            <span class="fc">F<sub>ц</sub></span> = 
+            <span class="m">m</span> · 
+            <span class="v">v</span>² / 
+            <span class="r">r</span> = 
+            <span class="m">m</span> · ω² · 
+            <span class="r">r</span>
+        </div>
+        <div class="formula-desc">Сила направлена к центру вращения и удерживает тело на круговой орбите</div>
+    </div>
+
+    <div class="hint">Вращайте сцену мышью • Колёсико для зума</div>
+
+    <script src="../../libs/vendor/three-r128/three.min.js"></script>
+    <script>
+        // Physics parameters
+        let mass = 0.5;
+        let radius = 1.0;
+        let omega = 2.0;
+        let isPlaying = true;
+
+        let angle = 0;
+        const scale3D = 2;
+
+        // Three.js
+        let scene, camera, renderer, mainGroup;
+        let ball, string, pivot;
+        let forceArrow, velocityArrow, accelArrow, centrifugalArrow;
+        let trail, trailPoints = [];
+        let circleGuide;
+
+        // Controls
+        let isDragging = false;
+        let lastMouse = { x: 0, y: 0 };
+        let rotation = { x: 0.5, y: 0 };
+
+        const container = document.getElementById('canvas-container');
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color('#1a1a2e');
+
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 5, 10);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = false;
+            container.appendChild(renderer.domElement);
+
+            scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+            
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(5, 10, 5);
+            dirLight.castShadow = true;
+            scene.add(dirLight);
+
+            const fillLight = new THREE.DirectionalLight(0x6699ff, 0.3);
+            fillLight.position.set(-5, 3, -5);
+            scene.add(fillLight);
+
+            mainGroup = new THREE.Group();
+            scene.add(mainGroup);
+
+            createScene();
+            setupControls();
+            updatePhysics();
+            animate();
+        }
+
+        function createScene() {
+            // Platform
+            const platform = new THREE.Mesh(
+                new THREE.CylinderGeometry(4, 4, 0.1, 64),
+                new THREE.MeshStandardMaterial({ color: 0x2c3e50, roughness: 0.8 })
+            );
+            platform.position.y = -0.1;
+            platform.receiveShadow = true;
+            mainGroup.add(platform);
+
+            // Grid
+            const grid = new THREE.PolarGridHelper(4, 8, 8, 64, 0x444444, 0x333333);
+            grid.position.y = -0.04;
+            mainGroup.add(grid);
+
+            createPivot();
+            createBall();
+            createString();
+            createCircleGuide();
+            createTrail();
+            createArrows();
+        }
+
+        function createPivot() {
+            pivot = new THREE.Group();
+
+            const column = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.08, 0.1, 0.5, 16),
+                new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.8, roughness: 0.3 })
+            );
+            column.position.y = 0.25;
+            pivot.add(column);
+
+            const top = new THREE.Mesh(
+                new THREE.SphereGeometry(0.12, 16, 16),
+                new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.9, roughness: 0.2 })
+            );
+            top.position.y = 0.5;
+            pivot.add(top);
+
+            mainGroup.add(pivot);
+        }
+
+        function createBall() {
+            ball = new THREE.Mesh(
+                new THREE.SphereGeometry(0.2, 32, 32),
+                new THREE.MeshStandardMaterial({
+                    color: 0xe74c3c,
+                    roughness: 0.3,
+                    metalness: 0.5,
+                    emissive: 0x331111
+                })
+            );
+            ball.castShadow = true;
+            ball.position.set(radius * scale3D, 0.5, 0);
+            mainGroup.add(ball);
+
+            const glow = new THREE.Mesh(
+                new THREE.SphereGeometry(0.28, 16, 16),
+                new THREE.MeshBasicMaterial({ color: 0xe74c3c, transparent: true, opacity: 0.15 })
+            );
+            ball.add(glow);
+        }
+
+        function createString() {
+            string = new THREE.Line(
+                new THREE.BufferGeometry().setFromPoints([
+                    new THREE.Vector3(0, 0.5, 0),
+                    new THREE.Vector3(radius * scale3D, 0.5, 0)
+                ]),
+                new THREE.LineBasicMaterial({ color: 0xcccccc, linewidth: 2 })
+            );
+            mainGroup.add(string);
+        }
+
+        function createCircleGuide() {
+            circleGuide = new THREE.Mesh(
+                new THREE.RingGeometry(radius * scale3D - 0.03, radius * scale3D + 0.03, 64),
+                new THREE.MeshBasicMaterial({ color: 0x3498db, transparent: true, opacity: 0.25, side: THREE.DoubleSide })
+            );
+            circleGuide.rotation.x = -Math.PI / 2;
+            circleGuide.position.y = 0.01;
+            mainGroup.add(circleGuide);
+
+            const points = [];
+            for (let i = 0; i <= 64; i++) {
+                const a = (i / 64) * Math.PI * 2;
+                points.push(new THREE.Vector3(Math.cos(a) * radius * scale3D, 0.5, Math.sin(a) * radius * scale3D));
+            }
+            const outline = new THREE.Line(
+                new THREE.BufferGeometry().setFromPoints(points),
+                new THREE.LineDashedMaterial({ color: 0x3498db, dashSize: 0.15, gapSize: 0.08, transparent: true, opacity: 0.5 })
+            );
+            outline.computeLineDistances();
+            circleGuide.outline = outline;
+            mainGroup.add(outline);
+        }
+
+        function createTrail() {
+            trail = new THREE.Line(
+                new THREE.BufferGeometry(),
+                new THREE.LineBasicMaterial({ color: 0x2ecc71, transparent: true, opacity: 0.6 })
+            );
+            mainGroup.add(trail);
+        }
+
+        function createArrows() {
+            // Centripetal force - BLUE - points TO center
+            forceArrow = createArrowObject(0x3498db);
+            mainGroup.add(forceArrow.group);
+
+            // Velocity - GREEN - tangential
+            velocityArrow = createArrowObject(0x2ecc71);
+            mainGroup.add(velocityArrow.group);
+
+            // Acceleration - ORANGE - points TO center
+            accelArrow = createArrowObject(0xf39c12);
+            mainGroup.add(accelArrow.group);
+
+            // Centrifugal (inertia) - RED - points AWAY from center
+            centrifugalArrow = createArrowObject(0xe74c3c);
+            centrifugalArrow.group.visible = false;
+            mainGroup.add(centrifugalArrow.group);
+        }
+
+        function createArrowObject(baseColor) {
+            const group = new THREE.Group();
+            const length = 1.5;
+
+            // Shaft
+            const shaftMat = new THREE.MeshBasicMaterial({ 
+                color: baseColor, 
+                transparent: true, 
+                opacity: 0.9 
+            });
+            const shaft = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.05, 0.05, length, 12),
+                shaftMat
+            );
+            shaft.position.y = length / 2;
+            group.add(shaft);
+
+            // Head (cone)
+            const headMat = new THREE.MeshBasicMaterial({ 
+                color: baseColor, 
+                transparent: true, 
+                opacity: 0.9 
+            });
+            const head = new THREE.Mesh(
+                new THREE.ConeGeometry(0.12, 0.3, 12),
+                headMat
+            );
+            head.position.y = length + 0.15;
+            group.add(head);
+
+            // Glow cylinder
+            const glowMat = new THREE.MeshBasicMaterial({ 
+                color: baseColor, 
+                transparent: true, 
+                opacity: 0.3 
+            });
+            const glow = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.1, 0.1, length + 0.3, 12),
+                glowMat
+            );
+            glow.position.y = length / 2 + 0.1;
+            group.add(glow);
+
+            return {
+                group: group,
+                shaftMat: shaftMat,
+                headMat: headMat,
+                glowMat: glowMat,
+                baseColor: baseColor
+            };
+        }
+
+        function setArrowIntensity(arrowObj, intensity) {
+            // intensity: 0 to 1
+            // Affects opacity and emissive-like brightness
+            const baseOpacity = 0.3 + intensity * 0.7;
+            const glowOpacity = 0.1 + intensity * 0.4;
+
+            arrowObj.shaftMat.opacity = baseOpacity;
+            arrowObj.headMat.opacity = baseOpacity;
+            arrowObj.glowMat.opacity = glowOpacity;
+
+            // Brighten color based on intensity
+            const color = new THREE.Color(arrowObj.baseColor);
+            const brightColor = color.clone().lerp(new THREE.Color(0xffffff), intensity * 0.3);
+            
+            arrowObj.shaftMat.color = brightColor;
+            arrowObj.headMat.color = brightColor;
+        }
+
+        function positionArrow(arrowObj, ballX, ballY, ballZ, targetX, targetY, targetZ) {
+            // Position arrow at ball
+            arrowObj.group.position.set(ballX, ballY, ballZ);
+
+            // Calculate direction from ball to target
+            const dx = targetX - ballX;
+            const dy = targetY - ballY;
+            const dz = targetZ - ballZ;
+
+            // Calculate rotation to point arrow toward target
+            // Arrow initially points along +Y axis
+            const length = Math.sqrt(dx * dx + dy * dy + dz * dz);
+            if (length > 0.001) {
+                // Normalize
+                const nx = dx / length;
+                const ny = dy / length;
+                const nz = dz / length;
+
+                // Use lookAt approach: create a temporary object
+                const tempObj = new THREE.Object3D();
+                tempObj.position.set(ballX, ballY, ballZ);
+                tempObj.lookAt(targetX, targetY, targetZ);
+                
+                // Arrow points in +Y by default, but lookAt makes -Z point at target
+                // So we need to rotate to align +Y with -Z after lookAt
+                arrowObj.group.quaternion.copy(tempObj.quaternion);
+                arrowObj.group.rotateX(Math.PI / 2);
+            }
+        }
+
+        function updatePhysics() {
+            const v = omega * radius;
+            const a = omega * omega * radius;
+            const F = mass * a;
+            const T = (2 * Math.PI) / omega;
+            const freq = 1 / T;
+            const rpm = omega * 60 / (2 * Math.PI);
+
+            document.getElementById('stat-force').textContent = F.toFixed(2);
+            document.getElementById('stat-velocity').textContent = v.toFixed(2);
+            document.getElementById('stat-accel').textContent = a.toFixed(2);
+            document.getElementById('stat-period').textContent = T.toFixed(2);
+            document.getElementById('stat-frequency').textContent = freq.toFixed(2);
+            document.getElementById('rpm-value').textContent = Math.round(rpm);
+
+            updateCircleGuide();
+        }
+
+        function updateCircleGuide() {
+            const r = radius * scale3D;
+
+            circleGuide.geometry.dispose();
+            circleGuide.geometry = new THREE.RingGeometry(r - 0.03, r + 0.03, 64);
+
+            const points = [];
+            for (let i = 0; i <= 64; i++) {
+                const a = (i / 64) * Math.PI * 2;
+                points.push(new THREE.Vector3(Math.cos(a) * r, 0.5, Math.sin(a) * r));
+            }
+            circleGuide.outline.geometry.setFromPoints(points);
+            circleGuide.outline.computeLineDistances();
+        }
+
+        function updateVisuals() {
+            const showCentripetal = document.getElementById('show-centripetal').checked;
+            const showVelocity = document.getElementById('show-velocity').checked;
+            const showAccel = document.getElementById('show-acceleration').checked;
+            const showTrail = document.getElementById('show-trail').checked;
+            const showInertia = document.getElementById('show-inertia').checked;
+
+            const r = radius * scale3D;
+            const ballX = Math.cos(angle) * r;
+            const ballZ = Math.sin(angle) * r;
+            const ballY = 0.5;
+
+            // Ball position
+            ball.position.set(ballX, ballY, ballZ);
+
+            // String
+            string.geometry.setFromPoints([
+                new THREE.Vector3(0, ballY, 0),
+                new THREE.Vector3(ballX, ballY, ballZ)
+            ]);
+
+            // Calculate physics values for intensity
+            const v = omega * radius;
+            const a = omega * omega * radius;
+            const F = mass * a;
+
+            // Normalize intensities (adjust these max values as needed)
+            const maxForce = 2 * 36 * 2; // mass=2, omega=6, r=2
+            const maxVelocity = 6 * 2;   // omega=6, r=2
+            const maxAccel = 36 * 2;     // omega²=36, r=2
+
+            const forceIntensity = Math.min(F / maxForce, 1);
+            const velIntensity = Math.min(v / maxVelocity, 1);
+            const accelIntensity = Math.min(a / maxAccel, 1);
+
+            // Center position
+            const centerX = 0;
+            const centerY = ballY;
+            const centerZ = 0;
+
+            // CENTRIPETAL FORCE - points TO center
+            forceArrow.group.visible = showCentripetal;
+            if (showCentripetal) {
+                positionArrow(forceArrow, ballX, ballY, ballZ, centerX, centerY, centerZ);
+                setArrowIntensity(forceArrow, forceIntensity);
+            }
+
+            // VELOCITY - tangential, perpendicular to radius, in direction of motion
+            // For CCW rotation (angle increasing), velocity direction is (-sin(angle), 0, cos(angle))
+            velocityArrow.group.visible = showVelocity;
+            if (showVelocity) {
+                const velTargetX = ballX + (-Math.sin(angle)) * 2;
+                const velTargetZ = ballZ + (Math.cos(angle)) * 2;
+                positionArrow(velocityArrow, ballX, ballY, ballZ, velTargetX, ballY, velTargetZ);
+                setArrowIntensity(velocityArrow, velIntensity);
+            }
+
+            // ACCELERATION - points TO center (same direction as force)
+            accelArrow.group.visible = showAccel;
+            if (showAccel) {
+                positionArrow(accelArrow, ballX, ballY + 0.4, ballZ, centerX, centerY + 0.4, centerZ);
+                setArrowIntensity(accelArrow, accelIntensity);
+            }
+
+            // CENTRIFUGAL (pseudo-force) - points AWAY from center
+            centrifugalArrow.group.visible = showInertia;
+            if (showInertia) {
+                // Away from center: from center toward ball, extended
+                const awayX = ballX + (ballX - centerX);
+                const awayZ = ballZ + (ballZ - centerZ);
+                positionArrow(centrifugalArrow, ballX, ballY - 0.4, ballZ, awayX, ballY - 0.4, awayZ);
+                setArrowIntensity(centrifugalArrow, forceIntensity);
+            }
+
+            // Trail
+            trail.visible = showTrail;
+            if (showTrail && isPlaying) {
+                trailPoints.push(new THREE.Vector3(ballX, ballY, ballZ));
+                if (trailPoints.length > 150) trailPoints.shift();
+                trail.geometry.setFromPoints(trailPoints);
+            }
+        }
+
+        function setupControls() {
+            document.getElementById('mass').addEventListener('input', (e) => {
+                mass = parseFloat(e.target.value);
+                document.getElementById('mass-value').textContent = mass.toFixed(1) + ' кг';
+                updatePhysics();
+            });
+
+            document.getElementById('radius').addEventListener('input', (e) => {
+                radius = parseFloat(e.target.value);
+                document.getElementById('radius-value').textContent = radius.toFixed(1) + ' м';
+                trailPoints = [];
+                updatePhysics();
+            });
+
+            document.getElementById('omega').addEventListener('input', (e) => {
+                omega = parseFloat(e.target.value);
+                document.getElementById('omega-value').textContent = omega.toFixed(1) + ' рад/с';
+                updatePhysics();
+            });
+
+            ['show-centripetal', 'show-velocity', 'show-acceleration', 'show-trail', 'show-inertia']
+                .forEach(id => document.getElementById(id).addEventListener('change', updateVisuals));
+
+            const toggleBtn = document.getElementById('btn-toggle');
+            toggleBtn.addEventListener('click', () => {
+                isPlaying = !isPlaying;
+                toggleBtn.textContent = isPlaying ? '⏸️ Пауза' : '▶️ Запуск';
+                toggleBtn.className = isPlaying ? 'btn btn-play' : 'btn btn-pause';
+            });
+
+            document.getElementById('btn-reset').addEventListener('click', () => {
+                mass = 0.5; radius = 1.0; omega = 2.0;
+                angle = 0; trailPoints = []; isPlaying = true;
+
+                document.getElementById('mass').value = 0.5;
+                document.getElementById('radius').value = 1.0;
+                document.getElementById('omega').value = 2.0;
+                document.getElementById('mass-value').textContent = '0.5 кг';
+                document.getElementById('radius-value').textContent = '1.0 м';
+                document.getElementById('omega-value').textContent = '2.0 рад/с';
+
+                document.getElementById('show-centripetal').checked = true;
+                document.getElementById('show-velocity').checked = true;
+                document.getElementById('show-acceleration').checked = true;
+                document.getElementById('show-trail').checked = true;
+                document.getElementById('show-inertia').checked = false;
+
+                document.getElementById('btn-toggle').textContent = '⏸️ Пауза';
+                document.getElementById('btn-toggle').className = 'btn btn-play';
+
+                rotation = { x: 0.5, y: 0 };
+                camera.position.z = 10;
+
+                updatePhysics();
+            });
+
+            renderer.domElement.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                lastMouse = { x: e.clientX, y: e.clientY };
+            });
+
+            renderer.domElement.addEventListener('mousemove', (e) => {
+                if (isDragging) {
+                    rotation.y += (e.clientX - lastMouse.x) * 0.008;
+                    rotation.x += (e.clientY - lastMouse.y) * 0.008;
+                    rotation.x = Math.max(-0.3, Math.min(1.2, rotation.x));
+                    lastMouse = { x: e.clientX, y: e.clientY };
+                }
+            });
+
+            renderer.domElement.addEventListener('mouseup', () => isDragging = false);
+            renderer.domElement.addEventListener('mouseleave', () => isDragging = false);
+
+            renderer.domElement.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                camera.position.z = Math.max(5, Math.min(18, camera.position.z + e.deltaY * 0.01));
+            }, { passive: false });
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (isPlaying) {
+                angle += omega * 0.016;
+                if (angle > Math.PI * 2) angle -= Math.PI * 2;
+            }
+
+            updateVisuals();
+
+            mainGroup.rotation.x = rotation.x;
+            mainGroup.rotation.y = rotation.y;
+
+            renderer.render(scene, camera);
+        }
+
+        init();
+    </script>
+<script>
+(function() {
+    const TEXT_MAP = {
+    "Центростремительная сила — Круговое движение": {
+        "kz": "Центрге тартқыш күш — Шеңбер бойымен қозғалыс",
+        "en": "Centripetal Force — Circular Motion"
+    },
+    "Круговое движение • Центростремительное ускорение • Натяжение нити": {
+        "kz": "Шеңбер бойымен қозғалыс • Центрге тартқыш үдеу • Жіп керілуі",
+        "en": "Circular motion • Centripetal acceleration • String tension"
+    },
+    "Равномерное круговое движение": {
+        "kz": "Бірқалыпты шеңберлік қозғалыс",
+        "en": "Uniform circular motion"
+    },
+    "Масса тела (m):": {
+        "kz": "Дене массасы (m):",
+        "en": "Body mass (m):"
+    },
+    "Радиус (r):": {
+        "kz": "Радиус (r):",
+        "en": "Radius (r):"
+    },
+    "Угловая скорость (ω):": {
+        "kz": "Бұрыштық жылдамдық (ω):",
+        "en": "Angular velocity (ω):"
+    },
+    "Центростремительная сила (Fц)": {
+        "kz": "Центрге тартқыш күш (Fц)",
+        "en": "Centripetal force (Fc)"
+    },
+    "Вектор скорости (v)": {
+        "kz": "Жылдамдық векторы (v)",
+        "en": "Velocity vector (v)"
+    },
+    "Ускорение (a)": {
+        "kz": "Үдеу (a)",
+        "en": "Acceleration (a)"
+    },
+    "Траектория движения": {
+        "kz": "Қозғалыс траекториясы",
+        "en": "Motion trajectory"
+    },
+    "Обозначения векторов": {
+        "kz": "Вектор белгілеулері",
+        "en": "Vector labels"
+    },
+    "Сила Fц (Н)": {
+        "kz": "Fц күші (Н)",
+        "en": "Force Fc (N)"
+    },
+    "Скорость v (м/с)": {
+        "kz": "v жылдамдығы (м/с)",
+        "en": "Speed v (m/s)"
+    },
+    "Ускорение a (м/с²)": {
+        "kz": "a үдеуі (м/с²)",
+        "en": "Acceleration a (m/s²)"
+    },
+    "Период T (с)": {
+        "kz": "T периоды (с)",
+        "en": "Period T (s)"
+    },
+    "Частота ν (Гц)": {
+        "kz": "ν жиілігі (Гц)",
+        "en": "Frequency ν (Hz)"
+    }
+,
+    "Рычаг первого рода — 3D Модель": {
+        "kz": "Бірінші текті тұтқа — 3D Модель",
+        "en": "Class I Lever — 3D Model"
+    },
+    "⚖️ Рычаг первого рода": {
+        "kz": "⚖️ Бірінші текті тұтқа",
+        "en": "⚖️ Class I Lever"
+    },
+    "Правило моментов • Механическое преимущество • Условие равновесия": {
+        "kz": "Моменттер ережесі • Механикалық артықшылық • Тепе-теңдік шарты",
+        "en": "Moment rule • Mechanical advantage • Equilibrium condition"
+    },
+    "🔴 ГРУЗ 1 (КРАСНЫЙ)": {
+        "kz": "🔴 ЖҮК 1 (ҚЫЗЫЛ)",
+        "en": "🔴 LOAD 1 (RED)"
+    },
+    "Масс m₁:": {
+        "kz": "Масса m₁:",
+        "en": "Mass m₁:"
+    },
+    "кг": {
+        "kz": "кг",
+        "en": "kg"
+    },
+    "Distance d₁:": {
+        "kz": "Қашықтық d₁:",
+        "en": "Distance d₁:"
+    },
+    "см": {
+        "kz": "см",
+        "en": "cm"
+    },
+    "🔵 ГРУЗ 2 (СИНИЙ)": {
+        "kz": "🔵 ЖҮК 2 (КӨК)",
+        "en": "🔵 LOAD 2 (BLUE)"
+    },
+    "Масс m₂:": {
+        "kz": "Масса m₂:",
+        "en": "Mass m₂:"
+    },
+    "Distance d₂:": {
+        "kz": "Қашықтық d₂:",
+        "en": "Distance d₂:"
+    },
+    "⚙️ ТОЧКА ОПОРЫ": {
+        "kz": "⚙️ ТІРЕК НҮКТЕСІ",
+        "en": "⚙️ FULCRUM"
+    },
+    "Fulcrum position": {
+        "kz": "Тірек орны",
+        "en": "Fulcrum position"
+    },
+    "🎯 ОТОБРАЖЕНИЕ": {
+        "kz": "🎯 БЕЙНЕЛЕУ",
+        "en": "🎯 DISPLAY"
+    },
+    "Force arrows": {
+        "kz": "Күш бағыттамалары",
+        "en": "Force arrows"
+    },
+    "Distances (arms)": {
+        "kz": "Қашықтықтар (иіндер)",
+        "en": "Distances (arms)"
+    },
+    "Labels": {
+        "kz": "Белгілер",
+        "en": "Labels"
+    },
+    "✅ Уравновесить": {
+        "kz": "✅ Тепе-теңдікке келтіру",
+        "en": "✅ Balance"
+    },
+    "🔄 Сбросить": {
+        "kz": "🔄 Қалпына келтіру",
+        "en": "🔄 Reset"
+    },
+    "📐 Расчёт моментов": {
+        "kz": "📐 Моменттерді есептеу",
+        "en": "📐 Moment calculation"
+    },
+    "Force F₁ (load 1)": {
+        "kz": "Күш F₁ (жүк 1)",
+        "en": "Force F₁ (load 1)"
+    },
+    "Arm d₁": {
+        "kz": "Иін d₁",
+        "en": "Arm d₁"
+    },
+    "Moment M₁ = F₁×d₁": {
+        "kz": "Момент M₁ = F₁×d₁",
+        "en": "Moment M₁ = F₁×d₁"
+    },
+    "Force F₂ (load 2)": {
+        "kz": "Күш F₂ (жүк 2)",
+        "en": "Force F₂ (load 2)"
+    },
+    "Arm d₂": {
+        "kz": "Иін d₂",
+        "en": "Arm d₂"
+    },
+    "Moment M₂ = F₂×d₂": {
+        "kz": "Момент M₂ = F₂×d₂",
+        "en": "Moment M₂ = F₂×d₂"
+    },
+    "Состояние рычага": {
+        "kz": "Тұтқа күйі",
+        "en": "Lever state"
+    },
+    "✅ РАВНОВЕСИЕ": {
+        "kz": "✅ ТЕПЕ-ТЕҢДІК",
+        "en": "✅ BALANCED"
+    },
+    "⚠️ НЕ УРАВНОВЕШЕН": {
+        "kz": "⚠️ ТЕПЕ-ТЕҢДІК ЕМЕС",
+        "en": "⚠️ NOT BALANCED"
+    },
+    "Н": {
+        "kz": "Н",
+        "en": "N"
+    },
+    "м": {
+        "kz": "м",
+        "en": "m"
+    },
+    "Н·м": {
+        "kz": "Н·м",
+        "en": "N·m"
+    },
+    "Рычаг первого рода (fulcrum between forces)": {
+        "kz": "Бірінші текті тұтқа (жүктер арасындағы тірек)",
+        "en": "Class I lever (fulcrum between forces)"
+    }
+,
+    "🔄 Центростремительная сила": {
+        "kz": "🔄 Центрге тартқыш күш",
+        "en": "🔄 Centripetal Force"
+    },
+    "⚙️ Параметры тела": {
+        "kz": "⚙️ Дене параметрлері",
+        "en": "⚙️ Body parameters"
+    },
+    "0.5 кг": {
+        "kz": "0,5 кг",
+        "en": "0.5 kg"
+    },
+    "📏 Радиус вращения": {
+        "kz": "📏 Айналу радиусы",
+        "en": "📏 Rotation radius"
+    },
+    "1.0 м": {
+        "kz": "1,0 м",
+        "en": "1.0 m"
+    },
+    "⚡ Скорость вращения": {
+        "kz": "⚡ Айналу жылдамдығы",
+        "en": "⚡ Rotation speed"
+    },
+    "2.0 рад/с": {
+        "kz": "2,0 рад/с",
+        "en": "2.0 rad/s"
+    },
+    "👁️ Визуализация": {
+        "kz": "👁️ Визуализация",
+        "en": "👁️ Visualization"
+    },
+    "«Центробежная» сила (инерция)": {
+        "kz": "«Центрден тепкіш» күш (инерция)",
+        "en": "\"Centrifugal\" force (inertia)"
+    },
+    "💡 Яркость стрелок = величина силы/скорости": {
+        "kz": "💡 Бағыттамалардың жарықтығы = күш/жылдамдық шамасы",
+        "en": "💡 Arrow brightness = force/speed magnitude"
+    },
+    "⏸️ Пауза": {
+        "kz": "⏸️ Кідірту",
+        "en": "⏸️ Pause"
+    },
+    "▶️ Запуск": {
+        "kz": "▶️ Іске қосу",
+        "en": "▶️ Start"
+    },
+    "Fц — к центру (натяжение нити)": {
+        "kz": "Fц — центрге (жіп керілуі)",
+        "en": "Fc — towards center (string tension)"
+    },
+    "v — по касательной (скорость)": {
+        "kz": "v — жанама бойынша (жылдамдық)",
+        "en": "v — tangential (velocity)"
+    },
+    "a — к центру (ускорение)": {
+        "kz": "a — центрге (үдеу)",
+        "en": "a — towards center (acceleration)"
+    },
+    "«Fцб» — от центра (инерция)": {
+        "kz": "«Fцб» — центрден (инерция)",
+        "en": "\"Fcf\" — from center (inertia)"
+    },
+    "📊 Физические величины": {
+        "kz": "📊 Физикалық шамалар",
+        "en": "📊 Physical quantities"
+    },
+    "Через угловую скорость": {
+        "kz": "Бұрыштық жылдамдық арқылы",
+        "en": "Through angular velocity"
+    },
+    "Линейная скорость": {
+        "kz": "Сызықтық жылдамдық",
+        "en": "Linear velocity"
+    },
+    "оборотов в минуту": {
+        "kz": "айналым/минутына",
+        "en": "revolutions per minute"
+    },
+    "Сила направлена к центру вращения и удерживает тело на круговой орбите": {
+        "kz": "Күш айналу центріне бағытталған және денені шеңберлік орбитада ұстайды",
+        "en": "The force is directed towards the center of rotation and keeps the body in circular orbit"
+    }
+,
+    "Вращайте сцену мышью • Колёсико для зума": {
+        "kz": "Тінтуірмен сахнаны айналдырыңыз • Масштабтау үшін дөңгелек",
+        "en": "Rotate scene with mouse • Scroll to zoom"
+    }
+};
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentLang = urlParams.get('lang') || 'ru';
+
+    if (currentLang === 'ru') return; // No translation needed
+
+    function translateTextNodes(root) {
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
+        const nodes = [];
+        while (walker.nextNode()) nodes.push(walker.currentNode);
+        
+        nodes.forEach(node => {
+            let text = node.textContent;
+            if (!text || !text.trim()) return;
+            
+            const trimmed = text.trim();
+            if (TEXT_MAP[trimmed] && TEXT_MAP[trimmed][currentLang]) {
+                node.textContent = text.replace(trimmed, TEXT_MAP[trimmed][currentLang]);
+            }
+        });
+    }
+
+    function translateAttributes(root) {
+        root.querySelectorAll('[title]').forEach(el => {
+            const t = el.getAttribute('title');
+            if (TEXT_MAP[t] && TEXT_MAP[t][currentLang]) {
+                el.setAttribute('title', TEXT_MAP[t][currentLang]);
+            }
+        });
+        root.querySelectorAll('[placeholder]').forEach(el => {
+            const t = el.getAttribute('placeholder');
+            if (TEXT_MAP[t] && TEXT_MAP[t][currentLang]) {
+                el.setAttribute('placeholder', TEXT_MAP[t][currentLang]);
+            }
+        });
+        // Translate page title
+        const titleText = document.title.trim();
+        if (TEXT_MAP[titleText] && TEXT_MAP[titleText][currentLang]) {
+            document.title = TEXT_MAP[titleText][currentLang];
+        }
+    }
+
+    
+
+    function applyTranslations() {
+        translateTextNodes(document.body);
+        translateAttributes(document);
+        if (typeof translateData === 'function') translateData(currentLang);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', applyTranslations);
+    } else {
+        applyTranslations();
+    }
+
+    // Re-translate after dynamic content changes
+    window.currentLang = currentLang;
+    window._currentLang = currentLang;
+    window._TEXT_MAP = TEXT_MAP;
+
+    // One-time delayed re-translate for dynamic content
+    let _tc=0;const _ti=setInterval(()=>{translateTextNodes(document.body);translateAttributes(document);if(++_tc>=20)clearInterval(_ti);},500);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="page_title">Сердце человека — анатомическая модель</title>
+    <link rel="stylesheet" href="_poster.css">
+</head>
+<body>
+<div id="canvas-container"></div>
+<div id="header">
+    <h1 data-i18n="header_title">Сердце человека</h1>
+    <p data-i18n="header_subtitle">Интерактивная анатомическая модель — 6 ключевых структур</p>
+</div>
+<div id="hint" data-i18n="hint">Кликните по любой части сердца, чтобы узнать больше</div>
+<button id="reset-btn" data-i18n="reset_btn" data-i18n-title="reset_btn_title" title="Сбросить вид">↺ Сбросить вид</button>
+<div id="info-panel" aria-hidden="true"></div>
+<div id="legend"></div>
+<div id="hover-label"></div>
+<div id="loading"><div class="spinner"></div><div id="loading-text" data-i18n="loading">Загрузка модели…</div></div>
+
+<script type="importmap">
+    { "imports": { "three": "../../libs/vendor/three-0.160.0/three.module.js", "three/addons/": "../../libs/vendor/three-0.160.0/addons/" } }
+</script>
+
+<script type="module">
+    import { initPoster } from './_poster_lib.js';
+
+    const I18N = {
+        ru: {
+            page_title: 'Сердце человека — анатомическая модель',
+            header_title: 'Сердце человека',
+            header_subtitle: 'Интерактивная анатомическая модель — 6 ключевых структур',
+            hint: 'Кликните по любой части сердца, чтобы узнать больше',
+            reset_btn: '↺ Сбросить вид', reset_btn_title: 'Сбросить вид', close_btn_label: 'Закрыть',
+            loading: 'Загрузка модели…', error_load: 'Не удалось загрузить heart.glb', error_no_mesh: 'В модели нет меша',
+            facts_label: 'Интересный факт',
+            zones: {
+                left_ventricle: { title: 'Левый желудочек', desc: 'Самая мощная камера сердца с толстой мышечной стенкой (12–15 мм). Выталкивает оксигенированную кровь в аорту под давлением 120 мм рт. ст., обеспечивая кровоснабжение всего организма через большой круг кровообращения.', facts: 'За сутки левый желудочек перекачивает около 7500 литров крови — это масса 3 легковых автомобилей.' },
+                right_ventricle: { title: 'Правый желудочек', desc: 'Камера с более тонкой стенкой (3–5 мм), расположенная спереди. Направляет венозную кровь в лёгочный ствол и далее в лёгкие для газообмена. Работает при более низком давлении (25 мм рт. ст.), чем левый.', facts: 'Правый желудочек перекачивает тот же объём крови, что и левый, но при давлении в 5 раз ниже — ведь путь до лёгких короткий.' },
+                left_atrium: { title: 'Левое предсердие', desc: 'Принимает обогащённую кислородом кровь из четырёх лёгочных вен. Тонкостенная камера, расположенная сзади-сверху сердца. При сокращении выталкивает кровь через митральный клапан в левый желудочек.', facts: 'Левое предсердие — единственная камера сердца, которая получает артериальную (богатую кислородом) кровь.' },
+                right_atrium: { title: 'Правое предсердие', desc: 'Принимает венозную кровь из верхней и нижней полых вен, а также коронарного синуса. Содержит синоатриальный узел (водитель ритма), который задаёт частоту сердечных сокращений.', facts: 'Синоатриальный узел генерирует 60–100 импульсов в минуту автоматически — даже если сердце вынуть из тела, оно продолжит биться.' },
+                aorta: { title: 'Аорта и крупные сосуды', desc: 'Аорта — самый крупный сосуд (диаметр 2,5–3 см), выходящий из левого желудочка. Также к крупным сосудам относятся лёгочный ствол, полые вены и лёгочные вены. Стенка аорты эластична и сглаживает пульсации давления.', facts: 'Скорость крови в аорте в момент систолы достигает 1,5 м/с, а давление может растягивать её стенку до 30% от исходного диаметра.' },
+                valves: { title: 'Клапаны сердца', desc: 'Четыре клапана обеспечивают однонаправленный ток крови: митральный (двустворчатый) и трикуспидальный (трёхстворчатый) между предсердиями и желудочками, аортальный и пульмональный — на выходе из желудочков.', facts: 'Клапаны сердца открываются и закрываются более 100 000 раз в день; именно их закрытие создаёт звуки «тук-тук» при аускультации.' }
+            }
+        },
+        kz: {
+            page_title: 'Адам жүрегі — анатомиялық модель',
+            header_title: 'Адам жүрегі',
+            header_subtitle: 'Интерактивті анатомиялық модель — 6 негізгі құрылым',
+            hint: 'Толығырақ білу үшін жүректің кез келген бөлігіне басыңыз',
+            reset_btn: '↺ Көріністі қалпына келтіру', reset_btn_title: 'Көріністі қалпына келтіру', close_btn_label: 'Жабу',
+            loading: 'Модель жүктелуде…', error_load: 'heart.glb файлын жүктеу мүмкін болмады', error_no_mesh: 'Модельде меш табылмады',
+            facts_label: 'Қызықты факт',
+            zones: {
+                left_ventricle: { title: 'Сол жақ қарынша', desc: 'Жүректің ең қуатты камерасы, қалың бұлшықет қабырғасы бар (12–15 мм). Оттегімен байытылған қанды аортаға 120 мм с.б. қысыммен шығарып, бүкіл ағзаны қанмен қамтамасыз етеді.', facts: 'Тәулігіне сол жақ қарынша шамамен 7500 литр қан айдайды — бұл 3 жеңіл автомобильдің салмағы.' },
+                right_ventricle: { title: 'Оң жақ қарынша', desc: 'Жұқарақ қабырғасы (3–5 мм) бар, алдыңғы жағында орналасқан камера. Веноздық қанды өкпе бағанасына және одан әрі газ алмасу үшін өкпеге жібереді.', facts: 'Оң жақ қарынша сол жақтағыдай қан көлемін айдайды, бірақ 5 есе аз қысыммен — өкпеге дейінгі жол қысқа.' },
+                left_atrium: { title: 'Сол жақ жүрекше', desc: 'Төрт өкпе венасынан оттегімен байытылған қан қабылдайды. Жіңішке қабырғалы камера, жүректің артқы-жоғарғы жағында орналасқан.', facts: 'Сол жақ жүрекше — артериялық қанды қабылдайтын жалғыз жүрек камерасы.' },
+                right_atrium: { title: 'Оң жақ жүрекше', desc: 'Жоғарғы және төменгі қуыс веналардан веноздық қан қабылдайды. Жүрек ырғағын анықтайтын синоатриальды түйін бар.', facts: 'Синоатриальды түйін минутына 60–100 импульс автоматты түрде шығарады — тіпті жүректі денеден алып тастасаңыз да соғуын жалғастырады.' },
+                aorta: { title: 'Қолқа және ірі тамырлар', desc: 'Қолқа — сол жақ қарыншадан шығатын ең ірі тамыр (диаметрі 2,5–3 см). Оған өкпе бағанасы, қуыс веналар және өкпе веналары да жатады.', facts: 'Систола кезінде қолқадағы қан жылдамдығы 1,5 м/с-ке жетеді.' },
+                valves: { title: 'Жүрек қақпақшалары', desc: 'Төрт қақпақша қанның бір бағытта ғана ағуын қамтамасыз етеді: митральды және трикуспидальды — жүрекшелер мен қарыншалар арасында, аорталық және пульмональды — қарыншалардан шығу жерінде.', facts: 'Жүрек қақпақшалары тәулігіне 100 000-нан астам рет ашылып-жабылады.' }
+            }
+        },
+        en: {
+            page_title: 'Human Heart — Anatomical Model',
+            header_title: 'Human Heart',
+            header_subtitle: 'Interactive anatomical model — 6 key structures',
+            hint: 'Click any part of the heart to learn more',
+            reset_btn: '↺ Reset view', reset_btn_title: 'Reset view', close_btn_label: 'Close',
+            loading: 'Loading model…', error_load: 'Failed to load heart.glb', error_no_mesh: 'No mesh found in the model',
+            facts_label: 'Did you know?',
+            zones: {
+                left_ventricle: { title: 'Left Ventricle', desc: 'The most powerful chamber with thick muscular walls (12–15 mm). It ejects oxygenated blood into the aorta at 120 mmHg, supplying the entire body through the systemic circulation.', facts: 'The left ventricle pumps about 7,500 liters of blood per day — the mass of 3 cars.' },
+                right_ventricle: { title: 'Right Ventricle', desc: 'A chamber with thinner walls (3–5 mm) located anteriorly. It pumps venous blood to the pulmonary trunk and then to the lungs for gas exchange, operating at lower pressure (25 mmHg).', facts: 'The right ventricle pumps the same volume as the left but at 5 times lower pressure — the path to the lungs is short.' },
+                left_atrium: { title: 'Left Atrium', desc: 'Receives oxygenated blood from four pulmonary veins. A thin-walled chamber located at the posterior-superior aspect of the heart.', facts: 'The left atrium is the only heart chamber that receives arterial (oxygen-rich) blood.' },
+                right_atrium: { title: 'Right Atrium', desc: 'Receives venous blood from the superior and inferior venae cavae and the coronary sinus. Contains the sinoatrial node (pacemaker) that sets the heart rate.', facts: 'The SA node generates 60–100 impulses per minute automatically — even an isolated heart continues to beat.' },
+                aorta: { title: 'Aorta & Great Vessels', desc: 'The aorta is the largest vessel (2.5–3 cm diameter) exiting the left ventricle. Great vessels also include the pulmonary trunk, venae cavae, and pulmonary veins.', facts: 'Blood velocity in the aorta reaches 1.5 m/s during systole.' },
+                valves: { title: 'Heart Valves', desc: 'Four valves ensure one-way blood flow: mitral and tricuspid between atria and ventricles, aortic and pulmonary at the ventricle outlets.', facts: 'Heart valves open and close over 100,000 times per day; their closure produces the "lub-dub" sounds heard with a stethoscope.' }
+            }
+        }
+    };
+
+    const ZONES = [
+        { id: 'left_ventricle',  subtitle: 'Ventriculus sinister', color: 0xff6b6b },
+        { id: 'right_ventricle', subtitle: 'Ventriculus dexter',   color: 0x4d96ff },
+        { id: 'left_atrium',     subtitle: 'Atrium sinistrum',     color: 0xffd93d },
+        { id: 'right_atrium',    subtitle: 'Atrium dextrum',       color: 0x6bcb77 },
+        { id: 'aorta',           subtitle: 'Aorta et vasa magna',  color: 0xc77dff },
+        { id: 'valves',          subtitle: 'Valvae cordis',        color: 0xff9f45 }
+    ];
+
+    // classify(x, y, z): x=right, y=up, z=front
+    // Heart anatomy: aorta/vessels at top, atria upper-middle, ventricles lower, valves in between
+    function classify(x, y, z) {
+        // Aorta and great vessels — top of the heart
+        if (y > 0.45) return 4;
+        // Atria — upper portion
+        if (y > 0.05) {
+            // Valves — narrow band at atrio-ventricular junction, central
+            if (y < 0.2 && Math.abs(x) < 0.5 && Math.abs(z) < 0.5) return 5;
+            return x > 0 ? 3 : 2; // right atrium (anatomical right = viewer's left in standard view) / left atrium
+        }
+        // Ventricles — lower portion (bulk of the heart)
+        // Left ventricle is thicker, posterior-left; right ventricle is anterior-right
+        if (z > 0.15 || x > 0.2) return 1; // right ventricle (anterior)
+        return 0; // left ventricle (posterior-left, dominant mass)
+    }
+
+    initPoster({ modelFile: 'heart.glb', zones: ZONES, classify, i18n: I18N });
+</script>
+</body>
+</html>

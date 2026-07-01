@@ -1,0 +1,1080 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Молекула глюкозы — C₆H₁₂O₆</title>
+<style>
+
+
+*{margin:0;padding:0;box-sizing:border-box;}
+
+:root{
+  --bg:#f5f4f0;
+  --surface:rgba(255,255,255,0.90);
+  --border:rgba(0,0,0,0.08);
+  --text:#1c1917;
+  --muted:#78716c;
+  --indigo:#4f46e5;
+  --indigo-light:#e0e7ff;
+  --shadow:0 2px 20px rgba(0,0,0,0.07);
+  --shadow-lg:0 8px 44px rgba(0,0,0,0.11);
+  --c-carbon:#374151;
+  --c-oxygen:#ef4444;
+  --c-hydrogen:#cbd5e1;
+  --c-ring:#0891b2;
+}
+
+body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);overflow:hidden;height:100vh;}
+
+body::before{
+  content:'';position:fixed;inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='%23f5f4f0'/%3E%3Ccircle cx='1' cy='1' r='0.6' fill='rgba(0,0,0,0.025)'/%3E%3C/svg%3E");
+  pointer-events:none;z-index:0;
+}
+
+#canvas-container{position:fixed;inset:0;z-index:1;}
+
+/* ── HEADER ── */
+.header{
+  position:fixed;top:0;left:0;right:0;z-index:200;
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  padding:0 48px;height:92px;
+  display:flex;align-items:center;gap:14px;
+  box-shadow:var(--shadow);
+}
+.h-formula{font-family:'DM Mono',monospace;font-size:32px;font-weight:500;letter-spacing:-0.5px;}
+.h-c{color:var(--c-carbon);}
+.h-h{color:#3b82f6;}
+.h-o{color:var(--c-oxygen);}
+.h-sub{color:var(--muted);font-size:24px;}
+.header-title{font-size:26px;font-weight:700;margin-left:12px;}
+.header-sub{font-size:14px;color:var(--muted);margin-left:auto;text-align:right;line-height:1.5;}
+
+/* ── LEFT PANEL ── */
+.panel-left{
+  position:fixed;left:24px;top:108px;z-index:100;
+  width:318px;
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:24px;
+  padding:18px 20px;
+  box-shadow:var(--shadow-lg);
+  max-height:calc(100vh - 128px);overflow-y:auto;
+}
+.panel-left::-webkit-scrollbar{width:4px;}
+.panel-left::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.12);border-radius:4px;}
+.panel-left h3{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.1px;color:var(--muted);margin-bottom:10px;}
+
+.prop-row{
+  display:flex;justify-content:space-between;align-items:baseline;
+  padding:6px 0;border-bottom:1px solid rgba(0,0,0,0.05);font-size:13.5px;
+}
+.prop-row:last-child{border-bottom:none;}
+.prop-key{color:var(--muted);}
+.prop-val{font-family:'DM Mono',monospace;font-size:13px;font-weight:500;color:var(--text);}
+
+.divider{height:1px;background:var(--border);margin:12px 0;}
+
+/* functional groups list */
+.fg-item{
+  display:flex;align-items:flex-start;gap:9px;
+  padding:8px 10px;border-radius:11px;margin-bottom:5px;cursor:pointer;
+  border:1.5px solid transparent;transition:all .16s;
+}
+.fg-item:hover{background:rgba(0,0,0,0.03);}
+.fg-item.active{background:rgba(79,70,229,0.07);border-color:rgba(79,70,229,0.2);}
+.fg-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0;margin-top:3px;}
+.fg-name{font-size:13.5px;font-weight:700;color:var(--text);}
+.fg-sub{font-size:11.5px;color:var(--muted);line-height:1.4;}
+
+/* ── RIGHT PANEL ── */
+.panel-right{
+  position:fixed;right:24px;top:108px;z-index:100;
+  width:290px;
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:24px;
+  padding:20px 20px;
+  box-shadow:var(--shadow-lg);
+  display:flex;flex-direction:column;gap:9px;
+  max-height:calc(100vh - 128px);overflow-y:auto;
+}
+.panel-right::-webkit-scrollbar{width:4px;}
+.panel-right::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.12);border-radius:4px;}
+.panel-right h3{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.1px;color:var(--muted);margin-bottom:3px;}
+
+.btn{
+  width:100%;padding:11px 14px;border-radius:14px;
+  font-family:'Syne',sans-serif;font-size:15px;font-weight:600;
+  border:none;cursor:pointer;transition:all .18s;text-align:center;
+}
+.btn-primary{background:linear-gradient(135deg,#4f46e5,#818cf8);color:#fff;box-shadow:0 4px 14px rgba(79,70,229,0.28);}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(79,70,229,0.38);}
+.btn-secondary{background:rgba(79,70,229,0.09);color:var(--indigo);}
+.btn-secondary:hover{background:rgba(79,70,229,0.16);}
+.btn-secondary.active{background:var(--indigo);color:#fff;}
+.btn-ghost{background:rgba(0,0,0,0.05);color:var(--text);}
+.btn-ghost:hover{background:rgba(0,0,0,0.09);}
+.btn-ghost.active{background:rgba(79,70,229,0.12);color:var(--indigo);}
+.sep{height:1px;background:var(--border);margin:2px 0;}
+
+/* form switcher */
+.form-switcher{display:flex;flex-direction:column;gap:6px;}
+.form-btn{
+  width:100%;padding:11px 12px;border-radius:13px;
+  font-family:'Syne',sans-serif;font-size:14px;font-weight:600;
+  border:1.5px solid var(--border);background:rgba(255,255,255,0.7);
+  color:var(--text);cursor:pointer;transition:all .18s;text-align:left;
+  display:flex;justify-content:space-between;align-items:center;
+}
+.form-btn:hover{border-color:var(--indigo);color:var(--indigo);}
+.form-btn.active{border-color:var(--indigo);background:var(--indigo-light);color:var(--indigo);}
+.form-btn .fb-sub{font-family:'DM Mono',monospace;font-size:11px;opacity:0.7;font-weight:500;}
+
+/* ── STAGE LABEL ── */
+.stage-label{
+  position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:150;
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:24px;
+  padding:9px 26px;font-size:15px;font-weight:600;
+  box-shadow:var(--shadow);pointer-events:none;transition:opacity .3s;
+}
+.stage-label .mono{font-family:'DM Mono',monospace;color:var(--indigo);}
+
+/* ── INFO PANEL ── */
+.info-panel{
+  position:fixed;right:24px;z-index:300;
+  width:425px;max-height:calc(100vh - 140px);
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:26px;
+  padding:24px 26px;box-shadow:var(--shadow-lg);overflow-y:auto;
+  transform:translateX(470px);transition:transform .38s cubic-bezier(.22,1,.36,1);
+}
+.info-panel.open{transform:translateX(0);}
+.info-panel::-webkit-scrollbar{width:4px;}
+.info-panel::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.13);border-radius:4px;}
+.info-close{
+  position:absolute;top:16px;right:18px;
+  width:30px;height:30px;border-radius:50%;
+  background:rgba(0,0,0,0.07);border:none;cursor:pointer;
+  font-size:16px;color:var(--muted);
+  display:flex;align-items:center;justify-content:center;
+}
+.info-close:hover{background:rgba(0,0,0,0.13);}
+.info-tag{display:inline-block;border-radius:10px;padding:3px 10px;font-size:12px;font-weight:600;margin-bottom:12px;background:var(--indigo-light);color:var(--indigo);}
+.info-panel h2{font-size:19px;font-weight:700;margin-bottom:6px;}
+.info-section{margin-top:12px;}
+.info-section h4{font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--indigo);margin-bottom:6px;}
+.info-section p{font-size:14px;line-height:1.65;color:#374151;}
+.info-mono{font-family:'DM Mono',monospace;font-size:13px;background:rgba(79,70,229,0.07);border-radius:6px;padding:7px 11px;margin-top:6px;color:var(--text);}
+
+/* ── ATOM LABELS ── */
+.atom-label{
+  position:fixed;z-index:120;pointer-events:none;
+  font-family:'Syne',sans-serif;font-size:12px;font-weight:700;
+  background:rgba(255,255,255,0.92);
+  border:1.5px solid rgba(0,0,0,0.09);border-radius:9px;padding:3px 8px;
+  transition:opacity .25s;white-space:nowrap;transform:translate(-50%,-50%);
+}
+
+/* ── HINT BAR ── */
+.hint-bar{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);z-index:150;display:flex;gap:16px;}
+.hint-pill{
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:20px;
+  padding:7px 18px;font-size:13px;color:var(--muted);
+  box-shadow:var(--shadow);white-space:nowrap;
+}
+.hint-pill span{color:var(--text);font-weight:600;}
+
+/* ── LOADING ── */
+#loading{
+  position:fixed;inset:0;z-index:500;background:var(--bg);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;
+}
+.spinner{
+  width:48px;height:48px;border-radius:50%;
+  border:4px solid rgba(79,70,229,0.15);border-top-color:var(--indigo);
+  animation:spin .9s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="spinner"></div>
+  <div style="font-size:16px;font-weight:600;color:#78716c;">Загрузка сцены…</div>
+</div>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="h-formula">
+    <span class="h-c">C</span><span class="h-sub">₆</span><span class="h-h">H</span><span class="h-sub">₁₂</span><span class="h-o">O</span><span class="h-sub">₆</span>
+  </div>
+  <div class="header-title" data-i18n="header_title">Молекула глюкозы</div>
+  <div class="header-sub" data-i18n-html="header_sub">
+    Альдогексоза · моносахарид<br>
+    <span style="font-family:'DM Mono',monospace;font-size:13px;">открытая ⇌ циклическая формы</span>
+  </div>
+</header>
+
+<!-- LEFT PANEL -->
+<div class="panel-left">
+  <h3 data-i18n="props_title">Свойства</h3>
+  <div class="prop-row"><span class="prop-key" data-i18n="prop_f">Формула</span><span class="prop-val">C₆H₁₂O₆</span></div>
+  <div class="prop-row"><span class="prop-key" data-i18n="prop_m">Молярная масса</span><span class="prop-val">180.16 г/моль</span></div>
+  <div class="prop-row"><span class="prop-key" data-i18n="prop_c">Класс</span><span class="prop-val" data-i18n="prop_class_val">альдогексоза</span></div>
+  <div class="prop-row"><span class="prop-key" data-i18n="prop_ch">Хиральных C</span><span class="prop-val">4 (C2–C5)</span></div>
+  <div class="prop-row"><span class="prop-key" data-i18n="prop_s">Стереоизомеров</span><span class="prop-val">2⁴ = 16</span></div>
+  <div class="prop-row"><span class="prop-key" data-i18n="prop_dg">D-глюкоза</span><span class="prop-val" data-i18n="prop_dg_val">природная</span></div>
+
+  <div class="divider"></div>
+
+  <h3 data-i18n="fg_title">Функциональные группы</h3>
+  <div class="fg-item active" id="fg-aldehyde" onclick="focusGroup('aldehyde')">
+    <div class="fg-dot" style="background:#ef4444;"></div>
+    <div>
+      <div class="fg-name" data-i18n="fg_ald">Альдегидная –CHO</div>
+      <div class="fg-sub" data-i18n="fg_ald_sub">на C1 · только в открытой форме · даёт р. «серебряного зеркала»</div>
+    </div>
+  </div>
+  <div class="fg-item" id="fg-hydroxyl" onclick="focusGroup('hydroxyl')">
+    <div class="fg-dot" style="background:#f87171;"></div>
+    <div>
+      <div class="fg-name" data-i18n="fg_hyd">Гидроксильные –OH</div>
+      <div class="fg-sub" data-i18n="fg_hyd_sub">5 групп · многоатомный спирт · р. с Cu(OH)₂</div>
+    </div>
+  </div>
+  <div class="fg-item" id="fg-ring" onclick="focusGroup('ring')">
+    <div class="fg-dot" style="background:#0891b2;"></div>
+    <div>
+      <div class="fg-name" data-i18n="fg_ring">Кислородный мостик</div>
+      <div class="fg-sub" data-i18n="fg_ring_sub">O между C1 и C5 · образует пиранозное кольцо</div>
+    </div>
+  </div>
+  <div class="fg-item" id="fg-anomeric" onclick="focusGroup('anomeric')">
+    <div class="fg-dot" style="background:#a855f7;"></div>
+    <div>
+      <div class="fg-name" data-i18n="fg_an">Аномерный центр</div>
+      <div class="fg-sub" data-i18n="fg_an_sub">C1 · полуацетальный –OH · α/β-аномеры</div>
+    </div>
+  </div>
+</div>
+
+<!-- RIGHT PANEL -->
+<div class="panel-right">
+  <h3 data-i18n="form_title">Форма молекулы</h3>
+  <div class="form-switcher">
+    <button class="form-btn active" id="form-fischer" onclick="setForm('fischer')">
+      <span data-i18n="form_open">Открытая</span> <span class="fb-sub" data-i18n="form_open_sub">Фишер</span>
+    </button>
+    <button class="form-btn" id="form-haworth" onclick="setForm('haworth')">
+      <span data-i18n="form_cyclic">Циклическая</span> <span class="fb-sub" data-i18n="form_cyclic_sub">Хаворт</span>
+    </button>
+    <button class="form-btn" id="form-chair" onclick="setForm('chair')">
+      <span data-i18n="form_chair">Конформация</span> <span class="fb-sub" data-i18n="form_chair_sub">кресло</span>
+    </button>
+  </div>
+
+  <div class="sep"></div>
+  <h3 data-i18n="display_title">Отображение</h3>
+  <button class="btn btn-secondary active" id="btn-labels" onclick="toggleLabels()">Подписи вкл.</button>
+  <button class="btn btn-secondary active" id="btn-h" onclick="toggleH()">Атомы H вкл.</button>
+  <button class="btn btn-ghost active" id="btn-rotate" onclick="toggleRotate()">Вращение вкл.</button>
+
+  <div class="sep"></div>
+  <h3 data-i18n="more_title">Подробнее</h3>
+  <button class="btn btn-primary" data-i18n="btn_cycl" onclick="openInfo('cyclization')">Циклизация</button>
+  <button class="btn btn-secondary" data-i18n="btn_forms" onclick="openInfo('forms')">Три формы</button>
+  <button class="btn btn-secondary" data-i18n="btn_props" onclick="openInfo('reactions')">Химические свойства</button>
+  <button class="btn btn-secondary" data-i18n="btn_bio" onclick="openInfo('biology')">Роль в природе</button>
+</div>
+
+<!-- STAGE LABEL -->
+<div class="stage-label" id="stage-label">
+  Открытая форма · проекция <span class="mono">Фишера</span>
+</div>
+
+<!-- INFO PANEL -->
+<div class="info-panel" id="info-panel">
+  <button class="info-close" onclick="closeInfo()">✕</button>
+  <div id="info-content"></div>
+</div>
+
+<!-- CANVAS -->
+<div id="canvas-container"></div>
+
+<!-- HINTS -->
+<div class="hint-bar">
+  <div class="hint-pill"><span data-i18n="hint_drag_label">Drag</span> — <span data-i18n="hint_drag">вращение</span></div>
+  <div class="hint-pill"><span data-i18n="hint_zoom_label">Scroll</span> — <span data-i18n="hint_zoom">зум</span></div>
+  <div class="hint-pill"><span data-i18n="hint_click_label">Click</span> — <span data-i18n="hint_click">атом</span></div>
+</div>
+
+<script>
+const I18N = {
+  ru: {
+    page_title: "Молекула глюкозы — C₆H₁₂O₆",
+    header_title: "Молекула глюкозы",
+    header_sub: "Альдогексоза · моносахарид<br>открытая ⇌ циклическая формы",
+    props_title: "Свойства",
+    prop_f: "Формула",
+    prop_m: "Молярная масса",
+    prop_c: "Класс",
+    prop_ch: "Хиральных C",
+    prop_s: "Стереоизомеров",
+    prop_dg: "D-глюкоза",
+    prop_dg_val: "природная",
+    prop_class_val: "альдогексоза",
+    fg_title: "Функциональные группы",
+    fg_ald: "Альдегидная –CHO",
+    fg_ald_sub: "на C1 · только в открытой форме · даёт р. «серебряного зеркала»",
+    fg_hyd: "Гидроксильные –OH",
+    fg_hyd_sub: "5 групп · многоатомный спирт · р. с Cu(OH)₂",
+    fg_ring: "Кислородный мостик",
+    fg_ring_sub: "O между C1 и C5 · образует пиранозное кольцо",
+    fg_an: "Аномерный центр",
+    fg_an_sub: "C1 · полуацетальный –OH · α/β-аномеры",
+    form_title: "Форма молекулы",
+    form_open: "Открытая",
+    form_open_sub: "Фишер",
+    form_cyclic: "Циклическая",
+    form_cyclic_sub: "Хаворт",
+    form_chair: "Конформация",
+    form_chair_sub: "кресло",
+    display_title: "Отображение",
+    btn_labels_on: "Подписи вкл.",
+    btn_labels_off: "Подписи выкл.",
+    btn_h_on: "Атомы H вкл.",
+    btn_h_off: "Атомы H выкл.",
+    btn_rot_on: "Вращение вкл.",
+    btn_rot_off: "Вращение выкл.",
+    more_title: "Подробнее",
+    btn_cycl: "Циклизация",
+    btn_forms: "Три формы",
+    btn_props: "Химические свойства",
+    btn_bio: "Роль в природе",
+    hint_drag: "вращение",
+    hint_zoom: "зум",
+    hint_click: "атом",
+    hint_drag_label: "Drag",
+    hint_zoom_label: "Scroll",
+    hint_click_label: "Click",
+    tag_g: "ГЛЮКОЗА"
+  },
+  kz: {
+    page_title: "Глюкоза молекуласы — C₆H₁₂O₆",
+    header_title: "Глюкоза молекуласы",
+    header_sub: "Альдогексоза · моносахарид<br>ашық ⇌ циклдік формалары",
+    props_title: "Қасиеттері",
+    prop_f: "Формуласы",
+    prop_m: "Молярлық массасы",
+    prop_c: "Класы",
+    prop_ch: "Хиральді C атомдары",
+    prop_s: "Стереоизомерлері",
+    prop_dg: "D-глюкоза",
+    prop_dg_val: "табиғи",
+    prop_class_val: "альдогексоза",
+    fg_title: "Функционалдық топтар",
+    fg_ald: "Альдегидті –CHO",
+    fg_ald_sub: "C1-де · тек ашық формада · «күміс айна» реакциясын береді",
+    fg_hyd: "Гидроксил топтары –OH",
+    fg_hyd_sub: "5 топ · көп атомды спирт · Cu(OH)₂-мен реакция",
+    fg_ring: "Оттек көпіршесі",
+    fg_ring_sub: "C1 және C5 арасындағы O · пираноз сақинасын түзеді",
+    fg_an: "Аномерлік орталық",
+    fg_an_sub: "C1 · жартылай ацетальді –OH · α/β-аномерлері",
+    form_title: "Молекула пішіні",
+    form_open: "Ашық",
+    form_open_sub: "Фишер",
+    form_cyclic: "Циклдік",
+    form_cyclic_sub: "Хаворт",
+    form_chair: "Конформация",
+    form_chair_sub: "кресло",
+    display_title: "Бейнелеу",
+    btn_labels_on: "Белгілер қосулы",
+    btn_labels_off: "Белгілер өшірулі",
+    btn_h_on: "H атомдары қосулы",
+    btn_h_off: "H атомдары өшірулі",
+    btn_rot_on: "Айналу қосулы",
+    btn_rot_off: "Айналу өшірулі",
+    more_title: "Толығырақ",
+    btn_cycl: "Циклделу",
+    btn_forms: "Үш формасы",
+    btn_props: "Химиялық қасиеттері",
+    btn_bio: "Табиғаттағы рөлі",
+    hint_drag: "айналдыру",
+    hint_zoom: "масштаб",
+    hint_click: "атом",
+    hint_drag_label: "Тарту",
+    hint_zoom_label: "Дөңгелек",
+    hint_click_label: "Шертпе",
+    tag_g: "ГЛЮКОЗА"
+  },
+  en: {
+    page_title: "Glucose Molecule — C₆H₁₂O₆",
+    header_title: "Glucose Molecule",
+    header_sub: "Aldohexose · monosaccharide<br>open ⇌ cyclic forms",
+    props_title: "Properties",
+    prop_f: "Formula",
+    prop_m: "Molar mass",
+    prop_c: "Class",
+    prop_ch: "Chiral C",
+    prop_s: "Stereoisomers",
+    prop_dg: "D-glucose",
+    prop_dg_val: "natural",
+    prop_class_val: "aldohexose",
+    fg_title: "Functional Groups",
+    fg_ald: "Aldehyde –CHO",
+    fg_ald_sub: "on C1 · open form only · silver mirror reaction",
+    fg_hyd: "Hydroxyls –OH",
+    fg_hyd_sub: "5 groups · polyhydric alcohol · reaction with Cu(OH)₂",
+    fg_ring: "Oxygen bridge",
+    fg_ring_sub: "O between C1 and C5 · forms a pyranose ring",
+    fg_an: "Anomeric center",
+    fg_an_sub: "C1 · hemiacetal –OH · α/β-anomers",
+    form_title: "Molecular Form",
+    form_open: "Open",
+    form_open_sub: "Fischer",
+    form_cyclic: "Cyclic",
+    form_cyclic_sub: "Haworth",
+    form_chair: "Conformation",
+    form_chair_sub: "chair",
+    display_title: "Display",
+    btn_labels_on: "Labels on",
+    btn_labels_off: "Labels off",
+    btn_h_on: "H atoms on",
+    btn_h_off: "H atoms off",
+    btn_rot_on: "Rotation on",
+    btn_rot_off: "Rotation off",
+    more_title: "Details",
+    btn_cycl: "Cyclization",
+    btn_forms: "Three Forms",
+    btn_props: "Chemical Properties",
+    btn_bio: "Biological Role",
+    hint_drag: "rotate",
+    hint_zoom: "zoom",
+    hint_click: "atom",
+    hint_drag_label: "Drag",
+    hint_zoom_label: "Scroll",
+    hint_click_label: "Click",
+    tag_g: "GLUCOSE"
+  }
+};
+
+const LANG = (() => {
+  const q = new URLSearchParams(location.search).get('lang');
+  return (q && I18N[q]) ? q : 'ru';
+})();
+
+const tr = (key) => (I18N[LANG] && I18N[LANG][key]) ?? (I18N.ru[key]);
+
+function applyStaticI18N() {
+  document.documentElement.lang = LANG;
+  const tv = tr('page_title');
+  if (tv) document.title = tv;
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const v = tr(el.getAttribute('data-i18n'));
+    if (v) el.textContent = v;
+  });
+  document.querySelectorAll('[data-i18n-html]').forEach(el => {
+    const v = tr(el.getAttribute('data-i18n-html'));
+    if (v) el.innerHTML = v;
+  });
+}
+applyStaticI18N();
+</script>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "../../libs/vendor/three-0.160.0/three.module.js",
+    "three/addons/": "../../libs/vendor/three-0.160.0/addons/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ── RENDERER ─────────────────────────────────────────────────────────────────
+const W = window.innerWidth, H = window.innerHeight;
+const renderer = new THREE.WebGLRenderer({antialias: true, alpha:true});
+renderer.setSize(W, H);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(44, W/H, 0.1, 200);
+camera.position.set(0, 0.5, 16);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 7;
+controls.maxDistance = 32;
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.78));
+const dir1 = new THREE.DirectionalLight(0xffffff, 1.05);
+dir1.position.set(7, 11, 9); scene.add(dir1);
+const dir2 = new THREE.DirectionalLight(0xeef2ff, 0.4);
+dir2.position.set(-9, -4, -7); scene.add(dir2);
+
+const mainGroup = new THREE.Group();
+scene.add(mainGroup);
+
+// ── ATOM DEFINITIONS ──────────────────────────────────────────────────────────
+// Each atom has 3 target positions: fischer (open), haworth (flat ring), chair.
+// type: 'C' | 'O' | 'OH' (oxygen of a hydroxyl) | 'H'
+// id used for bonds & labels
+const V = (x,y,z) => new THREE.Vector3(x,y,z);
+
+const ATOMS = {
+  // carbon backbone
+  C1: {type:'C', label:'C1', fischer:V(-0.6, 5.0, 0),  haworth:V( 2.0, 0, 0),    chair:V( 2.0, 0.45, 0)},
+  C2: {type:'C', label:'C2', fischer:V( 0.6, 3.6, 0),  haworth:V( 1.0, 0,-1.73), chair:V( 1.0,-0.45,-1.73)},
+  C3: {type:'C', label:'C3', fischer:V(-0.6, 2.2, 0),  haworth:V(-1.0, 0,-1.73), chair:V(-1.0, 0.45,-1.73)},
+  C4: {type:'C', label:'C4', fischer:V( 0.6, 0.8, 0),  haworth:V(-2.0, 0, 0),    chair:V(-2.0,-0.45, 0)},
+  C5: {type:'C', label:'C5', fischer:V(-0.6,-0.6, 0),  haworth:V(-1.0, 0, 1.73), chair:V(-1.0, 0.45, 1.73)},
+  C6: {type:'C', label:'C6', fischer:V( 0.6,-2.0, 0),  haworth:V(-1.4, 1.7, 2.7),chair:V(-1.4, 2.0, 2.7)},
+
+  // ring oxygen (C5-OH in open form; bridges C5-C1 in ring)
+  Or: {type:'O', label:'O', fischer:V(-1.9,-0.6, 0),   haworth:V( 1.0, 0, 1.73), chair:V( 1.0,-0.45, 1.73)},
+
+  // anomeric / carbonyl oxygen on C1
+  Oa: {type:'O', label:'=O', fischer:V(-1.7, 5.7, 0),  haworth:V( 3.3,-0.4, 0),  chair:V( 3.3, 0.1, 0)},
+
+  // hydroxyls
+  O2: {type:'OH', label:'OH', fischer:V( 1.9, 3.6, 0), haworth:V( 1.5,-1.1,-2.6),chair:V( 1.5,-1.5,-2.6)},
+  O3: {type:'OH', label:'OH', fischer:V(-1.9, 2.2, 0), haworth:V(-1.5, 1.1,-2.6),chair:V(-1.5, 1.4,-2.6)},
+  O4: {type:'OH', label:'OH', fischer:V( 1.9, 0.8, 0), haworth:V(-3.4,-1.1, 0),  chair:V(-3.4,-1.5, 0)},
+  O6: {type:'OH', label:'OH', fischer:V( 1.9,-2.0, 0), haworth:V(-2.6, 2.4, 3.6),chair:V(-2.6, 2.7, 3.6)},
+};
+
+// ── BONDS ─────────────────────────────────────────────────────────────────────
+// {a, b, kind} kind: 'normal' | 'ring' (forms on cyclize) | 'carbonyl' (double in open)
+const BONDS = [
+  {a:'C1', b:'C2', kind:'normal'},
+  {a:'C2', b:'C3', kind:'normal'},
+  {a:'C3', b:'C4', kind:'normal'},
+  {a:'C4', b:'C5', kind:'normal'},
+  {a:'C5', b:'C6', kind:'normal'},
+  {a:'C5', b:'Or', kind:'normal'},   // C5–O always
+  {a:'Or', b:'C1', kind:'ring'},     // bridge forms when cyclic
+  {a:'C1', b:'Oa', kind:'carbonyl'}, // carbonyl (double) in open → anomeric OH single in ring
+  {a:'C2', b:'O2', kind:'normal'},
+  {a:'C3', b:'O3', kind:'normal'},
+  {a:'C4', b:'O4', kind:'normal'},
+  {a:'C6', b:'O6', kind:'normal'},
+];
+
+// ── BUILD ATOM MESHES ──────────────────────────────────────────────────────────
+const COLORS = {C:0x374151, O:0xef4444, OH:0xf87171, H:0xcbd5e1};
+const RADII   = {C:0.36, O:0.32, OH:0.30, H:0.17};
+
+const atomMeshes = {};
+Object.entries(ATOMS).forEach(([id, a]) => {
+  const r = RADII[a.type];
+  const m = new THREE.Mesh(
+    new THREE.SphereGeometry(r, 24, 24),
+    new THREE.MeshStandardMaterial({color:COLORS[a.type], metalness:0.1, roughness:0.42, emissive:0x000000})
+  );
+  a.current = a.fischer.clone();
+  m.position.copy(a.current);
+  m.userData.id = id;
+  mainGroup.add(m);
+  atomMeshes[id] = m;
+});
+
+// small H atoms attached to OH oxygens (visual richness)
+const hMeshes = {};
+['Or','Oa','O2','O3','O4','O6'].forEach(id => {
+  const m = new THREE.Mesh(
+    new THREE.SphereGeometry(RADII.H, 14, 14),
+    new THREE.MeshStandardMaterial({color:COLORS.H, metalness:0.05, roughness:0.5})
+  );
+  mainGroup.add(m);
+  hMeshes[id] = m;
+});
+
+// ── BUILD BOND MESHES ──────────────────────────────────────────────────────────
+function makeBondMesh(color, radius) {
+  const g = new THREE.CylinderGeometry(radius, radius, 1, 12, 1);
+  const mat = new THREE.MeshStandardMaterial({color, metalness:0.05, roughness:0.55, transparent:true, opacity:1});
+  return new THREE.Mesh(g, mat);
+}
+const _up = new THREE.Vector3(0,1,0);
+function updateBondMesh(mesh, from, to) {
+  const dir = to.clone().sub(from);
+  const len = dir.length();
+  mesh.position.copy(from).add(to).multiplyScalar(0.5);
+  mesh.scale.set(1, len, 1);
+  mesh.quaternion.setFromUnitVectors(_up, dir.normalize());
+}
+
+const bondMeshes = BONDS.map(b => {
+  const color = b.kind === 'ring' ? 0x0891b2 : 0x9ca3af;
+  const radius = 0.10;
+  const m = makeBondMesh(color, radius);
+  mainGroup.add(m);
+  // second cylinder for carbonyl double bond
+  let second = null;
+  if (b.kind === 'carbonyl') {
+    second = makeBondMesh(0x9ca3af, 0.08);
+    mainGroup.add(second);
+  }
+  return {def:b, mesh:m, second};
+});
+
+// ── FORM STATE / MORPH ─────────────────────────────────────────────────────────
+let targetForm = 'fischer';
+let cycT = 0; // 0 = open, 1 = cyclic (ring + anomeric); used for bond appearance
+let showLabels = true, showH = true, rotating = true;
+
+const STAGE_TEXT = {
+  fischer: {
+    ru: 'Открытая форма · проекция <span class="mono">Фишера</span>',
+    kz: 'Ашық форма · <span class="mono">Фишер</span> проекциясы',
+    en: 'Open form · <span class="mono">Fischer</span> projection'
+  },
+  haworth: {
+    ru: 'Циклическая форма · проекция <span class="mono">Хаворта</span>',
+    kz: 'Циклдік форма · <span class="mono">Хаворт</span> проекциясы',
+    en: 'Cyclic form · <span class="mono">Haworth</span> projection'
+  },
+  chair: {
+    ru: 'Конформация <span class="mono">«кресло»</span> · β-D-глюкопираноза',
+    kz: '«Кресло» конформациясы · β-D-глюкопираноза',
+    en: 'Chair conformation · β-D-glucopyranose'
+  }
+};
+
+window.setForm = function(form) {
+  targetForm = form;
+  document.querySelectorAll('.form-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(`form-${form}`).classList.add('active');
+  document.getElementById('stage-label').innerHTML = STAGE_TEXT[form][LANG];
+};
+
+// ── LABELS ─────────────────────────────────────────────────────────────────────
+const LABEL_ATOMS = ['C1','C2','C3','C4','C5','C6','Or','Oa'];
+const labelEls = {};
+LABEL_ATOMS.forEach(id => {
+  const el = document.createElement('div');
+  el.className = 'atom-label';
+  const a = ATOMS[id];
+  let color = a.type === 'C' ? '#374151' : '#dc2626';
+  if (id === 'Or') color = '#0891b2';
+  if (id === 'Oa') color = '#a855f7';
+  el.style.color = color;
+  el.textContent = a.label;
+  document.body.appendChild(el);
+  labelEls[id] = el;
+});
+
+const _proj = new THREE.Vector3();
+function projectPos(v) {
+  _proj.copy(v).applyMatrix4(mainGroup.matrixWorld).project(camera);
+  return {
+    x:(_proj.x+1)/2*window.innerWidth,
+    y:(-_proj.y+1)/2*window.innerHeight,
+    z:_proj.z,
+  };
+}
+function updateLabels() {
+  LABEL_ATOMS.forEach(id => {
+    const el = labelEls[id];
+    if (!showLabels) { el.style.opacity = '0'; return; }
+    const m = atomMeshes[id];
+    const s = projectPos(m.position);
+    el.style.left = `${s.x}px`;
+    el.style.top  = `${s.y - 18}px`;
+    el.style.opacity = (s.z < 1) ? '1' : '0';
+  });
+}
+
+// ── RAYCASTER ─────────────────────────────────────────────────────────────────
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+renderer.domElement.addEventListener('click', ev => {
+  mouse.x =  (ev.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(ev.clientY / window.innerHeight) * 2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+  const hits = raycaster.intersectObjects(Object.values(atomMeshes));
+  if (!hits.length) return;
+  const id = hits[0].object.userData.id;
+  if (id === 'Oa') focusGroup('anomeric');
+  else if (id === 'Or') focusGroup('ring');
+  else if (id === 'C1') focusGroup('aldehyde');
+  else if (id.startsWith('O')) focusGroup('hydroxyl');
+  else focusGroup('hydroxyl');
+});
+
+// ── FOCUS GROUP (highlight + info) ──────────────────────────────────────────────
+let focusedGroup = 'aldehyde';
+const GROUP_ATOMS = {
+  aldehyde: ['C1','Oa'],
+  hydroxyl: ['O2','O3','O4','O6'],
+  ring:     ['Or','C1','C5'],
+  anomeric: ['C1','Oa'],
+};
+function focusGroup(group, skipOpenPanel = false) {
+  focusedGroup = group;
+  document.querySelectorAll('.fg-item').forEach(el => el.classList.remove('active'));
+  document.getElementById(`fg-${group}`)?.classList.add('active');
+  if (!skipOpenPanel) {
+    openInfo(group);
+  }
+}
+
+// ── INFO DATA (Transferred to global I18N, loaded dynamically) ──────────────────
+const INFO_TRANS = {
+  ru: {
+    cyclization:{
+      title:'Циклизация глюкозы',
+      sections:[
+        {h:'Как это происходит?', p:'В водном растворе открытая (альдегидная) форма глюкозы существует менее 0.02%. Гидроксильная группа при C5 атакует карбонильный углерод C1 — образуется внутримолекулярный полуацеталь и шестичленное пиранозное кольцо.'},
+        {h:'Полуацеталь', p:'', mono:'C1(=O) + HO–C5  →  C1(–OH)(–O–C5)\nкарбонил + спирт → полуацеталь'},
+        {h:'Аномеры α и β', p:'При замыкании кольца C1 становится новым хиральным центром (аномерным). Если новая –OH направлена вниз — это α-аномер (36%), вверх — β-аномер (64%). Через открытую форму они переходят друг в друга — мутаротация.'},
+        {h:'Динамическое равновесие', p:'', mono:'α-форма ⇌ открытая ⇌ β-форма\n  36%       <0.02%      64%'},
+      ]
+    },
+    forms:{
+      title:'Три способа изображения',
+      sections:[
+        {h:'Проекция Фишера', p:'Открытая цепь из 6 углеродов, изображённая вертикально. Альдегидная группа –CHO сверху (C1), первичный спирт –CH₂OH снизу (C6). Удобна для определения D/L-конфигурации и хиральных центров.'},
+        {h:'Проекция Хаворта', p:'Плоское шестичленное кольцо (пираноза), нарисованное в перспективе. Заместители расположены над и под плоскостью кольца. Наглядно показывает кольцевую структуру и α/β-аномеры.'},
+        {h:'Конформация «кресло»', p:'Наиболее точное изображение реальной 3D-геометрии. Кольцо не плоское: атомы чередуются «вверх-вниз», что снижает напряжение. Различают аксиальные и экваториальные связи. β-D-глюкоза — все крупные группы экваториальны (самая устойчивая гексоза).'},
+        {h:'Пираноза', p:'', mono:'«пираноза» = 6-членное кольцо\n(по аналогии с пираном)\n«фураноза» = 5-членное кольцо'},
+      ]
+    },
+    reactions:{
+      title:'Химические свойства',
+      sections:[
+        {h:'Как альдегид (по C1)', p:'Открытая форма содержит –CHO, поэтому глюкоза — восстанавливающий сахар.', mono:'Реакция «серебряного зеркала»:\nCH₂OH(CHOH)₄CHO + 2[Ag(NH₃)₂]OH →\n→ ...COOH + 2Ag↓ + ...\nР. с Cu(OH)₂ при нагревании → Cu₂O↓ (красный)'},
+        {h:'Как многоатомный спирт', p:'5 групп –OH дают качественную реакцию с Cu(OH)₂ на холоде — ярко-синий раствор (хелат меди), как у глицерина.'},
+        {h:'Брожение', p:'', mono:'Спиртовое: C₆H₁₂O₆ → 2C₂H₅OH + 2CO₂↑\nМолочнокислое: C₆H₁₂O₆ → 2CH₃CH(OH)COOH'},
+        {h:'Этерификация', p:'Гидроксильные группы реагируют с кислотами, образуя сложные эфиры; со спиртами (по аномерному C1) — гликозиды.'},
+      ]
+    },
+    biology:{
+      title:'Роль в природе',
+      sections:[
+        {h:'Источник энергии', p:'Глюкоза — главное «топливо» клетки. При полном окислении 1 моль даёт ~2800 кДж.', mono:'C₆H₁₂O₆ + 6O₂ → 6CO₂ + 6H₂O\nΔH = −2800 кДж/моль'},
+        {h:'Фотосинтез', p:'', mono:'6CO₂ + 6H₂O --свет--> C₆H₁₂O₆ + 6O₂\n(в хлоропластах растений)'},
+        {h:'Полисахариды', p:'Остатки глюкозы соединяются гликозидными связями: крахмал и гликоген (α-1,4) — запас энергии; целлюлоза (β-1,4) — опорный материал растений. Различие α/β определяет, перевариваем ли полимер.'},
+        {h:'Уровень в крови', p:'Нормальная концентрация глюкозы в крови человека — 3.3–5.5 ммоль/л, регулируется инсулином и глюкагоном.'},
+      ]
+    },
+    aldehyde:{
+      title:'Альдегидная группа –CHO',
+      sections:[
+        {h:'Расположение', p:'Карбонильная группа на первом углероде C1. Существует только в открытой форме глюкозы. Именно она делает глюкозу альдозой (альдогексозой).'},
+        {h:'Значение', p:'Восстанавливающая способность: даёт реакцию «серебряного зеркала» с аммиачным раствором оксида серебра и восстанавливает Cu(OH)₂ до Cu₂O при нагревании.'},
+        {h:'При циклизации', p:'C1 превращается в аномерный центр: карбонил C=O становится полуацетальной группой C–OH, замыкая пиранозное кольцо.'},
+      ]
+    },
+    hydroxyl:{
+      title:'Гидроксильные группы –OH',
+      sections:[
+        {h:'Сколько их?', p:'В молекуле глюкозы пять групп –OH (на C2, C3, C4, C6, и аномерная на C1 в циклической форме). Это делает глюкозу многоатомным спиртом.'},
+        {h:'Качественная реакция', p:'Соседние –OH образуют с Cu(OH)₂ на холоде ярко-синий растворимый комплекс — признак многоатомного спирта.'},
+        {h:'Хиральность', p:'Расположение –OH на C2–C5 определяет конкретный стереоизомер. D-глюкоза отличается от своих 15 «сестёр» (галактоза, манноза и др.) именно ориентацией этих групп.'},
+      ]
+    },
+    ring:{
+      title:'Кислородный мостик (пиранозное кольцо)',
+      sections:[
+        {h:'Что это?', p:'В циклической форме атом кислорода соединяет C1 и C5, замыкая шестичленное кольцо. Этот кислород «приходит» от гидроксильной группы при C5.'},
+        {h:'Пираноза', p:'Шестичленное кольцо с одним кислородом называется пиранозным (по аналогии с пираном). Глюкоза в растворе преимущественно находится в форме глюкопиранозы.'},
+        {h:'Геометрия', p:'Реальное кольцо принимает конформацию «кресло» — это снижает торсионное и угловое напряжение по сравнению с плоским изображением Хаворта.'},
+      ]
+    },
+    anomeric:{
+      title:'Аномерный центр (C1)',
+      sections:[
+        {h:'Что такое аномер?', p:'При замыкании кольца C1 становится новым стереоцентром. В зависимости от ориентации полуацетальной –OH различают α- и β-аномеры.'},
+        {h:'α и β', p:'', mono:'α-D-глюкоза: –OH при C1 «вниз» (≈36%)\nβ-D-глюкоза: –OH при C1 «вверх» (≈64%)'},
+        {h:'Мутаротация', p:'В растворе α- и β-формы самопроизвольно переходят друг в друга через открытую форму. Угол вращения плоскости поляризации меняется до равновесного значения +52.7°.'},
+        {h:'Биологическое значение', p:'Тип аномерной связи определяет свойства полимеров: α-связи (крахмал) перевариваются человеком, β-связи (целлюлоза) — нет.'},
+      ]
+    }
+  },
+  kz: {
+    cyclization:{
+      title:'Глюкозаның циклделуі',
+      sections:[
+        {h:'Бұл қалай жүреді?', p:'Сулы ерітіндіде глюкозаның ашық (альдегидті) формасы 0,02%-дан аз мөлшерде болады. C5 атомындағы гидроксил тобы карбонильді C1 көміртегіне шабуыл жасайды — нәтижесінде молекулаішілік жартылай ацеталь және алты мүшелі пираноз сақинасы түзіледі.'},
+        {h:'Жартылай ацеталь', p:'', mono:'C1(=O) + HO–C5  →  C1(–OH)(–O–C5)\nкарбониль + спирт → жартылай ацеталь'},
+        {h:'α және β аномерлері', p:'Сақина тұйықталған кезде C1 жаңа хиральді орталыққа (аномерлік) айналады. Егер жаңа –OH тобы төмен бағытталса — бұл α-аномер (36%), жоғары бағытталса — β-аномер (64%). Олар ашық форма арқылы бір-біріне ауысады — бұл процесс мутаротация деп аталады.'},
+        {h:'Динамикалық тепе-теңдік', p:'', mono:'α-форма ⇌ ашық ⇌ β-форма\n  36%       <0.02%      64%'},
+      ]
+    },
+    forms:{
+      title:'Үш түрлі бейнелеу әдісі',
+      sections:[
+        {h:'Фишер проекциясы', p:'Вертикальды бағытталған 6 көміртектен тұратын ашық тізбек. Альдегид тобы –CHO жоғарыда (C1), біріншілік спирт –CH₂OH төменде (C6) орналасады. D/L-конфигурациясын және хиральді орталықтарды анықтауға ыңғайлы.'},
+        {h:'Хаворт проекциясы', p:'Перспективада салынған жазық алты мүшелі сақина (пираноза). Орынбасарлар сақина жазықтығының үстінде... және астында орналасады. Сақиналық құрылымды және α/β-аномерлерді айқын көрсетеді.'},
+        {h:'«Кресло» конформациясы', p:'Нақты 3D геометрияның ең дәл бейнесі. Сақина жазық емес: атомдар кезекпен «жоғары-төмен» орналасады, бұл кернеуді азайтады. Аксиальді және экваториальді байланыстар болып бөлінеді. β-D-глюкозада барлық ірі топтар экваториальді орналасқан (ең тұрақты гексоза).'},
+        {h:'Пираноза', p:'', mono:'«пираноза» = 6 мүшелі сақина\n(пиранға ұқсас)\n«фураноза» = 5 мүшелі сақина'},
+      ]
+    },
+    reactions:{
+      title:'Химиялық қасиеттері',
+      sections:[
+        {h:'Альдегид ретінде (C1 бойынша)', p:'Ашық формада –CHO тобы болады, сондықтан глюкоза — тотықсыздандырғыш қант.', mono:'«Күміс айна» реакциясы:\nCH₂OH(CHOH)₄CHO + 2[Ag(NH₃)₂]OH →\n→ ...COOH + 2Ag↓ + ...\nCu(OH)₂-мен қыздырғандағы р. → Cu₂O↓ (қызыл тұнба)'},
+        {h:'Көп атомды спирт ретінде', p:'5 гидроксил –OH тобы суықта Cu(OH)₂-мен сапалық реакция береді — глицерин сияқты ашық көк түсті ерітінді (мыс хелаты) түзіледі.'},
+        {h:'Ашу процесі', p:'', mono:'Спирттік: C₆H₁₂O₆ → 2C₂H₅OH + 2CO₂↑\nСүт қышқылды: C₆H₁₂O₆ → 2CH₃CH(OH)COOH'},
+        {h:'Этерификация', p:'Гидроксил топтары қышқылдармен әрекеттесіп күрделі эфирлер түзеді; спирттермен (аномерлік C1 бойынша) — гликозидтер түзіледі.'},
+      ]
+    },
+    biology:{
+      title:'Табиғаттағы рөлі',
+      sections:[
+        {h:'Энергия көзі', p:'Глюкоза — жасушаның басты «отыны». Толық тотыққан кезде 1 моль глюкоза ~2800 кДж энергия береді.', mono:'C₆H₁₂O₆ + 6O₂ → 6CO₂ + 6H₂O\nΔH = −2800 кДж/моль'},
+        {h:'Фотосинтез', p:'', mono:'6CO₂ + 6H₂O --жарық--> C₆H₁₂O₆ + 6O₂\n(өсімдік хлоропласттарында)'},
+        {h:'Полисахаридтер', p:'Глюкоза қалдықтары гликозидтік байланыстармен жалғасады: крахмал мен гликоген (α-1,4) — энергия қоры; целлюлоза (β-1,4) — өсімдіктердің тірек материала. α/β айырмашылығы полимердің қорытылуын анықтайды.'},
+        {h:'Қандағы деңгейі', p:'Адам қанындағы глюкозаның қалыпты концентрациясы — 3.3–5.5 ммоль/л, инсулин және глюкагон гормондарымен реттеледі.'},
+      ]
+    },
+    aldehyde:{
+      title:'Альдегид тобы –CHO',
+      sections:[
+        {h:'Орналасуы', p:'Карбониль тобы бірінші көміртек C1-де орналасқан. Тек глюкозаның ашық формасында ғана болады. Осы топ глюкозаны альдоза (альдогексоза) етеді.'},
+        {h:'Маңызы', p:'Тотықсыздандырғыш қабілет: күміс оксидінің аммиактағы ерітіндісімен «күміс айна» реакциясын береді және қыздырған кезде Cu(OH)₂-ні Cu₂O-ға дейін тотықсыздандырады.'},
+        {h:'Циклдену кезінде', p:'C1 аномерлік орталыққа айналады: карбонильді C=O тобы жартылай ацетальді C–OH тобына ауысып, пираноз сақинасын тұйықтайды.'},
+      ]
+    },
+    hydroxyl:{
+      title:'Гидроксил топтары –OH',
+      sections:[
+        {h:'Қанша топ бар?', p:'Глюкоза молекуласында бес –OH тобы бар (C2, C3, C4, C6 және циклдік формадағы C1 аномерлігі). Бұл глюкозаны көп атомды спиртке жатқызады.'},
+        {h:'Сапалық реакция', p:'Көршілес –OH топтары суықта Cu(OH)₂-мен ашық көк түсті еритін комплекс түзеді — бұл көп атомды спирттің белгісі.'},
+        {h:'Хиральділік', p:'C2–C5-тегі –OH топтарының бағытталуы нақты стереоизомерді анықтайды. D-глюкоза өзінің 15 «әпкесінен» (галактоза, манноза және т.б.) дәл осы топтардың бағытымен ерекшеленеді.'},
+      ]
+    },
+    ring:{
+      title:'Оттек көпіршесі (пираноз сақинасы)',
+      sections:[
+        {h:'Бұл не?', p:'Циклдік формада оттек атомы C1 мен C5-ті байланыстырып, алты мүшелі сақинаны тұйықтайды. Бұл оттек атомы C5-тегі гидроксил тобынан келеді.'},
+        {h:'Пираноза', p:'Құрамында бір оттек атомы бар алты мүшелі сақина пиранозды деп аталады (пиранға ұқсас). Ерітіндіде глюкоза негезінен глюкопираноза түрінде болады.'},
+        {h:'Геометриясы', p:'Нақты сақина «кресло» конформациясын қабылдайды — бұл Хаворттың жазық бейнесімен салыстырғанда бұралу және бұрыштық кернеуді азайтады.'},
+      ]
+    },
+    anomeric:{
+      title:'Аномерлік орталық (C1)',
+      sections:[
+        {h:'Аномер деген не?', p:'Сақина тұйықталған кезде C1 жаңа стереоорталыққа айналады. Жартылай ацетальді –OH бағытына байланысты α- және β-аномерлер болып бөлінеді.'},
+        {h:'α және β', p:'', mono:'α-D-глюкоза: C1-дегі –OH «төмен» (≈36%)\nβ-D-глюкоза: C1-дегі –OH «жоғары» (≈64%)'},
+        {h:'Мутаротация', p:'Ерітіндіде α- және β-формалар ашық форма арқылы өздігінен бір-біріне ауысады. Поляризация жазықтығының айналу бұрышы тепе-теңдік мәнге (+52.7°) дейін өзгереді.'},
+        {h:'Биологиялық маңызы', p:'Аномерлік байланыс түрі полимерлердің қасиеттерін анықтайды: α-байланыстарды (крахмал) адам ағзасы қорыта алады, ал β-байланыстарды (целлюлоза) қорыта алмайды.'},
+      ]
+    }
+  },
+  en: {
+    cyclization:{
+      title:'Glucose Cyclization',
+      sections:[
+        {h:'How does it happen?', p:'In aqueous solution, the open (aldehyde) form of glucose exists in less than 0.02%. The hydroxyl group at C5 attacks the carbonyl carbon C1, forming an intramolecular hemiacetal and a six-membered pyranose ring.'},
+        {h:'Hemiacetal', p:'', mono:'C1(=O) + HO–C5  →  C1(–OH)(–O–C5)\ncarbonyl + alcohol → hemiacetal'},
+        {h:'α and β Anomers', p:'Upon ring closure, C1 becomes a new chiral (anomeric) center. If the new –OH is directed downwards, it is the α-anomer (36%); if upwards, it is the β-anomer (64%). They interconvert through the open form — a process called mutarotation.'},
+        {h:'Dynamic Equilibrium', p:'', mono:'α-form ⇌ open ⇌ β-form\n  36%       <0.02%      64%'},
+      ]
+    },
+    forms:{
+      title:'Three Methods of Representation',
+      sections:[
+        {h:'Fischer Projection', p:'An open chain of 6 carbons shown vertically. The aldehyde group –CHO is at the top (C1), and the primary alcohol –CH₂OH is at the bottom (C6). Convenient for determining D/L-configuration and chiral centers.'},
+        {h:'"Chair" Conformation', p:'The most accurate representation of the real 3D geometry. The ring is not flat: atoms alternate "up-down", which reduces strain. Distinguish between axial and equatorial bonds. In β-D-glucose, all large groups are equatorial (the most stable hexose).'},
+        {h:'Pyranose', p:'', mono:'"pyranose" = 6-membered ring\n(by analogy with pyran)\n"furanose" = 5-membered ring'},
+      ]
+    },
+    reactions:{
+      title:'Chemical Properties',
+      sections:[
+        {h:'As an Aldehyde (at C1)', p:'The open form contains a –CHO group, making glucose a reducing sugar.', mono:'"Silver mirror" reaction:\nCH₂OH(CHOH)₄CHO + 2[Ag(NH₃)₂]OH →\n→ ...COOH + 2Ag↓ + ...\nReaction with Cu(OH)₂ under heating → Cu₂O↓ (red ppt)'},
+        {h:'As a Polyhydric Alcohol', p:'5 hydroxyl –OH groups give a qualitative reaction with Cu(OH)₂ in the cold — a bright blue soluble complex (copper chelate), similar to glycerol.'},
+        {h:'Fermentation', p:'', mono:'Alcoholic: C₆H₁₂O₆ → 2C₂H₅OH + 2CO₂↑\nLactic acid: C₆H₁₂O₆ → 2CH₃CH(OH)COOH'},
+        {h:'Esterification', p:'Hydroxyl groups react with acids to form esters; with alcohols (via anomeric C1) to form glycosides.'},
+      ]
+    },
+    biology:{
+      title:'Biological Role',
+      sections:[
+        {h:'Energy Source', p:'Glucose is the main cellular fuel. Upon complete oxidation, 1 mole yields ~2800 kJ of energy.', mono:'C₆H₁₂O₆ + 6O₂ → 6CO₂ + 6H₂O\nΔH = −2800 kJ/mol'},
+        {h:'Photosynthesis', p:'', mono:'6CO₂ + 6H₂O --light--> C₆H₁₂O₆ + 6O₂\n(in plant chloroplasts)'},
+        {h:'Polysaccharides', p:'Glucose residues are linked by glycosidic bonds: starch and glycogen (α-1,4) serve as energy storage; cellulose (β-1,4) is structural material in plants. The α/β difference determines if a polymer is digestible.'},
+        {h:'Blood Sugar Level', p:'The normal blood glucose concentration in humans is 3.3–5.5 mmol/L, regulated by insulin and glucagon.'},
+      ]
+    },
+    aldehyde:{
+      title:'Aldehyde Group –CHO',
+      sections:[
+        {h:'Location', p:'Carbonyl group on the first carbon C1. Exists only in the open form of glucose. It is what makes glucose an aldose (aldohexose).'},
+        {h:'Significance', p:'Reducing capacity: undergoes the "silver mirror" reaction with ammoniacal silver nitrate and reduces Cu(OH)₂ to Cu₂O upon heating.'},
+        {h:'During Cyclization', p:'C1 becomes the anomeric center: the carbonyl C=O group becomes a hemiacetal C–OH group, closing the pyranose ring.'},
+      ]
+    },
+    hydroxyl:{
+      title:'Hydroxyl Groups –OH',
+      sections:[
+        {h:'How many are there?', p:'There are five –OH groups in a glucose molecule (at C2, C3, C4, C6, and the anomeric one at C1 in the cyclic form). This makes glucose a polyhydric alcohol.'},
+        {h:'Qualitative Test', p:'Adjacent –OH groups form a bright blue soluble complex with Cu(OH)₂ in the cold — a characteristic test for polyhydric alcohols.'},
+        {h:'Chirality', p:'The orientation of –OH groups on C2–C5 determines the specific stereoisomer. D-glucose differs from its 15 "sisters" (galactose, mannose, etc.) precisely by the direction of these groups.'},
+      ]
+    },
+    ring:{
+      title:'Oxygen Bridge (Pyranose Ring)',
+      sections:[
+        {h:'What is it?', p:'In the cyclic form, an oxygen atom connects C1 and C5, closing a six-membered ring. This oxygen comes from the hydroxyl group at C5.'},
+        {h:'Pyranose', p:'A six-membered ring containing one oxygen is called pyranose (analogous to pyran). Glucose in solution exists predominantly as glucopyranose.'},
+        {h:'Geometry', p:'The real ring adopts the "chair" conformation — this minimizes torsional and angle strain compared to Haworth\'s flat projection.'},
+      ]
+    },
+    anomeric:{
+      title:'Anomeric Center (C1)',
+      sections:[
+        {h:'What is an Anomer?', p:'Upon ring closure, C1 becomes a new stereocenter. Depending on the orientation of the hemiacetal –OH group, α- and β-anomers are distinguished.'},
+        {h:'α and β', p:'', mono:'α-D-glucose: –OH at C1 "down" (≈36%)\nβ-D-glucose: –OH at C1 "up" (≈64%)'},
+        {h:'Mutarotation', p:'In solution, α- and β-forms spontaneously interconvert via the open form. The optical rotation changes until it reaches the equilibrium value of +52.7°.'},
+        {h:'Biological Meaning', p:'The type of anomeric linkage determines polymer properties: α-linkages (starch) are digestible by humans, while β-linkages (cellulose) are not.'},
+      ]
+    }
+  }
+};
+
+window.openInfo = function(key) {
+  const d = (INFO_TRANS[LANG] || INFO_TRANS.ru)[key];
+  if (!d) return;
+  let html = `<div class="info-tag">${tr('tag_g')}</div><h2>${d.title}</h2>`;
+  d.sections.forEach(s => {
+    html += `<div class="info-section"><h4>${s.h}</h4>`;
+    if (s.p) html += `<p>${s.p}</p>`;
+    if (s.mono) html += `<div class="info-mono">${s.mono.replace(/\n/g,'<br>')}</div>`;
+    html += `</div>`;
+  });
+  document.getElementById('info-content').innerHTML = html;
+  const panel = document.getElementById('info-panel');
+  panel.style.top = '108px';
+  panel.classList.add('open');
+};
+window.closeInfo = function(){ document.getElementById('info-panel').classList.remove('open'); };
+
+// ── TOGGLES ──────────────────────────────────────────────────────────────────
+window.toggleLabels = function() {
+  showLabels = !showLabels;
+  const b = document.getElementById('btn-labels');
+  b.textContent = showLabels ? tr('btn_labels_on') : tr('btn_labels_off');
+  b.classList.toggle('active', showLabels);
+  if (!showLabels) LABEL_ATOMS.forEach(id => labelEls[id].style.opacity = '0');
+};
+window.toggleH = function() {
+  showH = !showH;
+  Object.values(hMeshes).forEach(m => m.visible = showH);
+  const b = document.getElementById('btn-h');
+  b.textContent = showH ? tr('btn_h_on') : tr('btn_h_off');
+  b.classList.toggle('active', showH);
+};
+window.toggleRotate = function() {
+  rotating = !rotating;
+  const b = document.getElementById('btn-rotate');
+  b.textContent = rotating ? tr('btn_rot_on') : tr('btn_rot_off');
+  b.classList.toggle('active', rotating);
+};
+
+// Initialize localized texts on buttons and labels at load time
+document.getElementById('btn-labels').textContent = tr('btn_labels_on');
+document.getElementById('btn-h').textContent = tr('btn_h_on');
+document.getElementById('btn-rotate').textContent = tr('btn_rot_on');
+document.getElementById('stage-label').innerHTML = STAGE_TEXT[targetForm][LANG];
+document.querySelector('#loading div:nth-child(2)').textContent = (LANG === 'kz') ? 'Сахна жүктелуде…' : (LANG === 'en') ? 'Loading scene...' : 'Загрузка сцены…';
+
+// ── ANIMATION LOOP ───────────────────────────────────────────────────────────
+let t = 0;
+const LERP = 0.07;
+document.getElementById('loading').style.display = 'none';
+
+function animate() {
+  requestAnimationFrame(animate);
+  t += 0.016;
+  controls.update();
+  if (rotating) mainGroup.rotation.y += 0.0016;
+
+  // morph atom positions toward target form
+  Object.entries(ATOMS).forEach(([id, a]) => {
+    const target = a[targetForm];
+    a.current.lerp(target, LERP);
+    atomMeshes[id].position.copy(a.current);
+  });
+
+  // cycT toward 1 if cyclic, 0 if open
+  const cycTarget = (targetForm === 'fischer') ? 0 : 1;
+  cycT += (cycTarget - cycT) * LERP;
+
+  // place H atoms slightly beyond their oxygen, away from bonded carbon
+  const hParent = {Or:'C5', Oa:'C1', O2:'C2', O3:'C3', O4:'C4', O6:'C6'};
+  Object.entries(hParent).forEach(([oId, cId]) => {
+    const oPos = ATOMS[oId].current;
+    const cPos = ATOMS[cId].current;
+    const dir = oPos.clone().sub(cPos).normalize();
+    hMeshes[oId].position.copy(oPos).add(dir.multiplyScalar(0.42));
+  });
+  // hide the carbonyl/anomeric H in open form (it's =O, no H)
+  hMeshes['Oa'].visible = showH && cycT > 0.35;
+  // ring oxygen H disappears once it bridges (becomes ether O)
+  hMeshes['Or'].visible = showH && cycT < 0.65;
+
+  // update bonds
+  bondMeshes.forEach(({def, mesh, second}) => {
+    const from = ATOMS[def.a].current;
+    const to   = ATOMS[def.b].current;
+    updateBondMesh(mesh, from, to);
+
+    if (def.kind === 'ring') {
+      mesh.material.opacity = cycT;
+      mesh.visible = cycT > 0.02;
+    } else if (def.kind === 'carbonyl') {
+      // double bond in open: show second cylinder, fade with cycT
+      if (second) {
+        const dir = to.clone().sub(from);
+        const perp = new THREE.Vector3(0,0,1).cross(dir).normalize().multiplyScalar(0.12);
+        updateBondMesh(second, from.clone().add(perp), to.clone().add(perp));
+        // also offset main slightly the other way while double
+        second.material.opacity = 1 - cycT;
+        second.visible = (1 - cycT) > 0.05;
+      }
+    }
+  });
+
+  // highlight focused group atoms with pulse
+  const pulse = 0.18 + 0.12 * Math.sin(t * 2.4);
+  Object.entries(atomMeshes).forEach(([id, m]) => {
+    const inFocus = GROUP_ATOMS[focusedGroup]?.includes(id);
+    if (inFocus) {
+      m.material.emissive.setHex(0x4f46e5);
+      m.material.emissiveIntensity = pulse;
+    } else {
+      m.material.emissiveIntensity = 0;
+    }
+  });
+
+  renderer.render(scene, camera);
+  updateLabels();
+}
+animate();
+
+// ── RESIZE ────────────────────────────────────────────────────────────────────
+window.addEventListener('resize', () => {
+  const W = window.innerWidth, H = window.innerHeight;
+  camera.aspect = W/H;
+  camera.updateProjectionMatrix();
+  renderer.setSize(W, H);
+});
+
+// init highlight
+focusGroup('aldehyde', true);
+</script>
+</body>
+</html>

@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ядерный реактор</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { width: 100%; height: 100%; overflow: hidden; }
+        body {
+            font-family: 'Segoe UI', 'Inter', system-ui, sans-serif;
+            background: radial-gradient(circle at 50% 30%, #122036 0%, #0b1626 60%, #070e1a 100%);
+            color: #e8eefb;
+        }
+        #canvas-container { position: absolute; inset: 0; }
+        #labels { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+        .label3d {
+            position: absolute; transform: translate(-50%, -50%);
+            font-size: 12.5px; font-weight: 800; padding: 2px 8px; border-radius: 7px;
+            background: rgba(16,28,52,0.88); border: 1px solid rgba(120,150,210,0.45);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.4); white-space: nowrap; color: #dbe6fb;
+        }
+        .label3d.fuel { color: #fca5a5; } .label3d.ctrl { color: #fcd34d; } .label3d.mod { color: #93c5fd; } .label3d.neu { color: #86efac; }
+
+        .header {
+            position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+            text-align: center; z-index: 6; pointer-events: none; width: 92%;
+        }
+        .header h1 { font-size: 26px; font-weight: 800; color: #f1f6ff; text-shadow: 0 2px 8px rgba(0,0,0,0.5); }
+        .header p { font-size: 14px; color: #9fb4d8; margin-top: 4px; font-weight: 600; }
+
+        .panel {
+            position: absolute; z-index: 7; background: rgba(16,28,52,0.76);
+             
+            border: 1px solid rgba(110,140,200,0.32); border-radius: 16px;
+            box-shadow: 0 12px 38px rgba(0,0,0,0.45);
+        }
+        .control-panel { top: 92px; left: 22px; width: 322px; padding: 15px 18px; }
+        .info-panel { top: 92px; right: 22px; width: 300px; padding: 15px 18px; }
+
+        .param-group { margin-bottom: 13px; }
+        .param-label { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+        .param-name { font-size: 13px; font-weight: 700; color: #c4d2ec; display: flex; align-items: center; gap: 6px; }
+        .param-icon { font-size: 15px; }
+        .param-value { font-size: 15px; font-weight: 800; color: #7fb3ff; font-variant-numeric: tabular-nums; }
+
+        input[type=range] {
+            -webkit-appearance: none; appearance: none; width: 100%; height: 6px;
+            border-radius: 6px; outline: none; cursor: pointer;
+            background: linear-gradient(90deg, #2a3f63, #3c5688);
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none; width: 18px; height: 18px;
+            border-radius: 50%; background: #fff; border: 3px solid #60a5fa;
+            box-shadow: 0 2px 7px rgba(96,165,250,0.5); cursor: pointer;
+        }
+
+        .toggle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
+        .toggle-btn {
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+            padding: 9px 6px; border-radius: 10px; border: 1.5px solid rgba(110,140,200,0.4);
+            background: rgba(255,255,255,0.06); color: #aebfe0; font-size: 12.5px; font-weight: 700;
+            cursor: pointer; transition: all 0.16s;
+        }
+        .toggle-btn .dot { width: 9px; height: 9px; border-radius: 50%; background: #3c5688; transition: all 0.16s; }
+        .toggle-btn.active { background: rgba(96,165,250,0.2); border-color: #60a5fa; color: #f1f6ff; }
+        .toggle-btn.active .dot { background: #60a5fa; box-shadow: 0 0 7px rgba(96,165,250,0.9); }
+
+        .action-row { display: flex; gap: 8px; margin-top: 11px; }
+        .btn { flex: 1; padding: 9px; border: none; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.16s; color: #fff; }
+        .btn-play { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+        .btn-scram { background: linear-gradient(135deg, #ef4444, #b91c1c); }
+        .btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
+
+        .info-title { font-size: 15px; font-weight: 800; color: #f1f6ff; margin-bottom: 10px; display: flex; align-items: center; gap: 7px; }
+        .readout { display: flex; justify-content: space-between; align-items: center; padding: 5.5px 0; border-bottom: 1px dashed rgba(110,140,200,0.3); font-size: 13px; }
+        .ro-name { color: #9fb4d8; font-weight: 600; }
+        .ro-val { font-weight: 800; color: #e8eefb; font-variant-numeric: tabular-nums; }
+        .ro-val.k { color: #fcd34d; } .ro-val.pw { color: #fca5a5; }
+
+        .pw-bar { margin-top: 10px; }
+        .pw-track { height: 18px; border-radius: 9px; background: rgba(255,255,255,0.08); overflow: hidden; }
+        .pw-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #fbbf24, #ef4444); transition: width 0.1s; }
+        .pw-lbl { font-size: 12px; color: #9fb4d8; margin-top: 5px; text-align: center; font-weight: 700; }
+
+        .status-box { margin-top: 10px; padding: 9px 11px; border-radius: 10px; font-size: 12.5px; font-weight: 700; text-align: center; }
+        .status-sub { background: rgba(96,165,250,0.18); color: #93c5fd; }
+        .status-crit { background: rgba(52,211,153,0.18); color: #6ee7b7; }
+        .status-super { background: rgba(239,68,68,0.2); color: #fca5a5; }
+
+        .formula-panel {
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 7;
+            background: rgba(8,16,30,0.92); color: #eaf0fb; padding: 11px 22px; border-radius: 14px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; max-width: 66%;
+            border: 1px solid rgba(110,140,200,0.3);
+        }
+        .formula { font-size: 15px; font-weight: 600; }
+        .formula b { color: #fcd34d; }
+        .formula-note { font-size: 12.5px; color: #93a6cc; margin-top: 5px; }
+
+        .hint {
+            position: absolute; bottom: 18px; left: 22px; z-index: 7; font-size: 12px; color: #9fb4d8;
+            background: rgba(16,28,52,0.7); padding: 7px 13px; border-radius: 9px;
+            border: 1px solid rgba(110,140,200,0.3);
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div id="labels"></div>
+
+    <div class="header">
+        <h1>☢️ Ядерный реактор</h1>
+        <p><span>Цепная реакция деления • замедлитель • управляющие стержни • коэффициент размножения k</span></p>
+    </div>
+
+    <div class="panel control-panel">
+        <div class="param-group">
+            <div class="param-label">
+                <span class="param-name"><span class="param-icon">🎚️</span><span data-i18n="rodLabel">Управляющие стержни (погружение)</span></span>
+                <span class="param-value" id="rod-value">45%</span>
+            </div>
+            <input type="range" id="rod" min="0" max="100" step="1" value="45">
+        </div>
+        <div class="param-group">
+            <div class="param-label">
+                <span class="param-name"><span class="param-icon">💧</span><span data-i18n="modLabel">Замедлитель (эффективность)</span></span>
+                <span class="param-value" id="mod-value">80%</span>
+            </div>
+            <input type="range" id="mod" min="0" max="100" step="1" value="80">
+        </div>
+
+        <div class="toggle-grid">
+            <button class="toggle-btn active" id="t-neu"><span class="dot"></span><span data-i18n="tNeu">Нейтроны</span></button>
+            <button class="toggle-btn active" id="t-cut"><span class="dot"></span><span data-i18n="tCut">Разрез</span></button>
+            <button class="toggle-btn active" id="t-glow"><span class="dot"></span><span data-i18n="tGlow">Свечение</span></button>
+            <button class="toggle-btn active" id="t-lbl"><span class="dot"></span><span data-i18n="tLbl">Подписи</span></button>
+        </div>
+
+        <div class="action-row">
+            <button class="btn btn-play" id="btn-play" data-i18n="pause">⏸ Пауза</button>
+            <button class="btn btn-scram" id="btn-scram" data-i18n="scram">🛑 АЗ (SCRAM)</button>
+        </div>
+    </div>
+
+    <div class="panel info-panel">
+        <div class="info-title">📊 <span data-i18n="infoTitle">Состояние реактора</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roK">Коэф. размножения k</span><span class="ro-val k" id="ro-k">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roFlux">Нейтронный поток</span><span class="ro-val" id="ro-flux">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roPower">Тепловая мощность</span><span class="ro-val pw" id="ro-power">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roTemp">Температура активной зоны</span><span class="ro-val" id="ro-temp">—</span></div>
+        <div class="pw-bar">
+            <div class="pw-track"><div class="pw-fill" id="pw"></div></div>
+            <div class="pw-lbl" id="pw-lbl">—</div>
+        </div>
+        <div class="status-box status-crit" id="status">—</div>
+    </div>
+
+    <div class="formula-panel">
+        <div class="formula">
+            <b>k = 1</b> — критический (стабильно) <span style="color:#5b76a6">|</span> n₊₁ = k · n
+        </div>
+        <div class="formula-note" data-i18n="note">k &lt; 1 — реакция затухает • k = 1 — стабильная мощность • k &gt; 1 — рост (разгон)</div>
+    </div>
+
+    <div class="hint"><span data-i18n="hint">ЛКМ — вращение • ПКМ — перемещение • Колесо — зум</span></div>
+
+    <script src="../../libs/vendor/three-r128/three.min.js"></script>
+    <script>
+    const LANG = (new URLSearchParams(window.location.search).get('lang')) || 'ru';
+    const I18N = {
+        ru: { headH:'☢️ Ядерный реактор', headS:'Цепная реакция деления • замедлитель • управляющие стержни • коэффициент размножения k',
+              rodLabel:'Управляющие стержни (погружение)', modLabel:'Замедлитель (эффективность)',
+              tNeu:'Нейтроны', tCut:'Разрез', tGlow:'Свечение', tLbl:'Подписи', pause:'⏸ Пауза', play:'▶ Пуск', scram:'🛑 АЗ (SCRAM)', infoTitle:'Состояние реактора',
+              roK:'Коэф. размножения k', roFlux:'Нейтронный поток', roPower:'Тепловая мощность', roTemp:'Температура активной зоны',
+              note:'k < 1 — реакция затухает • k = 1 — стабильная мощность • k > 1 — рост (разгон)',
+              hint:'ЛКМ — вращение • ПКМ — перемещение • Колесо — зум',
+              subcrit:'Подкритический  (k < 1)', crit:'Критический — стабильно  (k ≈ 1)', supercrit:'Надкритический — разгон!  (k > 1)',
+              lFuel:'ТВЭЛ (топливо ²³⁵U)', lCtrl:'Управляющий стержень', lMod:'Замедлитель (вода)', lNeu:'Нейтрон', mw:'МВт', degc:'°C' },
+        kz: { headH:'☢️ Ядролық реактор', headS:'Бөліну тізбекті реакциясы • баяулатқыш • басқару өзектері • көбею коэффициенті k',
+              rodLabel:'Басқару өзектері (батыру)', modLabel:'Баяулатқыш (тиімділік)',
+              tNeu:'Нейтрондар', tCut:'Қима', tGlow:'Жарқырау', tLbl:'Жазулар', pause:'⏸ Кідіріс', play:'▶ Бастау', scram:'🛑 АЗ (SCRAM)', infoTitle:'Реактор күйі',
+              roK:'Көбею коэф. k', roFlux:'Нейтрон ағыны', roPower:'Жылу қуаты', roTemp:'Актив аймақ температурасы',
+              note:'k < 1 — реакция сөнеді • k = 1 — тұрақты қуат • k > 1 — өсу (қозу)',
+              hint:'СБ — айналдыру • ОБ — жылжыту • Дөңгелек — масштаб',
+              subcrit:'Подкритикалық  (k < 1)', crit:'Критикалық — тұрақты  (k ≈ 1)', supercrit:'Надкритикалық — қозу!  (k > 1)',
+              lFuel:'ЖБЭ (отын ²³⁵U)', lCtrl:'Басқару өзегі', lMod:'Баяулатқыш (су)', lNeu:'Нейтрон', mw:'МВт', degc:'°C' },
+        en: { headH:'☢️ Nuclear Reactor', headS:'Fission chain reaction • moderator • control rods • multiplication factor k',
+              rodLabel:'Control rods (insertion)', modLabel:'Moderator (efficiency)',
+              tNeu:'Neutrons', tCut:'Cutaway', tGlow:'Glow', tLbl:'Labels', pause:'⏸ Pause', play:'▶ Play', scram:'🛑 SCRAM', infoTitle:'Reactor state',
+              roK:'Multiplication factor k', roFlux:'Neutron flux', roPower:'Thermal power', roTemp:'Core temperature',
+              note:'k < 1 — reaction dies out • k = 1 — steady power • k > 1 — growth (runaway)',
+              hint:'LMB — rotate • RMB — pan • Wheel — zoom',
+              subcrit:'Subcritical  (k < 1)', crit:'Critical — steady  (k ≈ 1)', supercrit:'Supercritical — runaway!  (k > 1)',
+              lFuel:'Fuel rod (²³⁵U)', lCtrl:'Control rod', lMod:'Moderator (water)', lNeu:'Neutron', mw:'MW', degc:'°C' },
+    };
+    const L = I18N[LANG] || I18N.ru;
+
+    // ---- physics ----
+    let rodInsert = 0.45;   // 0..1 (fraction inserted)
+    let modEff = 0.80;      // 0..1 moderator effectiveness
+    let playing = true, showNeu = true, cutaway = true, showGlow = true, showLbl = true;
+
+    // multiplication factor model: rods absorb neutrons (reduce k), moderator increases thermalization (raise k)
+    function kFactor() {
+        const kBase = 1.0 + 0.55 * (modEff - 0.5) - 0.9 * (rodInsert - 0.35);
+        return Math.max(0.4, Math.min(1.35, kBase));
+    }
+    let power = 0.3;        // normalized neutron population / power (0..~) state variable
+    let temp = 60;          // core temperature
+
+    // ---- three.js ----
+    let scene, camera, renderer, root;
+    let vessel, coreGlow, fuelRods = [], controlRods = [], rodAssembly, moderatorMesh, neutrons;
+    const clock = new THREE.Clock();
+    const container = document.getElementById('canvas-container');
+    const labelLayer = document.getElementById('labels');
+
+    let camTheta = 0.7, camPhi = 1.05, camRadius = 18;
+    const camTarget = new THREE.Vector3(0, 0.5, 0);
+    let dragMode = 0, lastX = 0, lastY = 0;
+
+    const CORE_R = 4.0, CORE_H = 6.0;
+    const GRID_N = 4;        // fuel/control lattice (GRID_N x GRID_N)
+    const SPACING = 1.7;
+
+    function init() {
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x070e1a);
+        scene.fog = new THREE.Fog(0x070e1a, 28, 66);
+
+        camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 200);
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        container.appendChild(renderer.domElement);
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+        const key = new THREE.DirectionalLight(0xffffff, 0.6); key.position.set(8, 14, 10); scene.add(key);
+        const rim = new THREE.DirectionalLight(0x6a86ff, 0.35); rim.position.set(-10, 4, -8); scene.add(rim);
+
+        root = new THREE.Group(); scene.add(root);
+
+        buildReactor();
+        buildNeutrons();
+        makeLabels();
+        applyI18N();
+        setupControls();
+        updateRods();
+        updateReadouts();
+        updateCamera();
+        animate();
+    }
+
+    function buildReactor() {
+        // pressure vessel (cutaway cylinder)
+        const vesMat = new THREE.MeshStandardMaterial({ color: 0x8a96aa, metalness: 0.7, roughness: 0.35, side: THREE.DoubleSide });
+        vessel = new THREE.Mesh(new THREE.CylinderGeometry(CORE_R + 0.6, CORE_R + 0.6, CORE_H + 1.4, 48, 1, true), vesMat);
+        root.add(vessel);
+        // bottom + top caps
+        const cap = new THREE.Mesh(new THREE.CylinderGeometry(CORE_R + 0.6, CORE_R + 0.6, 0.3, 48), vesMat);
+        cap.position.y = -(CORE_H + 1.4) / 2; root.add(cap);
+
+        // moderator/coolant (water) volume — translucent blue
+        moderatorMesh = new THREE.Mesh(new THREE.CylinderGeometry(CORE_R + 0.2, CORE_R + 0.2, CORE_H + 0.8, 48, 1, true),
+            new THREE.MeshStandardMaterial({ color: 0x2f8fd6, transparent: true, opacity: 0.18, roughness: 0.2, metalness: 0.1, side: THREE.DoubleSide }));
+        root.add(moderatorMesh);
+
+        // core glow
+        coreGlow = new THREE.PointLight(0x66e0ff, 0, 30); coreGlow.position.set(0, 0, 0); root.add(coreGlow);
+        const glowBall = new THREE.Mesh(new THREE.SphereGeometry(CORE_R * 0.75, 24, 18),
+            new THREE.MeshBasicMaterial({ color: 0x66e0ff, transparent: true, opacity: 0.0, blending: THREE.AdditiveBlending, depthWrite: false }));
+        glowBall.name = 'glowBall'; root.add(glowBall);
+
+        // fuel rods (red-ish), arranged in lattice
+        const fuelMat = new THREE.MeshStandardMaterial({ color: 0xcf5a3a, metalness: 0.4, roughness: 0.5, emissive: 0x3a0f06, emissiveIntensity: 0.3 });
+        const ctrlMat = new THREE.MeshStandardMaterial({ color: 0x2b2f38, metalness: 0.6, roughness: 0.4 });
+        rodAssembly = new THREE.Group(); root.add(rodAssembly);
+        const off = (GRID_N - 1) / 2;
+        for (let i = 0; i < GRID_N; i++) for (let j = 0; j < GRID_N; j++) {
+            const x = (i - off) * SPACING, z = (j - off) * SPACING;
+            if (x * x + z * z > (CORE_R - 0.4) * (CORE_R - 0.4)) continue;
+            // fuel rod (full height, fixed)
+            const fr = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, CORE_H, 16), fuelMat);
+            fr.position.set(x, 0, z); root.add(fr); fuelRods.push(fr);
+            // control rod above, in the gaps (offset diagonally), descends from top
+            if (i < GRID_N - 1 && j < GRID_N - 1) {
+                const cx = x + SPACING / 2, cz = z + SPACING / 2;
+                if (cx * cx + cz * cz > (CORE_R - 0.4) * (CORE_R - 0.4)) continue;
+                const cr = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, CORE_H, 14), ctrlMat);
+                cr.position.set(cx, CORE_H, cz);     // y set by updateRods
+                cr.userData = { x: cx, z: cz };
+                rodAssembly.add(cr); controlRods.push(cr);
+            }
+        }
+        // control-rod top plate
+        const plate = new THREE.Mesh(new THREE.CylinderGeometry(CORE_R * 0.7, CORE_R * 0.7, 0.3, 32), new THREE.MeshStandardMaterial({ color: 0x4b5563, metalness: 0.6, roughness: 0.4 }));
+        plate.name = 'rodPlate'; rodAssembly.add(plate);
+    }
+
+    function updateRods() {
+        // inserted depth: 0 = fully withdrawn (rod bottom at top of core), 1 = fully inserted
+        const topY = CORE_H / 2, depth = rodInsert * CORE_H;
+        controlRods.forEach(cr => { cr.position.y = topY + CORE_H / 2 - depth; });
+        const plate = rodAssembly.getObjectByName('rodPlate');
+        if (plate) plate.position.y = topY + CORE_H / 2 - depth + CORE_H / 2 + 0.2;
+        setCutaway();
+    }
+    function setCutaway() {
+        const open = cutaway;
+        const start = open ? Math.PI * 0.28 : 0, len = open ? Math.PI * 1.44 : Math.PI * 2;
+        vessel.geometry.dispose(); vessel.geometry = new THREE.CylinderGeometry(CORE_R + 0.6, CORE_R + 0.6, CORE_H + 1.4, 48, 1, true, start, len);
+        moderatorMesh.geometry.dispose(); moderatorMesh.geometry = new THREE.CylinderGeometry(CORE_R + 0.2, CORE_R + 0.2, CORE_H + 0.8, 48, 1, true, start, len);
+    }
+
+    // ---- neutrons ----
+    let nData = [];
+    const N_MAX = 420;
+    function buildNeutrons() {
+        const geo = new THREE.BufferGeometry();
+        const pos = new Float32Array(N_MAX * 3);
+        geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+        neutrons = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0x9bf6c0, size: 0.22, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false }));
+        root.add(neutrons);
+        for (let i = 0; i < 30; i++) spawnNeutron();
+    }
+    function spawnNeutron(x, y, z) {
+        if (nData.length >= N_MAX) return;
+        const dir = new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize();
+        nData.push({
+            p: new THREE.Vector3(x ?? (Math.random() - 0.5) * CORE_R, y ?? (Math.random() - 0.5) * CORE_H, z ?? (Math.random() - 0.5) * CORE_R),
+            v: dir.multiplyScalar(3 + Math.random() * 2), life: 0
+        });
+    }
+    function updateNeutrons(dt) {
+        neutrons.visible = showNeu;
+        const k = kFactor();
+        const pos = neutrons.geometry.attributes.position.array;
+        // population dynamics: dn/dt ~ (k-1)*n  (clamped), plus base source
+        const target = Math.max(8, power * N_MAX);
+        for (let i = nData.length - 1; i >= 0; i--) {
+            const n = nData[i];
+            n.p.addScaledVector(n.v, dt * (playing ? 1 : 0));
+            n.life += dt;
+            const r2 = n.p.x * n.p.x + n.p.z * n.p.z;
+            // fission events: random based on k, spawn extra neutrons (chain) & reset
+            if (playing && Math.random() < dt * 2.0) {
+                // probability of producing offspring scales with k
+                const births = (Math.random() < (k / 2)) ? (k > 1 ? 2 : 1) : 0;
+                for (let b = 0; b < births && nData.length < target * 1.1; b++) spawnNeutron(n.p.x, n.p.y, n.p.z);
+                // this neutron is absorbed/escapes sometimes
+                if (Math.random() < 0.5 + rodInsert * 0.4) { nData.splice(i, 1); continue; }
+                n.v = new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize().multiplyScalar(3 + Math.random() * 2);
+            }
+            // leak out of core boundary -> remove
+            if (r2 > CORE_R * CORE_R || Math.abs(n.p.y) > CORE_H / 2 || n.life > 6) { nData.splice(i, 1); continue; }
+        }
+        // maintain a base source so it never fully dies (delayed neutron source)
+        while (nData.length < Math.min(target, 14)) spawnNeutron();
+        // cull if over target (population follows power)
+        while (nData.length > target * 1.15 && nData.length > 8) nData.pop();
+
+        const cnt = Math.min(nData.length, N_MAX);
+        for (let i = 0; i < cnt; i++) { pos[i * 3] = nData[i].p.x; pos[i * 3 + 1] = nData[i].p.y; pos[i * 3 + 2] = nData[i].p.z; }
+        for (let i = cnt; i < N_MAX; i++) { pos[i * 3] = 0; pos[i * 3 + 1] = 1e6; pos[i * 3 + 2] = 0; }
+        neutrons.geometry.attributes.position.needsUpdate = true;
+        neutrons.geometry.setDrawRange(0, N_MAX);
+    }
+
+    function updateReadouts() {
+        const k = kFactor();
+        setTxt('ro-k', k.toFixed(3));
+        setTxt('ro-flux', (power * 4.2).toFixed(2) + ' ×10¹³ н/см²с');
+        setTxt('ro-power', (power * 3200).toFixed(0) + ' ' + L.mw);
+        setTxt('ro-temp', temp.toFixed(0) + ' ' + L.degc);
+        const pw = document.getElementById('pw'); pw.style.width = Math.min(100, power * 100).toFixed(0) + '%';
+        document.getElementById('pw-lbl').textContent = (power * 3200).toFixed(0) + ' ' + L.mw + ' / 3200 ' + L.mw;
+        const st = document.getElementById('status');
+        if (k > 1.01) { st.textContent = L.supercrit; st.className = 'status-box status-super'; }
+        else if (k > 0.99) { st.textContent = L.crit; st.className = 'status-box status-crit'; }
+        else { st.textContent = L.subcrit; st.className = 'status-box status-sub'; }
+    }
+    function setTxt(id, v) { const el = document.getElementById(id); if (el) el.textContent = v; }
+
+    // ---- labels ----
+    let lblFuel, lblCtrl, lblMod, lblNeu;
+    function makeLabels() {
+        const mk = (cls) => { const d = document.createElement('div'); d.className = 'label3d ' + cls; labelLayer.appendChild(d); return d; };
+        lblFuel = mk('fuel'); lblCtrl = mk('ctrl'); lblMod = mk('mod'); lblNeu = mk('neu');
+    }
+    function proj(el, pos, show, text) {
+        if (!show) { el.style.display = 'none'; return; }
+        const v = pos.clone().project(camera);
+        if (v.z > 1) { el.style.display = 'none'; return; }
+        el.style.display = 'block'; if (text != null) el.textContent = text;
+        el.style.left = (v.x * 0.5 + 0.5) * window.innerWidth + 'px';
+        el.style.top = (-v.y * 0.5 + 0.5) * window.innerHeight + 'px';
+    }
+    function updateLabels() {
+        proj(lblFuel, new THREE.Vector3(0, -CORE_H / 2 - 0.6, CORE_R * 0.4), showLbl, L.lFuel);
+        const cr = controlRods[0];
+        proj(lblCtrl, new THREE.Vector3(0, CORE_H / 2 + 1.4, 0), showLbl, L.lCtrl);
+        proj(lblMod, new THREE.Vector3(CORE_R + 0.9, 0, 0), showLbl, L.lMod);
+        proj(lblNeu, new THREE.Vector3(CORE_R * 0.5, CORE_H / 2 + 0.3, CORE_R * 0.5), showLbl && showNeu, L.lNeu);
+    }
+
+    // ---- camera ----
+    function updateCamera() {
+        const sp = Math.sin(camPhi), cp = Math.cos(camPhi), st = Math.sin(camTheta), ct = Math.cos(camTheta);
+        camera.position.set(camTarget.x + camRadius * sp * ct, camTarget.y + camRadius * cp, camTarget.z + camRadius * sp * st);
+        camera.lookAt(camTarget);
+    }
+
+    function setupControls() {
+        document.getElementById('rod').addEventListener('input', e => { rodInsert = +e.target.value / 100; setTxt('rod-value', e.target.value + '%'); updateRods(); updateReadouts(); });
+        document.getElementById('mod').addEventListener('input', e => { modEff = +e.target.value / 100; setTxt('mod-value', e.target.value + '%'); updateReadouts(); });
+
+        const tog = (id, fn) => { const el = document.getElementById(id); el.addEventListener('click', () => { el.classList.toggle('active'); fn(el.classList.contains('active')); }); };
+        tog('t-neu', v => showNeu = v);
+        tog('t-cut', v => { cutaway = v; setCutaway(); });
+        tog('t-glow', v => showGlow = v);
+        tog('t-lbl', v => showLbl = v);
+
+        const playBtn = document.getElementById('btn-play');
+        playBtn.addEventListener('click', () => { playing = !playing; playBtn.textContent = playing ? L.pause : L.play; });
+        document.getElementById('btn-scram').addEventListener('click', () => {
+            // emergency shutdown: fully insert control rods
+            rodInsert = 1.0; document.getElementById('rod').value = 100; setTxt('rod-value', '100%');
+            updateRods(); updateReadouts();
+        });
+
+        const el = renderer.domElement;
+        el.addEventListener('contextmenu', e => e.preventDefault());
+        el.addEventListener('mousedown', e => { dragMode = (e.button === 2 || e.shiftKey) ? 2 : 1; lastX = e.clientX; lastY = e.clientY; });
+        window.addEventListener('mousemove', e => {
+            if (!dragMode) return;
+            const dx = e.clientX - lastX, dy = e.clientY - lastY; lastX = e.clientX; lastY = e.clientY;
+            if (dragMode === 1) { camTheta -= dx * 0.005; camPhi = Math.max(0.18, Math.min(Math.PI - 0.18, camPhi - dy * 0.005)); }
+            else { const ps = camRadius * 0.0016; const right = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0); const up = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 1); camTarget.addScaledVector(right, -dx * ps); camTarget.addScaledVector(up, dy * ps); }
+            updateCamera();
+        });
+        window.addEventListener('mouseup', () => dragMode = 0);
+        el.addEventListener('wheel', e => { e.preventDefault(); camRadius = Math.max(9, Math.min(44, camRadius + e.deltaY * 0.016)); updateCamera(); }, { passive: false });
+        el.addEventListener('touchstart', e => { const t = e.touches[0]; dragMode = 1; lastX = t.clientX; lastY = t.clientY; }, { passive: true });
+        el.addEventListener('touchmove', e => { if (!dragMode) return; const t = e.touches[0]; const dx = t.clientX - lastX, dy = t.clientY - lastY; lastX = t.clientX; lastY = t.clientY; camTheta -= dx * 0.006; camPhi = Math.max(0.18, Math.min(Math.PI - 0.18, camPhi - dy * 0.006)); updateCamera(); e.preventDefault(); }, { passive: false });
+        window.addEventListener('touchend', () => dragMode = 0);
+        window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+    }
+
+    function applyI18N() {
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const k = el.getAttribute('data-i18n');
+            if (L[k] != null) { if (k === 'note') el.innerHTML = L[k]; else el.textContent = L[k]; }
+        });
+        document.querySelector('.header h1').textContent = L.headH;
+        document.querySelector('.header p span').textContent = L.headS;
+        document.title = L.headH.replace(/^[^\wА-Яа-яЁё]+/, '');
+        document.documentElement.lang = LANG;
+    }
+
+    let roAccum = 0;
+    function animate() {
+        requestAnimationFrame(animate);
+        const dt = Math.min(clock.getDelta(), 0.05);
+        if (playing) {
+            // power follows reactor period: dP/dt ~ (k-1)/tau * P + source
+            const k = kFactor();
+            const tau = 1.6;   // effective period scaling
+            power += ((k - 1) / tau * power + 0.012) * dt;
+            power = Math.max(0.02, Math.min(1.25, power));
+            // temperature lags power
+            const tTarget = 60 + power * 280;
+            temp += (tTarget - temp) * Math.min(1, dt * 0.6);
+        }
+        updateNeutrons(dt);
+
+        // glow scales with power
+        const glowBall = root.getObjectByName('glowBall');
+        const gi = showGlow ? Math.min(1, power) : 0;
+        if (glowBall) { glowBall.material.opacity = gi * 0.4; const s = 0.8 + power * 0.5; glowBall.scale.set(s, 1, s); }
+        coreGlow.intensity = gi * 4.5;
+        coreGlow.color.setHSL(0.55 - 0.4 * Math.min(1, power), 0.9, 0.6);   // blue->orange as power rises
+        // fuel rod emissive heat
+        const heat = Math.min(1, power);
+        fuelRods.forEach(fr => { fr.material.emissive.setHSL(0.05, 1, 0.2 * heat); fr.material.emissiveIntensity = 0.3 + heat * 1.4; });
+
+        roAccum += dt;
+        if (roAccum >= 0.12) { updateReadouts(); roAccum = 0; }
+        updateLabels();
+        renderer.render(scene, camera);
+    }
+
+    init();
+    </script>
+</body>
+</html>

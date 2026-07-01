@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Фазы Луны — Освещение и Затмения</title>
+<script src="../../libs/vendor/three-r128/three.min.js"></script>
+<style>
+
+
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --blue:#38bdf8;--purple:#a78bfa;--orange:#fb923c;--green:#4ade80;--red:#f87171;
+  --yellow:#facc15;--cyan:#22d3ee;--moon:#e2e8f0;--sun:#fbbf24;
+  --glass-bg:rgba(10,14,32,0.65);--glass-border:rgba(255,255,255,0.1);
+  --text:#e2e8f0;--text-dim:#94a3b8;
+  --mono:'JetBrains Mono',monospace;--serif:'Playfair Display',serif;--sans:'Nunito',sans-serif;
+}
+body{background:radial-gradient(ellipse at 50% 40%,#0a0e20 0%,#030510 55%,#000 100%);color:var(--text);font-family:var(--sans);overflow:hidden;height:100vh;width:100vw;}
+#canvas-container{position:absolute;inset:0;z-index:0;}
+canvas{display:block;}
+
+.glass{background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,0.5),inset 0 1px 0 rgba(255,255,255,0.04);}
+
+::-webkit-scrollbar{width:5px;}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.12);border-radius:3px;}
+
+/* LEFT PANEL */
+#left-panel{position:absolute;top:16px;left:16px;width:370px;z-index:10;padding:24px;display:flex;flex-direction:column;gap:16px;max-height:calc(100vh - 32px);overflow-y:auto;}
+
+.panel-title{font-family:var(--serif);font-size:28px;font-weight:700;background:linear-gradient(135deg,var(--moon),var(--yellow));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.panel-subtitle{font-size:15px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1.5px;}
+.separator{height:1px;background:linear-gradient(90deg,transparent,var(--glass-border),transparent);}
+
+.control-group{display:flex;flex-direction:column;gap:8px;}
+.control-label{display:flex;justify-content:space-between;align-items:baseline;font-size:18px;color:var(--text-dim);}
+.control-value{font-family:var(--mono);font-weight:600;font-size:20px;color:var(--yellow);}
+
+input[type="range"]{-webkit-appearance:none;width:100%;height:10px;border-radius:5px;background:rgba(255,255,255,0.08);outline:none;cursor:pointer;}
+input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:28px;height:28px;border-radius:50%;background:var(--yellow);box-shadow:0 0 12px rgba(251,191,36,0.5);cursor:pointer;transition:transform .15s;}
+input[type="range"]::-webkit-slider-thumb:hover{transform:scale(1.2);}
+.slider-blue::-webkit-slider-thumb{background:var(--blue);box-shadow:0 0 12px rgba(56,189,248,0.5);}
+.slider-purple::-webkit-slider-thumb{background:var(--purple);box-shadow:0 0 12px rgba(167,139,250,0.5);}
+
+.btn{padding:14px 20px;border:none;border-radius:14px;font-family:var(--sans);font-weight:700;font-size:20px;cursor:pointer;transition:all .2s;letter-spacing:.5px;width:100%;}
+.btn-play{background:linear-gradient(135deg,var(--yellow),#f59e0b);color:#451a03;box-shadow:0 4px 20px rgba(251,191,36,0.3);}
+.btn-play:hover{transform:translateY(-1px);box-shadow:0 6px 24px rgba(251,191,36,0.45);}
+.btn-pause{background:linear-gradient(135deg,var(--purple),#7c3aed);color:#1e1b4b;box-shadow:0 4px 20px rgba(167,139,250,0.3);}
+.btn-reset{background:rgba(255,255,255,0.08);color:var(--text);border:1px solid var(--glass-border);margin-top:4px;font-size:18px;padding:12px 16px;}
+.btn-reset:hover{background:rgba(255,255,255,0.14);}
+
+.btn-row{display:flex;gap:8px;}
+.btn-row .btn{flex:1;}
+
+.toggle-row{display:flex;align-items:center;justify-content:space-between;font-size:18px;color:var(--text-dim);}
+.toggle{width:52px;height:28px;border-radius:14px;background:rgba(255,255,255,0.1);position:relative;cursor:pointer;transition:background .3s;}
+.toggle.active{background:var(--blue);}
+.toggle::after{content:'';position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:white;transition:transform .3s;}
+.toggle.active::after{transform:translateX(24px);}
+
+/* PHASE STRIP */
+.phase-strip{display:flex;gap:6px;flex-wrap:wrap;}
+.phase-btn{padding:8px 10px;border:1px solid var(--glass-border);border-radius:10px;background:rgba(255,255,255,0.03);color:var(--text-dim);font-size:14px;cursor:pointer;transition:all .2s;text-align:center;flex:1;min-width:70px;}
+.phase-btn.active{background:rgba(251,191,36,0.12);border-color:var(--yellow);color:var(--yellow);}
+.phase-btn:hover{background:rgba(255,255,255,0.07);}
+.phase-btn .icon{font-size:22px;display:block;margin-bottom:2px;}
+
+/* RIGHT PANEL */
+#right-panel{position:absolute;top:16px;right:16px;width:380px;z-index:10;padding:24px;display:flex;flex-direction:column;gap:14px;max-height:calc(100vh - 32px);overflow-y:auto;}
+
+.stat-row{display:flex;justify-content:space-between;align-items:baseline;}
+.stat-label{font-size:17px;color:var(--text-dim);}
+.stat-value{font-family:var(--mono);font-weight:600;font-size:22px;}
+
+.formula-box{background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:14px 16px;font-family:var(--serif);font-size:20px;line-height:1.9;color:var(--text-dim);}
+.formula-box .f{color:var(--text);font-style:italic;}
+.formula-box .hl{font-weight:700;}
+.formula-box .hl-y{color:var(--yellow);}
+.formula-box .hl-b{color:var(--blue);}
+.formula-box .hl-p{color:var(--purple);}
+.formula-box .hl-o{color:var(--orange);}
+
+.info-box{background:rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.05);border-radius:12px;padding:14px 16px;font-size:17px;line-height:1.7;color:var(--text-dim);}
+.info-box b{color:var(--text);font-weight:600;}
+
+/* MOON PHASE ICON (CSS) */
+.moon-phase-display{width:100px;height:100px;border-radius:50%;margin:0 auto;position:relative;overflow:hidden;box-shadow:0 0 30px rgba(226,232,240,0.15);}
+
+/* BOTTOM */
+#bottom-panel{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);z-index:10;padding:16px 36px;display:flex;gap:44px;align-items:center;white-space:nowrap;}
+.bottom-stat{display:flex;flex-direction:column;align-items:center;gap:3px;}
+.bottom-stat .label{font-size:14px;text-transform:uppercase;letter-spacing:1.2px;color:var(--text-dim);}
+.bottom-stat .value{font-family:var(--mono);font-size:26px;font-weight:700;}
+
+/* PHASE NAME BANNER */
+#phase-banner{position:absolute;top:16px;left:50%;transform:translateX(-50%);z-index:10;padding:12px 32px;text-align:center;}
+#phase-name{font-family:var(--serif);font-size:28px;font-weight:700;color:var(--yellow);}
+#phase-name-kz{font-size:16px;color:var(--text-dim);margin-top:2px;}
+
+/* ECLIPSE ALERT */
+#eclipse-alert{position:absolute;top:70px;left:50%;transform:translateX(-50%);z-index:11;padding:10px 28px;display:none;text-align:center;border:1px solid var(--orange);animation:pulse-eclipse 2s infinite;}
+#eclipse-alert span{font-size:20px;font-weight:700;color:var(--orange);}
+@keyframes pulse-eclipse{0%,100%{box-shadow:0 0 15px rgba(251,146,60,0.2);}50%{box-shadow:0 0 30px rgba(251,146,60,0.5);}}
+
+.legend-item{display:flex;align-items:center;gap:10px;font-size:16px;color:var(--text-dim);}
+.legend-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0;}
+</style>
+</head>
+<body>
+
+
+<div id="canvas-container"></div>
+
+<!-- PHASE BANNER -->
+<div id="phase-banner" class="glass">
+  <div id="phase-name">Новолуние</div>
+  <div id="phase-name-kz">Жаңа ай</div>
+</div>
+
+<!-- ECLIPSE ALERT -->
+<div id="eclipse-alert" class="glass">
+  <span id="eclipse-text">🌑 Солнечное затмение</span>
+</div>
+
+<!-- LEFT PANEL -->
+<div id="left-panel" class="glass">
+  <div>
+    <div class="panel-title">Фазы Луны</div>
+    <div class="panel-subtitle">Освещение и затмения</div>
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="control-group">
+    <div class="control-label">
+      <span>Позиция Луны (день)</span>
+      <span class="control-value" id="day-val">0 / 29.5</span>
+    </div>
+    <input type="range" id="day-slider" min="0" max="295" value="0" step="1">
+  </div>
+
+  <div class="control-group">
+    <div class="control-label">
+      <span>Скорость анимации</span>
+      <span class="control-value" id="speed-val" style="color:var(--blue);">1×</span>
+    </div>
+    <input type="range" id="speed-slider" class="slider-blue" min="0" max="50" value="10" step="1">
+  </div>
+
+  <div class="control-group">
+    <div class="control-label">
+      <span>Наклон орбиты Луны</span>
+      <span class="control-value" id="tilt-val" style="color:var(--purple);">5.1°</span>
+    </div>
+    <input type="range" id="tilt-slider" class="slider-purple" min="0" max="15" value="5.1" step="0.1">
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="panel-subtitle">Перейти к фазе</div>
+  <div class="phase-strip">
+    <div class="phase-btn active" data-day="0"><span class="icon">🌑</span>Новолуние</div>
+    <div class="phase-btn" data-day="37"><span class="icon">🌒</span>Молодая</div>
+    <div class="phase-btn" data-day="74"><span class="icon">🌓</span>I четверть</div>
+    <div class="phase-btn" data-day="111"><span class="icon">🌔</span>Прибывающая</div>
+    <div class="phase-btn" data-day="148"><span class="icon">🌕</span>Полнолуние</div>
+    <div class="phase-btn" data-day="185"><span class="icon">🌖</span>Убывающая</div>
+    <div class="phase-btn" data-day="222"><span class="icon">🌗</span>III четверть</div>
+    <div class="phase-btn" data-day="259"><span class="icon">🌘</span>Старая</div>
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="toggle-row">
+    <span>Орбитальные линии</span>
+    <div class="toggle active" id="toggle-orbits"></div>
+  </div>
+  <div class="toggle-row">
+    <span>Метки и подписи</span>
+    <div class="toggle active" id="toggle-labels"></div>
+  </div>
+  <div class="toggle-row">
+    <span>Солнечные лучи</span>
+    <div class="toggle active" id="toggle-rays"></div>
+  </div>
+  <div class="toggle-row">
+    <span>Тень Земли</span>
+    <div class="toggle active" id="toggle-shadow"></div>
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="btn-row">
+    <button class="btn btn-play" id="btn-play">▶ Анимация</button>
+  </div>
+  <button class="btn btn-reset" id="btn-reset">↺ Сброс</button>
+</div>
+
+<!-- RIGHT PANEL -->
+<div id="right-panel" class="glass">
+  <div class="panel-title" style="font-size:24px;">Параметры</div>
+
+  <div class="stat-row">
+    <span class="stat-label">Текущая фаза</span>
+    <span class="stat-value" id="stat-phase" style="color:var(--yellow);">Новолуние</span>
+  </div>
+  <div class="stat-row">
+    <span class="stat-label">Освещённость</span>
+    <span class="stat-value" id="stat-illum" style="color:var(--moon);">0%</span>
+  </div>
+  <div class="stat-row">
+    <span class="stat-label">Возраст Луны</span>
+    <span class="stat-value" id="stat-age" style="color:var(--blue);">0.0 дн</span>
+  </div>
+  <div class="stat-row">
+    <span class="stat-label">Угловая позиция</span>
+    <span class="stat-value" id="stat-angle" style="color:var(--purple);">0°</span>
+  </div>
+  <div class="stat-row">
+    <span class="stat-label">Расстояние (масшт.)</span>
+    <span class="stat-value" id="stat-dist" style="color:var(--cyan);">384 400 км</span>
+  </div>
+  <div class="stat-row">
+    <span class="stat-label">Тип затмения</span>
+    <span class="stat-value" id="stat-eclipse" style="color:var(--orange);">—</span>
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="panel-subtitle">Формулы</div>
+  <div class="formula-box">
+    <div><span class="f">Освещённость</span> = ½(1 − cos <span class="hl hl-y">φ</span>)</div>
+    <div style="margin-top:4px;"><span class="f">T</span><sub>сидер.</sub> = <span class="hl hl-b">27.32</span> дней</div>
+    <div><span class="f">T</span><sub>синодич.</sub> = <span class="hl hl-y">29.53</span> дней</div>
+    <div style="margin-top:6px;border-top:1px solid rgba(255,255,255,0.06);padding-top:6px;font-size:17px;">
+      <span class="hl hl-o">Затмение</span> возможно когда<br>Луна вблизи узла орбиты<br>(наклон ≈ <span class="hl hl-p">5.1°</span>)
+    </div>
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="panel-subtitle">Легенда</div>
+  <div style="display:flex;flex-direction:column;gap:8px;">
+    <div class="legend-item"><div class="legend-dot" style="background:#fbbf24;box-shadow:0 0 8px #fbbf24;"></div>Солнце</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#3b82f6;"></div>Земля</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#e2e8f0;"></div>Луна</div>
+    <div class="legend-item"><div class="legend-dot" style="background:rgba(0,0,0,0.8);border:1px solid #666;"></div>Теневой конус Земли</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#fb923c;"></div>Зона затмения</div>
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="panel-subtitle">Как это работает</div>
+  <div class="info-box">
+    <b>Луна</b> не светит сама — она отражает солнечный свет. По мере движения по орбите мы видим разные доли освещённой поверхности.<br><br>
+    <b>Солнечное затмение</b> — Луна между Солнцем и Землёй, тень падает на Землю (в новолуние).<br><br>
+    <b>Лунное затмение</b> — Земля между Солнцем и Луной, Луна входит в тень Земли (в полнолуние).<br><br>
+    Затмения <b>не каждый месяц</b>, т.к. орбита Луны наклонена на <b>5.1°</b>.
+  </div>
+</div>
+
+<!-- BOTTOM -->
+<div id="bottom-panel" class="glass">
+  <div class="bottom-stat">
+    <span class="label">День</span>
+    <span class="value" id="b-day" style="color:var(--yellow);">0.0</span>
+  </div>
+  <div class="bottom-stat">
+    <span class="label">Фаза</span>
+    <span class="value" id="b-phase" style="color:var(--moon);">🌑</span>
+  </div>
+  <div class="bottom-stat">
+    <span class="label">Освещ.</span>
+    <span class="value" id="b-illum" style="color:var(--blue);">0%</span>
+  </div>
+  <div class="bottom-stat">
+    <span class="label">Угол</span>
+    <span class="value" id="b-angle" style="color:var(--purple);">0°</span>
+  </div>
+  <div class="bottom-stat">
+    <span class="label">Затмение</span>
+    <span class="value" id="b-eclipse" style="color:var(--orange);">—</span>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════
+// SCENE
+// ═══════════════════════════════════════
+const container = document.getElementById('canvas-container');
+const scene = new THREE.Scene();
+
+const camera = new THREE.PerspectiveCamera(50, innerWidth/innerHeight, 0.1, 1000);
+camera.position.set(0, 25, 45);
+camera.lookAt(0, 0, 0);
+
+const renderer = new THREE.WebGLRenderer({antialias: true, alpha:true});
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = false;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+container.appendChild(renderer.domElement);
+
+// ═══════════════════════════════════════
+// STARFIELD
+// ═══════════════════════════════════════
+const starCount = 2000;
+const starGeo = new THREE.BufferGeometry();
+const starPos = new Float32Array(starCount * 3);
+for(let i=0;i<starCount;i++){
+  const r = 200 + Math.random()*300;
+  const theta = Math.random()*Math.PI*2;
+  const phi = Math.acos(2*Math.random()-1);
+  starPos[i*3] = r*Math.sin(phi)*Math.cos(theta);
+  starPos[i*3+1] = r*Math.sin(phi)*Math.sin(theta);
+  starPos[i*3+2] = r*Math.cos(phi);
+}
+starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+const starMat = new THREE.PointsMaterial({color:0xffffff, size:0.5, sizeAttenuation:true});
+scene.add(new THREE.Points(starGeo, starMat));
+
+// ═══════════════════════════════════════
+// SUN
+// ═══════════════════════════════════════
+const sunDist = 80;
+const sunGeo = new THREE.SphereGeometry(5, 32, 32);
+const sunMat = new THREE.MeshBasicMaterial({color:0xfbbf24});
+const sun = new THREE.Mesh(sunGeo, sunMat);
+sun.position.set(-sunDist, 0, 0);
+scene.add(sun);
+
+// Sun glow
+const sunGlowGeo = new THREE.SphereGeometry(7, 32, 32);
+const sunGlowMat = new THREE.MeshBasicMaterial({color:0xfbbf24, transparent:true, opacity:0.15});
+const sunGlow = new THREE.Mesh(sunGlowGeo, sunGlowMat);
+sun.add(sunGlow);
+
+// Sun glow2
+const sunGlow2Geo = new THREE.SphereGeometry(10, 32, 32);
+const sunGlow2Mat = new THREE.MeshBasicMaterial({color:0xfde68a, transparent:true, opacity:0.06});
+sun.add(new THREE.Mesh(sunGlow2Geo, sunGlow2Mat));
+
+// Sunlight
+const sunLight = new THREE.DirectionalLight(0xffeedd, 1.5);
+sunLight.position.copy(sun.position);
+sunLight.castShadow = true;
+sunLight.shadow.mapSize.set(2048, 2048);
+sunLight.shadow.camera.near = 30;
+sunLight.shadow.camera.far = 150;
+sunLight.shadow.camera.left = -20;
+sunLight.shadow.camera.right = 20;
+sunLight.shadow.camera.top = 20;
+sunLight.shadow.camera.bottom = -20;
+scene.add(sunLight);
+scene.add(sunLight.target);
+
+const ambientLight = new THREE.AmbientLight(0x111122, 0.15);
+scene.add(ambientLight);
+
+// ═══════════════════════════════════════
+// EARTH
+// ═══════════════════════════════════════
+const earthRadius = 3;
+const earthGeo = new THREE.SphereGeometry(earthRadius, 64, 64);
+
+// Create procedural earth texture
+const earthCanvas = document.createElement('canvas');
+earthCanvas.width = 512; earthCanvas.height = 256;
+const ectx = earthCanvas.getContext('2d');
+
+// Ocean
+ectx.fillStyle = '#1e40af';
+ectx.fillRect(0, 0, 512, 256);
+
+// Landmasses (simplified)
+ectx.fillStyle = '#166534';
+// Eurasia
+ectx.beginPath();ectx.ellipse(300,90,80,40,0.2,0,Math.PI*2);ectx.fill();
+// Africa
+ectx.beginPath();ectx.ellipse(280,140,25,40,-0.1,0,Math.PI*2);ectx.fill();
+// Americas
+ectx.beginPath();ectx.ellipse(120,80,20,45,-0.3,0,Math.PI*2);ectx.fill();
+ectx.beginPath();ectx.ellipse(130,150,22,35,0.1,0,Math.PI*2);ectx.fill();
+// Australia
+ectx.beginPath();ectx.ellipse(410,160,20,14,0.3,0,Math.PI*2);ectx.fill();
+// Antarctica
+ectx.fillStyle = '#e2e8f0';
+ectx.fillRect(0, 230, 512, 26);
+
+// Ice caps
+ectx.fillStyle = '#cbd5e1';
+ectx.fillRect(0, 0, 512, 12);
+
+// Clouds
+ectx.globalAlpha = 0.3;
+ectx.fillStyle = '#ffffff';
+for(let i=0;i<40;i++){
+  const cx = Math.random()*512, cy = Math.random()*256;
+  ectx.beginPath();ectx.ellipse(cx,cy,15+Math.random()*30,5+Math.random()*10,Math.random()*Math.PI,0,Math.PI*2);ectx.fill();
+}
+ectx.globalAlpha = 1;
+
+const earthTex = new THREE.CanvasTexture(earthCanvas);
+const earthMat = new THREE.MeshStandardMaterial({map:earthTex, roughness:0.7, metalness:0.1});
+const earth = new THREE.Mesh(earthGeo, earthMat);
+earth.castShadow = true;
+earth.receiveShadow = true;
+scene.add(earth);
+
+// Earth atmosphere glow
+const atmosGeo = new THREE.SphereGeometry(earthRadius*1.06, 64, 64);
+const atmosMat = new THREE.MeshBasicMaterial({color:0x4488ff, transparent:true, opacity:0.08, side:THREE.BackSide});
+scene.add(new THREE.Mesh(atmosGeo, atmosMat));
+
+// Earth axis tilt indicator
+const axisGeo = new THREE.CylinderGeometry(0.04, 0.04, earthRadius*3, 8);
+const axisMat = new THREE.MeshBasicMaterial({color:0x38bdf8, transparent:true, opacity:0.4});
+const axis = new THREE.Mesh(axisGeo, axisMat);
+axis.rotation.z = 23.4 * Math.PI / 180;
+scene.add(axis);
+
+// ═══════════════════════════════════════
+// MOON
+// ═══════════════════════════════════════
+const moonOrbitRadius = 16;
+const moonRadius = 1;
+const moonGeo = new THREE.SphereGeometry(moonRadius, 48, 48);
+
+// Moon texture
+const moonCanvas = document.createElement('canvas');
+moonCanvas.width = 256; moonCanvas.height = 128;
+const mctx = moonCanvas.getContext('2d');
+mctx.fillStyle = '#94a3b8';
+mctx.fillRect(0, 0, 256, 128);
+// Craters
+const craterColors = ['#64748b','#78869b','#7a8599','#6b7a8e'];
+for(let i=0;i<60;i++){
+  const cx=Math.random()*256, cy=Math.random()*128, cr=1+Math.random()*8;
+  mctx.fillStyle = craterColors[Math.floor(Math.random()*craterColors.length)];
+  mctx.beginPath();mctx.arc(cx,cy,cr,0,Math.PI*2);mctx.fill();
+}
+// Maria (dark patches)
+mctx.fillStyle = '#4b5563';
+mctx.globalAlpha = 0.4;
+mctx.beginPath();mctx.ellipse(80,50,25,18,0,0,Math.PI*2);mctx.fill();
+mctx.beginPath();mctx.ellipse(140,60,20,25,0.5,0,Math.PI*2);mctx.fill();
+mctx.beginPath();mctx.ellipse(100,70,18,12,0,0,Math.PI*2);mctx.fill();
+mctx.globalAlpha = 1;
+
+const moonTex = new THREE.CanvasTexture(moonCanvas);
+const moonMat = new THREE.MeshStandardMaterial({map:moonTex, roughness:0.9, metalness:0.05});
+const moon = new THREE.Mesh(moonGeo, moonMat);
+moon.castShadow = true;
+moon.receiveShadow = true;
+scene.add(moon);
+
+// Moon glow
+const moonGlowGeo = new THREE.SphereGeometry(moonRadius*1.15, 32, 32);
+const moonGlowMat = new THREE.MeshBasicMaterial({color:0xe2e8f0, transparent:true, opacity:0.05});
+const moonGlow = new THREE.Mesh(moonGlowGeo, moonGlowMat);
+moon.add(moonGlow);
+
+// ═══════════════════════════════════════
+// ORBIT LINES
+// ═══════════════════════════════════════
+const orbitGroup = new THREE.Group();
+scene.add(orbitGroup);
+
+// Moon orbit
+const moonOrbitPts = [];
+for(let i=0; i<=128; i++){
+  const a = (i/128)*Math.PI*2;
+  moonOrbitPts.push(new THREE.Vector3(Math.cos(a)*moonOrbitRadius, 0, Math.sin(a)*moonOrbitRadius));
+}
+const moonOrbitGeo = new THREE.BufferGeometry().setFromPoints(moonOrbitPts);
+const moonOrbitMat = new THREE.LineBasicMaterial({color:0xa78bfa, transparent:true, opacity:0.3});
+const moonOrbitLine = new THREE.Line(moonOrbitGeo, moonOrbitMat);
+orbitGroup.add(moonOrbitLine);
+
+// ═══════════════════════════════════════
+// SUN RAYS
+// ═══════════════════════════════════════
+const raysGroup = new THREE.Group();
+scene.add(raysGroup);
+
+function buildRays(){
+  while(raysGroup.children.length) raysGroup.remove(raysGroup.children[0]);
+  const rayMat = new THREE.LineBasicMaterial({color:0xfbbf24, transparent:true, opacity:0.12});
+  for(let i = -6; i <= 6; i++){
+    const y = i * 2;
+    const pts = [new THREE.Vector3(-sunDist+6, y, 0), new THREE.Vector3(moonOrbitRadius+5, y, 0)];
+    const g = new THREE.BufferGeometry().setFromPoints(pts);
+    raysGroup.add(new THREE.Line(g, rayMat));
+  }
+}
+buildRays();
+
+// ═══════════════════════════════════════
+// EARTH SHADOW CONE
+// ═══════════════════════════════════════
+const shadowGroup = new THREE.Group();
+scene.add(shadowGroup);
+
+// Umbra cone
+const umbraLen = 40;
+const umbraGeo = new THREE.ConeGeometry(earthRadius * 0.9, umbraLen, 32, 1, true);
+const umbraMat = new THREE.MeshBasicMaterial({color:0x000011, transparent:true, opacity:0.15, side:THREE.DoubleSide});
+const umbra = new THREE.Mesh(umbraGeo, umbraMat);
+umbra.rotation.z = -Math.PI/2;
+umbra.position.x = umbraLen/2 + earthRadius;
+shadowGroup.add(umbra);
+
+// Penumbra
+const penumbraGeo = new THREE.ConeGeometry(earthRadius * 1.8, umbraLen * 1.2, 32, 1, true);
+const penumbraMat = new THREE.MeshBasicMaterial({color:0x000011, transparent:true, opacity:0.06, side:THREE.DoubleSide});
+const penumbra = new THREE.Mesh(penumbraGeo, penumbraMat);
+penumbra.rotation.z = -Math.PI/2;
+penumbra.position.x = umbraLen*0.6 + earthRadius;
+shadowGroup.add(penumbra);
+
+// ═══════════════════════════════════════
+// HTML LABELS
+// ═══════════════════════════════════════
+function createLabel(text, color, size){
+  const div = document.createElement('div');
+  div.style.cssText = `position:absolute;font-family:var(--sans);font-size:${size||18}px;font-weight:700;color:${color};pointer-events:none;text-shadow:0 0 12px rgba(0,0,0,0.9);z-index:5;white-space:nowrap;`;
+  div.textContent = text;
+  document.body.appendChild(div);
+  return div;
+}
+
+const labelSun = createLabel('Солнце ☀', '#fbbf24', 20);
+const labelEarth = createLabel('Земля 🌍', '#60a5fa', 20);
+const labelMoon = createLabel('Луна 🌙', '#e2e8f0', 20);
+
+const labelsArray = [labelSun, labelEarth, labelMoon];
+
+function updateLabelPos(label, worldPos, offsetY){
+  const v = worldPos.clone();
+  v.y += (offsetY || 0);
+  v.project(camera);
+  const hw = innerWidth/2, hh = innerHeight/2;
+  label.style.left = (v.x*hw+hw) + 'px';
+  label.style.top = (-v.y*hh+hh) + 'px';
+  label.style.display = v.z < 1 ? 'block' : 'none';
+}
+
+// ═══════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════
+const SYNODIC = 29.53;
+const state = {
+  day: 0,
+  speed: 1,
+  tilt: 5.1,
+  playing: false,
+  showOrbits: true,
+  showLabels: true,
+  showRays: true,
+  showShadow: true,
+};
+
+// ═══════════════════════════════════════
+// PHASE DATA
+// ═══════════════════════════════════════
+const phases = [
+  {name:'Новолуние', nameKz:'Жаңа ай', icon:'🌑', minDay:0, maxDay:1.85},
+  {name:'Молодая Луна', nameKz:'Жас ай', icon:'🌒', minDay:1.85, maxDay:7.38},
+  {name:'Первая четверть', nameKz:'Бірінші ширек', icon:'🌓', minDay:7.38, maxDay:11.07},
+  {name:'Прибывающая', nameKz:'Толысқан ай', icon:'🌔', minDay:11.07, maxDay:14.76},
+  {name:'Полнолуние', nameKz:'Толық ай', icon:'🌕', minDay:14.76, maxDay:16.62},
+  {name:'Убывающая', nameKz:'Кемісқан ай', icon:'🌖', minDay:16.62, maxDay:22.14},
+  {name:'Третья четверть', nameKz:'Үшінші ширек', icon:'🌗', minDay:22.14, maxDay:25.83},
+  {name:'Старая Луна', nameKz:'Кәрі ай', icon:'🌘', minDay:25.83, maxDay:29.53},
+];
+
+function getPhase(day){
+  const d = day % SYNODIC;
+  for(const p of phases){
+    if(d >= p.minDay && d < p.maxDay) return p;
+  }
+  return phases[0];
+}
+
+function getIllumination(day){
+  const angle = (day / SYNODIC) * Math.PI * 2;
+  return 0.5 * (1 - Math.cos(angle));
+}
+
+function checkEclipse(day, tilt){
+  const angle = (day / SYNODIC) * Math.PI * 2;
+  const tiltRad = tilt * Math.PI / 180;
+  const moonY = Math.sin(angle) * moonOrbitRadius * Math.sin(tiltRad);
+  const nearNode = Math.abs(moonY) < 0.8;
+
+  const d = day % SYNODIC;
+  // Solar eclipse: near new moon + near node
+  if(d < 1.5 || d > SYNODIC - 1.5){
+    if(nearNode) return {type:'solar', label:'☀🌑 Солнечное затмение'};
+  }
+  // Lunar eclipse: near full moon + near node
+  if(d > 13.5 && d < 16){
+    if(nearNode) return {type:'lunar', label:'🌍🌕 Лунное затмение'};
+  }
+  return null;
+}
+
+// ═══════════════════════════════════════
+// UI
+// ═══════════════════════════════════════
+const daySlider = document.getElementById('day-slider');
+const speedSlider = document.getElementById('speed-slider');
+const tiltSlider = document.getElementById('tilt-slider');
+
+daySlider.addEventListener('input', e => {
+  state.day = +e.target.value / 10;
+  updateAll();
+});
+speedSlider.addEventListener('input', e => {
+  state.speed = +e.target.value / 10;
+  document.getElementById('speed-val').textContent = state.speed.toFixed(1) + '×';
+});
+tiltSlider.addEventListener('input', e => {
+  state.tilt = +e.target.value;
+  document.getElementById('tilt-val').textContent = (+e.target.value).toFixed(1) + '°';
+});
+
+// Phase buttons
+document.querySelectorAll('.phase-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.phase-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    state.day = +btn.dataset.day / 10;
+    daySlider.value = +btn.dataset.day;
+    updateAll();
+  });
+});
+
+// Toggles
+document.getElementById('toggle-orbits').addEventListener('click', function(){
+  this.classList.toggle('active'); state.showOrbits = this.classList.contains('active');
+  orbitGroup.visible = state.showOrbits;
+});
+document.getElementById('toggle-labels').addEventListener('click', function(){
+  this.classList.toggle('active'); state.showLabels = this.classList.contains('active');
+  labelsArray.forEach(l => l.style.display = state.showLabels ? 'block' : 'none');
+});
+document.getElementById('toggle-rays').addEventListener('click', function(){
+  this.classList.toggle('active'); state.showRays = this.classList.contains('active');
+  raysGroup.visible = state.showRays;
+});
+document.getElementById('toggle-shadow').addEventListener('click', function(){
+  this.classList.toggle('active'); state.showShadow = this.classList.contains('active');
+  shadowGroup.visible = state.showShadow;
+});
+
+// Play/Pause
+const btnPlay = document.getElementById('btn-play');
+btnPlay.addEventListener('click', () => {
+  state.playing = !state.playing;
+  btnPlay.textContent = state.playing ? '⏸ Пауза' : '▶ Анимация';
+  btnPlay.className = state.playing ? 'btn btn-pause' : 'btn btn-play';
+});
+
+document.getElementById('btn-reset').addEventListener('click', () => {
+  state.day = 0;
+  state.playing = false;
+  daySlider.value = 0;
+  btnPlay.textContent = '▶ Анимация';
+  btnPlay.className = 'btn btn-play';
+  camSph = {r:50, theta:Math.PI*0.15, phi:Math.PI*0.3};
+  camTarget.set(0, 0, 0);
+  updateCam();
+  updateAll();
+});
+
+// ═══════════════════════════════════════
+// CAMERA
+// ═══════════════════════════════════════
+let isDrag=false, isPan=false, prevM={x:0,y:0};
+let camSph = {r:50, theta:Math.PI*0.15, phi:Math.PI*0.3};
+let camTarget = new THREE.Vector3(0, 0, 0);
+
+function updateCam(){
+  camera.position.set(
+    camTarget.x + camSph.r*Math.sin(camSph.phi)*Math.cos(camSph.theta),
+    camTarget.y + camSph.r*Math.cos(camSph.phi),
+    camTarget.z + camSph.r*Math.sin(camSph.phi)*Math.sin(camSph.theta)
+  );
+  camera.lookAt(camTarget);
+}
+updateCam();
+
+renderer.domElement.addEventListener('mousedown', e => {
+  if(e.button===0)isDrag=true;if(e.button===2)isPan=true;
+  prevM={x:e.clientX,y:e.clientY};
+});
+renderer.domElement.addEventListener('mousemove', e => {
+  const dx=e.clientX-prevM.x,dy=e.clientY-prevM.y;
+  prevM={x:e.clientX,y:e.clientY};
+  if(isDrag){
+    camSph.theta-=dx*0.005;
+    camSph.phi=Math.max(0.1,Math.min(Math.PI*0.48,camSph.phi+dy*0.005));
+    updateCam();
+  }
+  if(isPan){
+    const right=new THREE.Vector3();camera.getWorldDirection(right);
+    right.cross(new THREE.Vector3(0,1,0)).normalize();
+    camTarget.addScaledVector(right,-dx*0.05);
+    camTarget.y=Math.max(-10,camTarget.y+dy*0.05);
+    updateCam();
+  }
+});
+renderer.domElement.addEventListener('mouseup',()=>{isDrag=false;isPan=false;});
+renderer.domElement.addEventListener('contextmenu',e=>e.preventDefault());
+renderer.domElement.addEventListener('wheel',e=>{
+  camSph.r=Math.max(10,Math.min(120,camSph.r+e.deltaY*0.04));
+  updateCam();
+});
+
+// ═══════════════════════════════════════
+// UPDATE
+// ═══════════════════════════════════════
+function updateAll(){
+  const day = state.day % SYNODIC;
+  const angle = (state.day / SYNODIC) * Math.PI * 2;
+  const tiltRad = state.tilt * Math.PI / 180;
+
+  // Moon position
+  const mx = Math.cos(angle) * moonOrbitRadius;
+  const mz = Math.sin(angle) * moonOrbitRadius;
+  const my = Math.sin(angle) * moonOrbitRadius * Math.sin(tiltRad) * Math.sin(angle * 0.5);
+  moon.position.set(mx, my * 0.3, mz);
+
+  // Update orbit tilt visual
+  moonOrbitLine.rotation.x = tiltRad * 0.3;
+
+  // Earth slow rotation
+  earth.rotation.y = state.day * 0.5;
+
+  // Phase
+  const phase = getPhase(day);
+  const illum = getIllumination(state.day);
+
+  document.getElementById('phase-name').textContent = phase.name;
+  document.getElementById('phase-name-kz').textContent = phase.nameKz;
+
+  // Highlight active phase button
+  document.querySelectorAll('.phase-btn').forEach(b => {
+    const bd = +b.dataset.day / 10;
+    const p2 = getPhase(bd);
+    b.classList.toggle('active', p2.name === phase.name);
+  });
+
+  // Stats
+  document.getElementById('stat-phase').textContent = phase.icon + ' ' + phase.name;
+  document.getElementById('stat-illum').textContent = (illum * 100).toFixed(1) + '%';
+  document.getElementById('stat-age').textContent = day.toFixed(1) + ' дн';
+  const angleDeg = ((angle * 180 / Math.PI) % 360).toFixed(0);
+  document.getElementById('stat-angle').textContent = angleDeg + '°';
+  document.getElementById('stat-dist').textContent = '384 400 км';
+
+  document.getElementById('day-val').textContent = day.toFixed(1) + ' / ' + SYNODIC;
+
+  // Bottom
+  document.getElementById('b-day').textContent = day.toFixed(1);
+  document.getElementById('b-phase').textContent = phase.icon;
+  document.getElementById('b-illum').textContent = (illum*100).toFixed(0)+'%';
+  document.getElementById('b-angle').textContent = angleDeg+'°';
+
+  // Eclipse
+  const eclipse = checkEclipse(state.day, state.tilt);
+  const eclAlert = document.getElementById('eclipse-alert');
+  if(eclipse){
+    eclAlert.style.display = 'block';
+    document.getElementById('eclipse-text').textContent = eclipse.label;
+    document.getElementById('stat-eclipse').textContent = eclipse.type === 'solar' ? '☀ Солнечное' : '🌕 Лунное';
+    document.getElementById('stat-eclipse').style.color = eclipse.type === 'solar' ? 'var(--orange)' : 'var(--red)';
+    document.getElementById('b-eclipse').textContent = eclipse.type === 'solar' ? '☀' : '🌕';
+
+    // Darken moon during lunar eclipse
+    if(eclipse.type === 'lunar'){
+      moonMat.emissive = new THREE.Color(0x8b1a1a);
+      moonMat.emissiveIntensity = 0.3;
+      moonGlowMat.color.setHex(0xcc4444);
+      moonGlowMat.opacity = 0.15;
+    }
+  } else {
+    eclAlert.style.display = 'none';
+    document.getElementById('stat-eclipse').textContent = '—';
+    document.getElementById('stat-eclipse').style.color = 'var(--text-dim)';
+    document.getElementById('b-eclipse').textContent = '—';
+    moonMat.emissiveIntensity = 0;
+    moonGlowMat.color.setHex(0xe2e8f0);
+    moonGlowMat.opacity = 0.05;
+  }
+
+  // Moon glow intensity based on illumination
+  moonGlowMat.opacity = 0.02 + illum * 0.12;
+
+  // Update slider
+  daySlider.value = Math.round(state.day * 10) % (SYNODIC * 10);
+}
+
+// ═══════════════════════════════════════
+// ANIMATE
+// ═══════════════════════════════════════
+const clock = new THREE.Clock();
+
+function animate(){
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05);
+
+  if(state.playing){
+    state.day += dt * state.speed;
+    if(state.day > SYNODIC * 100) state.day = 0;
+    updateAll();
+  }
+
+  // Sun pulsing glow
+  const pulse = 1 + 0.03 * Math.sin(performance.now() * 0.002);
+  sunGlow.scale.setScalar(pulse);
+
+  // Labels
+  if(state.showLabels){
+    updateLabelPos(labelSun, sun.position, 7);
+    updateLabelPos(labelEarth, earth.position, earthRadius + 2);
+    updateLabelPos(labelMoon, moon.position, moonRadius + 1.5);
+  }
+
+  renderer.render(scene, camera);
+}
+
+updateAll();
+animate();
+
+window.addEventListener('resize', () => {
+  camera.aspect = innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+</script>
+<script>
+(function() {
+    const TEXT_MAP = {
+    "Фазы Луны — Освещение и Затмения": {
+        "kz": "Ай фазалары — Жарықтандыру және тұтылулар",
+        "en": "Moon Phases — Illumination and Eclipses"
+    },
+    "Фазы Луны": {
+        "kz": "Ай фазалары",
+        "en": "Moon Phases"
+    },
+    "Освещение и затмения": {
+        "kz": "Жарықтандыру және тұтылулар",
+        "en": "Illumination and eclipses"
+    },
+    "Новолуние": {
+        "kz": "Жаңа ай",
+        "en": "New Moon"
+    },
+    "Молодая": {
+        "kz": "Жас ай",
+        "en": "Waxing Crescent"
+    },
+    "I четверть": {
+        "kz": "I ширек",
+        "en": "First Quarter"
+    },
+    "Прибывающая": {
+        "kz": "Өсіп келе жатқан",
+        "en": "Waxing Gibbous"
+    },
+    "Полнолуние": {
+        "kz": "Толық ай",
+        "en": "Full Moon"
+    },
+    "Убывающая": {
+        "kz": "Кемуде",
+        "en": "Waning Gibbous"
+    },
+    "III четверть": {
+        "kz": "III ширек",
+        "en": "Last Quarter"
+    },
+    "Старая": {
+        "kz": "Ескі ай",
+        "en": "Waning Crescent"
+    },
+    "Позиция Луны (день)": {
+        "kz": "Ай позициясы (күн)",
+        "en": "Moon position (day)"
+    },
+    "Скорость анимации": {
+        "kz": "Анимация жылдамдығы",
+        "en": "Animation speed"
+    },
+    "Наклон орбиты Луны": {
+        "kz": "Ай орбитасының көлбеулігі",
+        "en": "Moon orbit inclination"
+    },
+    "Перейти к фазе": {
+        "kz": "Фазаға өту",
+        "en": "Go to phase"
+    },
+    "Орбитальные линии": {
+        "kz": "Орбита сызықтары",
+        "en": "Orbital lines"
+    },
+    "Метки и подписи": {
+        "kz": "Белгілер мен жазулар",
+        "en": "Marks and labels"
+    },
+    "Солнечные лучи": {
+        "kz": "Күн сәулелері",
+        "en": "Sun rays"
+    },
+    "Тень Земли": {
+        "kz": "Жер көлеңкесі",
+        "en": "Earth shadow"
+    },
+    "▶ Анимация": {
+        "kz": "▶ Анимация",
+        "en": "▶ Animation"
+    },
+    "⏸ Пауза": {
+        "kz": "⏸ Кідірту",
+        "en": "⏸ Pause"
+    },
+    "🌑 Солнечное затмение": {
+        "kz": "🌑 Күн тұтылуы",
+        "en": "🌑 Solar eclipse"
+    },
+    "🌕 Лунное затмение": {
+        "kz": "🌕 Ай тұтылуы",
+        "en": "🌕 Lunar eclipse"
+    }
+,
+    "↺ Сбросить": {
+        "kz": "↺ Қалпына келтіру",
+        "en": "↺ Reset"
+    },
+    "Отображение": {
+        "kz": "Бейнелеу",
+        "en": "Display"
+    },
+    "ЛКМ — вращение • ПКМ — перемещение • Колёсико — зум": {
+        "kz": "Сол жақ батырма — айналдыру • Оң жақ батырма — жылжыту • Дөңгелек — масштабтау",
+        "en": "LMB — rotate • RMB — pan • Scroll — zoom"
+    }
+,
+    "🌙 Фазы Луны": {
+        "kz": "🌙 Ай фазалары",
+        "en": "🌙 Moon Phases"
+    },
+    "Освещение • Фазы • Затмения • Орбита": {
+        "kz": "Жарықтандыру • Фазалар • Тұтылулар • Орбита",
+        "en": "Illumination • Phases • Eclipses • Orbit"
+    },
+    "День": {
+        "kz": "Күн",
+        "en": "Day"
+    },
+    "Орбита Луны": {
+        "kz": "Ай орбитасы",
+        "en": "Moon orbit"
+    },
+    "Возраст Луны": {
+        "kz": "Ай жасы",
+        "en": "Moon age"
+    },
+    "дн": {
+        "kz": "күн",
+        "en": "days"
+    },
+    "384 400 км": {
+        "kz": "384 400 км",
+        "en": "384,400 km"
+    },
+    "Полумесяц (растущий)": {
+        "kz": "Жарты ай (өсуші)",
+        "en": "Waxing Crescent"
+    },
+    "Первая четверть": {
+        "kz": "Бірінші ширек",
+        "en": "First Quarter"
+    },
+    "Полумесяц (убывающий)": {
+        "kz": "Жарты ай (кемуші)",
+        "en": "Waning Crescent"
+    }
+,
+    "Затмение": {
+        "kz": "Тұтылу",
+        "en": "Eclipse"
+    },
+    "Зона затмения": {
+        "kz": "Тұтылу аймағы",
+        "en": "Eclipse zone"
+    },
+    "Освещённость": {
+        "kz": "Жарықтандырылу",
+        "en": "Illumination"
+    }
+,
+    "Параметры": {"kz": "Параметрлер", "en": "Parameters"},
+    "Текущая фаза": {"kz": "Ағымдағы фаза", "en": "Current phase"},
+    "Угловая позиция": {"kz": "Бұрыштық позиция", "en": "Angular position"},
+    "Расстояние (масшт.)": {"kz": "Қашықтық (масштабты)", "en": "Distance (scaled)"},
+    "Тип затмения": {"kz": "Тұтылу түрі", "en": "Eclipse type"},
+    "Формулы": {"kz": "Формулалар", "en": "Formulas"},
+    "дней": {"kz": "күн", "en": "days"},
+    "Легенда": {"kz": "Аңыз", "en": "Legend"},
+    "Солнце": {"kz": "Күн", "en": "Sun"},
+    "Земля": {"kz": "Жер", "en": "Earth"},
+    "Луна": {"kz": "Ай", "en": "Moon"},
+    "Теневой конус Земли": {"kz": "Жер көлеңке конусы", "en": "Earth's shadow cone"},
+    "Как это работает": {"kz": "Бұл қалай жұмыс істейді", "en": "How it works"},
+    "Освещ.": {"kz": "Жарық.", "en": "Illum."},
+    "Угол": {"kz": "Бұрыш", "en": "Angle"},
+    "☀ Солнечное": {"kz": "☀ Күндік", "en": "☀ Solar"},
+    "Солнце ☀": {"kz": "Күн ☀", "en": "Sun ☀"},
+    "Земля 🌍": {"kz": "Жер 🌍", "en": "Earth 🌍"},
+    "Луна 🌙": {"kz": "Ай 🌙", "en": "Moon 🌙"},
+    "Молодая Луна": {"kz": "Жас ай", "en": "Young Moon"},
+    "Третья четверть": {"kz": "Үшінші ширек", "en": "Last Quarter"},
+    "Старая Луна": {"kz": "Кәрі ай", "en": "Old Moon"},
+    "возможно когда": {"kz": "мүмкін болады", "en": "is possible when"},
+    "Луна вблизи узла орбиты": {"kz": "Ай орбита түйініне жақын", "en": "Moon near orbit node"},
+    "(наклон ≈": {"kz": "(көлбеу ≈", "en": "(inclination ≈"},
+    "не светит сама — она отражает солнечный свет. По мере движения по орбите мы видим разные доли освещённой поверхности.": {"kz": "өзі жарық бермейді — ол күн сәулесін шағылыстырады. Орбита бойынша қозғалған сайын біз жарықтандырылған бетінің әртүрлі бөліктерін көреміз.", "en": "does not shine itself — it reflects sunlight. As it moves along its orbit, we see different portions of the illuminated surface."},
+    "— Луна между Солнцем и Землёй, тень падает на Землю (в новолуние).": {"kz": "— Ай Күн мен Жердің арасында, көлеңке Жерге түседі (жаңа ай кезінде).", "en": "— Moon between Sun and Earth, shadow falls on Earth (at new moon)."},
+    "— Земля между Солнцем и Луной, Луна входит в тень Земли (в полнолуние).": {"kz": "— Жер Күн мен Айдың арасында, Ай Жер көлеңкесіне кіреді (толық ай кезінде).", "en": "— Earth between Sun and Moon, Moon enters Earth's shadow (at full moon)."},
+    "не каждый месяц": {"kz": "әр ай сайын емес", "en": "not every month"},
+    ", т.к. орбита Луны наклонена на": {"kz": ", өйткені Ай орбитасы көлбеуі", "en": ", because Moon's orbit is inclined by"},
+    "сидер.": {"kz": "сидерлік", "en": "sidereal"},
+    "синодич.": {"kz": "синодикалық", "en": "synodic"},
+    " дн": {"kz": " күн", "en": " days"},
+    "☀🌑 Солнечное затмение": {"kz": "☀🌑 Күн тұтылуы", "en": "☀🌑 Solar eclipse"},
+    "🌍🌕 Лунное затмение": {"kz": "🌍🌕 Ай тұтылуы", "en": "🌍🌕 Lunar eclipse"}
+};
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentLang = urlParams.get('lang') || 'ru';
+
+    if (currentLang === 'ru') return; // No translation needed
+
+    function translateTextNodes(root) {
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
+        const nodes = [];
+        while (walker.nextNode()) nodes.push(walker.currentNode);
+        
+        nodes.forEach(node => {
+            let text = node.textContent;
+            if (!text || !text.trim()) return;
+            
+            const trimmed = text.trim();
+            if (TEXT_MAP[trimmed] && TEXT_MAP[trimmed][currentLang]) {
+                node.textContent = text.replace(trimmed, TEXT_MAP[trimmed][currentLang]);
+            }
+        });
+    }
+
+    function translateAttributes(root) {
+        root.querySelectorAll('[title]').forEach(el => {
+            const t = el.getAttribute('title');
+            if (TEXT_MAP[t] && TEXT_MAP[t][currentLang]) {
+                el.setAttribute('title', TEXT_MAP[t][currentLang]);
+            }
+        });
+        root.querySelectorAll('[placeholder]').forEach(el => {
+            const t = el.getAttribute('placeholder');
+            if (TEXT_MAP[t] && TEXT_MAP[t][currentLang]) {
+                el.setAttribute('placeholder', TEXT_MAP[t][currentLang]);
+            }
+        });
+        // Translate page title
+        const titleText = document.title.trim();
+        if (TEXT_MAP[titleText] && TEXT_MAP[titleText][currentLang]) {
+            document.title = TEXT_MAP[titleText][currentLang];
+        }
+    }
+
+    
+
+    function applyTranslations() {
+        translateTextNodes(document.body);
+        translateAttributes(document);
+        if (typeof translateData === 'function') translateData(currentLang);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', applyTranslations);
+    } else {
+        applyTranslations();
+    }
+
+    // Re-translate after dynamic content changes
+    window.currentLang = currentLang;
+    window._currentLang = currentLang;
+    window._TEXT_MAP = TEXT_MAP;
+
+    // One-time delayed re-translate for dynamic content
+    let _tc=0;const _ti=setInterval(()=>{translateTextNodes(document.body);translateAttributes(document);if(++_tc>=20)clearInterval(_ti);},500);
+})();
+</script>
+</body>
+</html>

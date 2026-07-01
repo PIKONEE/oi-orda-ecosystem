@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="page_title">Среднее, медиана, мода</title>
+<style>
+
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#f1f3f6;--surface:rgba(255,255,255,0.94);--border:rgba(20,30,55,0.08);
+  --text:#161e2c;--muted:#5e6a7a;--faint:#9aa6b4;
+  --bar:#0891b2;--mean:#ea580c;--median:#7c3aed;--mode:#16a34a;
+  --accent:#0891b2;--accent-dim:rgba(8,145,178,0.10);
+  --shadow:0 2px 22px rgba(20,40,70,0.07);--shadow-lg:0 18px 56px rgba(20,40,80,0.15);
+}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);overflow:hidden;height:100vh;}
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(1200px 760px at 70% 30%, rgba(34,211,238,0.10), transparent 60%),radial-gradient(820px 560px at 16% 84%, rgba(234,88,12,0.05), transparent 55%);}
+#canvas-container{position:fixed;inset:0;z-index:1;}
+#labels-layer{position:fixed;inset:0;z-index:40;pointer-events:none;overflow:hidden;}
+.dim-label{position:absolute;transform:translate(-50%,-50%);font-family:'Roboto Mono',monospace;font-size:14px;font-weight:700;padding:2px 7px;border-radius:8px;white-space:nowrap;letter-spacing:-0.3px;background:rgba(255,255,255,0.97);box-shadow:0 3px 12px rgba(20,40,70,0.13);transition:opacity 0.18s;}
+.dim-label.hidden{opacity:0;}
+.dim-label.lval{color:var(--bar);border:1px solid rgba(8,145,178,0.25);font-size:13px;}
+.dim-label.lmean{background:var(--mean);color:#fff;border:none;box-shadow:0 3px 12px rgba(234,88,12,0.4);}
+.dim-label.lmed{background:var(--median);color:#fff;border:none;box-shadow:0 3px 12px rgba(124,58,237,0.4);}
+.header{position:fixed;top:0;left:0;right:0;z-index:200;background:var(--surface);border-bottom:1px solid var(--border);padding:0 38px;height:84px;display:flex;align-items:center;gap:15px;box-shadow:var(--shadow);}
+.h-badge{width:46px;height:46px;border-radius:14px;flex-shrink:0;background:linear-gradient(135deg,#0891b2,#22d3ee);display:flex;align-items:center;justify-content:center;box-shadow:0 7px 20px rgba(8,145,178,0.36);}
+.h-badge svg{width:25px;height:25px;}
+.header-title{font-size:23px;font-weight:800;letter-spacing:-0.5px;}
+.header-tag{font-family:'Roboto Mono',monospace;font-size:13px;color:var(--accent);background:var(--accent-dim);padding:4px 11px;border-radius:8px;}
+.header-sub{font-size:14px;color:var(--muted);margin-left:auto;text-align:right;line-height:1.45;}
+.eq-banner{position:fixed;top:96px;left:50%;transform:translateX(-50%);z-index:150;background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-lg);padding:9px 22px;font-family:'Roboto Mono',monospace;font-size:14.5px;font-weight:600;color:var(--muted);pointer-events:none;}
+.panel{position:fixed;z-index:100;background:var(--surface);border:1px solid var(--border);border-radius:22px;box-shadow:var(--shadow-lg);}
+.panel h3{font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;color:var(--faint);}
+.panel-left{left:22px;top:98px;width:332px;padding:18px 18px;overflow:hidden;min-height:320px;}
+.ld-list,.ld-detail{transition:transform 0.4s cubic-bezier(0.4,0,0.2,1),opacity 0.28s;}
+.ld-list h3{margin-bottom:12px;padding-left:4px;}
+.ld-detail{position:absolute;inset:18px 18px;transform:translateX(26px);opacity:0;pointer-events:none;overflow-y:auto;}
+.panel-left.detail .ld-list{transform:translateX(-26px);opacity:0;pointer-events:none;}
+.panel-left.detail .ld-detail{transform:translateX(0);opacity:1;pointer-events:auto;}
+.metric{display:flex;align-items:center;gap:12px;padding:13px 12px;border-radius:14px;cursor:pointer;border:1px solid transparent;transition:all 0.15s;margin-bottom:2px;}
+.metric:hover{background:rgba(20,40,70,0.04);}
+.metric.active{background:var(--accent-dim);border-color:rgba(8,145,178,0.22);}
+.metric-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0;}
+.metric-main{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;}
+.metric-name{font-size:15px;font-weight:700;line-height:1.15;}
+.metric-sub{font-family:'Roboto Mono',monospace;font-size:13px;color:var(--muted);}
+.metric-val{font-family:'Roboto Mono',monospace;font-size:21px;font-weight:500;color:var(--accent);letter-spacing:-1px;flex-shrink:0;}
+.ld-back{display:inline-flex;align-items:center;gap:5px;cursor:pointer;border:none;background:none;font-family:'Inter',sans-serif;font-size:14px;font-weight:700;color:var(--accent);padding:4px 6px 4px 0;margin-bottom:12px;}
+.d-tag{display:inline-block;padding:4px 12px;border-radius:99px;font-size:13px;font-weight:700;margin-bottom:10px;background:var(--accent-dim);color:var(--accent);}
+.d-title{font-size:22px;font-weight:800;letter-spacing:-0.4px;line-height:1.15;margin-bottom:14px;}
+.d-bigval{display:flex;align-items:baseline;gap:9px;margin-bottom:4px;}
+.d-bigval b{font-family:'Roboto Mono',monospace;font-size:35px;font-weight:500;color:var(--accent);letter-spacing:-1px;line-height:1;}
+.d-bigval span{font-size:14px;color:var(--muted);font-weight:600;}
+.d-formula{margin:13px 0 4px;padding:13px 15px;border-radius:13px;background:linear-gradient(135deg,rgba(34,211,238,0.12),rgba(8,145,178,0.05));border:1px solid rgba(8,145,178,0.16);font-family:'Roboto Mono',monospace;font-size:13.5px;color:#0e7490;font-weight:500;line-height:1.9;white-space:pre-line;}
+.d-para{font-size:15px;line-height:1.62;color:#2c3744;margin-top:13px;}
+.panel-right{right:22px;top:98px;width:300px;padding:18px;}
+.pr-hint{font-size:14px;color:var(--muted);line-height:1.5;background:rgba(20,40,70,0.035);border-radius:14px;padding:13px 15px;margin-bottom:12px;}
+.pr-hint b{color:var(--text);}
+.data-box{font-family:'Roboto Mono',monospace;font-size:14px;background:rgba(8,145,178,0.07);border:1px solid rgba(8,145,178,0.14);border-radius:13px;padding:11px 13px;margin-bottom:14px;color:var(--text);line-height:1.6;word-spacing:2px;}
+.shuffle-btn{width:100%;padding:11px;border-radius:13px;border:1.5px solid var(--border);background:rgba(255,255,255,0.7);font-family:'Inter',sans-serif;font-size:14.5px;font-weight:700;color:var(--accent);cursor:pointer;transition:all 0.15s;margin-bottom:14px;}
+.shuffle-btn:hover{border-color:var(--accent);background:var(--accent-dim);}
+.show-label{font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;color:var(--faint);margin:2px 0 10px 2px;}
+.show-chip{display:flex;align-items:center;gap:11px;width:100%;padding:11px 14px;margin-bottom:8px;border-radius:14px;cursor:pointer;background:rgba(20,40,70,0.035);border:1.5px solid transparent;transition:all 0.16s;}
+.show-chip:hover{background:rgba(20,40,70,0.06);}
+.show-chip.on{background:var(--accent-dim);border-color:rgba(8,145,178,0.30);}
+.chip-ico{width:32px;height:32px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:16px;color:#fff;font-weight:700;font-family:'Roboto Mono',monospace;}
+.chip-ico.ic-mean{background:var(--mean);} .chip-ico.ic-med{background:var(--median);} .chip-ico.ic-mode{background:var(--mode);}
+.chip-text{flex:1;min-width:0;}.chip-name{font-size:14.5px;font-weight:700;}.chip-sub{font-size:12.5px;color:var(--muted);font-family:'Roboto Mono',monospace;}
+.chip-state{width:21px;height:21px;border-radius:50%;flex-shrink:0;border:2px solid rgba(20,40,70,0.16);display:flex;align-items:center;justify-content:center;transition:all 0.16s;}
+.show-chip.on .chip-state{background:var(--accent);border-color:var(--accent);}
+.show-chip.on .chip-state::after{content:'✓';color:#fff;font-size:13px;font-weight:700;}
+.hint-bar{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:100;background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:9px 22px;font-size:13.5px;color:var(--muted);box-shadow:var(--shadow);white-space:nowrap;display:flex;align-items:center;gap:9px;}
+.hint-grab{color:var(--accent);font-weight:700;}.hint-dot{color:var(--faint);}
+@media (max-width:1180px){.panel-left{width:300px;}.panel-right{width:272px;}}
+</style>
+</head>
+<body>
+<div id="canvas-container"><canvas id="c"></canvas></div>
+<div id="labels-layer"></div>
+<header class="header">
+  <div class="h-badge"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"><path d="M4 20 V20 M4 20 H20"/><rect x="5" y="11" width="3" height="9"/><rect x="10.5" y="6" width="3" height="14"/><rect x="16" y="14" width="3" height="6"/></svg></div>
+  <div class="header-title" data-i18n="header_title">Среднее, медиана, мода</div>
+  <div class="header-tag">статистика</div>
+  <div class="header-sub" data-i18n-html="header_sub">Тяните столбцы — три «средних» меняются вживую<br>сравните, чем они отличаются</div>
+</header>
+<div class="eq-banner" id="eq-banner"></div>
+<div class="panel panel-left" id="panel-left">
+  <div class="ld-list"><h3 data-i18n="props_title">Характеристики</h3><div id="metrics"></div></div>
+  <div class="ld-detail"><button class="ld-back" onclick="window.showList()"><span>‹</span> <span data-i18n="back">Назад</span></button><div id="detail-content"></div></div>
+</div>
+<div class="panel panel-right">
+  <div class="pr-hint" data-i18n-html="pr_hint">Тяните верх любого столбца вверх или вниз — значения данных меняются, а среднее, медиана и мода пересчитываются.</div>
+  <div class="data-box" id="data-box"></div>
+  <button class="shuffle-btn" onclick="window.shuffle()" data-i18n="shuffle">🎲 Случайный набор</button>
+  <div class="show-label" data-i18n="show_title">Показать</div>
+  <div class="show-chip on" id="chip-mean" onclick="window.toggleMean()"><div class="chip-ico ic-mean">x̄</div><div class="chip-text"><span class="chip-name" data-i18n="ch_mean">Линия среднего</span><span class="chip-sub" data-i18n="ch_mean_sub">сумма ÷ количество</span></div><div class="chip-state"></div></div>
+  <div class="show-chip on" id="chip-med" onclick="window.toggleMed()"><div class="chip-ico ic-med">Me</div><div class="chip-text"><span class="chip-name" data-i18n="ch_med">Линия медианы</span><span class="chip-sub" data-i18n="ch_med_sub">середина ряда</span></div><div class="chip-state"></div></div>
+  <div class="show-chip on" id="chip-mode" onclick="window.toggleMode()"><div class="chip-ico ic-mode">Mo</div><div class="chip-text"><span class="chip-name" data-i18n="ch_mode">Подсветить моду</span><span class="chip-sub" data-i18n="ch_mode_sub">самое частое значение</span></div><div class="chip-state"></div></div>
+</div>
+<div class="hint-bar" data-i18n-html="hint"><span class="hint-grab">Тяните верх столбцов</span><span class="hint-dot">·</span><span>фон — поворот</span><span class="hint-dot">·</span><span>клик по строке — пояснение</span></div>
+
+<script>
+const I18N={
+ru:{page_title:'Среднее, медиана, мода',header_title:'Среднее, медиана, мода',header_sub:'Тяните столбцы — три «средних» меняются вживую<br>сравните, чем они отличаются',
+  props_title:'Характеристики',back:'Назад',show_title:'Показать',shuffle:'🎲 Случайный набор',
+  pr_hint:'Тяните верх любого столбца вверх или вниз — значения данных меняются, а среднее, медиана и мода пересчитываются.',
+  ch_mean:'Линия среднего',ch_mean_sub:'сумма ÷ количество',ch_med:'Линия медианы',ch_med_sub:'середина ряда',ch_mode:'Подсветить моду',ch_mode_sub:'самое частое значение',
+  hint:'<span class="hint-grab">Тяните верх столбцов</span><span class="hint-dot">·</span><span>фон — поворот</span><span class="hint-dot">·</span><span>клик по строке — пояснение</span>',
+  m_mean:'Среднее (x̄)',m_med:'Медиана (Me)',m_mode:'Мода (Mo)',m_range:'Размах',m_sum:'Сумма',
+  sub_mean:'(сумма) ÷ (n)',sub_med:'середина упоряд. ряда',sub_mode:'самое частое',sub_range:'макс − мин',sub_sum:'всех значений',
+  mode_none:'нет',u_none:''},
+kz:{page_title:'Орташа, медиана, мода',header_title:'Орташа, медиана, мода',header_sub:'Бағандарды сүйреңіз — үш «орташа» бірден өзгереді<br>олардың айырмашылығын салыстырыңыз',
+  props_title:'Сипаттамалар',back:'Артқа',show_title:'Көрсету',shuffle:'🎲 Кездейсоқ жиын',
+  pr_hint:'Кез келген бағанның жоғарғы жағын жоғары-төмен сүйреңіз — деректер өзгереді, ал орташа, медиана, мода қайта есептеледі.',
+  ch_mean:'Орташа сызығы',ch_mean_sub:'қосынды ÷ саны',ch_med:'Медиана сызығы',ch_med_sub:'қатардың ортасы',ch_mode:'Моданы бөлектеу',ch_mode_sub:'ең жиі мән',
+  hint:'<span class="hint-grab">Баған жоғарын сүйреңіз</span><span class="hint-dot">·</span><span>фон — бұру</span><span class="hint-dot">·</span><span>жолды басу — түсіндірме</span>',
+  m_mean:'Орташа (x̄)',m_med:'Медиана (Me)',m_mode:'Мода (Mo)',m_range:'Ауқым',m_sum:'Қосынды',
+  sub_mean:'(қосынды) ÷ (n)',sub_med:'реттелген қатар ортасы',sub_mode:'ең жиі',sub_range:'макс − мин',sub_sum:'барлық мән',
+  mode_none:'жоқ',u_none:''},
+en:{page_title:'Mean, Median, Mode',header_title:'Mean, Median, Mode',header_sub:'Drag the bars — the three "averages" change live<br>compare how they differ',
+  props_title:'Statistics',back:'Back',show_title:'Show',shuffle:'🎲 Random data',
+  pr_hint:'Drag the top of any bar up or down — the data values change, and the mean, median and mode are recomputed.',
+  ch_mean:'Mean line',ch_mean_sub:'sum ÷ count',ch_med:'Median line',ch_med_sub:'middle of the row',ch_mode:'Highlight the mode',ch_mode_sub:'most frequent value',
+  hint:'<span class="hint-grab">Drag the bar tops</span><span class="hint-dot">·</span><span>background — rotate</span><span class="hint-dot">·</span><span>click a row — explanation</span>',
+  m_mean:'Mean (x̄)',m_med:'Median (Me)',m_mode:'Mode (Mo)',m_range:'Range',m_sum:'Sum',
+  sub_mean:'(sum) ÷ (n)',sub_med:'middle of ordered row',sub_mode:'most frequent',sub_range:'max − min',sub_sum:'of all values',
+  mode_none:'none',u_none:''}
+};
+const LANG=(()=>{const q=new URLSearchParams(location.search).get('lang');return(q&&I18N[q])?q:'ru';})();
+const tr=key=>(I18N[LANG]&&I18N[LANG][key])!==undefined?I18N[LANG][key]:I18N.ru[key];
+function applyStaticI18N(){document.documentElement.lang=LANG;const tv=tr('page_title');if(tv)document.title=tv;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{const v=tr(el.getAttribute('data-i18n'));if(v!==undefined)el.textContent=v;});
+  document.querySelectorAll('[data-i18n-html]').forEach(el=>{const v=tr(el.getAttribute('data-i18n-html'));if(v!==undefined)el.innerHTML=v;});}
+applyStaticI18N();
+const f1=x=>x.toFixed(1);
+const f2=x=>x.toFixed(2);
+window.A={vals:[3,5,5,7,5,8,4,6]};
+const sum=()=>window.A.vals.reduce((s,v)=>s+v,0);
+const mean=()=>sum()/window.A.vals.length;
+function median(){const s=[...window.A.vals].sort((a,b)=>a-b),n=s.length,m=Math.floor(n/2);return n%2?s[m]:(s[m-1]+s[m])/2;}
+function modeInfo(){const cnt={};window.A.vals.forEach(v=>cnt[v]=(cnt[v]||0)+1);let best=1,modes=[];for(const k in cnt){if(cnt[k]>best){best=cnt[k];modes=[+k];}else if(cnt[k]===best)modes.push(+k);}
+  if(best<=1)return {val:null,count:0,modes:[]};return {val:modes.sort((a,b)=>a-b)[0],count:best,modes};}
+const rangeV=()=>Math.max(...window.A.vals)-Math.min(...window.A.vals);
+function modeStr(){const m=modeInfo();return m.val===null?tr('mode_none'):(m.modes.length>1?m.modes.join(', '):''+m.val);}
+const METRICS=[
+  {key:'mean',dot:'var(--mean)',i:'m_mean',fmt:()=>f2(mean()),sub:()=>tr('sub_mean'),u:'u_none'},
+  {key:'med', dot:'var(--median)',i:'m_med',fmt:()=>f1(median()),sub:()=>tr('sub_med'),u:'u_none'},
+  {key:'mode',dot:'var(--mode)',i:'m_mode',fmt:()=>modeStr(),sub:()=>tr('sub_mode'),u:'u_none'},
+  {key:'range',dot:'#64748b',i:'m_range',fmt:()=>''+rangeV(),sub:()=>tr('sub_range'),u:'u_none'},
+  {key:'sum', dot:'var(--accent)',i:'m_sum',fmt:()=>''+sum(),sub:()=>tr('sub_sum'),u:'u_none'},
+];
+function renderMetrics(){document.getElementById('metrics').innerHTML=METRICS.map(m=>`
+  <div class="metric" data-key="${m.key}" onclick="window.openDetail('${m.key}')"><div class="metric-dot" style="background:${m.dot}"></div>
+  <div class="metric-main"><span class="metric-name">${tr(m.i)}</span><span class="metric-sub" id="ms-${m.key}"></span></div>
+  <span class="metric-val" id="mv-${m.key}">—</span></div>`).join('');}
+function updateMetricValues(){METRICS.forEach(m=>{const v=document.getElementById('mv-'+m.key);if(v)v.textContent=m.fmt();const s=document.getElementById('ms-'+m.key);if(s)s.textContent=m.sub();});
+  document.getElementById('data-box').textContent=window.A.vals.join('  ');
+  document.getElementById('eq-banner').innerHTML=`x̄ = (${sum()}) ÷ ${window.A.vals.length} = <b style="color:var(--mean)">${f2(mean())}</b>`;}
+renderMetrics();
+</script>
+<script type="importmap">{"imports":{"three":"../../libs/vendor/three-0.160.0/three.module.js"}}</script>
+<script type="module">
+import * as THREE from 'three';
+const canvas=document.getElementById('c');
+const renderer=new THREE.WebGLRenderer({canvas,antialias: true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);renderer.outputColorSpace=THREE.SRGBColorSpace;
+const VMAX=10, NMAX=10, HW=9, baseY=-5;
+const scene=new THREE.Scene();scene.background=null;
+const camera=new THREE.PerspectiveCamera(42,innerWidth/innerHeight,0.1,8000);
+const CAM_DIR=new THREE.Vector3(0.16,0.12,1).normalize();
+let camDist=36,camDistTarget=36,userZoom=1.0;let showMean=true,showMed=true,showMode=true;
+const PI=Math.PI;
+const f1=x=>x.toFixed(1);const f2=x=>x.toFixed(2);
+function computeCamTarget(){const R0=Math.hypot(HW*1.12, (VMAX/2+1))*1.12;const fovy=camera.fov*PI/180;const dV=R0/Math.sin(fovy/2);const usableW=Math.max(420,innerWidth-660);const fovx=2*Math.atan(Math.tan(fovy/2)*usableW/innerHeight);const dH=R0/Math.sin(fovx/2);return Math.max(dV,dH)*userZoom;}
+function applyCamera(){camera.position.copy(CAM_DIR).multiplyScalar(camDist);camera.lookAt(0,0,0);}
+scene.add(new THREE.AmbientLight(0xffffff,0.84));
+const kL=new THREE.DirectionalLight(0xffffff,0.78);kL.position.set(4,9,12);scene.add(kL);
+const fL=new THREE.DirectionalLight(0x99e6f5,0.3);fL.position.set(-8,-3,4);scene.add(fL);
+const V=(x,y,z)=>new THREE.Vector3(x,y,z);
+const root=new THREE.Group();scene.add(root);const obj=new THREE.Group();root.add(obj);
+const COL={bar:0x0891b2,barTop:0x22d3ee,mode:0x16a34a,mean:0xea580c,median:0x7c3aed,axis:0x94a3b8,grid:0xd8dde4};
+const tR=0.07;
+function cyl(from,to,rr,mat){const dir=new THREE.Vector3().subVectors(to,from),len=dir.length();const m=new THREE.Mesh(new THREE.CylinderGeometry(rr,rr,len,10),mat);m.position.addVectors(from,to).multiplyScalar(0.5);if(len>1e-6)m.quaternion.setFromUnitVectors(V(0,1,0),dir.normalize());return m;}
+function sphere(r,mat){return new THREE.Mesh(new THREE.SphereGeometry(r,18,14),mat);}
+function dashed(from,to,rr,col){const g=new THREE.Group();const n=30;for(let i=0;i<n;i+=2){const a=from.clone().lerp(to,i/n),b=from.clone().lerp(to,(i+1)/n);g.add(cyl(a,b,rr,new THREE.MeshBasicMaterial({color:col})));}return g;}
+// static: axis + gridlines
+const staticG=new THREE.Group();obj.add(staticG);
+(function(){const aMat=new THREE.MeshStandardMaterial({color:COL.axis,roughness:0.5});
+  staticG.add(cyl(V(-HW-0.6,baseY,0),V(HW+0.6,baseY,0),tR*0.9,aMat));
+  staticG.add(cyl(V(-HW-0.6,baseY,0),V(-HW-0.6,baseY+VMAX+0.6,0),tR*0.7,aMat));
+  const gMat=new THREE.MeshBasicMaterial({color:COL.grid,transparent:true,opacity:0.7});
+  for(let v=2;v<=VMAX;v+=2)staticG.add(cyl(V(-HW-0.6,baseY+v,-0.02),V(HW+0.6,baseY+v,-0.02),tR*0.32,gMat));})();
+const dynG=new THREE.Group();obj.add(dynG);
+function disposeDyn(){while(dynG.children.length){const o=dynG.children[0];o.traverse(x=>{if(x.geometry)x.geometry.dispose();});dynG.remove(o);}}
+let hiKey=null;let barHandles=[];
+const sum=()=>window.A.vals.reduce((s,v)=>s+v,0);
+const mean=()=>sum()/window.A.vals.length;
+function median(){const s=[...window.A.vals].sort((a,b)=>a-b),n=s.length,m=Math.floor(n/2);return n%2?s[m]:(s[m-1]+s[m])/2;}
+function modeInfo(){const cnt={};window.A.vals.forEach(v=>cnt[v]=(cnt[v]||0)+1);let best=1,modes=[];for(const k in cnt){if(cnt[k]>best){best=cnt[k];modes=[+k];}else if(cnt[k]===best)modes.push(+k);}if(best<=1)return {modes:[]};return {modes};}
+function barX(i,n){const span=2*HW;return -HW+ span*(i+0.5)/n;}
+function buildDyn(){
+  disposeDyn();barHandles=[];
+  const n=window.A.vals.length, bw=Math.min(1.6, (2*HW)/n*0.62);
+  const md=modeInfo().modes;
+  window.A.vals.forEach((v,i)=>{
+    const x=barX(i,n),hgt=Math.max(0.02,v);const isMode=showMode&&md.includes(v);
+    const col=isMode?COL.mode:COL.bar;
+    const mat=new THREE.MeshStandardMaterial({color:col,roughness:0.4,metalness:0.08,transparent:true,opacity:0.92,emissive:isMode?col:0x000000,emissiveIntensity:isMode?0.2:0});
+    const box=new THREE.Mesh(new THREE.BoxGeometry(bw,hgt,bw*0.7),mat);box.position.set(x,baseY+hgt/2,0);dynG.add(box);
+    // top edge
+    dynG.add(cyl(V(x-bw/2,baseY+v,bw*0.35),V(x+bw/2,baseY+v,bw*0.35),tR*0.5,new THREE.MeshStandardMaterial({color:COL.barTop,roughness:0.3})));
+    // drag handle on top
+    const h=sphere(0.26,new THREE.MeshStandardMaterial({color:isMode?COL.mode:COL.barTop,roughness:0.25,metalness:0.3,emissive:isMode?COL.mode:COL.barTop,emissiveIntensity:0.3}));
+    h.position.set(x,baseY+v,bw*0.4);h.userData.bar=i;dynG.add(h);
+    // larger invisible hit-area
+    const pr=sphere(0.7,new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false}));pr.position.set(x,baseY+v,bw*0.4);pr.userData.bar=i;barHandles.push(pr);dynG.add(pr);
+  });
+  // mean line
+  if(showMean){const y=baseY+mean();dynG.add(dashed(V(-HW-0.6,y,0.1),V(HW+0.6,y,0.1),tR*0.7,COL.mean));}
+  // median line
+  if(showMed){const y=baseY+median();dynG.add(dashed(V(-HW-0.6,y,0.12),V(HW+0.6,y,0.12),tR*0.7,COL.median));}
+  updateLabelAnchors();
+}
+const layer=document.getElementById('labels-layer');
+function mkLabel(cls){const d=document.createElement('div');d.className='dim-label '+cls;layer.appendChild(d);return d;}
+const valLabels=[];for(let i=0;i<NMAX;i++)valLabels.push(mkLabel('lval'));
+const L_mean=mkLabel('lmean'),L_med=mkLabel('lmed');
+const anc={vals:[],mean:V(),med:V()};
+function updateLabelAnchors(){const n=window.A.vals.length;anc.vals=[];
+  window.A.vals.forEach((v,i)=>{anc.vals.push(V(barX(i,n),baseY+v+0.5,0));});
+  anc.mean.set(HW+0.6,baseY+mean(),0);anc.med.set(-HW-0.6,baseY+median(),0);
+  L_mean.textContent='x̄ '+f2(mean());L_med.textContent='Me '+f1(median());}
+function project(localVec){const w=localVec.clone().applyMatrix4(obj.matrixWorld).project(camera);return {x:(w.x*0.5+0.5)*innerWidth,y:(-w.y*0.5+0.5)*innerHeight,behind:w.z>1};}
+function place(el,v,vis){if(!vis){el.classList.add('hidden');return;}const s=project(v);if(s.behind){el.classList.add('hidden');return;}el.classList.remove('hidden');el.style.left=s.x+'px';el.style.top=s.y+'px';}
+function updateLabels(){const n=window.A.vals.length;
+  valLabels.forEach((el,i)=>{if(i<n){el.textContent=''+window.A.vals[i];place(el,anc.vals[i],true);}else el.classList.add('hidden');});
+  place(L_mean,anc.mean,showMean);place(L_med,anc.med,showMed);}
+const DETAIL_ALL={
+ru:{
+  mean:{tag:'Среднее арифметическое',p:'Среднее x̄ — сумма всех значений, делённая на их количество n: x̄ = (x₁+x₂+…+xₙ)/n. Это «центр тяжести» данных. Среднее чувствительно к выбросам: одно очень большое значение заметно его сдвигает.'},
+  med:{tag:'Медиана',p:'Медиана Me — это серединное значение упорядоченного ряда. Если чисел нечётно — это центральное число; если чётно — среднее двух центральных. Медиана устойчива к выбросам и часто точнее описывает «типичное» значение.'},
+  mode:{tag:'Мода',p:'Мода Mo — значение, которое встречается чаще всего. Мод может быть несколько (если несколько значений встречаются одинаково часто) или ни одной (если все значения различны). Подсвеченные столбцы — это мода.'},
+  range:{tag:'Размах',p:'Размах — разность между наибольшим и наименьшим значениями: max − min. Он показывает, насколько «широко разбросаны» данные, но учитывает только два крайних значения.'},
+  sum:{tag:'Сумма',p:'Сумма всех значений ряда. Из неё, поделив на количество n, получают среднее арифметическое. Перетаскивая столбцы, вы меняете отдельные значения и тем самым сумму.'},
+},
+kz:{
+  mean:{tag:'Орташа арифметикалық',p:'Орташа x̄ — барлық мәндердің қосындысын олардың санына бөлгенге тең: x̄ = (x₁+…+xₙ)/n. Бұл деректердің «ауырлық центрі». Орташа шектен тыс мәндерге сезімтал.'},
+  med:{tag:'Медиана',p:'Медиана Me — реттелген қатардың ортаңғы мәні. Сан тақ болса — орталық сан; жұп болса — екі орталықтың орташасы. Медиана шектен тыс мәндерге тұрақты.'},
+  mode:{tag:'Мода',p:'Мода Mo — ең жиі кездесетін мән. Мода бірнешеу болуы немесе мүлде болмауы мүмкін. Бөлектелген бағандар — мода.'},
+  range:{tag:'Ауқым',p:'Ауқым — ең үлкен мен ең кіші мәннің айырмасы: max − min. Деректердің таралуын көрсетеді.'},
+  sum:{tag:'Қосынды',p:'Қатардағы барлық мәннің қосындысы. Оны n-ге бөліп, орташаны табады.'},
+},
+en:{
+  mean:{tag:'Arithmetic mean',p:'The mean x̄ is the sum of all values divided by their count n: x̄ = (x₁+…+xₙ)/n. It is the "centre of mass" of the data. The mean is sensitive to outliers: one very large value shifts it noticeably.'},
+  med:{tag:'Median',p:'The median Me is the middle value of the ordered row. With an odd count it is the central number; with an even count it is the average of the two central ones. The median resists outliers.'},
+  mode:{tag:'Mode',p:'The mode Mo is the value that occurs most often. There can be several modes (ties) or none (all values distinct). The highlighted bars are the mode.'},
+  range:{tag:'Range',p:'The range is the difference between the largest and smallest values: max − min. It shows the spread but uses only the two extreme values.'},
+  sum:{tag:'Sum',p:'The sum of all values in the row. Dividing it by the count n gives the mean. Dragging the bars changes individual values and thus the sum.'},
+}
+};
+const DETAIL=DETAIL_ALL[LANG]||DETAIL_ALL.ru;
+function modeStr(){const m=modeInfo().modes;if(m.length===0)return tr('mode_none');return m.length>1?m.join(', '):''+m[0];}
+const rangeV=()=>Math.max(...window.A.vals)-Math.min(...window.A.vals);
+function openDetail(key){const d=DETAIL[key];if(!d)return;const m=METRICS.find(x=>x.key===key);
+  document.querySelectorAll('.metric').forEach(el=>el.classList.toggle('active',el.dataset.key===key));
+  hiKey=key;buildDyn();
+  const s=[...window.A.vals].sort((a,b)=>a-b),n=window.A.vals.length;
+  const calc={mean:`x̄ = (${window.A.vals.join('+')}) / ${n}\n  = ${sum()} / ${n} = ${f2(mean())}`,
+    med:`ряд: ${s.join(' ')}\nMe = ${f1(median())}`,
+    mode:`Mo = ${modeStr()}`,
+    range:`max − min = ${Math.max(...window.A.vals)} − ${Math.min(...window.A.vals)} = ${rangeV()}`,
+    sum:`Σ = ${window.A.vals.join('+')} = ${sum()}`}[key];
+  document.getElementById('detail-content').innerHTML=`<div class="d-tag">${d.tag}</div><div class="d-title">${tr(m.i)}</div>
+    <div class="d-bigval"><b>${m.fmt()}</b></div><div class="d-formula">${calc}</div><div class="d-para">${d.p}</div>`;
+  document.getElementById('panel-left').classList.add('detail');currentDetail=key;markInteract();}
+let currentDetail=null;window.openDetail=openDetail;
+window.showList=function(){document.getElementById('panel-left').classList.remove('detail');currentDetail=null;
+  document.querySelectorAll('.metric').forEach(m=>m.classList.remove('active'));hiKey=null;buildDyn();};
+window.shuffle=function(){const n=8;window.A.vals=Array.from({length:n},()=>1+Math.floor(Math.random()*9));buildDyn();updateMetricValues();if(currentDetail)openDetail(currentDetail);markInteract();};
+window.toggleMean=function(){showMean=!showMean;document.getElementById('chip-mean').classList.toggle('on',showMean);buildDyn();markInteract();};
+window.toggleMed=function(){showMed=!showMed;document.getElementById('chip-med').classList.toggle('on',showMed);buildDyn();markInteract();};
+window.toggleMode=function(){showMode=!showMode;document.getElementById('chip-mode').classList.toggle('on',showMode);buildDyn();markInteract();};
+const ray=new THREE.Raycaster(),m2=new THREE.Vector2();
+function pick(e,objs){m2.x=(e.clientX/innerWidth)*2-1;m2.y=-(e.clientY/innerHeight)*2+1;ray.setFromCamera(m2,camera);return ray.intersectObjects(objs,false);}
+function planeY(e){m2.x=(e.clientX/innerWidth)*2-1;m2.y=-(e.clientY/innerHeight)*2+1;ray.setFromCamera(m2,camera);
+  const normal=new THREE.Vector3(0,0,1).transformDirection(obj.matrixWorld);const plane=new THREE.Plane().setFromNormalAndCoplanarPoint(normal,V(0,0,0));
+  const hit=new THREE.Vector3();if(!ray.ray.intersectPlane(plane,hit))return null;hit.applyMatrix4(new THREE.Matrix4().copy(obj.matrixWorld).invert());return hit.y;}
+let mode=null,dragBar=-1,last={x:0,y:0},dd=0,isDragging=false,rotX=0.0;
+let lastInteract=performance.now()-16000,autoSpeed=0;const AUTO_TARGET=0.0010,IDLE_MS=15000;
+function markInteract(){lastInteract=performance.now();}
+canvas.addEventListener('mousedown',e=>{markInteract();const h=pick(e,barHandles);
+  if(h.length>0){mode='bar';dragBar=h[0].object.userData.bar;canvas.style.cursor='grabbing';return;}
+  mode='rotate';last={x:e.clientX,y:e.clientY};isDragging=false;dd=0;});
+canvas.addEventListener('mousemove',e=>{
+  if(mode==='bar'){const y=planeY(e);if(y!==null){const v=Math.max(1,Math.min(VMAX,Math.round(y-baseY)));window.A.vals[dragBar]=v;buildDyn();updateMetricValues();if(currentDetail)openDetail(currentDetail);}markInteract();return;}
+  if(mode==='rotate'){dd=Math.hypot(e.clientX-last.x,e.clientY-last.y);if(dd>4)isDragging=true;
+    if(isDragging){root.rotation.y+=(e.clientX-last.x)*0.007;rotX=Math.max(-0.9,Math.min(0.9,rotX+(e.clientY-last.y)*0.006));root.rotation.x=rotX;markInteract();}last={x:e.clientX,y:e.clientY};return;}
+  const h=pick(e,barHandles);canvas.style.cursor=h.length>0?'grab':'default';});
+window.addEventListener('mouseup',()=>{if(mode==='bar')canvas.style.cursor='default';mode=null;dragBar=-1;});
+canvas.addEventListener('wheel',e=>{e.preventDefault();userZoom=Math.max(0.6,Math.min(1.7,userZoom+e.deltaY*0.0015));markInteract();},{passive:false});
+window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+let t=0;
+function animate(){requestAnimationFrame(animate);t+=0.016;const idle=performance.now()-lastInteract;
+  if(idle>IDLE_MS)autoSpeed+=(AUTO_TARGET-autoSpeed)*0.025;else autoSpeed+=(0-autoSpeed)*0.18;
+  root.rotation.y+=autoSpeed;root.rotation.x=rotX;camDistTarget=computeCamTarget();camDist+=(camDistTarget-camDist)*0.18;applyCamera();
+  renderer.render(scene,camera);obj.updateWorldMatrix(true,false);updateLabels();}
+buildDyn();updateMetricValues();camDistTarget=computeCamTarget();camDist=camDistTarget;applyCamera();animate();
+</script>
+</body>
+</html>

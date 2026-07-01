@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zone Calibrator</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; overflow: hidden; font-family: system-ui, -apple-system, sans-serif; background: #0a0e1a; color: #fff; }
+        #canvas-container { position: fixed; inset: 0; cursor: crosshair; }
+
+        #panel {
+            position: fixed; top: 12px; right: 12px; width: 340px; max-height: calc(100vh - 24px);
+            display: flex; flex-direction: column;
+            background: rgba(15, 20, 40, 0.94);
+            border: 1px solid rgba(120, 150, 255, 0.25); border-radius: 14px;
+            
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+            z-index: 100; overflow-y: auto;
+        }
+
+        #panel-header {
+            padding: 14px 16px 10px;
+            border-bottom: 1px solid rgba(120, 150, 255, 0.15);
+        }
+        #panel-header h2 { margin: 0 0 4px; font-size: 14px; font-weight: 600; letter-spacing: 0.3px; }
+        #model-name { font-size: 11px; color: #8aa; font-family: 'JetBrains Mono', Consolas, monospace; }
+        .help { font-size: 11px; color: #9ab; margin-top: 8px; line-height: 1.5; }
+        .help b { color: #cef; }
+        .help kbd { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); padding: 1px 5px; border-radius: 3px; font-size: 10px; font-family: monospace; }
+
+        /* Mode bar */
+        #mode-bar { padding: 10px 12px; border-bottom: 1px solid rgba(120,150,255,0.15); }
+        #mode-bar .section-label { font-size: 10px; color: #8aa; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+        .mode-btns { display: flex; gap: 4px; margin-bottom: 8px; }
+        .mode-btns button { flex: 1; font-size: 11px; padding: 6px 4px; }
+        .mode-btns button.mode-active { background: rgba(110,160,255,0.35); border-color: rgba(120,180,255,0.8); box-shadow: 0 0 8px rgba(120,180,255,0.3); }
+        #brush-controls { display: none; margin-top: 6px; }
+        #brush-controls.visible { display: flex; flex-direction: column; gap: 6px; }
+        #brush-controls .row { display: flex; align-items: center; gap: 8px; font-size: 11px; }
+        #brush-controls input[type=range] { flex: 1; accent-color: #6af; height: 4px; }
+        #brush-controls .val { min-width: 28px; text-align: right; color: #cef; font-family: monospace; font-size: 10px; }
+        #btn-hide-others.active { background: rgba(255,200,60,0.25); border-color: rgba(255,200,60,0.7); }
+
+        #zone-list { padding: 10px 12px; overflow-y: auto; flex: 1; min-height: 80px; }
+        .zone-row {
+            display: flex; align-items: center; gap: 10px;
+            padding: 8px 10px; margin: 3px 0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.15s;
+            border: 2px solid transparent;
+            background: rgba(255, 255, 255, 0.03);
+        }
+        .zone-row:hover { background: rgba(255, 255, 255, 0.08); }
+        .zone-row.active {
+            background: rgba(110, 160, 255, 0.18);
+            border-color: rgba(120, 180, 255, 0.7);
+            box-shadow: 0 0 12px rgba(120, 180, 255, 0.25);
+        }
+        .zone-color { width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0; box-shadow: 0 0 6px currentColor; }
+        .zone-name { flex: 1; font-size: 12px; font-weight: 500; }
+        .zone-count {
+            font-size: 11px; color: #aab;
+            background: rgba(255,255,255,0.06);
+            padding: 2px 8px; border-radius: 10px;
+            min-width: 24px; text-align: center;
+        }
+        .zone-row.active .zone-count { background: rgba(120, 180, 255, 0.3); color: #fff; }
+
+        #toolbar { padding: 10px 12px; border-top: 1px solid rgba(120, 150, 255, 0.15); display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+        #toolbar button.wf-active { background: rgba(80, 200, 140, 0.3); border-color: rgba(100, 220, 160, 0.7); }
+        button {
+            padding: 8px 10px;
+            background: rgba(110, 160, 255, 0.15);
+            border: 1px solid rgba(120, 180, 255, 0.35);
+            color: #fff; border-radius: 6px; cursor: pointer;
+            font-size: 11px; font-weight: 500;
+            transition: all 0.15s;
+        }
+        button:hover { background: rgba(110, 160, 255, 0.3); transform: translateY(-1px); }
+        button.danger { background: rgba(255, 90, 90, 0.12); border-color: rgba(255, 120, 120, 0.4); }
+        button.danger:hover { background: rgba(255, 90, 90, 0.25); }
+        button.primary { background: rgba(80, 200, 140, 0.18); border-color: rgba(100, 220, 160, 0.5); }
+        button.primary:hover { background: rgba(80, 200, 140, 0.35); }
+        button.full { grid-column: span 2; }
+
+        #output-wrap { padding: 10px 12px 12px; border-top: 1px solid rgba(120, 150, 255, 0.15); }
+        #output-label { font-size: 10px; color: #8aa; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+        #output {
+            width: 100%; height: 120px;
+            background: rgba(0, 0, 0, 0.4);
+            color: #cef;
+            border: 1px solid rgba(120, 180, 255, 0.25);
+            border-radius: 6px;
+            padding: 8px;
+            font-family: 'JetBrains Mono', Consolas, monospace;
+            font-size: 10px; line-height: 1.5;
+            resize: vertical;
+        }
+
+        #status {
+            position: fixed; bottom: 12px; left: 12px;
+            background: rgba(15, 20, 40, 0.94);
+            padding: 8px 14px; border-radius: 8px;
+            font-size: 12px;
+            border: 1px solid rgba(120, 180, 255, 0.25);
+            
+            max-width: 50vw;
+            font-family: 'JetBrains Mono', Consolas, monospace;
+        }
+        #live {
+            position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%);
+            background: rgba(15, 20, 40, 0.94);
+            padding: 10px 18px; border-radius: 8px;
+            font-size: 13px; font-weight: 600;
+            border: 2px solid rgba(120, 180, 255, 0.5);
+            
+            display: none;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+        }
+        #live .preview-zone { display: inline-block; padding: 2px 10px; border-radius: 4px; margin-left: 8px; }
+
+        #usage {
+            position: fixed; top: 12px; left: 12px;
+            background: rgba(15, 20, 40, 0.94);
+            border: 1px solid rgba(120, 180, 255, 0.25);
+            border-radius: 10px;
+            padding: 14px 18px;
+            max-width: 420px;
+            font-size: 12px;
+            line-height: 1.5;
+            
+        }
+        #usage h3 { margin: 0 0 8px; font-size: 14px; }
+        #usage code { background: rgba(0,0,0,0.4); padding: 2px 6px; border-radius: 3px; font-family: monospace; color: #cef; }
+        #usage.hidden { display: none; }
+        #usage-toggle {
+            position: fixed; top: 12px; left: 12px;
+            background: rgba(15, 20, 40, 0.94);
+            border: 1px solid rgba(120, 180, 255, 0.25);
+            border-radius: 50%;
+            width: 36px; height: 36px;
+            font-size: 16px; cursor: pointer;
+            display: none;
+        }
+        #usage-toggle.show { display: block; }
+        .brush-cursor {
+            position: fixed; border: 2px solid rgba(255,255,255,0.6); border-radius: 50%;
+            pointer-events: none; transform: translate(-50%,-50%); display: none; z-index: 50;
+        }
+        body.mode-eraser #canvas-container { cursor: none; }
+        body.mode-brush #canvas-container { cursor: none; }
+    </style>
+</head>
+<body>
+<div id="canvas-container"></div>
+<div class="brush-cursor" id="brush-cursor"></div>
+
+<div id="usage">
+    <h3>Zone Calibrator</h3>
+    Запусти с параметрами URL:<br><br>
+    <code>?model=skeleton.glb&zones=skull,spine,ribs,arms,pelvis,legs</code>
+    <br><br>
+    Или открой <code>_calibrate_index.html</code>
+</div>
+<button id="usage-toggle" title="Показать инструкцию">?</button>
+
+<div id="panel" style="display:none">
+    <div id="panel-header">
+        <h2>Zone Calibrator</h2>
+        <div id="model-name"></div>
+        <div class="help">
+            <b>Точка:</b> клик = 1 seed &nbsp;|&nbsp; <b>Кисть:</b> drag = много seeds &nbsp;|&nbsp; <b>Ластик:</b> drag стирает<br>
+            <kbd>Ctrl+Z</kbd> undo &nbsp; <kbd>1-9</kbd> зона
+        </div>
+    </div>
+    <div id="mode-bar">
+        <div class="section-label">Режим</div>
+        <div class="mode-btns">
+            <button id="mode-point" class="mode-active">Точка</button>
+            <button id="mode-brush">Кисть</button>
+            <button id="mode-eraser">Ластик</button>
+        </div>
+        <div id="brush-controls">
+            <div class="row"><span>Размер:</span><input type="range" id="brush-size" min="4" max="80" value="24"><span class="val" id="brush-size-val">24</span></div>
+            <div class="row"><span>Шаг (px):</span><input type="range" id="brush-step" min="3" max="40" value="8"><span class="val" id="brush-step-val">8</span></div>
+        </div>
+        <div style="margin-top:8px; display:flex; gap:6px;">
+            <button id="btn-hide-others" style="flex:1">Скрыть другие</button>
+            <button id="btn-wireframe" style="flex:1">Прозрачность</button>
+        </div>
+    </div>
+    <div id="zone-list"></div>
+    <div id="toolbar">
+        <button id="btn-undo" title="Ctrl+Z">Undo</button>
+        <button id="btn-reset-zone" class="danger">Очистить зону</button>
+        <button id="btn-reset-all" class="danger">Сбросить все</button>
+        <button id="btn-copy" class="primary">Copy JSON</button>
+        <button id="btn-load">Load JSON</button>
+        <button id="btn-save" class="primary">Save File</button>
+    </div>
+    <div id="output-wrap">
+        <div id="output-label">Output / Edit and Load:</div>
+        <textarea id="output"></textarea>
+    </div>
+</div>
+
+<div id="status">Загрузка...</div>
+<div id="live"><span id="live-coords"></span><span id="live-zone" class="preview-zone"></span></div>
+
+<script type="importmap">
+    {
+        "imports": {
+            "three": "../../libs/vendor/three-0.160.0/three.module.js",
+            "three/addons/": "../../libs/vendor/three-0.160.0/addons/"
+        }
+    }
+</script>
+
+<script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+    const ZONE_COLORS = [
+        0xff6b6b, 0x4d96ff, 0xffd93d, 0x6bcb77, 0xc77dff, 0xff9f45,
+        0x00d2ff, 0xff85c1, 0x8cd790, 0xffb700, 0x9b87ff, 0x00d4a8
+    ];
+
+    // --- Parse URL ---
+    const params = new URLSearchParams(location.search);
+    const MODEL = params.get('model');
+    const ZONE_IDS = (params.get('zones') || '').split(',').map(s => s.trim()).filter(Boolean);
+    const ROT = (params.get('rot') || '0,0.2,0').split(',').map(parseFloat);
+
+    const usage = document.getElementById('usage');
+    const usageToggle = document.getElementById('usage-toggle');
+    const panel = document.getElementById('panel');
+    const status = document.getElementById('status');
+
+    if (!MODEL || ZONE_IDS.length === 0) {
+        status.textContent = 'No URL params. See instructions.';
+        throw new Error('Missing URL params');
+    }
+
+    usage.classList.add('hidden');
+    usageToggle.classList.add('show');
+    panel.style.display = 'flex';
+    document.getElementById('model-name').textContent = MODEL;
+    usageToggle.addEventListener('click', () => usage.classList.toggle('hidden'));
+
+    // --- State ---
+    const seeds = {};
+    ZONE_IDS.forEach(z => seeds[z] = []);
+    let activeZone = ZONE_IDS[0];
+    const undoStack = [];
+    let currentMode = 'point'; // 'point' | 'brush' | 'eraser'
+    let hideOthers = false;
+
+    // --- Three.js scene ---
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0c1224);
+    scene.fog = new THREE.Fog(0x111838, 12, 40);
+
+    const camera = new THREE.PerspectiveCamera(38, innerWidth / innerHeight, 0.05, 200);
+    camera.position.set(0, 0.5, 5.5);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.05;
+    container.appendChild(renderer.domElement);
+
+    scene.add(new THREE.AmbientLight(0xffffff, 0.65));
+    const k = new THREE.DirectionalLight(0xffe9c8, 1.1); k.position.set(3, 4, 4); scene.add(k);
+    const f = new THREE.DirectionalLight(0x8cb6ff, 0.55); f.position.set(-4, 1, -3); scene.add(f);
+    const r2 = new THREE.DirectionalLight(0xffffff, 0.4); r2.position.set(0, -3, -4); scene.add(r2);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true; controls.dampingFactor = 0.08;
+    controls.minDistance = 1.5; controls.maxDistance = 12;
+    controls.target.set(0, 0, 0);
+
+    const modelGroup = new THREE.Group(); scene.add(modelGroup);
+    const axes = new THREE.AxesHelper(1.6); axes.renderOrder = 1000; scene.add(axes);
+    const grid = new THREE.GridHelper(4, 8, 0x556677, 0x334455);
+    grid.material.transparent = true; grid.material.opacity = 0.4; grid.position.y = -1.25; scene.add(grid);
+
+    const seedsGroup = new THREE.Group();
+    modelGroup.add(seedsGroup);
+    let mainMesh = null;
+
+    // --- Load model ---
+    const loader = new GLTFLoader();
+    loader.load(
+        MODEL,
+        (gltf) => {
+            let origMesh = null;
+            gltf.scene.traverse(o => { if (!origMesh && o.isMesh) origMesh = o; });
+            if (!origMesh) { status.textContent = 'No mesh in model'; return; }
+
+            const geom = origMesh.geometry.clone();
+            geom.computeBoundingBox();
+            const size = new THREE.Vector3(); geom.boundingBox.getSize(size);
+            const center = new THREE.Vector3(); geom.boundingBox.getCenter(center);
+            const maxDim = Math.max(size.x, size.y, size.z);
+            const fitScale = 2.4 / maxDim;
+            const pos = geom.attributes.position;
+            for (let i = 0; i < pos.count; i++) {
+                pos.setXYZ(i,
+                    (pos.getX(i) - center.x) * fitScale,
+                    (pos.getY(i) - center.y) * fitScale,
+                    (pos.getZ(i) - center.z) * fitScale
+                );
+            }
+            pos.needsUpdate = true;
+            geom.computeVertexNormals();
+            geom.computeBoundingBox();
+
+            mainMesh = new THREE.Mesh(geom, origMesh.material);
+            modelGroup.add(mainMesh);
+            modelGroup.rotation.set(ROT[0], ROT[1], ROT[2]);
+
+            const bbox = new THREE.Box3Helper(geom.boundingBox.clone(), 0x7aa7ff);
+            bbox.material.transparent = true; bbox.material.opacity = 0.5;
+            modelGroup.add(bbox);
+            updateStatus();
+        },
+        (xhr) => { if (xhr.lengthComputable) status.textContent = `Loading ${MODEL}: ${Math.round(xhr.loaded / xhr.total * 100)}%`; },
+        (err) => { status.textContent = `Error: ${err.message}`; console.error(err); }
+    );
+
+    function updateStatus() {
+        if (!mainMesh) return;
+        const total = Object.values(seeds).reduce((s, arr) => s + arr.length, 0);
+        status.textContent = `${MODEL} | ${activeZone} | ${currentMode} | seeds: ${total}`;
+    }
+
+    // --- Zone list ---
+    const list = document.getElementById('zone-list');
+    function renderList() {
+        list.innerHTML = '';
+        ZONE_IDS.forEach((zone, i) => {
+            const c = ZONE_COLORS[i % ZONE_COLORS.length];
+            const cHex = '#' + c.toString(16).padStart(6, '0');
+            const row = document.createElement('div');
+            row.className = 'zone-row' + (zone === activeZone ? ' active' : '');
+            row.innerHTML = `
+                <div class="zone-color" style="background:${cHex}; color:${cHex}"></div>
+                <div class="zone-name">${zone}</div>
+                <div class="zone-count">${seeds[zone].length}</div>
+            `;
+            row.addEventListener('click', () => { activeZone = zone; renderList(); updateStatus(); updateVisibility(); });
+            list.appendChild(row);
+        });
+    }
+    renderList();
+
+    // --- Place / remove seed ---
+    function placeSeed(zoneId, localPoint) {
+        const idx = ZONE_IDS.indexOf(zoneId);
+        const color = ZONE_COLORS[idx % ZONE_COLORS.length];
+
+        const ring = new THREE.Mesh(
+            new THREE.SphereGeometry(0.07, 20, 16),
+            new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.35, depthTest: false })
+        );
+        const core = new THREE.Mesh(
+            new THREE.SphereGeometry(0.035, 16, 12),
+            new THREE.MeshBasicMaterial({ color: 0xffffff, depthTest: false })
+        );
+        ring.add(core);
+        ring.position.copy(localPoint);
+        ring.renderOrder = 999;
+        ring.userData.zoneId = zoneId;
+        seedsGroup.add(ring);
+
+        const seed = {
+            x: +localPoint.x.toFixed(3),
+            y: +localPoint.y.toFixed(3),
+            z: +localPoint.z.toFixed(3),
+            mesh: ring
+        };
+        seeds[zoneId].push(seed);
+        undoStack.push({ zoneId, seed });
+
+        renderList();
+        updateOutput();
+        updateStatus();
+        updateVisibility();
+    }
+
+    function removeSeed(zoneId, seed) {
+        const idx = seeds[zoneId].indexOf(seed);
+        if (idx >= 0) {
+            seedsGroup.remove(seed.mesh);
+            seed.mesh.geometry.dispose();
+            seed.mesh.material.dispose();
+            seeds[zoneId].splice(idx, 1);
+        }
+    }
+
+    // --- Visibility (hide other zones) ---
+    function updateVisibility() {
+        seedsGroup.children.forEach(m => {
+            if (hideOthers) {
+                m.visible = m.userData.zoneId === activeZone;
+            } else {
+                m.visible = true;
+            }
+        });
+    }
+
+    // --- Raycasting ---
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+
+    function getLocalHit(ev) {
+        if (!mainMesh) return null;
+        const rect = renderer.domElement.getBoundingClientRect();
+        mouse.x = ((ev.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((ev.clientY - rect.top) / rect.height) * 2 + 1;
+        raycaster.setFromCamera(mouse, camera);
+        const hits = raycaster.intersectObject(mainMesh, false);
+        if (!hits.length) return null;
+        return modelGroup.worldToLocal(hits[0].point.clone());
+    }
+
+    // --- Mode switching ---
+    const modeBtns = { point: document.getElementById('mode-point'), brush: document.getElementById('mode-brush'), eraser: document.getElementById('mode-eraser') };
+    const brushControls = document.getElementById('brush-controls');
+    const brushCursor = document.getElementById('brush-cursor');
+    const brushSizeInput = document.getElementById('brush-size');
+    const brushStepInput = document.getElementById('brush-step');
+    const brushSizeVal = document.getElementById('brush-size-val');
+    const brushStepVal = document.getElementById('brush-step-val');
+
+    function setMode(mode) {
+        currentMode = mode;
+        Object.entries(modeBtns).forEach(([k, btn]) => btn.classList.toggle('mode-active', k === mode));
+        brushControls.classList.toggle('visible', mode === 'brush' || mode === 'eraser');
+        document.body.classList.remove('mode-brush', 'mode-eraser');
+        if (mode !== 'point') document.body.classList.add('mode-' + mode);
+        controls.enabled = (mode === 'point');
+        brushCursor.style.display = (mode !== 'point') ? 'block' : 'none';
+        updateBrushCursorSize();
+        updateStatus();
+    }
+
+    modeBtns.point.addEventListener('click', () => setMode('point'));
+    modeBtns.brush.addEventListener('click', () => setMode('brush'));
+    modeBtns.eraser.addEventListener('click', () => setMode('eraser'));
+
+    brushSizeInput.addEventListener('input', () => { brushSizeVal.textContent = brushSizeInput.value; updateBrushCursorSize(); });
+    brushStepInput.addEventListener('input', () => { brushStepVal.textContent = brushStepInput.value; });
+
+    function updateBrushCursorSize() {
+        const sz = parseInt(brushSizeInput.value);
+        brushCursor.style.width = sz + 'px';
+        brushCursor.style.height = sz + 'px';
+        if (currentMode === 'eraser') {
+            brushCursor.style.borderColor = 'rgba(255,100,100,0.8)';
+        } else {
+            brushCursor.style.borderColor = 'rgba(255,255,255,0.6)';
+        }
+    }
+
+    // --- Brush / Eraser painting ---
+    let isPainting = false;
+    let lastPaintPos = null;
+
+    function handleBrushPaint(ev) {
+        const local = getLocalHit(ev);
+        if (!local) return;
+
+        if (currentMode === 'brush') {
+            placeSeed(activeZone, local);
+        } else if (currentMode === 'eraser') {
+            // Find and remove seeds within radius (in 3D space, based on brush size mapped to ~world units)
+            const eraserRadius = parseInt(brushSizeInput.value) * 0.005; // approximate mapping
+            const eraserRadiusSq = eraserRadius * eraserRadius;
+            for (const zone of ZONE_IDS) {
+                const toRemove = seeds[zone].filter(s => {
+                    const dx = local.x - s.x, dy = local.y - s.y, dz = local.z - s.z;
+                    return dx*dx + dy*dy + dz*dz < eraserRadiusSq;
+                });
+                toRemove.forEach(s => removeSeed(zone, s));
+            }
+            renderList();
+            updateOutput();
+            updateStatus();
+        }
+    }
+
+    renderer.domElement.addEventListener('mousedown', e => {
+        if (e.button !== 0) return;
+        if (currentMode === 'point') {
+            // Point mode: place on mouseup if no drag
+            e._pointDown = { x: e.clientX, y: e.clientY };
+            return;
+        }
+        // Brush / Eraser: start painting
+        isPainting = true;
+        lastPaintPos = { x: e.clientX, y: e.clientY };
+        handleBrushPaint(e);
+    });
+
+    renderer.domElement.addEventListener('mousemove', e => {
+        // Update brush cursor position
+        if (currentMode !== 'point') {
+            brushCursor.style.left = e.clientX + 'px';
+            brushCursor.style.top = e.clientY + 'px';
+        }
+
+        if (!isPainting) return;
+        const step = parseInt(brushStepInput.value);
+        const dx = e.clientX - lastPaintPos.x, dy = e.clientY - lastPaintPos.y;
+        if (Math.hypot(dx, dy) >= step) {
+            handleBrushPaint(e);
+            lastPaintPos = { x: e.clientX, y: e.clientY };
+        }
+    });
+
+    renderer.domElement.addEventListener('mouseup', e => {
+        if (e.button !== 0) return;
+        if (currentMode === 'point') {
+            // Only place if didn't drag
+            const local = getLocalHit(e);
+            if (!local) return;
+            placeSeed(activeZone, local);
+            return;
+        }
+        isPainting = false;
+        lastPaintPos = null;
+    });
+
+    renderer.domElement.addEventListener('mouseleave', () => {
+        isPainting = false;
+        brushCursor.style.display = (currentMode !== 'point') ? 'block' : 'none';
+    });
+
+    // --- Hover preview ---
+    const live = document.getElementById('live');
+    const liveCoords = document.getElementById('live-coords');
+    const liveZone = document.getElementById('live-zone');
+    renderer.domElement.addEventListener('mousemove', e => {
+        if (isPainting) return;
+        const local = getLocalHit(e);
+        if (!local) { live.style.display = 'none'; return; }
+        liveCoords.textContent = `(${local.x.toFixed(2)}, ${local.y.toFixed(2)}, ${local.z.toFixed(2)})`;
+        let bestZone = null, bestD = Infinity;
+        for (const zone of ZONE_IDS) {
+            for (const s of seeds[zone]) {
+                const d = (local.x - s.x) ** 2 + (local.y - s.y) ** 2 + (local.z - s.z) ** 2;
+                if (d < bestD) { bestD = d; bestZone = zone; }
+            }
+        }
+        if (bestZone) {
+            const idx = ZONE_IDS.indexOf(bestZone);
+            const c = ZONE_COLORS[idx % ZONE_COLORS.length];
+            liveZone.textContent = bestZone;
+            liveZone.style.background = '#' + c.toString(16).padStart(6, '0');
+            liveZone.style.color = '#000';
+        } else {
+            liveZone.textContent = '---';
+            liveZone.style.background = 'rgba(255,255,255,0.1)';
+            liveZone.style.color = '#aab';
+        }
+        live.style.display = 'block';
+    });
+    renderer.domElement.addEventListener('mouseleave', () => { live.style.display = 'none'; });
+
+    // --- Toolbar ---
+    document.getElementById('btn-undo').addEventListener('click', undo);
+    function undo() {
+        const last = undoStack.pop();
+        if (!last) return;
+        removeSeed(last.zoneId, last.seed);
+        renderList(); updateOutput(); updateStatus(); updateVisibility();
+    }
+    addEventListener('keydown', e => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); undo(); }
+        // Number keys for quick zone switch
+        if (e.key >= '1' && e.key <= '9') {
+            const idx = parseInt(e.key) - 1;
+            if (idx < ZONE_IDS.length) { activeZone = ZONE_IDS[idx]; renderList(); updateStatus(); updateVisibility(); }
+        }
+    });
+
+    document.getElementById('btn-reset-zone').addEventListener('click', () => {
+        seeds[activeZone].slice().forEach(s => removeSeed(activeZone, s));
+        renderList(); updateOutput(); updateStatus();
+    });
+    document.getElementById('btn-reset-all').addEventListener('click', () => {
+        if (!confirm('Delete ALL seeds for ALL zones?')) return;
+        ZONE_IDS.forEach(z => seeds[z].slice().forEach(s => removeSeed(z, s)));
+        undoStack.length = 0;
+        renderList(); updateOutput(); updateStatus();
+    });
+
+    // --- Hide others toggle ---
+    const btnHide = document.getElementById('btn-hide-others');
+    btnHide.addEventListener('click', () => {
+        hideOthers = !hideOthers;
+        btnHide.classList.toggle('active', hideOthers);
+        btnHide.textContent = hideOthers ? 'Показать все' : 'Скрыть другие';
+        updateVisibility();
+    });
+
+    // --- Wireframe / opacity ---
+    const OPACITY_LEVELS = [1.0, 0.55, 0.25];
+    let opacityIdx = 0;
+    document.getElementById('btn-wireframe').addEventListener('click', () => {
+        opacityIdx = (opacityIdx + 1) % OPACITY_LEVELS.length;
+        const op = OPACITY_LEVELS[opacityIdx];
+        if (mainMesh && mainMesh.material) {
+            mainMesh.material.transparent = op < 1.0;
+            mainMesh.material.opacity = op;
+            mainMesh.material.depthWrite = op === 1.0;
+            mainMesh.material.needsUpdate = true;
+        }
+        const btn = document.getElementById('btn-wireframe');
+        btn.classList.toggle('wf-active', op < 1.0);
+        btn.textContent = op === 1.0 ? 'Прозрачность' : `${Math.round(op * 100)}%`;
+    });
+
+    // --- Output JSON ---
+    function updateOutput() {
+        const obj = {};
+        for (const z of ZONE_IDS) {
+            if (seeds[z].length) obj[z] = seeds[z].map(s => [s.x, s.y, s.z]);
+        }
+        let json = JSON.stringify(obj, null, 4);
+        json = json.replace(/\[\s+(-?\d+\.?\d*),\s+(-?\d+\.?\d*),\s+(-?\d+\.?\d*)\s+\]/g, '[$1, $2, $3]');
+        document.getElementById('output').value = 'const SEEDS = ' + json + ';';
+    }
+    updateOutput();
+
+    document.getElementById('btn-copy').addEventListener('click', async () => {
+        const out = document.getElementById('output');
+        try { await navigator.clipboard.writeText(out.value); } catch { out.select(); document.execCommand('copy'); }
+        const btn = document.getElementById('btn-copy');
+        const txt = btn.textContent;
+        btn.textContent = 'Copied!';
+        setTimeout(() => btn.textContent = txt, 1500);
+    });
+
+    // --- Load JSON ---
+    document.getElementById('btn-load').addEventListener('click', () => {
+        const txt = document.getElementById('output').value.trim();
+        if (!txt) { alert('Textarea is empty'); return; }
+        let jsonText = txt.replace(/^\s*const\s+SEEDS\s*=\s*/, '').replace(/;\s*$/, '');
+        let parsed;
+        try { parsed = JSON.parse(jsonText); } catch (e) { alert('JSON parse error: ' + e.message); return; }
+        ZONE_IDS.forEach(z => seeds[z].slice().forEach(s => removeSeed(z, s)));
+        undoStack.length = 0;
+        let loaded = 0;
+        for (const [zoneId, points] of Object.entries(parsed)) {
+            if (!ZONE_IDS.includes(zoneId)) continue;
+            for (const p of points) {
+                if (Array.isArray(p) && p.length >= 3) {
+                    placeSeed(zoneId, new THREE.Vector3(p[0], p[1], p[2]));
+                    loaded++;
+                }
+            }
+        }
+        const btn = document.getElementById('btn-load');
+        const orig = btn.textContent;
+        btn.textContent = `Loaded ${loaded}`;
+        setTimeout(() => btn.textContent = orig, 2000);
+        updateVisibility();
+    });
+
+    // --- Save JSON file (download) ---
+    document.getElementById('btn-save').addEventListener('click', () => {
+        const obj = {};
+        for (const z of ZONE_IDS) {
+            if (seeds[z].length) obj[z] = seeds[z].map(s => [s.x, s.y, s.z]);
+        }
+        let json = JSON.stringify(obj, null, 4);
+        json = json.replace(/\[\s+(-?\d+\.?\d*),\s+(-?\d+\.?\d*),\s+(-?\d+\.?\d*)\s+\]/g, '[$1, $2, $3]');
+        const content = 'const SEEDS = ' + json + ';';
+        const filename = MODEL.replace('.glb', '') + '_seeds.json';
+        const blob = new Blob([content], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = filename;
+        document.body.appendChild(a); a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        const btn = document.getElementById('btn-save');
+        const orig = btn.textContent;
+        btn.textContent = 'Saved!';
+        setTimeout(() => btn.textContent = orig, 1500);
+    });
+
+    // --- Animate ---
+    function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        renderer.render(scene, camera);
+    }
+    animate();
+
+    addEventListener('resize', () => {
+        camera.aspect = innerWidth / innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(innerWidth, innerHeight);
+    });
+</script>
+</body>
+</html>

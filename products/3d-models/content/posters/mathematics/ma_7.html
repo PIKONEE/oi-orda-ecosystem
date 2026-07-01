@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="page_title">Теорема Пифагора</title>
+<style>
+
+
+*{margin:0;padding:0;box-sizing:border-box;}
+
+:root{
+  --bg:#f2f3f5;
+  --surface:rgba(255,255,255,0.94);
+  --border:rgba(20,30,55,0.08);
+  --text:#16202e;
+  --muted:#5f6b7a;
+  --faint:#9aa6b4;
+  --a:#2563eb;  --a-dim:rgba(37,99,235,0.10);    /* leg a — blue   */
+  --b:#16a34a;  --b-dim:rgba(22,163,74,0.10);     /* leg b — green  */
+  --c:#ea580c;  --c-dim:rgba(234,88,12,0.10);     /* hyp  — orange  */
+  --accent:#1d4ed8;
+  --accent-dim:rgba(29,78,216,0.10);
+  --shadow:0 2px 22px rgba(20,30,60,0.07);
+  --shadow-lg:0 18px 56px rgba(20,30,70,0.15);
+}
+
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);overflow:hidden;height:100vh;}
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(1200px 760px at 70% 30%, rgba(37,99,235,0.10), transparent 60%),
+    radial-gradient(820px 560px at 14% 84%, rgba(234,88,12,0.06), transparent 55%);
+}
+
+#canvas-container{position:fixed;inset:0;z-index:1;}
+#labels-layer{position:fixed;inset:0;z-index:40;pointer-events:none;overflow:hidden;}
+
+.dim-label{position:absolute;transform:translate(-50%,-50%);font-family:'Roboto Mono',monospace;font-size:13.5px;font-weight:600;padding:2px 8px;border-radius:8px;white-space:nowrap;letter-spacing:-0.3px;background:rgba(255,255,255,0.96);box-shadow:0 3px 12px rgba(20,30,60,0.13);transition:opacity 0.18s;}
+.dim-label.hidden{opacity:0;}
+.dim-label.la{color:var(--a);border:1px solid rgba(37,99,235,0.28);}
+.dim-label.lb{color:var(--b);border:1px solid rgba(22,163,74,0.28);}
+.dim-label.lc{color:var(--c);border:1px solid rgba(234,88,12,0.28);}
+.dim-label.area{font-size:16px;font-weight:700;padding:4px 11px;}
+.dim-label.aa{background:var(--a);color:#fff;border:none;box-shadow:0 4px 14px rgba(37,99,235,0.4);}
+.dim-label.ab{background:var(--b);color:#fff;border:none;box-shadow:0 4px 14px rgba(22,163,74,0.4);}
+.dim-label.ac{background:var(--c);color:#fff;border:none;box-shadow:0 4px 14px rgba(234,88,12,0.4);}
+.dim-label.ang{color:var(--text);border:1px solid rgba(20,30,55,0.2);}
+
+.header{position:fixed;top:0;left:0;right:0;z-index:200;background:var(--surface);border-bottom:1px solid var(--border);padding:0 38px;height:84px;display:flex;align-items:center;gap:15px;box-shadow:var(--shadow);}
+.h-badge{width:46px;height:46px;border-radius:14px;flex-shrink:0;background:linear-gradient(135deg,#1d4ed8,#3b82f6);display:flex;align-items:center;justify-content:center;box-shadow:0 7px 20px rgba(29,78,216,0.36);}
+.h-badge svg{width:25px;height:25px;}
+.header-title{font-size:25px;font-weight:800;letter-spacing:-0.5px;}
+.header-tag{font-family:'Roboto Mono',monospace;font-size:13px;color:var(--accent);background:var(--accent-dim);padding:4px 11px;border-radius:8px;}
+.header-sub{font-size:14px;color:var(--muted);margin-left:auto;text-align:right;line-height:1.45;}
+
+/* equation banner */
+.eq-banner{position:fixed;top:96px;left:50%;transform:translateX(-50%);z-index:150;background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-lg);padding:10px 22px;display:flex;flex-direction:column;align-items:center;gap:3px;pointer-events:none;}
+.eq-formula{font-family:'Roboto Mono',monospace;font-size:17px;font-weight:600;letter-spacing:0.5px;}
+.eq-formula .ea{color:var(--a);} .eq-formula .eb{color:var(--b);} .eq-formula .ec{color:var(--c);}
+.eq-nums{font-family:'Roboto Mono',monospace;font-size:15px;color:var(--muted);}
+.eq-nums .ea{color:var(--a);font-weight:600;} .eq-nums .eb{color:var(--b);font-weight:600;} .eq-nums .ec{color:var(--c);font-weight:700;}
+
+.panel{position:fixed;z-index:100;background:var(--surface);border:1px solid var(--border);border-radius:22px;box-shadow:var(--shadow-lg);}
+.panel h3{font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;color:var(--faint);}
+
+.panel-left{left:22px;top:98px;width:332px;padding:18px 18px;overflow:hidden;min-height:430px;}
+.ld-list,.ld-detail{transition:transform 0.4s cubic-bezier(0.4,0,0.2,1),opacity 0.28s;}
+.ld-list h3{margin-bottom:12px;padding-left:4px;}
+.ld-detail{position:absolute;inset:18px 18px;transform:translateX(26px);opacity:0;pointer-events:none;overflow-y:auto;}
+.ld-detail::-webkit-scrollbar{width:4px;}
+.ld-detail::-webkit-scrollbar-thumb{background:rgba(20,30,60,0.16);border-radius:4px;}
+.panel-left.detail .ld-list{transform:translateX(-26px);opacity:0;pointer-events:none;}
+.panel-left.detail .ld-detail{transform:translateX(0);opacity:1;pointer-events:auto;}
+
+.metric{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:14px;cursor:pointer;border:1px solid transparent;transition:all 0.15s;margin-bottom:2px;}
+.metric:hover{background:rgba(20,30,60,0.04);}
+.metric.active{background:var(--accent-dim);border-color:rgba(29,78,216,0.22);}
+.metric-dot{width:11px;height:11px;border-radius:3px;flex-shrink:0;}
+.metric-main{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;}
+.metric-name{font-size:15px;font-weight:700;line-height:1.15;}
+.metric-sub{font-family:'Roboto Mono',monospace;font-size:13px;color:var(--muted);}
+.metric-val{font-family:'Roboto Mono',monospace;font-size:21px;font-weight:500;color:var(--accent);letter-spacing:-1px;flex-shrink:0;}
+
+.ld-back{display:inline-flex;align-items:center;gap:5px;cursor:pointer;border:none;background:none;font-family:'Inter',sans-serif;font-size:14px;font-weight:700;color:var(--accent);padding:4px 6px 4px 0;margin-bottom:12px;}
+.ld-back:hover{opacity:0.7;}
+.d-tag{display:inline-block;padding:4px 12px;border-radius:99px;font-size:13px;font-weight:700;margin-bottom:10px;background:var(--accent-dim);color:var(--accent);}
+.d-title{font-size:22px;font-weight:800;letter-spacing:-0.4px;line-height:1.15;margin-bottom:14px;}
+.d-bigval{display:flex;align-items:baseline;gap:9px;margin-bottom:4px;}
+.d-bigval b{font-family:'Roboto Mono',monospace;font-size:39px;font-weight:500;color:var(--accent);letter-spacing:-1.5px;line-height:1;}
+.d-bigval span{font-size:14px;color:var(--muted);font-weight:600;}
+.d-formula{margin:13px 0 4px;padding:13px 15px;border-radius:13px;background:linear-gradient(135deg,rgba(59,130,246,0.10),rgba(29,78,216,0.05));border:1px solid rgba(29,78,216,0.16);font-family:'Roboto Mono',monospace;font-size:14px;color:#1e40af;font-weight:500;line-height:1.95;white-space:pre-line;}
+.d-para{font-size:15px;line-height:1.62;color:#2c3744;margin-top:13px;}
+
+.panel-right{right:22px;top:98px;width:300px;padding:18px;}
+.dim-slider{margin-bottom:14px;border-radius:15px;padding:12px 14px;border:1px solid;}
+.dim-slider.sa{background:var(--a-dim);border-color:rgba(37,99,235,0.18);}
+.dim-slider.sb{background:var(--b-dim);border-color:rgba(22,163,74,0.18);}
+.ds-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.ds-name{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:700;}
+.ds-key{font-family:'Roboto Mono',monospace;font-style:italic;font-size:18px;}
+.sa .ds-key{color:var(--a);} .sb .ds-key{color:var(--b);}
+.ds-dimname{color:var(--muted);font-weight:600;font-size:13.5px;}
+.ds-pill{font-family:'Roboto Mono',monospace;font-size:19px;font-weight:500;color:#fff;padding:2px 13px;border-radius:9px;letter-spacing:-0.5px;}
+.sa .ds-pill{background:var(--a);} .sb .ds-pill{background:var(--b);}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:3px;outline:none;cursor:pointer;}
+.sa input[type=range]{background:linear-gradient(90deg,var(--a) var(--fill,50%),rgba(37,99,235,0.16) var(--fill,50%));}
+.sb input[type=range]{background:linear-gradient(90deg,var(--b) var(--fill,50%),rgba(22,163,74,0.16) var(--fill,50%));}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:21px;height:21px;border-radius:50%;background:#fff;cursor:pointer;transition:transform 0.12s;}
+.sa input::-webkit-slider-thumb{border:3px solid var(--a);box-shadow:0 3px 10px rgba(37,99,235,0.4);}
+.sb input::-webkit-slider-thumb{border:3px solid var(--b);box-shadow:0 3px 10px rgba(22,163,74,0.4);}
+input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.18);}
+
+.show-label{font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;color:var(--faint);margin:13px 0 11px 2px;}
+.show-chip{display:flex;align-items:center;gap:12px;width:100%;padding:13px 15px;margin-bottom:9px;border-radius:14px;cursor:pointer;background:rgba(20,30,60,0.035);border:1.5px solid transparent;transition:all 0.16s;}
+.show-chip:hover{background:rgba(20,30,60,0.06);}
+.show-chip.on{background:var(--accent-dim);border-color:rgba(29,78,216,0.30);}
+.chip-ico{width:36px;height:36px;border-radius:11px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:19px;background:rgba(29,78,216,0.10);transition:all 0.16s;}
+.show-chip.on .chip-ico{background:var(--accent);}
+.chip-text{display:flex;flex-direction:column;gap:1px;flex:1;min-width:0;}
+.chip-name{font-size:15px;font-weight:700;}
+.chip-sub{font-size:13px;color:var(--muted);font-family:'Roboto Mono',monospace;}
+.chip-state{width:22px;height:22px;border-radius:50%;flex-shrink:0;border:2px solid rgba(20,30,60,0.16);display:flex;align-items:center;justify-content:center;transition:all 0.16s;}
+.show-chip.on .chip-state{background:var(--accent);border-color:var(--accent);}
+.show-chip.on .chip-state::after{content:'✓';color:#fff;font-size:14px;font-weight:700;}
+
+.hint-bar{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:100;background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:9px 22px;font-size:13.5px;color:var(--muted);box-shadow:var(--shadow);white-space:nowrap;display:flex;align-items:center;gap:9px;}
+.hint-grab{color:var(--accent);font-weight:700;}
+.hint-dot{color:var(--faint);}
+
+@media (max-width:1180px){.panel-left{width:296px;}.panel-right{width:268px;}}
+</style>
+</head>
+<body>
+
+<div id="canvas-container"><canvas id="c"></canvas></div>
+<div id="labels-layer"></div>
+
+<header class="header">
+  <div class="h-badge">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.7" stroke-linejoin="round">
+      <path d="M4 20 L4 8 L16 20 Z"/><path d="M4 11 L7 11 L7 8"/>
+    </svg>
+  </div>
+  <div class="header-title" data-i18n="header_title">Теорема Пифагора</div>
+  <div class="header-tag">a² + b² = c²</div>
+  <div class="header-sub" data-i18n-html="header_sub">Квадрат на гипотенузе = сумме квадратов на катетах<br>тяните ручки — меняйте катеты</div>
+</header>
+
+<div class="eq-banner">
+  <div class="eq-formula"><span class="ea">a²</span> + <span class="eb">b²</span> = <span class="ec">c²</span></div>
+  <div class="eq-nums" id="eq-nums"></div>
+</div>
+
+<!-- LEFT -->
+<div class="panel panel-left" id="panel-left">
+  <div class="ld-list">
+    <h3 data-i18n="props_title">Стороны и площади</h3>
+    <div id="metrics"></div>
+  </div>
+  <div class="ld-detail">
+    <button class="ld-back" onclick="window.showList()"><span>‹</span> <span data-i18n="back">Назад</span></button>
+    <div id="detail-content"></div>
+  </div>
+</div>
+
+<!-- RIGHT -->
+<div class="panel panel-right">
+  <h3 data-i18n="set_title" style="margin-bottom:13px;padding-left:2px;">Катеты</h3>
+  <div class="dim-slider sa">
+    <div class="ds-top">
+      <span class="ds-name"><span class="ds-key">a</span><span class="ds-dimname" data-i18n="dn_a">катет</span></span>
+      <span class="ds-pill" id="pill-a">6.0</span>
+    </div>
+    <input type="range" min="1" max="100" step="0.5" value="6" id="slider-a" oninput="window.setDim('a',+this.value)">
+  </div>
+  <div class="dim-slider sb">
+    <div class="ds-top">
+      <span class="ds-name"><span class="ds-key">b</span><span class="ds-dimname" data-i18n="dn_b">катет</span></span>
+      <span class="ds-pill" id="pill-b">8.0</span>
+    </div>
+    <input type="range" min="1" max="100" step="0.5" value="8" id="slider-b" oninput="window.setDim('b',+this.value)">
+  </div>
+
+  <div class="show-label" data-i18n="show_title">Показать</div>
+  <div class="show-chip" id="chip-split" onclick="window.toggleSplit()">
+    <div class="chip-ico">🧩</div>
+    <div class="chip-text"><span class="chip-name" data-i18n="ch_split">Разбить c²</span><span class="chip-sub">a² + b²</span></div>
+    <div class="chip-state"></div>
+  </div>
+  <div class="show-chip" id="chip-angles" onclick="window.toggleAngles()">
+    <div class="chip-ico">📐</div>
+    <div class="chip-text"><span class="chip-name" data-i18n="ch_angles">Острые углы</span><span class="chip-sub">α + β = 90°</span></div>
+    <div class="chip-state"></div>
+  </div>
+</div>
+
+<div class="hint-bar" data-i18n-html="hint">
+  <span class="hint-grab">Тяните ручки</span><span>— катеты</span><span class="hint-dot">·</span>
+  <span>фон — поворот</span><span class="hint-dot">·</span><span>клик по квадрату — площадь</span>
+</div>
+
+<script>
+const I18N={
+ru:{
+  page_title:'Теорема Пифагора',header_title:'Теорема Пифагора',
+  header_sub:'Квадрат на гипотенузе = сумме квадратов на катетах<br>тяните ручки — меняйте катеты',
+  props_title:'Стороны и площади',set_title:'Катеты',back:'Назад',show_title:'Показать',
+  dn_a:'катет',dn_b:'катет',
+  ch_split:'Разбить c²',ch_angles:'Острые углы',
+  hint:'<span class="hint-grab">Тяните ручки</span><span>— катеты</span><span class="hint-dot">·</span><span>фон — поворот</span><span class="hint-dot">·</span><span>клик по квадрату — площадь</span>',
+  m_a:'Катет a',m_b:'Катет b',m_c:'Гипотенуза c',m_a2:'Квадрат a²',m_b2:'Квадрат b²',m_c2:'Квадрат c²',m_area:'Площадь треугольника',
+  sub_a:'короткая сторона',sub_b:'вторая сторона',sub_c:'√(a² + b²)',sub_area:'½ · a · b',
+  unit_len:'ед.',unit_area:'ед²',
+},
+kz:{
+  page_title:'Пифагор теоремасы',header_title:'Пифагор теоремасы',
+  header_sub:'Гипотенузадағы шаршы = катеттердегі шаршылар қосындысы<br>тұтқаларды сүйреңіз — катеттерді өзгертіңіз',
+  props_title:'Қабырғалар мен аудандар',set_title:'Катеттер',back:'Артқа',show_title:'Көрсету',
+  dn_a:'катет',dn_b:'катет',
+  ch_split:'c² бөлу',ch_angles:'Сүйір бұрыштар',
+  hint:'<span class="hint-grab">Тұтқаларды сүйреңіз</span><span>— катеттер</span><span class="hint-dot">·</span><span>фон — бұру</span><span class="hint-dot">·</span><span>шаршыны басу — аудан</span>',
+  m_a:'Катет a',m_b:'Катет b',m_c:'Гипотенуза c',m_a2:'a² шаршысы',m_b2:'b² шаршысы',m_c2:'c² шаршысы',m_area:'Үшбұрыш ауданы',
+  sub_a:'қысқа қабырға',sub_b:'екінші қабырға',sub_c:'√(a² + b²)',sub_area:'½ · a · b',
+  unit_len:'бір.',unit_area:'бір²',
+},
+en:{
+  page_title:'Pythagorean Theorem',header_title:'Pythagorean Theorem',
+  header_sub:'Square on the hypotenuse = sum of squares on the legs<br>drag the handles to change the legs',
+  props_title:'Sides and areas',set_title:'Legs',back:'Back',show_title:'Show',
+  dn_a:'leg',dn_b:'leg',
+  ch_split:'Split c²',ch_angles:'Acute angles',
+  hint:'<span class="hint-grab">Drag handles</span><span>— legs</span><span class="hint-dot">·</span><span>background — rotate</span><span class="hint-dot">·</span><span>click a square — its area</span>',
+  m_a:'Leg a',m_b:'Leg b',m_c:'Hypotenuse c',m_a2:'Square a²',m_b2:'Square b²',m_c2:'Square c²',m_area:'Triangle area',
+  sub_a:'shorter side',sub_b:'second side',sub_c:'√(a² + b²)',sub_area:'½ · a · b',
+  unit_len:'u',unit_area:'u²',
+}
+};
+const LANG=(()=>{const q=new URLSearchParams(location.search).get('lang');return(q&&I18N[q])?q:'ru';})();
+const tr=key=>(I18N[LANG]&&I18N[LANG][key])!==undefined?I18N[LANG][key]:I18N.ru[key];
+function applyStaticI18N(){
+  document.documentElement.lang=LANG;
+  const tv=tr('page_title');if(tv)document.title=tv;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{const v=tr(el.getAttribute('data-i18n'));if(v!==undefined)el.textContent=v;});
+  document.querySelectorAll('[data-i18n-html]').forEach(el=>{const v=tr(el.getAttribute('data-i18n-html'));if(v!==undefined)el.innerHTML=v;});
+}
+applyStaticI18N();
+
+const f1=x=>x.toFixed(1);
+const f2=x=>x.toFixed(2);
+const hyp=()=>Math.hypot(window.A.a,window.A.b);
+
+window.A={a:6,b:8};
+
+const METRICS=[
+  {key:'a',  dot:'var(--a)', i:'m_a',  val:()=>window.A.a,            sub:()=>tr('sub_a'),                         unit:'unit_len'},
+  {key:'b',  dot:'var(--b)', i:'m_b',  val:()=>window.A.b,            sub:()=>tr('sub_b'),                         unit:'unit_len'},
+  {key:'c',  dot:'var(--c)', i:'m_c',  val:()=>hyp(),                 sub:()=>`√(${f1(window.A.a)}² + ${f1(window.A.b)}²)`, unit:'unit_len'},
+  {key:'a2', dot:'var(--a)', i:'m_a2', val:()=>window.A.a*window.A.a, sub:()=>`${f1(window.A.a)}²`,                 unit:'unit_area'},
+  {key:'b2', dot:'var(--b)', i:'m_b2', val:()=>window.A.b*window.A.b, sub:()=>`${f1(window.A.b)}²`,                 unit:'unit_area'},
+  {key:'c2', dot:'var(--c)', i:'m_c2', val:()=>hyp()*hyp(),           sub:()=>`a² + b² = ${f1(window.A.a*window.A.a)}+${f1(window.A.b*window.A.b)}`, unit:'unit_area'},
+  {key:'area',dot:'var(--accent)', i:'m_area', val:()=>0.5*window.A.a*window.A.b, sub:()=>`½ · ${f1(window.A.a)} · ${f1(window.A.b)}`, unit:'unit_area'},
+];
+function renderMetrics(){
+  document.getElementById('metrics').innerHTML=METRICS.map(m=>`
+    <div class="metric" data-key="${m.key}" onclick="window.openDetail('${m.key}')">
+      <div class="metric-dot" style="background:${m.dot}"></div>
+      <div class="metric-main"><span class="metric-name">${tr(m.i)}</span><span class="metric-sub" id="ms-${m.key}"></span></div>
+      <span class="metric-val" id="mv-${m.key}">—</span>
+    </div>`).join('');
+}
+function updateMetricValues(){
+  METRICS.forEach(m=>{
+    const v=document.getElementById('mv-'+m.key);if(v)v.textContent=f1(m.val());
+    const s=document.getElementById('ms-'+m.key);if(s)s.textContent=m.sub();
+  });
+  [['a',window.A.a],['b',window.A.b]].forEach(([k,val])=>{
+    document.getElementById('pill-'+k).textContent=f1(val);
+    document.getElementById('slider-'+k).style.setProperty('--fill',((val-1)/99*100)+'%');
+  });
+  const a2=window.A.a*window.A.a,b2=window.A.b*window.A.b;
+  document.getElementById('eq-nums').innerHTML=`<span class="ea">${f1(a2)}</span> + <span class="eb">${f1(b2)}</span> = <span class="ec">${f1(a2+b2)}</span>`;
+}
+renderMetrics();
+</script>
+
+<script type="importmap">
+{"imports":{"three":"../../libs/vendor/three-0.160.0/three.module.js"}}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+const canvas=document.getElementById('c');
+const renderer=new THREE.WebGLRenderer({canvas,antialias: true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+
+const scene=new THREE.Scene();scene.background=null;
+const camera=new THREE.PerspectiveCamera(40,innerWidth/innerHeight,0.1,8000);
+const CAM_DIR=new THREE.Vector3(0.5,0.35,1).normalize();    // mostly head-on, slight tilt
+let camDist=20,camDistTarget=20,userZoom=1.0;
+let showSplit=false,showAngles=false;
+
+const PI=Math.PI;
+const hyp=()=>Math.hypot(window.A.a,window.A.b);
+
+function contentR(){
+  const {a,b}=window.A;
+  const hx=a/2+b, hy=a+b/2;
+  return Math.hypot(hx,hy)*1.12;
+}
+function computeCamTarget(){
+  const R=contentR()*1.14;
+  const fovy=camera.fov*PI/180;
+  const dV=R/Math.sin(fovy/2);
+  const usableW=Math.max(420,innerWidth-660);
+  const fovx=2*Math.atan(Math.tan(fovy/2)*usableW/innerHeight);
+  const dH=R/Math.sin(fovx/2);
+  return Math.max(dV,dH)*userZoom;
+}
+function applyCamera(){camera.position.copy(CAM_DIR).multiplyScalar(camDist);camera.lookAt(0,0,0);}
+
+scene.add(new THREE.AmbientLight(0xffffff,0.78));
+const kL=new THREE.DirectionalLight(0xffffff,0.9);kL.position.set(4,8,12);scene.add(kL);
+const fL=new THREE.DirectionalLight(0x93c5fd,0.35);fL.position.set(-8,-3,4);scene.add(fL);
+
+const V=(x,y,z)=>new THREE.Vector3(x,y,z);
+
+const root=new THREE.Group();scene.add(root);
+const obj=new THREE.Group();root.add(obj);
+const fig=new THREE.Group();obj.add(fig);          // holds the construction, recentred
+const figTarget=new THREE.Vector3();
+let figFroze=false;
+
+const COL={a:0x2563eb,b:0x16a34a,c:0xea580c,tri:0x64748b,edge:0x1e293b,split_a:0x2563eb,split_b:0x16a34a};
+
+let layerGroup=null;     // squares+triangle
+let edgeGroup=null;
+let splitGroup=null;
+let angleGroup=null;
+let sqA=null,sqB=null,sqC=null;                 // square meshes (for highlight)
+let legMeshA=null,legMeshB=null,legMeshC=null;  // triangle-side meshes (for highlight)
+let legProxies=[];                              // invisible thick hit-areas for legs
+let hiKey=null;                                 // currently highlighted element
+const handles=[];
+
+function quad(p1,p2,p3,p4,mat){
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.Float32BufferAttribute([
+    p1.x,p1.y,p1.z, p2.x,p2.y,p2.z, p3.x,p3.y,p3.z,
+    p1.x,p1.y,p1.z, p3.x,p3.y,p3.z, p4.x,p4.y,p4.z],3));
+  g.computeVertexNormals();
+  return new THREE.Mesh(g,mat);
+}
+function cyl(from,to,rr,mat){
+  const dir=new THREE.Vector3().subVectors(to,from),len=dir.length();
+  const m=new THREE.Mesh(new THREE.CylinderGeometry(rr,rr,len,12),mat);
+  m.position.addVectors(from,to).multiplyScalar(0.5);
+  if(len>1e-6)m.quaternion.setFromUnitVectors(V(0,1,0),dir.normalize());return m;
+}
+function sphere(r,mat){return new THREE.Mesh(new THREE.SphereGeometry(r,18,14),mat);}
+function disposeGroup(g,parent){if(!g)return;g.traverse(o=>{if(o.geometry)o.geometry.dispose();});(parent||fig).remove(g);}
+
+function buildScene(){
+  const {a,b}=window.A,c=hyp();
+  const S=Math.max(a,b);
+  const er=S*0.013,hR=S*0.030,zT=S*0.012,zS=S*0.024,zE=S*0.030,zSplit=S*0.036;
+  disposeGroup(layerGroup);disposeGroup(edgeGroup);disposeGroup(splitGroup);disposeGroup(angleGroup);
+  handles.length=0;
+
+  // key points (z=0 plane)
+  const O=V(0,0,0), A=V(a,0,0), B=V(0,b,0);
+  const n=V(b/c,a/c,0);                          // outward normal of hypotenuse
+  const E=A.clone().add(n.clone().multiplyScalar(c));   // A + n*c
+  const F=B.clone().add(n.clone().multiplyScalar(c));   // B + n*c
+
+  layerGroup=new THREE.Group();
+  const matFill=(col,op)=>new THREE.MeshStandardMaterial({color:col,roughness:0.55,metalness:0,transparent:true,opacity:op,side:THREE.DoubleSide,depthWrite:true});
+  // square on a (below, -y)
+  sqA=quad(V(0,0,0),V(a,0,0),V(a,-a,0),V(0,-a,0),matFill(COL.a,0.42));layerGroup.add(sqA);
+  // square on b (left, -x)
+  sqB=quad(V(0,0,0),V(0,b,0),V(-b,b,0),V(-b,0,0),matFill(COL.b,0.42));layerGroup.add(sqB);
+  // square on c (outward) : A,E,F,B
+  sqC=quad(A,E,F,B,matFill(COL.c,0.40));sqC.userData.csq=true;layerGroup.add(sqC);
+  // triangle fill (slightly raised)
+  const triM=matFill(COL.tri,0.5);const tri=quad(O,A,B,O,triM);tri.position.z=zT;layerGroup.add(tri);
+  fig.add(layerGroup);
+
+  // edges
+  edgeGroup=new THREE.Group();
+  const eMat=new THREE.MeshStandardMaterial({color:COL.edge,roughness:0.4,metalness:0.1});
+  const eA=new THREE.MeshStandardMaterial({color:COL.a,roughness:0.4});
+  const eB=new THREE.MeshStandardMaterial({color:COL.b,roughness:0.4});
+  const eC=new THREE.MeshStandardMaterial({color:COL.c,roughness:0.4});
+  const z=zE;
+  const Z=p=>V(p.x,p.y,z);
+  // triangle sides coloured by leg (own materials so a single leg can be highlighted)
+  const legMatA=new THREE.MeshStandardMaterial({color:COL.a,roughness:0.4,metalness:0.1});
+  const legMatB=new THREE.MeshStandardMaterial({color:COL.b,roughness:0.4,metalness:0.1});
+  const legMatC=new THREE.MeshStandardMaterial({color:COL.c,roughness:0.4,metalness:0.1});
+  legMeshA=cyl(Z(O),Z(A),er,legMatA);edgeGroup.add(legMeshA);
+  legMeshB=cyl(Z(O),Z(B),er,legMatB);edgeGroup.add(legMeshB);
+  legMeshC=cyl(Z(A),Z(B),er,legMatC);edgeGroup.add(legMeshC);
+  // invisible thick click-areas for the legs (easier to hit)
+  legProxies=[];
+  [['a',Z(O),Z(A)],['b',Z(O),Z(B)],['c',Z(A),Z(B)]].forEach(([k,p,q])=>{
+    const pm=cyl(p,q,er*3.6,new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false}));
+    pm.userData.leg=k;legProxies.push(pm);edgeGroup.add(pm);
+  });
+  // square outlines
+  [[V(a,0),V(a,-a)],[V(a,-a),V(0,-a)],[V(0,-a),V(0,0)]].forEach(([p,q])=>edgeGroup.add(cyl(Z(p),Z(q),er*0.7,eA)));
+  [[V(0,b),V(-b,b)],[V(-b,b),V(-b,0)],[V(-b,0),V(0,0)]].forEach(([p,q])=>edgeGroup.add(cyl(Z(p),Z(q),er*0.7,eB)));
+  [[A,E],[E,F],[F,B]].forEach(([p,q])=>edgeGroup.add(cyl(Z(p),Z(q),er*0.7,eC)));
+  // right-angle marker at O
+  const rm=S*0.06;
+  edgeGroup.add(cyl(Z(V(rm,0)),Z(V(rm,rm)),er*0.5,eMat));
+  edgeGroup.add(cyl(Z(V(rm,rm)),Z(V(0,rm)),er*0.5,eMat));
+  // handles
+  const hMatA=new THREE.MeshStandardMaterial({color:COL.a,roughness:0.2,metalness:0.3,emissive:COL.a,emissiveIntensity:0.2});
+  const hMatB=new THREE.MeshStandardMaterial({color:COL.b,roughness:0.2,metalness:0.3,emissive:COL.b,emissiveIntensity:0.2});
+  const ha=sphere(hR,hMatA);ha.position.set(a,0,z);ha.userData.handle='a';edgeGroup.add(ha);
+  const hb=sphere(hR,hMatB);hb.position.set(0,b,z);hb.userData.handle='b';edgeGroup.add(hb);
+  handles.push({mesh:ha,key:'a',dir:V(1,0,0),factor:1});
+  handles.push({mesh:hb,key:'b',dir:V(0,1,0),factor:1});
+  fig.add(edgeGroup);
+
+  // split of c² into a² (next to A) and b² (next to B) via altitude foot H
+  splitGroup=new THREE.Group();
+  {
+    const AH=a*a/c;                              // segment of hyp adjacent to A
+    const ABu=new THREE.Vector3().subVectors(B,A).multiplyScalar(1/c);   // unit A→B
+    const H=A.clone().add(ABu.clone().multiplyScalar(AH));
+    const He=H.clone().add(n.clone().multiplyScalar(c));
+    const rectA=quad(A,H,He,E.clone(),new THREE.MeshStandardMaterial({color:COL.split_a,roughness:0.5,transparent:true,opacity:0.6,side:THREE.DoubleSide}));
+    rectA.position.z=zSplit;splitGroup.add(rectA);
+    const rectB=quad(H,B,F.clone(),He,new THREE.MeshStandardMaterial({color:COL.split_b,roughness:0.5,transparent:true,opacity:0.6,side:THREE.DoubleSide}));
+    rectB.position.z=zSplit;splitGroup.add(rectB);
+    // divider line + altitude OH
+    const dMat=new THREE.MeshStandardMaterial({color:COL.edge,roughness:0.4});
+    splitGroup.add(cyl(V(H.x,H.y,zSplit),V(He.x,He.y,zSplit),er*0.6,dMat));
+    const altMat=new THREE.MeshStandardMaterial({color:COL.edge,roughness:0.4,transparent:true,opacity:0.7});
+    splitGroup.add(cyl(V(0,0,zT),V(H.x,H.y,zT),er*0.5,altMat));
+    splitGroup.add(sphere(er*0.9,dMat).translateX(H.x).translateY(H.y).translateZ(zSplit));
+    splitGroup.userData.H=H;
+  }
+  splitGroup.visible=showSplit;fig.add(splitGroup);
+
+  // acute-angle arcs at A and B
+  angleGroup=new THREE.Group();
+  {
+    const arcMat=new THREE.LineBasicMaterial({color:COL.edge});
+    const mkArc=(P,u1,u2,rad)=>{
+      const a1=Math.atan2(u1.y,u1.x),a2=Math.atan2(u2.y,u2.x);
+      let da=a2-a1;while(da>PI)da-=2*PI;while(da<-PI)da+=2*PI;
+      const pts=[];for(let i=0;i<=16;i++){const aa=a1+da*i/16;pts.push(V(P.x+rad*Math.cos(aa),P.y+rad*Math.sin(aa),zE));}
+      return new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),arcMat);
+    };
+    const rad=S*0.18;
+    angleGroup.add(mkArc(A, new THREE.Vector3().subVectors(O,A).normalize(), new THREE.Vector3().subVectors(B,A).normalize(), rad)); // α at A
+    angleGroup.add(mkArc(B, new THREE.Vector3().subVectors(O,B).normalize(), new THREE.Vector3().subVectors(A,B).normalize(), rad)); // β at B
+  }
+  angleGroup.visible=showAngles;fig.add(angleGroup);
+
+  // recenter the construction
+  if(!figFroze) figTarget.set(-(a/2),-(b/2),0);
+  applyHighlight();
+  updateLabelAnchors();
+}
+
+function applyHighlight(){
+  // reset
+  [legMeshA,legMeshB,legMeshC].forEach(m=>{if(m){m.scale.set(1,1,1);m.material.emissive.setHex(0x000000);m.material.emissiveIntensity=0;}});
+  [[sqA,COL.a,0.42],[sqB,COL.b,0.42],[sqC,COL.c,0.40]].forEach(([m])=>{if(m){m.material.emissive.setHex(0x000000);m.material.emissiveIntensity=0;}});
+  if(sqA)sqA.material.opacity=0.42; if(sqB)sqB.material.opacity=0.42; if(sqC)sqC.material.opacity=0.40;
+  const legMap={a:[legMeshA,COL.a],b:[legMeshB,COL.b],c:[legMeshC,COL.c]};
+  const sqMap={a2:[sqA,COL.a],b2:[sqB,COL.b],c2:[sqC,COL.c]};
+  if(legMap[hiKey]){const[m,col]=legMap[hiKey];if(m){m.scale.set(2.4,1,2.4);m.material.emissive.setHex(col);m.material.emissiveIntensity=0.55;}}
+  if(sqMap[hiKey]){const[m,col]=sqMap[hiKey];if(m){m.material.emissive.setHex(col);m.material.emissiveIntensity=0.32;m.material.opacity=0.66;}}
+}
+
+/* ── LABELS ── */
+const layer=document.getElementById('labels-layer');
+function mkLabel(cls){const d=document.createElement('div');d.className='dim-label '+cls;layer.appendChild(d);return d;}
+const L_a=mkLabel('la'),L_b=mkLabel('lb'),L_c=mkLabel('lc');
+const L_a2=mkLabel('area aa'),L_b2=mkLabel('area ab'),L_c2=mkLabel('area ac');
+const L_sa=mkLabel('area aa'),L_sb=mkLabel('area ab');
+const L_al=mkLabel('ang'),L_be=mkLabel('ang');
+const anc={a:V(),b:V(),c:V(),a2:V(),b2:V(),c2:V(),sa:V(),sb:V(),al:V(),be:V()};
+function updateLabelAnchors(){
+  const {a,b}=window.A,c=hyp();
+  const n=V(b/c,a/c,0);
+  const A=V(a,0,0),B=V(0,b,0);
+  anc.a.set(a/2,0.0,0); anc.b.set(0,b/2,0);
+  anc.c.set(a/2- n.x*0.0, b/2, 0); anc.c.copy(A).add(B).multiplyScalar(0.5).addScaledVector(n,0.0);
+  anc.a2.set(a/2,-a/2,0);
+  anc.b2.set(-b/2,b/2,0);
+  anc.c2.copy(A).add(B).add(n.clone().multiplyScalar(2*c)).multiplyScalar(0.5).addScaledVector(n,-c*0.0); // centre of c-square
+  anc.c2.set((a+b)/2,(a+b)/2,0);
+  // split rect centres
+  const AH=a*a/c, ABu=new THREE.Vector3().subVectors(B,A).multiplyScalar(1/c), H=A.clone().add(ABu.clone().multiplyScalar(AH));
+  anc.sa.copy(A).add(H).multiplyScalar(0.5).addScaledVector(n,c*0.5);
+  anc.sb.copy(H).add(B).multiplyScalar(0.5).addScaledVector(n,c*0.5);
+  const rad=Math.max(a,b)*0.30;
+  anc.al.copy(A).addScaledVector(new THREE.Vector3().subVectors(O0,A).normalize().add(new THREE.Vector3().subVectors(B,A).normalize()).normalize(),rad);
+  anc.be.copy(B).addScaledVector(new THREE.Vector3().subVectors(O0,B).normalize().add(new THREE.Vector3().subVectors(A,B).normalize()).normalize(),rad);
+  L_a.textContent='a = '+f1(a); L_b.textContent='b = '+f1(b); L_c.textContent='c = '+f1(c);
+  L_a2.textContent='a² = '+f1(a*a); L_b2.textContent='b² = '+f1(b*b); L_c2.textContent='c² = '+f1(c*c);
+  L_sa.textContent='a² = '+f1(a*a); L_sb.textContent='b² = '+f1(b*b);
+  const al=Math.atan2(a,b)*180/PI, be=90-al;   // α opposite a (at B) ... label values
+  L_al.textContent='α = '+f1(Math.atan2(b,a)*180/PI)+'°';
+  L_be.textContent='β = '+f1(Math.atan2(a,b)*180/PI)+'°';
+}
+const O0=V(0,0,0);
+function project(localVec){const w=localVec.clone().add(fig.position).applyMatrix4(obj.matrixWorld).project(camera);return {x:(w.x*0.5+0.5)*innerWidth,y:(-w.y*0.5+0.5)*innerHeight,behind:w.z>1};}
+function place(el,v,vis){if(!vis){el.classList.add('hidden');return;}const s=project(v);if(s.behind){el.classList.add('hidden');return;}el.classList.remove('hidden');el.style.transform='translate(-50%,-50%)';el.style.left=s.x+'px';el.style.top=s.y+'px';}
+// place a label ALONG an edge (rotated to the line) and offset to the side so it never covers the line
+function placeAlong(el,p1,p2,ref,offPx,vis){
+  if(!vis){el.classList.add('hidden');return;}
+  const s1=project(p1),s2=project(p2);
+  if(s1.behind||s2.behind){el.classList.add('hidden');return;}
+  const mx=(s1.x+s2.x)/2,my=(s1.y+s2.y)/2;
+  let dx=s2.x-s1.x,dy=s2.y-s1.y;const len=Math.hypot(dx,dy)||1;
+  let ang=Math.atan2(dy,dx)*180/Math.PI;
+  if(ang>90)ang-=180; else if(ang<-90)ang+=180;     // keep text upright
+  let px=-dy/len,py=dx/len;                          // perpendicular (screen)
+  const rs=project(ref);
+  if(px*(mx-rs.x)+py*(my-rs.y)<0){px=-px;py=-py;}    // push away from the figure centre
+  el.classList.remove('hidden');
+  el.style.left=(mx+px*offPx)+'px';el.style.top=(my+py*offPx)+'px';
+  el.style.transform=`translate(-50%,-50%) rotate(${ang}deg)`;
+}
+function updateLabels(){
+  const {a,b}=window.A;const ref=V(a/3,b/3,0);
+  placeAlong(L_a,V(0,0,0),V(a,0,0),ref,17,true);
+  placeAlong(L_b,V(0,0,0),V(0,b,0),ref,17,true);
+  placeAlong(L_c,V(a,0,0),V(0,b,0),ref,17,true);
+  place(L_a2,anc.a2,!showSplit);place(L_b2,anc.b2,!showSplit);place(L_c2,anc.c2,!showSplit);
+  place(L_sa,anc.sa,showSplit);place(L_sb,anc.sb,showSplit);
+  place(L_al,anc.al,showAngles);place(L_be,anc.be,showAngles);
+}
+
+/* ── DETAIL ── */
+const DETAIL_ALL={
+ru:{
+  a:{tag:'Катет',p:'Катет a — одна из двух сторон, образующих прямой угол. Катеты можно менять независимо; гипотенуза подстроится автоматически.'},
+  b:{tag:'Катет',p:'Катет b — вторая сторона прямого угла. Вместе с катетом a он однозначно задаёт прямоугольный треугольник.'},
+  c:{tag:'Гипотенуза',p:'Гипотенуза c — самая длинная сторона, лежащая напротив прямого угла. По теореме Пифагора c = √(a² + b²): её длина выводится из катетов.'},
+  a2:{tag:'Квадрат',p:'Это площадь квадрата, построенного на катете a. Она равна a². Синий квадрат на рисунке — наглядная «площадь» этого катета.'},
+  b2:{tag:'Квадрат',p:'Площадь квадрата на катете b, равная b². Зелёный квадрат на рисунке.'},
+  c2:{tag:'Главное равенство',p:'Площадь квадрата на гипотенузе c² в точности равна сумме a² + b². Включите «Разбить c²»: оранжевый квадрат делится высотой на два прямоугольника площадями ровно a² и b² — это и есть доказательство теоремы.'},
+  area:{tag:'Треугольник',p:'Площадь самого прямоугольного треугольника S = ½·a·b — половина произведения катетов, ведь они и есть основание и высота.'},
+},
+kz:{
+  a:{tag:'Катет',p:'Катет a — тік бұрыш құрайтын екі қабырғаның бірі. Катеттерді тәуелсіз өзгертуге болады; гипотенуза автоматты түрде бейімделеді.'},
+  b:{tag:'Катет',p:'Катет b — тік бұрыштың екінші қабырғасы. a катетімен бірге тікбұрышты үшбұрышты толық анықтайды.'},
+  c:{tag:'Гипотенуза',p:'Гипотенуза c — тік бұрышқа қарсы жатқан ең ұзын қабырға. Пифагор теоремасы бойынша c = √(a² + b²).'},
+  a2:{tag:'Шаршы',p:'Бұл a катетінде салынған шаршының ауданы, ол a²-ге тең. Суреттегі көк шаршы.'},
+  b2:{tag:'Шаршы',p:'b катетіндегі шаршының ауданы, b²-ге тең. Суреттегі жасыл шаршы.'},
+  c2:{tag:'Басты теңдік',p:'Гипотенузадағы шаршының ауданы c² дәл a² + b² қосындысына тең. «c² бөлуді» қосыңыз: қызғылт шаршы биіктікпен дәл a² және b² ауданды екі тіктөртбұрышқа бөлінеді.'},
+  area:{tag:'Үшбұрыш',p:'Тікбұрышты үшбұрыштың ауданы S = ½·a·b — катеттер көбейтіндісінің жартысы.'},
+},
+en:{
+  a:{tag:'Leg',p:'Leg a is one of the two sides forming the right angle. The legs can be changed independently; the hypotenuse adjusts automatically.'},
+  b:{tag:'Leg',p:'Leg b is the second side of the right angle. Together with leg a it fully defines the right triangle.'},
+  c:{tag:'Hypotenuse',p:'The hypotenuse c is the longest side, opposite the right angle. By the Pythagorean theorem c = √(a² + b²): its length follows from the legs.'},
+  a2:{tag:'Square',p:'This is the area of the square built on leg a, equal to a². The blue square is the visual "area" of that leg.'},
+  b2:{tag:'Square',p:'The area of the square on leg b, equal to b². The green square in the figure.'},
+  c2:{tag:'The key identity',p:'The area of the square on the hypotenuse c² exactly equals a² + b². Turn on "Split c²": the orange square is divided by the altitude into two rectangles of areas exactly a² and b² — that is the proof of the theorem.'},
+  area:{tag:'Triangle',p:'The area of the right triangle itself is S = ½·a·b — half the product of the legs, since they are the base and the height.'},
+}
+};
+const DETAIL=DETAIL_ALL[LANG]||DETAIL_ALL.ru;
+
+let savedSplit=false,savedAngles=false;
+function openDetail(key){
+  const d=DETAIL[key];if(!d)return;
+  const {a,b}=window.A,c=hyp(),m=METRICS.find(x=>x.key===key);
+  if(!document.getElementById('panel-left').classList.contains('detail')){savedSplit=showSplit;savedAngles=showAngles;}
+  document.querySelectorAll('.metric').forEach(el=>el.classList.toggle('active',el.dataset.key===key));
+  hiKey=key; applyHighlight();
+  if((key==='c2'||key==='c')&&!showSplit) window.toggleSplit();
+  const calc={
+    a:`a = ${f1(a)}`, b:`b = ${f1(b)}`,
+    c:`c = √(a² + b²)\n  = √(${f1(a*a)} + ${f1(b*b)}) = ${f2(c)}`,
+    a2:`a² = ${f1(a)}² = ${f2(a*a)}`,
+    b2:`b² = ${f1(b)}² = ${f2(b*b)}`,
+    c2:`c² = a² + b²\n  = ${f1(a*a)} + ${f1(b*b)} = ${f2(c*c)}`,
+    area:`S = ½·a·b = ½·${f1(a)}·${f1(b)} = ${f2(0.5*a*b)}`,
+  }[key];
+  document.getElementById('detail-content').innerHTML=`
+    <div class="d-tag">${d.tag}</div>
+    <div class="d-title">${tr(m.i)}</div>
+    <div class="d-bigval"><b>${f1(m.val())}</b><span>${tr(m.unit)}</span></div>
+    <div class="d-formula">${calc}</div>
+    <div class="d-para">${d.p}</div>`;
+  document.getElementById('panel-left').classList.add('detail');
+  currentDetail=key;markInteract();
+}
+let currentDetail=null;
+window.openDetail=openDetail;
+window.showList=function(){
+  document.getElementById('panel-left').classList.remove('detail');currentDetail=null;
+  document.querySelectorAll('.metric').forEach(m=>m.classList.remove('active'));
+  hiKey=null; applyHighlight();
+  if(showSplit!==savedSplit) window.toggleSplit();
+  if(showAngles!==savedAngles) window.toggleAngles();
+};
+
+/* ── CONTROLS ── */
+window.setDim=function(k,val){
+  window.A[k]=val;buildScene();updateMetricValues();
+  if(currentDetail) openDetail(currentDetail);
+  markInteract();
+};
+window.toggleSplit=function(){showSplit=!showSplit;document.getElementById('chip-split').classList.toggle('on',showSplit);if(splitGroup)splitGroup.visible=showSplit;markInteract();};
+window.toggleAngles=function(){showAngles=!showAngles;document.getElementById('chip-angles').classList.toggle('on',showAngles);if(angleGroup)angleGroup.visible=showAngles;markInteract();};
+
+/* ── RAYCAST ── */
+const ray=new THREE.Raycaster(),m2=new THREE.Vector2();
+function pick(e,objs){m2.x=(e.clientX/innerWidth)*2-1;m2.y=-(e.clientY/innerHeight)*2+1;ray.setFromCamera(m2,camera);return ray.intersectObjects(objs,false);}
+
+let mode=null,dragKey=null,dragFactor=1,pxVec=null,startVal=0,startMouse=null;
+let last={x:0,y:0},dd=0,isDragging=false,rotX=0.0;
+let lastInteract=performance.now()-11000,autoSpeed=0;const AUTO_TARGET=0.0011,IDLE_MS=15000;
+function markInteract(){lastInteract=performance.now();}
+function screenPxPerUnit(dirLocal){const o=project(V(0,0,0)),p=project(dirLocal);return {x:p.x-o.x,y:p.y-o.y};}
+
+canvas.addEventListener('mousedown',e=>{
+  markInteract();
+  const hHit=pick(e,handles.map(h=>h.mesh));
+  if(hHit.length>0){
+    const key=hHit[0].object.userData.handle,hd=handles.find(h=>h.key===key);
+    mode='handle';dragKey=key;dragFactor=hd.factor;startVal=window.A[key];startMouse={x:e.clientX,y:e.clientY};
+    pxVec=screenPxPerUnit(hd.dir);figFroze=true;canvas.style.cursor='grabbing';return;
+  }
+  mode='rotate';last={x:e.clientX,y:e.clientY};isDragging=false;dd=0;
+});
+canvas.addEventListener('mousemove',e=>{
+  if(mode==='handle'){
+    const mdx=e.clientX-startMouse.x,mdy=e.clientY-startMouse.y,denom=pxVec.x*pxVec.x+pxVec.y*pxVec.y;
+    if(denom>1){
+      const units=(mdx*pxVec.x+mdy*pxVec.y)/denom;
+      const nv=Math.max(1,Math.min(100,startVal+dragFactor*units));
+      window.A[dragKey]=Math.round(nv*2)/2;
+      buildScene();updateMetricValues();
+      document.getElementById('slider-'+dragKey).value=window.A[dragKey];
+      if(currentDetail)openDetail(currentDetail);
+    }
+    markInteract();return;
+  }
+  if(mode==='rotate'){
+    dd=Math.hypot(e.clientX-last.x,e.clientY-last.y);if(dd>4)isDragging=true;
+    if(isDragging){root.rotation.y+=(e.clientX-last.x)*0.010;rotX=Math.max(-1.2,Math.min(1.2,rotX+(e.clientY-last.y)*0.008));root.rotation.x=rotX;markInteract();}
+    last={x:e.clientX,y:e.clientY};return;
+  }
+  const hHit=pick(e,handles.map(h=>h.mesh));canvas.style.cursor=hHit.length>0?'grab':'default';
+});
+window.addEventListener('mouseup',()=>{
+  if(mode==='handle'){canvas.style.cursor='default';figFroze=false;figTarget.set(-(window.A.a/2),-(window.A.b/2),0);}
+  mode=null;dragKey=null;
+});
+
+canvas.addEventListener('click',e=>{
+  if(isDragging||mode==='handle')return;
+  // legs first (thin lines, with invisible thick hit-areas)
+  const legHit=pick(e,legProxies);
+  if(legHit.length>0){openDetail(legHit[0].object.userData.leg);markInteract();return;}
+  const sq=layerGroup?layerGroup.children.filter(o=>o.geometry):[];
+  const hit=pick(e,sq);
+  if(hit.length>0){
+    const idx=layerGroup.children.indexOf(hit[0].object);
+    openDetail(idx===0?'a2':idx===1?'b2':idx===2?'c2':'area');
+  }
+  markInteract();
+});
+canvas.addEventListener('wheel',e=>{e.preventDefault();userZoom=Math.max(0.6,Math.min(1.7,userZoom+e.deltaY*0.0015));markInteract();},{passive:false});
+window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+
+/* ── LOOP ── */
+let t=0;
+function animate(){
+  requestAnimationFrame(animate);t+=0.016;
+  const idle=performance.now()-lastInteract;
+  if(idle>IDLE_MS)autoSpeed+=(AUTO_TARGET-autoSpeed)*0.025;else autoSpeed+=(0-autoSpeed)*0.18;
+  root.rotation.y+=autoSpeed;root.rotation.x=rotX;
+  fig.position.lerp(figTarget,0.2);
+  if(mode!=='handle'){camDistTarget=computeCamTarget();}
+  camDist+=(camDistTarget-camDist)*0.18;applyCamera();
+  const pulse=idle>IDLE_MS?(1+Math.sin(t*2.2)*0.11):1;
+  handles.forEach(h=>h.mesh.scale.setScalar(pulse));
+  renderer.render(scene,camera);
+  obj.updateWorldMatrix(true,false);
+  updateLabels();
+}
+
+root.rotation.x=rotX;
+buildScene();updateMetricValues();
+figTarget.set(-(window.A.a/2),-(window.A.b/2),0);fig.position.copy(figTarget);
+camDistTarget=computeCamTarget();camDist=camDistTarget;applyCamera();
+animate();
+</script>
+</body>
+</html>

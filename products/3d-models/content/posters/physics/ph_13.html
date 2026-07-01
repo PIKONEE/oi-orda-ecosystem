@@ -1,0 +1,1645 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Звуковые волны — Резонанс в трубе</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #1a1a2e 100%);
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 20px 30px;
+            background: linear-gradient(180deg, rgba(0,0,0,0.8) 0%, transparent 100%);
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .header h1 {
+            color: white;
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .header p {
+            color: rgba(255,255,255,0.6);
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        .control-panel {
+            position: absolute;
+            top: 100px;
+            left: 20px;
+            width: 300px;
+            background: rgba(10, 15, 30, 0.95);
+            
+            border-radius: 16px;
+            padding: 20px;
+            z-index: 10;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .freq-display {
+            text-align: center;
+            padding: 20px;
+            background: rgba(30, 30, 50, 0.5);
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border: 2px solid rgba(100,100,120,0.3);
+            transition: all 0.3s;
+        }
+
+        .freq-display.playing {
+            background: rgba(76,175,80,0.15);
+            border-color: #4caf50;
+            box-shadow: 0 0 30px rgba(76,175,80,0.3);
+        }
+
+        .freq-label {
+            color: rgba(255,255,255,0.5);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .freq-value {
+            font-size: 48px;
+            font-weight: 700;
+            font-family: 'Consolas', monospace;
+            color: #ce93d8;
+            line-height: 1.2;
+            transition: color 0.3s;
+        }
+
+        .freq-display.playing .freq-value {
+            color: #81c784;
+        }
+
+        .freq-unit {
+            font-size: 18px;
+            color: rgba(255,255,255,0.4);
+        }
+
+        .note-name {
+            color: #ffb74d;
+            font-size: 14px;
+            margin-top: 5px;
+            font-weight: 600;
+        }
+
+        .playing-status {
+            margin-top: 12px;
+            padding: 8px 16px;
+            background: rgba(244,67,54,0.2);
+            border-radius: 20px;
+            color: #ef5350;
+            font-size: 12px;
+            font-weight: 600;
+            display: none;
+        }
+
+        .freq-display.playing .playing-status {
+            display: inline-block;
+            background: rgba(76,175,80,0.2);
+            color: #81c784;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .pipe-type-selector {
+            display: flex;
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            padding: 4px;
+            margin-bottom: 20px;
+        }
+
+        .pipe-btn {
+            flex: 1;
+            padding: 12px 8px;
+            border: none;
+            border-radius: 8px;
+            background: transparent;
+            color: rgba(255,255,255,0.5);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+        }
+
+        .pipe-btn.active {
+            background: rgba(156,39,176,0.3);
+            color: #ce93d8;
+        }
+
+        .pipe-btn:hover:not(.active) {
+            background: rgba(255,255,255,0.08);
+        }
+
+        .section-title {
+            color: rgba(255,255,255,0.4);
+            font-size: 10px;
+            font-weight: 600;
+            margin: 20px 0 12px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+        }
+
+        .harmonic-selector {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .harmonic-btn {
+            flex: 1;
+            padding: 14px 8px;
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            background: rgba(255,255,255,0.03);
+            color: rgba(255,255,255,0.6);
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .harmonic-btn:hover {
+            border-color: rgba(156,39,176,0.3);
+        }
+
+        .harmonic-btn.active {
+            border-color: #ce93d8;
+            background: rgba(156,39,176,0.2);
+            color: #ce93d8;
+        }
+
+        .harmonic-btn span {
+            display: block;
+            font-size: 9px;
+            font-weight: 400;
+            margin-top: 3px;
+            opacity: 0.6;
+        }
+
+        .param-group {
+            margin-bottom: 16px;
+        }
+
+        .param-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .param-name {
+            color: rgba(255,255,255,0.85);
+            font-size: 13px;
+        }
+
+        .param-value {
+            color: #4fc3f7;
+            font-size: 14px;
+            font-weight: 700;
+            font-family: 'Consolas', monospace;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            -webkit-appearance: none;
+            background: rgba(255,255,255,0.1);
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #ce93d8;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(156,39,176,0.5);
+        }
+
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 12px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+
+        .toggle-row label {
+            color: rgba(255,255,255,0.8);
+            font-size: 12px;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 36px;
+            height: 20px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            inset: 0;
+            background: rgba(255,255,255,0.15);
+            border-radius: 20px;
+            transition: 0.3s;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 14px;
+            width: 14px;
+            left: 3px;
+            bottom: 3px;
+            background: white;
+            border-radius: 50%;
+            transition: 0.3s;
+        }
+
+        .toggle-switch input:checked + .toggle-slider {
+            background: #ce93d8;
+        }
+
+        .toggle-switch input:checked + .toggle-slider:before {
+            transform: translateX(16px);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 16px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 16px;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-play {
+            background: linear-gradient(135deg, #4caf50, #388e3c);
+            color: white;
+            box-shadow: 0 4px 20px rgba(76,175,80,0.4);
+        }
+
+        .btn-play:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(76,175,80,0.5);
+        }
+
+        .btn-play.playing {
+            background: linear-gradient(135deg, #f44336, #c62828);
+            box-shadow: 0 4px 20px rgba(244,67,54,0.4);
+        }
+
+        .btn-reset {
+            flex: 0.5;
+            background: rgba(255,255,255,0.08);
+            color: rgba(255,255,255,0.7);
+        }
+
+        /* Info Panel */
+        .info-panel {
+            position: absolute;
+            top: 100px;
+            right: 20px;
+            width: 280px;
+            background: rgba(10, 15, 30, 0.95);
+            
+            border-radius: 16px;
+            padding: 20px;
+            z-index: 10;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .info-title {
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 14px;
+        }
+
+        .wave-diagram {
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            padding: 16px;
+            margin-bottom: 14px;
+        }
+
+        .diagram-title {
+            color: rgba(255,255,255,0.5);
+            font-size: 10px;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .diagram-canvas {
+            width: 100%;
+            height: 80px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 6px;
+        }
+
+        .physics-box {
+            background: rgba(255,255,255,0.03);
+            border-radius: 10px;
+            padding: 14px;
+            margin-bottom: 10px;
+        }
+
+        .physics-title {
+            color: #ce93d8;
+            font-size: 11px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .physics-text {
+            color: rgba(255,255,255,0.65);
+            font-size: 11px;
+            line-height: 1.5;
+        }
+
+        .formula-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .formula-row:last-child {
+            border-bottom: none;
+        }
+
+        .formula-name {
+            color: rgba(255,255,255,0.6);
+            font-size: 11px;
+        }
+
+        .formula-value {
+            font-family: 'Times New Roman', serif;
+            font-size: 14px;
+            color: white;
+        }
+
+        .formula-value .highlight { color: #ce93d8; }
+        .formula-value .blue { color: #4fc3f7; }
+
+        /* Stats bar */
+        .stats-bar {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(10, 15, 30, 0.95);
+            border-radius: 12px;
+            padding: 14px 24px;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 20px;
+            font-weight: 700;
+            font-family: 'Consolas', monospace;
+        }
+
+        .stat-value.wavelength { color: #4fc3f7; }
+        .stat-value.velocity { color: #66bb6a; }
+        .stat-value.nodes { color: #ffb74d; }
+
+        .stat-label {
+            font-size: 10px;
+            color: rgba(255,255,255,0.5);
+            margin-top: 2px;
+        }
+
+        .stat-divider {
+            width: 1px;
+            height: 35px;
+            background: rgba(255,255,255,0.1);
+        }
+
+        .hint {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            color: rgba(255,255,255,0.3);
+            font-size: 11px;
+            z-index: 5;
+        }
+
+        .legend {
+            position: absolute;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(10, 15, 30, 0.9);
+            border-radius: 10px;
+            padding: 10px 16px;
+            display: flex;
+            gap: 20px;
+            font-size: 11px;
+            z-index: 10;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: rgba(255,255,255,0.7);
+        }
+
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .legend-dot.particle { background: #64b5f6; }
+        .legend-dot.node { background: #2196f3; border: 2px solid #2196f3; background: transparent; }
+        .legend-dot.antinode { background: #ff9800; }
+    </style>
+</head>
+<body>
+
+    <div id="canvas-container"></div>
+
+    <div class="header">
+        <h1>🔊 Звуковые волны</h1>
+        <p><span>Стоячие волны • Резонанс в трубе • Гармоники</span></p>
+    </div>
+
+    <div class="control-panel">
+        <div class="freq-display" id="freq-display-box">
+            <div class="freq-label">Резонансная частота</div>
+            <div class="freq-value" id="freq-display">220</div>
+            <div class="freq-unit">Гц</div>
+            <div class="note-name" id="note-name">Нота Ля (A3)</div>
+            <div class="playing-status">🔊 ВОСПРОИЗВОДИТСЯ</div>
+        </div>
+
+        <div class="pipe-type-selector">
+            <button class="pipe-btn active" data-type="open">Открытая труба</button>
+            <button class="pipe-btn" data-type="closed">Закрытая труба</button>
+        </div>
+
+        <div class="section-title">Гармоника</div>
+        <div class="harmonic-selector" id="harmonic-selector">
+            <button class="harmonic-btn active" data-n="1">1<span>основная</span></button>
+            <button class="harmonic-btn" data-n="2">2<span>вторая</span></button>
+            <button class="harmonic-btn" data-n="3">3<span>третья</span></button>
+        </div>
+
+        <div class="section-title">Параметры</div>
+
+        <div class="param-group">
+            <div class="param-header">
+                <span class="param-name">Длина трубы L</span>
+                <span class="param-value" id="length-value">0.78 м</span>
+            </div>
+            <input type="range" id="length-slider" min="0.3" max="2" step="0.01" value="0.78">
+        </div>
+
+        <div class="section-title">Отображение</div>
+
+        <div class="toggle-row">
+            <label>Частицы воздуха</label>
+            <label class="toggle-switch">
+                <input type="checkbox" id="toggle-particles" checked>
+                <span class="toggle-slider"></span>
+            </label>
+        </div>
+
+        <div class="toggle-row">
+            <label>Узлы и пучности</label>
+            <label class="toggle-switch">
+                <input type="checkbox" id="toggle-nodes" checked>
+                <span class="toggle-slider"></span>
+            </label>
+        </div>
+
+        <div class="btn-group">
+            <button class="btn btn-play" id="btn-play">🔊 Воспроизвести звук</button>
+            <button class="btn btn-reset" id="btn-reset">↺</button>
+        </div>
+    </div>
+
+    <div class="info-panel">
+        <div class="info-title">Физика стоячих волн</div>
+
+        <div class="wave-diagram">
+            <div class="diagram-title">Форма стоячей волны (огибающая)</div>
+            <canvas class="diagram-canvas" id="wave-canvas"></canvas>
+        </div>
+
+        <div class="physics-box">
+            <div class="physics-title" id="pipe-type-title">Открытая труба</div>
+            <div class="physics-text" id="pipe-description">
+                Оба конца — пучности смещения. Все гармоники: n = 1, 2, 3...
+            </div>
+        </div>
+
+        <div class="physics-box">
+            <div class="physics-title">Формулы</div>
+            <div class="formula-row">
+                <span class="formula-name">Длина волны</span>
+                <span class="formula-value" id="formula-wavelength">λ = <span class="highlight">2L</span>/n</span>
+            </div>
+            <div class="formula-row">
+                <span class="formula-name">Частота</span>
+                <span class="formula-value">f = <span class="blue">v</span>/λ</span>
+            </div>
+            <div class="formula-row">
+                <span class="formula-name">Скорость звука</span>
+                <span class="formula-value">v = 343 м/с</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item">
+            <div class="legend-dot particle"></div>
+            <span>Частицы воздуха</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-dot node"></div>
+            <span>Узел</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-dot antinode"></div>
+            <span>Пучность</span>
+        </div>
+    </div>
+
+    <div class="stats-bar">
+        <div class="stat-item">
+            <div class="stat-value wavelength" id="stat-wavelength">1.56</div>
+            <div class="stat-label">Длина волны λ (м)</div>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+            <div class="stat-value velocity">343</div>
+            <div class="stat-label">Скорость v (м/с)</div>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+            <div class="stat-value nodes" id="stat-nodes">1</div>
+            <div class="stat-label">Число узлов</div>
+        </div>
+    </div>
+
+    <div class="hint">ЛКМ — вращение • ПКМ — перемещение • Колёсико — зум</div>
+
+    <script src="../../libs/vendor/three-r128/three.min.js"></script>
+    <script>
+        // Constants
+        const SOUND_VELOCITY = 343;
+
+        // Parameters
+        let pipeType = 'open';
+        let harmonic = 1;
+        let pipeLength = 0.78;
+        let showParticles = true;
+        let showNodes = true;
+        let isPlaying = false;
+
+        // Audio
+        let audioContext = null;
+        let oscillator = null;
+        let gainNode = null;
+
+        // Simulation - VERY SLOW for clarity
+        let time = 0;
+        const VISUAL_PERIOD = 3.0; // 3 seconds per oscillation
+
+        // Three.js
+        let scene, camera, renderer, mainGroup;
+        let pipe, particleRows, nodeMarkers;
+        let speaker, speakerCone, speakerGlow;
+        let soundWaves = [];
+
+        // Controls
+        let isDragging = false;
+        let isPanning = false;
+        let lastMouse = { x: 0, y: 0 };
+        let rotation = { x: 0.1, y: -0.15 };
+        let pan = { x: 0, y: 0 };
+
+        const container = document.getElementById('canvas-container');
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color('#0d1520');
+
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 2, 10);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            container.appendChild(renderer.domElement);
+
+            // Lighting
+            scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+
+            const light1 = new THREE.DirectionalLight(0xffffff, 0.6);
+            light1.position.set(5, 8, 5);
+            scene.add(light1);
+
+            mainGroup = new THREE.Group();
+            scene.add(mainGroup);
+
+            createPipe();
+            createSpeaker();
+            createParticles();
+            createNodeMarkers();
+
+            setupControls();
+            updatePhysics();
+            drawWaveDiagram();
+            animate();
+        }
+
+        function createPipe() {
+            if (pipe) mainGroup.remove(pipe);
+
+            pipe = new THREE.Group();
+
+            const pipeRadius = 0.4;
+            const pipeScale = 4;
+            const visualLength = pipeLength * pipeScale;
+
+            // Main pipe body (transparent)
+            const pipeGeom = new THREE.CylinderGeometry(pipeRadius, pipeRadius, visualLength, 32, 1, true);
+            const pipeMat = new THREE.MeshPhysicalMaterial({
+                color: 0x4fc3f7,
+                transparent: true,
+                opacity: 0.08,
+                roughness: 0.1,
+                side: THREE.DoubleSide
+            });
+            const pipeBody = new THREE.Mesh(pipeGeom, pipeMat);
+            pipeBody.rotation.z = Math.PI / 2;
+            pipe.add(pipeBody);
+
+            // Pipe edges
+            const edgeMat = new THREE.MeshStandardMaterial({ color: 0x90caf9, metalness: 0.5 });
+
+            const leftEdge = new THREE.Mesh(
+                new THREE.TorusGeometry(pipeRadius, 0.03, 16, 32),
+                edgeMat
+            );
+            leftEdge.rotation.y = Math.PI / 2;
+            leftEdge.position.x = -visualLength / 2;
+            pipe.add(leftEdge);
+
+            const rightEdge = new THREE.Mesh(
+                new THREE.TorusGeometry(pipeRadius, 0.03, 16, 32),
+                edgeMat
+            );
+            rightEdge.rotation.y = Math.PI / 2;
+            rightEdge.position.x = visualLength / 2;
+            pipe.add(rightEdge);
+
+            // Closed end cap
+            if (pipeType === 'closed') {
+                const cap = new THREE.Mesh(
+                    new THREE.CircleGeometry(pipeRadius - 0.02, 32),
+                    new THREE.MeshStandardMaterial({ color: 0x546e7a, side: THREE.DoubleSide })
+                );
+                cap.rotation.y = Math.PI / 2;
+                cap.position.x = visualLength / 2;
+                pipe.add(cap);
+            }
+
+            // Stands
+            const standMat = new THREE.MeshStandardMaterial({ color: 0x37474f });
+            [-visualLength / 3, visualLength / 3].forEach(x => {
+                const stand = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.05, 0.07, 0.8, 16),
+                    standMat
+                );
+                stand.position.set(x, -pipeRadius - 0.4, 0);
+                pipe.add(stand);
+            });
+
+            pipe.visualLength = visualLength;
+            pipe.pipeRadius = pipeRadius;
+            mainGroup.add(pipe);
+        }
+
+        function createSpeaker() {
+            if (speaker) mainGroup.remove(speaker);
+
+            speaker = new THREE.Group();
+
+            const visualLength = pipeLength * 4;
+
+            // Speaker body
+            const body = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.5, 0.55, 0.3, 32),
+                new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.8 })
+            );
+            body.rotation.z = Math.PI / 2;
+            speaker.add(body);
+
+            // Speaker cone (animates)
+            speakerCone = new THREE.Group();
+            
+            const cone = new THREE.Mesh(
+                new THREE.ConeGeometry(0.35, 0.15, 32),
+                new THREE.MeshStandardMaterial({ color: 0x333333 })
+            );
+            cone.rotation.z = -Math.PI / 2;
+            speakerCone.add(cone);
+
+            const dustCap = new THREE.Mesh(
+                new THREE.SphereGeometry(0.1, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2),
+                new THREE.MeshStandardMaterial({ color: 0x222222 })
+            );
+            dustCap.rotation.z = -Math.PI / 2;
+            dustCap.position.x = 0.08;
+            speakerCone.add(dustCap);
+
+            speakerCone.position.x = 0.12;
+            speaker.add(speakerCone);
+
+            // Rim
+            const rim = new THREE.Mesh(
+                new THREE.TorusGeometry(0.42, 0.04, 8, 32),
+                new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.6 })
+            );
+            rim.rotation.y = Math.PI / 2;
+            rim.position.x = 0.1;
+            speaker.add(rim);
+
+            // Glow ring (visible when playing)
+            speakerGlow = new THREE.Mesh(
+                new THREE.TorusGeometry(0.48, 0.03, 8, 32),
+                new THREE.MeshBasicMaterial({ color: 0x4caf50, transparent: true, opacity: 0 })
+            );
+            speakerGlow.rotation.y = Math.PI / 2;
+            speakerGlow.position.x = 0.1;
+            speaker.add(speakerGlow);
+
+            speaker.position.x = -visualLength / 2 - 0.5;
+            mainGroup.add(speaker);
+        }
+
+        function createParticles() {
+            if (particleRows) mainGroup.remove(particleRows);
+
+            particleRows = new THREE.Group();
+
+            const visualLength = pipeLength * 4;
+            const pipeRadius = 0.35;
+            const numRows = 25; // Vertical slices
+            const particlesPerRow = 15;
+
+            for (let i = 0; i < numRows; i++) {
+                const normalizedX = (i + 0.5) / numRows;
+                const baseX = -visualLength / 2 + normalizedX * visualLength;
+
+                const row = new THREE.Group();
+                row.userData = { baseX, normalizedX };
+
+                for (let j = 0; j < particlesPerRow; j++) {
+                    const r = pipeRadius * 0.8 * Math.sqrt(Math.random());
+                    const theta = Math.random() * Math.PI * 2;
+
+                    const particle = new THREE.Mesh(
+                        new THREE.SphereGeometry(0.045, 10, 10),
+                        new THREE.MeshStandardMaterial({ 
+                            color: 0x64b5f6,
+                            emissive: 0x64b5f6,
+                            emissiveIntensity: 0.15
+                        })
+                    );
+
+                    particle.position.set(0, r * Math.cos(theta), r * Math.sin(theta));
+                    row.add(particle);
+                }
+
+                row.position.x = baseX;
+                particleRows.add(row);
+            }
+
+            mainGroup.add(particleRows);
+        }
+
+        function createNodeMarkers() {
+            if (nodeMarkers) mainGroup.remove(nodeMarkers);
+            nodeMarkers = new THREE.Group();
+            mainGroup.add(nodeMarkers);
+            updateNodeMarkers();
+        }
+
+        function updateNodeMarkers() {
+            while (nodeMarkers.children.length > 0) {
+                nodeMarkers.remove(nodeMarkers.children[0]);
+            }
+
+            if (!showNodes) return;
+
+            const visualLength = pipeLength * 4;
+            const pipeRadius = 0.4;
+            const positions = getNodePositions();
+
+            // Nodes - blue rings
+            positions.nodes.forEach(pos => {
+                const x = -visualLength / 2 + pos * visualLength;
+                
+                const ring = new THREE.Mesh(
+                    new THREE.TorusGeometry(pipeRadius + 0.08, 0.025, 8, 32),
+                    new THREE.MeshBasicMaterial({ color: 0x2196f3 })
+                );
+                ring.rotation.y = Math.PI / 2;
+                ring.position.x = x;
+                nodeMarkers.add(ring);
+            });
+
+            // Antinodes - orange rings
+            positions.antinodes.forEach(pos => {
+                const x = -visualLength / 2 + pos * visualLength;
+
+                const ring = new THREE.Mesh(
+                    new THREE.TorusGeometry(pipeRadius + 0.08, 0.035, 8, 32),
+                    new THREE.MeshBasicMaterial({ color: 0xff9800 })
+                );
+                ring.rotation.y = Math.PI / 2;
+                ring.position.x = x;
+                nodeMarkers.add(ring);
+            });
+        }
+
+        function getNodePositions() {
+            const nodes = [];
+            const antinodes = [];
+
+            if (pipeType === 'open') {
+                for (let i = 0; i <= harmonic; i++) {
+                    antinodes.push(i / harmonic);
+                }
+                for (let i = 0; i < harmonic; i++) {
+                    nodes.push((i + 0.5) / harmonic);
+                }
+            } else {
+                const effectiveN = 2 * harmonic - 1;
+                antinodes.push(0);
+                for (let i = 1; i <= effectiveN; i++) {
+                    const pos = i / effectiveN;
+                    if (i % 2 === 1) nodes.push(pos);
+                    else antinodes.push(pos);
+                }
+            }
+
+            return { nodes, antinodes };
+        }
+
+        function getFrequency() {
+            if (pipeType === 'open') {
+                return harmonic * SOUND_VELOCITY / (2 * pipeLength);
+            } else {
+                const effectiveN = 2 * harmonic - 1;
+                return effectiveN * SOUND_VELOCITY / (4 * pipeLength);
+            }
+        }
+
+        function getNoteName(freq) {
+            const noteNamesRu = ['До', 'До#', 'Ре', 'Ре#', 'Ми', 'Фа', 'Фа#', 'Соль', 'Соль#', 'Ля', 'Ля#', 'Си'];
+            const semitones = Math.round(12 * Math.log2(freq / 440));
+            const noteIndex = ((semitones % 12) + 12 + 9) % 12;
+            const octave = Math.floor((semitones + 9) / 12) + 4;
+            return `Нота ${noteNamesRu[noteIndex]} (${['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'][noteIndex]}${octave})`;
+        }
+
+        function updatePhysics() {
+            const freq = getFrequency();
+            const wavelength = SOUND_VELOCITY / freq;
+
+            document.getElementById('freq-display').textContent = Math.round(freq);
+            document.getElementById('note-name').textContent = getNoteName(freq);
+            document.getElementById('stat-wavelength').textContent = wavelength.toFixed(2);
+            document.getElementById('stat-nodes').textContent = getNodePositions().nodes.length;
+            document.getElementById('length-value').textContent = pipeLength.toFixed(2) + ' м';
+
+            if (pipeType === 'open') {
+                document.getElementById('pipe-type-title').textContent = 'Открытая труба';
+                document.getElementById('pipe-description').textContent = 
+                    'Оба конца — пучности. Все гармоники: n = 1, 2, 3...';
+                document.getElementById('formula-wavelength').innerHTML = 
+                    'λ = <span class="highlight">2L</span>/n';
+            } else {
+                document.getElementById('pipe-type-title').textContent = 'Закрытая труба';
+                document.getElementById('pipe-description').textContent = 
+                    'Закрытый конец — узел. Только нечётные: n = 1, 3, 5...';
+                document.getElementById('formula-wavelength').innerHTML = 
+                    'λ = <span class="highlight">4L</span>/(2n−1)';
+            }
+
+            createPipe();
+            createSpeaker();
+            createParticles();
+            updateNodeMarkers();
+            drawWaveDiagram();
+
+            if (isPlaying && oscillator) {
+                oscillator.frequency.setValueAtTime(freq, audioContext.currentTime);
+            }
+        }
+
+        function updateParticles() {
+            if (!showParticles) {
+                particleRows.visible = false;
+                return;
+            }
+            particleRows.visible = true;
+
+            // SLOW oscillation: one full cycle per VISUAL_PERIOD seconds
+            const phase = (time / VISUAL_PERIOD) * Math.PI * 2;
+            const sinPhase = Math.sin(phase);
+
+            particleRows.children.forEach(row => {
+                const normX = row.userData.normalizedX;
+                let envelope = 0;
+
+                if (pipeType === 'open') {
+                    // Antinodes at ends (x=0 and x=1), nodes in between
+                    envelope = Math.cos(harmonic * Math.PI * normX);
+                } else {
+                    const effectiveN = 2 * harmonic - 1;
+                    envelope = Math.cos(effectiveN * Math.PI * normX / 2);
+                }
+
+                // Displacement: envelope * sin(phase)
+                const displacement = envelope * sinPhase * 0.35;
+
+                row.position.x = row.userData.baseX + displacement;
+
+                // Color intensity based on movement
+                const intensity = Math.abs(envelope);
+                row.children.forEach(p => {
+                    p.material.emissiveIntensity = 0.1 + intensity * 0.3;
+                });
+            });
+        }
+
+        function updateSpeaker() {
+            if (!speakerCone) return;
+
+            const phase = (time / VISUAL_PERIOD) * Math.PI * 2;
+            const displacement = Math.sin(phase) * 0.08;
+
+            speakerCone.position.x = 0.12 + displacement;
+
+            // Glow when playing
+            if (speakerGlow) {
+                if (isPlaying) {
+                    speakerGlow.material.opacity = 0.5 + Math.sin(phase) * 0.3;
+                    speakerGlow.scale.setScalar(1 + Math.sin(phase * 2) * 0.05);
+                } else {
+                    speakerGlow.material.opacity = 0;
+                }
+            }
+        }
+
+        function updateSoundWaves() {
+            const visualLength = pipeLength * 4;
+            const speakerX = -visualLength / 2 - 0.5;
+
+            // Remove old waves
+            soundWaves = soundWaves.filter(wave => {
+                if (wave.userData.age > 2) {
+                    mainGroup.remove(wave);
+                    return false;
+                }
+                return true;
+            });
+
+            // Add new wave when playing
+            if (isPlaying && Math.random() < 0.03) {
+                const wave = new THREE.Mesh(
+                    new THREE.TorusGeometry(0.5, 0.02, 8, 32),
+                    new THREE.MeshBasicMaterial({ 
+                        color: 0x4caf50, 
+                        transparent: true, 
+                        opacity: 0.6 
+                    })
+                );
+                wave.rotation.y = Math.PI / 2;
+                wave.position.x = speakerX + 0.3;
+                wave.userData = { age: 0 };
+                soundWaves.push(wave);
+                mainGroup.add(wave);
+            }
+
+            // Animate waves
+            soundWaves.forEach(wave => {
+                wave.userData.age += 0.016;
+                const scale = 1 + wave.userData.age * 0.8;
+                wave.scale.set(scale, scale, 1);
+                wave.position.x += 0.02;
+                wave.material.opacity = Math.max(0, 0.6 - wave.userData.age * 0.3);
+            });
+        }
+
+        function drawWaveDiagram() {
+            const canvas = document.getElementById('wave-canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = canvas.offsetWidth * 2;
+            canvas.height = canvas.offsetHeight * 2;
+            ctx.scale(2, 2);
+
+            const w = canvas.offsetWidth;
+            const h = canvas.offsetHeight;
+
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            ctx.fillRect(0, 0, w, h);
+
+            const padding = 20;
+            const waveWidth = w - padding * 2;
+
+            // Draw envelope
+            ctx.strokeStyle = '#ce93d8';
+            ctx.lineWidth = 2.5;
+
+            // Upper envelope
+            ctx.beginPath();
+            for (let i = 0; i <= waveWidth; i++) {
+                const normX = i / waveWidth;
+                let envelope;
+
+                if (pipeType === 'open') {
+                    envelope = Math.abs(Math.cos(harmonic * Math.PI * normX));
+                } else {
+                    const effectiveN = 2 * harmonic - 1;
+                    envelope = Math.abs(Math.cos(effectiveN * Math.PI * normX / 2));
+                }
+
+                const y = h / 2 - envelope * (h / 2 - 15);
+                if (i === 0) ctx.moveTo(padding + i, y);
+                else ctx.lineTo(padding + i, y);
+            }
+            ctx.stroke();
+
+            // Lower envelope
+            ctx.beginPath();
+            for (let i = 0; i <= waveWidth; i++) {
+                const normX = i / waveWidth;
+                let envelope;
+
+                if (pipeType === 'open') {
+                    envelope = Math.abs(Math.cos(harmonic * Math.PI * normX));
+                } else {
+                    const effectiveN = 2 * harmonic - 1;
+                    envelope = Math.abs(Math.cos(effectiveN * Math.PI * normX / 2));
+                }
+
+                const y = h / 2 + envelope * (h / 2 - 15);
+                if (i === 0) ctx.moveTo(padding + i, y);
+                else ctx.lineTo(padding + i, y);
+            }
+            ctx.stroke();
+
+            // Center line
+            ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(padding, h / 2);
+            ctx.lineTo(w - padding, h / 2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // End markers
+            ctx.strokeStyle = '#4fc3f7';
+            ctx.lineWidth = 3;
+
+            ctx.beginPath();
+            ctx.moveTo(padding, 10);
+            ctx.lineTo(padding, h - 10);
+            ctx.stroke();
+
+            if (pipeType === 'closed') {
+                ctx.fillStyle = '#546e7a';
+                ctx.fillRect(w - padding - 5, 10, 10, h - 20);
+            } else {
+                ctx.beginPath();
+                ctx.moveTo(w - padding, 10);
+                ctx.lineTo(w - padding, h - 10);
+                ctx.stroke();
+            }
+        }
+
+        function startAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+
+            if (oscillator) {
+                oscillator.stop();
+            }
+
+            oscillator = audioContext.createOscillator();
+            gainNode = audioContext.createGain();
+
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(getFrequency(), audioContext.currentTime);
+            gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            oscillator.start();
+            isPlaying = true;
+
+            document.getElementById('btn-play').textContent = '🔇 Остановить звук';
+            document.getElementById('btn-play').classList.add('playing');
+            document.getElementById('freq-display-box').classList.add('playing');
+        }
+
+        function stopAudio() {
+            if (oscillator) {
+                oscillator.stop();
+                oscillator = null;
+            }
+            isPlaying = false;
+
+            document.getElementById('btn-play').textContent = '🔊 Воспроизвести звук';
+            document.getElementById('btn-play').classList.remove('playing');
+            document.getElementById('freq-display-box').classList.remove('playing');
+
+            // Clear sound waves
+            soundWaves.forEach(wave => mainGroup.remove(wave));
+            soundWaves = [];
+        }
+
+        function setupControls() {
+            // Pipe type
+            document.querySelectorAll('.pipe-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.pipe-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    pipeType = btn.dataset.type;
+                    harmonic = 1;
+                    updateHarmonicButtons();
+                    updatePhysics();
+                });
+            });
+
+            // Length slider
+            document.getElementById('length-slider').addEventListener('input', (e) => {
+                pipeLength = parseFloat(e.target.value);
+                updatePhysics();
+            });
+
+            // Toggles
+            document.getElementById('toggle-particles').addEventListener('change', (e) => {
+                showParticles = e.target.checked;
+            });
+
+            document.getElementById('toggle-nodes').addEventListener('change', (e) => {
+                showNodes = e.target.checked;
+                updateNodeMarkers();
+            });
+
+            // Play button
+            document.getElementById('btn-play').addEventListener('click', () => {
+                if (isPlaying) stopAudio();
+                else startAudio();
+            });
+
+            // Reset
+            document.getElementById('btn-reset').addEventListener('click', () => {
+                stopAudio();
+                pipeType = 'open';
+                harmonic = 1;
+                pipeLength = 0.78;
+                showParticles = true;
+                showNodes = true;
+                rotation = { x: 0.1, y: -0.15 };
+                pan = { x: 0, y: 0 };
+
+                document.querySelectorAll('.pipe-btn').forEach(b => b.classList.remove('active'));
+                document.querySelector('.pipe-btn[data-type="open"]').classList.add('active');
+
+                document.getElementById('length-slider').value = 0.78;
+                document.getElementById('toggle-particles').checked = true;
+                document.getElementById('toggle-nodes').checked = true;
+
+                mainGroup.position.set(0, 0, 0);
+                camera.position.z = 10;
+
+                updateHarmonicButtons();
+                updatePhysics();
+            });
+
+            // Mouse controls
+            renderer.domElement.addEventListener('contextmenu', e => e.preventDefault());
+
+            renderer.domElement.addEventListener('mousedown', (e) => {
+                if (e.button === 0) isDragging = true;
+                else if (e.button === 2) isPanning = true;
+                lastMouse = { x: e.clientX, y: e.clientY };
+            });
+
+            renderer.domElement.addEventListener('mousemove', (e) => {
+                const dx = e.clientX - lastMouse.x;
+                const dy = e.clientY - lastMouse.y;
+
+                if (isDragging) {
+                    rotation.y += dx * 0.005;
+                    rotation.x += dy * 0.005;
+                    rotation.x = Math.max(-0.2, Math.min(0.5, rotation.x));
+                }
+
+                if (isPanning) {
+                    pan.x -= dx * 0.01;
+                    pan.y += dy * 0.01;
+                    mainGroup.position.x = pan.x;
+                    mainGroup.position.y = pan.y;
+                }
+
+                lastMouse = { x: e.clientX, y: e.clientY };
+            });
+
+            renderer.domElement.addEventListener('mouseup', () => {
+                isDragging = false;
+                isPanning = false;
+            });
+
+            renderer.domElement.addEventListener('mouseleave', () => {
+                isDragging = false;
+                isPanning = false;
+            });
+
+            renderer.domElement.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                camera.position.z = Math.max(5, Math.min(18, camera.position.z + e.deltaY * 0.01));
+            }, { passive: false });
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                drawWaveDiagram();
+            });
+        }
+
+        function updateHarmonicButtons() {
+            const container = document.getElementById('harmonic-selector');
+            container.innerHTML = '';
+
+            const labels = pipeType === 'open' 
+                ? [['1', 'основная'], ['2', 'вторая'], ['3', 'третья']]
+                : [['1', 'n=1'], ['2', 'n=3'], ['3', 'n=5']];
+
+            labels.forEach((label, i) => {
+                const btn = document.createElement('button');
+                btn.className = 'harmonic-btn' + (i === 0 ? ' active' : '');
+                btn.dataset.n = i + 1;
+                btn.innerHTML = `${label[0]}<span>${label[1]}</span>`;
+                btn.addEventListener('click', () => {
+                    container.querySelectorAll('.harmonic-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    harmonic = i + 1;
+                    updatePhysics();
+                });
+                container.appendChild(btn);
+            });
+
+            harmonic = 1;
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            time += 0.016; // ~60fps
+
+            updateParticles();
+            updateSpeaker();
+            updateSoundWaves();
+
+            mainGroup.rotation.x = rotation.x;
+            mainGroup.rotation.y = rotation.y;
+
+            renderer.render(scene, camera);
+        }
+
+        init();
+    </script>
+<script>
+(function() {
+    const TEXT_MAP = {
+    "Звуковые волны — Резонанс в трубе": {
+        "kz": "Дыбыс толқындары — Түтіктегі резонанс",
+        "en": "Sound Waves — Resonance in a Tube"
+    },
+    "Стоячие волны • Резонанс в трубе • Гармоники": {
+        "kz": "Тұрғын толқындар • Түтіктегі резонанс • Гармоникалар",
+        "en": "Standing waves • Resonance in a tube • Harmonics"
+    },
+    "Резонансная частота": {
+        "kz": "Резонанстық жиілік",
+        "en": "Resonant frequency"
+    },
+    "Нота Ля (A3)": {
+        "kz": "Ля нотасы (A3)",
+        "en": "Note A (A3)"
+    },
+    "Открытая труба": {
+        "kz": "Ашық түтік",
+        "en": "Open tube"
+    },
+    "Закрытая труба": {
+        "kz": "Жабық түтік",
+        "en": "Closed tube"
+    },
+    "Гармоника": {
+        "kz": "Гармоника",
+        "en": "Harmonic"
+    },
+    "основная": {
+        "kz": "негізгі",
+        "en": "fundamental"
+    },
+    "вторая": {
+        "kz": "екінші",
+        "en": "second"
+    },
+    "третья": {
+        "kz": "үшінші",
+        "en": "third"
+    },
+    "Параметры": {
+        "kz": "Параметрлер",
+        "en": "Parameters"
+    },
+    "Длина трубы L": {
+        "kz": "Түтік ұзындығы L",
+        "en": "Tube length L"
+    },
+    "Частицы воздуха": {
+        "kz": "Ауа бөлшектері",
+        "en": "Air particles"
+    },
+    "Узлы и пучности": {
+        "kz": "Түйіндер мен пучностьтар",
+        "en": "Nodes and antinodes"
+    },
+    "Физика стоячих волн": {
+        "kz": "Тұрғын толқындар физикасы",
+        "en": "Physics of standing waves"
+    }
+,
+    "Электромагнитные волны — 3D Модель": {
+        "kz": "Электромагниттік толқындар — 3D Модель",
+        "en": "Electromagnetic Waves — 3D Model"
+    },
+    "📡 Электромагнитные волны": {
+        "kz": "📡 Электромагниттік толқындар",
+        "en": "📡 Electromagnetic Waves"
+    },
+    "Структура • Спектр • Поляризация": {
+        "kz": "Құрылымы • Спектр • Поляризация",
+        "en": "Structure • Spectrum • Polarization"
+    },
+    "Длина волны": {
+        "kz": "Толқын ұзындығы",
+        "en": "Wavelength"
+    },
+    "Амплитуда": {
+        "kz": "Амплитуда",
+        "en": "Amplitude"
+    },
+    "Скорость": {
+        "kz": "Жылдамдық",
+        "en": "Speed"
+    },
+    "Показать E-поле": {
+        "kz": "E-өрісті көрсету",
+        "en": "Show E-field"
+    },
+    "Показать B-поле": {
+        "kz": "B-өрісті көрсету",
+        "en": "Show B-field"
+    },
+    "Показать направление": {
+        "kz": "Бағытты көрсету",
+        "en": "Show direction"
+    },
+    "↺ Сбросить": {
+        "kz": "↺ Қалпына келтіру",
+        "en": "↺ Reset"
+    },
+    "Отображение": {
+        "kz": "Бейнелеу",
+        "en": "Display"
+    },
+    "ЛКМ — вращение • ПКМ — перемещение • Колёсико — зум": {
+        "kz": "Сол жақ батырма — айналдыру • Оң жақ батырма — жылжыту • Дөңгелек — масштабтау",
+        "en": "LMB — rotate • RMB — pan • Scroll — zoom"
+    }
+,
+    "🔊 Звуковые волны": {
+        "kz": "🔊 Дыбыс толқындары",
+        "en": "🔊 Sound Waves"
+    },
+    "Гц": {
+        "kz": "Гц",
+        "en": "Hz"
+    },
+    "🔊 ВОСПРОИЗВОДИТСЯ": {
+        "kz": "🔊 ОЙНАТЫЛУДА",
+        "en": "🔊 PLAYING"
+    },
+    "0.78 м": {
+        "kz": "0,78 м",
+        "en": "0.78 m"
+    },
+    "🔊 Воспроизвести звук": {
+        "kz": "🔊 Дыбысты ойнату",
+        "en": "🔊 Play sound"
+    },
+    "Форма стоячей волны (огибающая)": {
+        "kz": "Тұрақты толқын пішіні (қаптама)",
+        "en": "Standing wave shape (envelope)"
+    },
+    "Оба конца — пучности смещения. Все гармоники: n = 1, 2, 3...": {
+        "kz": "Екі ұшы — ығысу іштері. Барлық гармоникалар: n = 1, 2, 3...",
+        "en": "Both ends — displacement antinodes. All harmonics: n = 1, 2, 3..."
+    },
+    "Один конец закрыт — узел смещения. Только нечётные гармоники: n = 1, 3, 5...": {
+        "kz": "Бір ұшы жабық — ығысу түйіні. Тек тақ гармоникалар: n = 1, 3, 5...",
+        "en": "One end closed — displacement node. Only odd harmonics: n = 1, 3, 5..."
+    },
+    "Формулы": {
+        "kz": "Формулалар",
+        "en": "Formulas"
+    },
+    "Частота": {
+        "kz": "Жиілік",
+        "en": "Frequency"
+    },
+    "Скорость звука": {
+        "kz": "Дыбыс жылдамдығы",
+        "en": "Speed of sound"
+    },
+    "v = 343 м/с": {
+        "kz": "v = 343 м/с",
+        "en": "v = 343 m/s"
+    },
+    "Узел": {
+        "kz": "Түйін",
+        "en": "Node"
+    },
+    "Пучность": {
+        "kz": "Іш",
+        "en": "Antinode"
+    },
+    "Длина волны λ (м)": {
+        "kz": "Толқын ұзындығы λ (м)",
+        "en": "Wavelength λ (m)"
+    },
+    "Скорость v (м/с)": {
+        "kz": "Жылдамдық v (м/с)",
+        "en": "Speed v (m/s)"
+    },
+    "Число узлов": {
+        "kz": "Түйіндер саны",
+        "en": "Number of nodes"
+    }
+,
+    "🔇 Остановить звук": {"kz": "🔇 Дыбысты тоқтату", "en": "🔇 Stop sound"},
+    "До": {"kz": "До", "en": "C"},
+    "Ми": {"kz": "Ми", "en": "E"},
+    "Фа": {"kz": "Фа", "en": "F"},
+    "Соль": {"kz": "Соль", "en": "G"},
+    "Си": {"kz": "Си", "en": "B"}
+};
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentLang = urlParams.get('lang') || 'ru';
+
+    if (currentLang === 'ru') return; // No translation needed
+
+    function translateTextNodes(root) {
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
+        const nodes = [];
+        while (walker.nextNode()) nodes.push(walker.currentNode);
+        
+        nodes.forEach(node => {
+            let text = node.textContent;
+            if (!text || !text.trim()) return;
+            
+            const trimmed = text.trim();
+            if (TEXT_MAP[trimmed] && TEXT_MAP[trimmed][currentLang]) {
+                node.textContent = text.replace(trimmed, TEXT_MAP[trimmed][currentLang]);
+            }
+        });
+    }
+
+    function translateAttributes(root) {
+        root.querySelectorAll('[title]').forEach(el => {
+            const t = el.getAttribute('title');
+            if (TEXT_MAP[t] && TEXT_MAP[t][currentLang]) {
+                el.setAttribute('title', TEXT_MAP[t][currentLang]);
+            }
+        });
+        root.querySelectorAll('[placeholder]').forEach(el => {
+            const t = el.getAttribute('placeholder');
+            if (TEXT_MAP[t] && TEXT_MAP[t][currentLang]) {
+                el.setAttribute('placeholder', TEXT_MAP[t][currentLang]);
+            }
+        });
+        // Translate page title
+        const titleText = document.title.trim();
+        if (TEXT_MAP[titleText] && TEXT_MAP[titleText][currentLang]) {
+            document.title = TEXT_MAP[titleText][currentLang];
+        }
+    }
+
+    
+
+    function applyTranslations() {
+        translateTextNodes(document.body);
+        translateAttributes(document);
+        if (typeof translateData === 'function') translateData(currentLang);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', applyTranslations);
+    } else {
+        applyTranslations();
+    }
+
+    // Re-translate after dynamic content changes
+    window.currentLang = currentLang;
+    window._currentLang = currentLang;
+    window._TEXT_MAP = TEXT_MAP;
+
+    // One-time delayed re-translate for dynamic content
+    let _tc=0;const _ti=setInterval(()=>{translateTextNodes(document.body);translateAttributes(document);if(++_tc>=20)clearInterval(_ti);},500);
+})();
+</script>
+</body>
+</html>

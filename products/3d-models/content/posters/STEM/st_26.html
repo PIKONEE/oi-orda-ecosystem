@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Анатомия дрона</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { width: 100%; height: 100%; overflow: hidden; }
+        body { font-family: 'Segoe UI','Inter',system-ui,sans-serif; background: linear-gradient(135deg,#dcefff 0%,#c7e3fb 100%); color:#142845; }
+        #canvas-container { position: absolute; inset: 0; }
+        #labels { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+        .label3d { position: absolute; transform: translate(-50%,-50%); font-size: 12px; font-weight: 800; padding: 2px 9px; border-radius: 7px; background: rgba(255,255,255,0.93); border: 1.5px solid rgba(90,150,220,0.55); box-shadow: 0 2px 8px rgba(30,70,140,0.16); white-space: nowrap; color:#1d3a63; }
+
+        .header { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); text-align: center; z-index: 6; pointer-events: none; width: 92%; }
+        .header h1 { font-size: 25px; font-weight: 800; color:#16335c; text-shadow: 0 1px 0 rgba(255,255,255,0.7); }
+        .header p { font-size: 13.5px; color:#4f6b94; margin-top: 4px; font-weight: 600; }
+
+        .panel { position: absolute; z-index: 7; background: rgba(255,255,255,0.82);   border: 1px solid rgba(120,170,225,0.5); border-radius: 16px; box-shadow: 0 10px 34px rgba(30,70,140,0.14); }
+        .control-panel { top: 88px; left: 22px; width: 314px; padding: 16px 18px; }
+        .info-panel { top: 88px; right: 22px; width: 286px; padding: 16px 18px; }
+
+        .sec-title { font-size: 12px; font-weight: 800; color:#3a5a86; text-transform: uppercase; letter-spacing: 0.6px; margin: 2px 0 9px; }
+        .param-group { margin-bottom: 11px; }
+        .param-label { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px; }
+        .param-name { font-size: 13px; font-weight: 700; color:#33507a; }
+        .param-value { font-size: 14px; font-weight: 800; color:#0e7490; font-variant-numeric: tabular-nums; }
+        input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; border-radius: 6px; outline: none; cursor: pointer; background: linear-gradient(90deg,#bcdcf6,#5aa0d8); }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 17px; height: 17px; border-radius: 50%; background:#0e7490; border: 3px solid #fff; box-shadow: 0 2px 7px rgba(14,116,144,0.4); cursor: pointer; }
+
+        .seg { display:grid; grid-template-columns:1fr 1fr; gap:7px; margin-bottom: 13px; }
+        .seg-btn { padding: 9px 6px; border-radius: 9px; border:1.5px solid rgba(120,170,225,0.5); background: rgba(235,245,255,0.6); color:#3a5a86; font-size:12.5px; font-weight:800; cursor:pointer; transition:all 0.16s; text-align:center; }
+        .seg-btn.active { background: linear-gradient(135deg,#0891b2,#0e7490); color:#fff; border-color:#22d3ee; }
+
+        .toggle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 2px; }
+        .toggle-btn { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 9px 6px; border-radius: 10px; border: 1.5px solid rgba(120,170,225,0.5); background: rgba(235,245,255,0.55); color:#3a5a86; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.16s; }
+        .toggle-btn .dot { width: 9px; height: 9px; border-radius: 50%; background:#9fb6d4; transition: all 0.16s; }
+        .toggle-btn.active { background: rgba(14,116,144,0.14); border-color:#0e7490; color:#0e3a4a; }
+        .toggle-btn.active .dot { background:#0e7490; box-shadow: 0 0 7px rgba(14,116,144,0.7); }
+
+        .info-title { font-size: 15px; font-weight: 800; color:#16335c; margin-bottom: 10px; }
+        .readout { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px dashed rgba(120,170,225,0.45); font-size: 13px; }
+        .readout:last-child { border-bottom: none; }
+        .ro-name { color:#4f6b94; font-weight: 600; }
+        .ro-val { font-weight: 800; color:#16335c; font-variant-numeric: tabular-nums; }
+        .ro-val.good { color:#0f9d58; } .ro-val.bad { color:#e0533d; }
+        .lift-bar { height: 11px; border-radius: 6px; background:#dceaf6; overflow:hidden; margin-top:8px; position:relative; }
+        .lift-bar > #lift-fill { height:100%; width:0%; background: linear-gradient(90deg,#22d3ee,#0e7490); transition: width 0.12s; }
+        .lift-bar > #lift-mark { position:absolute; top:-3px; bottom:-3px; width:2px; background:#e0533d; }
+
+        .motors { display:grid; grid-template-columns:1fr 1fr; gap:7px; margin-top:11px; }
+        .motor { background:#eef6ff; border:1px solid rgba(120,170,225,0.4); border-radius:9px; padding:6px 8px; font-size:11.5px; }
+        .motor .mlabel { color:#4f6b94; font-weight:700; display:flex; justify-content:space-between; }
+        .motor .mbar { height:6px; background:#d2e3f3; border-radius:4px; margin-top:4px; overflow:hidden; } .motor .mbar>div{height:100%;width:50%;background:#0e7490;border-radius:4px;transition:width 0.12s;}
+
+        .formula-panel { position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 7; background: rgba(22,51,92,0.93); color:#eaf2ff; padding: 10px 22px; border-radius: 13px; box-shadow: 0 10px 30px rgba(20,45,90,0.32); text-align: center; max-width: 76%; }
+        .formula { font-size: 16px; font-weight: 600; } .formula b { color:#7fe0ff; }
+        .formula-note { font-size: 12px; color:#9fb6d4; margin-top: 4px; }
+        .hint { position: absolute; bottom: 16px; left: 22px; z-index: 7; font-size: 12px; color:#4f6b94; background: rgba(255,255,255,0.72); padding: 7px 13px; border-radius: 9px; border: 1px solid rgba(120,170,225,0.45); }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div id="labels"></div>
+
+    <div class="header">
+        <h1>🚁 Анатомия дрона</h1>
+        <p><span id="h-sub">Квадрокоптер • тяга моторов • манёвры • разнос узлов</span></p>
+    </div>
+
+    <div class="panel control-panel">
+        <div class="param-group"><div class="param-label"><span class="param-name">🎚️ <span data-i18n="thrLabel">Газ (throttle)</span></span><span class="param-value" id="thr-value">55%</span></div><input type="range" id="thr" min="0" max="100" value="55"></div>
+
+        <div class="sec-title" data-i18n="manTitle">Манёвр</div>
+        <div class="seg">
+            <button class="seg-btn active" data-man="hover" data-i18n="mHover">Зависание</button>
+            <button class="seg-btn" data-man="pitch" data-i18n="mPitch">Тангаж ↗</button>
+            <button class="seg-btn" data-man="roll" data-i18n="mRoll">Крен ↘</button>
+            <button class="seg-btn" data-man="yaw" data-i18n="mYaw">Рыскание ⟳</button>
+        </div>
+
+        <div class="param-group"><div class="param-label"><span class="param-name">💥 <span data-i18n="expLabel">Разнос узлов</span></span><span class="param-value" id="exp-value">0%</span></div><input type="range" id="exp" min="0" max="100" value="0"></div>
+
+        <div class="toggle-grid">
+            <button class="toggle-btn active" id="t-spin"><span class="dot"></span><span data-i18n="tSpin">Винты</span></button>
+            <button class="toggle-btn active" id="t-thrust"><span class="dot"></span><span data-i18n="tThrust">Векторы тяги</span></button>
+            <button class="toggle-btn active" id="t-labels"><span class="dot"></span><span data-i18n="tLabels">Подписи</span></button>
+            <button class="toggle-btn" id="t-fpv"><span class="dot"></span><span data-i18n="tFpv">Камера-обзор</span></button>
+        </div>
+    </div>
+
+    <div class="panel info-panel">
+        <div class="info-title">📊 <span data-i18n="infoTitle">Полётные данные</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roRpm">Обороты моторов</span><span class="ro-val" id="ro-rpm">— об/мин</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roThrust">Общая тяга</span><span class="ro-val" id="ro-thrust">— Н</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roWeight">Вес дрона</span><span class="ro-val" id="ro-weight">— Н</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roAlt">Высота</span><span class="ro-val" id="ro-alt">0.0 м</span></div>
+        <div class="lift-bar"><div id="lift-fill"></div><div id="lift-mark"></div></div>
+        <div class="motors" id="motors"></div>
+    </div>
+
+    <div class="formula-panel">
+        <div class="formula"><span data-i18n="fT">тяга</span> = k·ω² &nbsp;|&nbsp; <span data-i18n="fHover">зависание при</span> <b>ΣT = mg</b></div>
+        <div class="formula-note" data-i18n="note">Каждый винт создаёт тягу ∝ квадрату оборотов; разные обороты моторов наклоняют дрон и задают манёвр</div>
+    </div>
+
+    <div class="hint"><span data-i18n="hint">ЛКМ — вращение • ПКМ — перемещение • Колесо — зум</span></div>
+
+    <script src="../../libs/vendor/three-r128/three.min.js"></script>
+    <script>
+    const LANG = (new URLSearchParams(window.location.search).get('lang')) || 'ru';
+    const I18N = {
+        ru: { headH:'🚁 Анатомия дрона', headS:'Квадрокоптер • тяга моторов • манёвры • разнос узлов',
+              thrLabel:'Газ (throttle)', manTitle:'Манёвр', mHover:'Зависание', mPitch:'Тангаж ↗', mRoll:'Крен ↘', mYaw:'Рыскание ⟳',
+              expLabel:'Разнос узлов', tSpin:'Винты', tThrust:'Векторы тяги', tLabels:'Подписи', tFpv:'Камера-обзор',
+              infoTitle:'Полётные данные', roRpm:'Обороты моторов', roThrust:'Общая тяга', roWeight:'Вес дрона', roAlt:'Высота',
+              fT:'тяга', fHover:'зависание при', note:'Каждый винт создаёт тягу ∝ квадрату оборотов; разные обороты моторов наклоняют дрон и задают манёвр',
+              hint:'ЛКМ — вращение • ПКМ — перемещение • Колесо — зум',
+              lBody:'Корпус / рама', lMotor:'Бесколлекторный мотор', lProp:'Пропеллер', lBatt:'Аккумулятор LiPo', lFc:'Полётный контроллер', lGimbal:'Камера на подвесе', lGps:'GPS-модуль', lLeg:'Шасси',
+              uN:' Н', uRpm:' об/мин', uM:' м' },
+        kz: { headH:'🚁 Дрон анатомиясы', headS:'Квадрокоптер • мотор тартысы • манёврлер • тораптарды ажырату',
+              thrLabel:'Газ (throttle)', manTitle:'Манёвр', mHover:'Қалықтау', mPitch:'Тангаж ↗', mRoll:'Крен ↘', mYaw:'Бұрылу ⟳',
+              expLabel:'Тораптарды ажырату', tSpin:'Винттер', tThrust:'Тарту векторлары', tLabels:'Жазулар', tFpv:'Шолу камерасы',
+              infoTitle:'Ұшу деректері', roRpm:'Мотор айналымы', roThrust:'Жалпы тарту', roWeight:'Дрон салмағы', roAlt:'Биіктік',
+              fT:'тарту', fHover:'қалықтау:', note:'Әр винт айналым квадратына пропорционал тарту жасайды; әртүрлі айналым дронды еңкейтіп манёвр береді',
+              hint:'СБ — айналдыру • ОБ — жылжыту • Дөңгелек — масштаб',
+              lBody:'Корпус / рама', lMotor:'Бесколлекторлы мотор', lProp:'Пропеллер', lBatt:'LiPo аккумулятор', lFc:'Ұшу контроллері', lGimbal:'Аспалы камера', lGps:'GPS-модуль', lLeg:'Шасси',
+              uN:' Н', uRpm:' айн/мин', uM:' м' },
+        en: { headH:'🚁 Drone Anatomy', headS:'Quadcopter • motor thrust • manoeuvres • exploded view',
+              thrLabel:'Throttle', manTitle:'Manoeuvre', mHover:'Hover', mPitch:'Pitch ↗', mRoll:'Roll ↘', mYaw:'Yaw ⟳',
+              expLabel:'Exploded view', tSpin:'Props', tThrust:'Thrust vectors', tLabels:'Labels', tFpv:'FPV camera',
+              infoTitle:'Flight data', roRpm:'Motor RPM', roThrust:'Total thrust', roWeight:'Drone weight', roAlt:'Altitude',
+              fT:'thrust', fHover:'hover when', note:'Each propeller makes thrust ∝ RPM²; uneven motor speeds tilt the drone to manoeuvre',
+              hint:'LMB — rotate • RMB — pan • Wheel — zoom',
+              lBody:'Frame / body', lMotor:'Brushless motor', lProp:'Propeller', lBatt:'LiPo battery', lFc:'Flight controller', lGimbal:'Gimbal camera', lGps:'GPS module', lLeg:'Landing gear',
+              uN:' N', uRpm:' rpm', uM:' m' },
+    };
+    const L = I18N[LANG] || I18N.ru;
+
+    const MASS = 1.5, G = 9.81, WEIGHT = MASS*G;     // N
+    const MAX_RPM = 11000, HOVER_THR = 0.55;
+    // hover: 4 * k * (HOVER_THR*MAX_RPM)^2 = WEIGHT
+    const K = WEIGHT / (4 * Math.pow(HOVER_THR*MAX_RPM,2));
+
+    let throttle=55, maneuver='hover', explode=0;
+    let spin=true, showThrust=true, showLabels=true, fpv=false;
+    let altitude=0, yawAngle=0;
+    // motors: 0 FL, 1 FR, 2 RL, 3 RR ; mix per maneuver
+    const MIX = {
+        hover: [1,1,1,1],
+        pitch: [0.82,0.82,1.18,1.18],   // rear faster -> nose down -> forward
+        roll:  [1.18,0.82,1.18,0.82],   // left faster -> roll right
+        yaw:   [1.12,0.88,0.88,1.12],   // CW pair faster
+    };
+    const motorRpm=[0,0,0,0];
+
+    let scene, camera, renderer, root, drone, fpvCam;
+    const motors=[], props=[], thrustArrows=[], parts=[];
+    const labelDefs=[];
+    const clock=new THREE.Clock();
+    const container=document.getElementById('canvas-container');
+    const labelLayer=document.getElementById('labels');
+
+    let camTheta=0.9, camPhi=1.05, camRadius=15;
+    const camTarget=new THREE.Vector3(0,1.5,0);
+    let dragMode=0,lastX=0,lastY=0;
+
+    const ARM=2.6;
+    // motor positions (x, z): front = +z
+    const MPOS=[ [-ARM,ARM], [ARM,ARM], [-ARM,-ARM], [ARM,-ARM] ];
+    const SPINDIR=[1,-1,-1,1]; // CCW/CW alternation
+
+    function init(){
+        scene=new THREE.Scene();
+        scene.background=new THREE.Color(0xdcefff);
+        scene.fog=new THREE.Fog(0xdcefff, 24, 55);
+        camera=new THREE.PerspectiveCamera(46, window.innerWidth/window.innerHeight, 0.1, 200);
+        fpvCam=new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.05, 200);
+        renderer=new THREE.WebGLRenderer({antialias: true});
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+        renderer.shadowMap.enabled=false; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+        renderer.outputEncoding=THREE.sRGBEncoding;
+        container.appendChild(renderer.domElement);
+
+        scene.add(new THREE.AmbientLight(0xffffff,0.78));
+        const key=new THREE.DirectionalLight(0xffffff,0.7); key.position.set(7,14,6); key.castShadow=true; key.shadow.mapSize.set(2048,2048);
+        key.shadow.camera.left=-12;key.shadow.camera.right=12;key.shadow.camera.top=12;key.shadow.camera.bottom=-12; scene.add(key);
+        scene.add(new THREE.HemisphereLight(0xcfe8ff,0x6a86a8,0.4));
+
+        root=new THREE.Group(); scene.add(root);
+        buildGround(); buildDrone();
+        buildMotorCards(); makeLabels(); applyI18N(); setupControls();
+        updateCamera(); recompute(); animate();
+    }
+    function mat(c,m,r,o){ return new THREE.MeshStandardMaterial(Object.assign({color:c,metalness:m,roughness:r},o||{})); }
+    function tagPart(mesh, baseY, ox, oy, oz){ mesh.userData.base=new THREE.Vector3(mesh.position.x,baseY,mesh.position.z); mesh.userData.exp=new THREE.Vector3(ox,oy,oz); parts.push(mesh); }
+
+    function buildGround(){
+        const g=new THREE.Mesh(new THREE.CircleGeometry(18,64), mat(0xa9cdeb,0.05,0.95)); g.rotation.x=-Math.PI/2; g.position.y=-2.4; g.receiveShadow=true; root.add(g);
+        const grid=new THREE.GridHelper(36,36,0x7fa8cf,0x9cc0e0); grid.position.y=-2.39; root.add(grid);
+    }
+
+    function buildDrone(){
+        drone=new THREE.Group(); drone.position.y=1.5; root.add(drone);
+
+        // central body
+        const body=new THREE.Mesh(new THREE.BoxGeometry(2.2,0.5,2.2), mat(0x2d3946,0.4,0.45)); body.castShadow=true; drone.add(body); tagPart(body,0,0,0,0);
+        const shell=new THREE.Mesh(new THREE.BoxGeometry(1.8,0.35,1.8), mat(0x3f4b59,0.5,0.4)); shell.position.y=0.4; shell.castShadow=true; drone.add(shell); tagPart(shell,0.4,0,0.55,0);
+        labelDefs.push({key:'lBody', anchor:body, off:new THREE.Vector3(0,0.5,0)});
+
+        // arms + motors + props
+        const armMat=mat(0x232b34,0.4,0.5);
+        for(let i=0;i<4;i++){
+            const [mx,mz]=MPOS[i];
+            const arm=new THREE.Mesh(new THREE.BoxGeometry(0.34,0.22,ARM*1.42), armMat);
+            arm.position.set(mx/2,0,mz/2); arm.lookAt(new THREE.Vector3(mx,0,mz)); arm.castShadow=true; drone.add(arm);
+            // motor
+            const motor=new THREE.Mesh(new THREE.CylinderGeometry(0.34,0.4,0.5,20), mat(0x9aa3ad,0.85,0.3)); motor.position.set(mx,0.25,mz); motor.castShadow=true; drone.add(motor);
+            const bell=new THREE.Mesh(new THREE.CylinderGeometry(0.36,0.36,0.18,20), mat(0xd14b3a,0.6,0.4)); bell.position.set(mx,0.52,mz); drone.add(bell);
+            motors.push({motor,bell,i}); tagPart(motor,0.25,mx*0.4,0.6,mz*0.4); tagPart(bell,0.52,mx*0.4,0.95,mz*0.4);
+            // propeller (2 blades)
+            const prop=new THREE.Group(); prop.position.set(mx,0.62,mz); drone.add(prop);
+            const blade=new THREE.Mesh(new THREE.BoxGeometry(2.8,0.04,0.34), mat(0x1a2530,0.2,0.6));
+            prop.add(blade);
+            const blade2=blade.clone(); blade2.rotation.y=Math.PI/2; prop.add(blade2);
+            const hub=new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.12,0.16,12), mat(0x333,0.5,0.4)); prop.add(hub);
+            // blur disc
+            const disc=new THREE.Mesh(new THREE.CircleGeometry(1.45,40), new THREE.MeshBasicMaterial({color:0x2a3a4a,transparent:true,opacity:0.0,side:THREE.DoubleSide})); disc.rotation.x=-Math.PI/2; disc.position.y=0.02; prop.add(disc);
+            props.push({prop,disc,i,dir:SPINDIR[i]}); tagPart(prop,0.62,mx*0.4,1.2,mz*0.4);
+            // thrust arrow
+            const arrow=makeArrow(); arrow.position.set(mx,0.7,mz); drone.add(arrow); thrustArrows.push(arrow);
+            if(i===0){ labelDefs.push({key:'lMotor', anchor:motor, off:new THREE.Vector3(0,0.6,0)}); labelDefs.push({key:'lProp', anchor:prop, off:new THREE.Vector3(0,0.5,0)}); }
+        }
+
+        // battery on top
+        const batt=new THREE.Mesh(new THREE.BoxGeometry(1.5,0.5,0.9), mat(0x1f6feb,0.3,0.5)); batt.position.set(0,0.75,0); batt.castShadow=true; drone.add(batt); tagPart(batt,0.75,0,1.7,0);
+        const battStripe=new THREE.Mesh(new THREE.BoxGeometry(1.52,0.16,0.92), mat(0xf2c200,0.3,0.5)); battStripe.position.set(0,0.9,0); drone.add(battStripe); tagPart(battStripe,0.9,0,1.7,0);
+        labelDefs.push({key:'lBatt', anchor:batt, off:new THREE.Vector3(0,0.5,0)});
+
+        // flight controller PCB (inside, revealed on explode)
+        const fc=new THREE.Mesh(new THREE.BoxGeometry(1.1,0.1,1.1), mat(0x0f8f54,0.2,0.6)); fc.position.set(0,0.15,0); drone.add(fc); tagPart(fc,0.15,0,1.0,0);
+        const chip=new THREE.Mesh(new THREE.BoxGeometry(0.4,0.1,0.4), mat(0x111,0.3,0.6)); chip.position.set(0,0.22,0); drone.add(chip); tagPart(chip,0.22,0,1.0,0);
+        labelDefs.push({key:'lFc', anchor:fc, off:new THREE.Vector3(0.7,0.3,0)});
+
+        // GPS module
+        const gps=new THREE.Mesh(new THREE.CylinderGeometry(0.4,0.4,0.16,20), mat(0xe8edf3,0.3,0.5)); gps.position.set(-0.7,0.6,-0.7); drone.add(gps); tagPart(gps,0.6,-0.9,1.4,-0.9);
+        labelDefs.push({key:'lGps', anchor:gps, off:new THREE.Vector3(-0.4,0.4,0)});
+
+        // gimbal camera underneath
+        const gmount=new THREE.Mesh(new THREE.BoxGeometry(0.6,0.4,0.6), mat(0x2a3340,0.4,0.4)); gmount.position.set(0,-0.45,0.6); drone.add(gmount); tagPart(gmount,-0.45,0,-1.0,0.6);
+        const ball=new THREE.Mesh(new THREE.SphereGeometry(0.34,20,16), mat(0x14181c,0.4,0.4)); ball.position.set(0,-0.7,0.7); drone.add(ball); tagPart(ball,-0.7,0,-1.4,0.7);
+        const lens=new THREE.Mesh(new THREE.CylinderGeometry(0.14,0.16,0.16,18), mat(0x3aa0ff,0.9,0.1,{emissive:0x0a2a44,emissiveIntensity:0.4})); lens.rotation.x=Math.PI/2; lens.position.set(0,-0.7,1.02); drone.add(lens); tagPart(lens,-0.7,0,-1.4,1.0);
+        fpvCam.position.set(0,-0.7,1.1); drone.add(fpvCam);
+        labelDefs.push({key:'lGimbal', anchor:ball, off:new THREE.Vector3(0,-0.5,0)});
+
+        // landing gear
+        [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([sx,sz])=>{ const leg=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.06,1.3,10), mat(0x2a3340,0.4,0.5)); leg.position.set(sx*1.0,-0.95,sz*0.9); leg.rotation.x=sz*0.18; leg.rotation.z=-sx*0.18; drone.add(leg); tagPart(leg,-0.95,sx*0.4,-1.6,sz*0.3); });
+        const skidL=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.12,2.6), mat(0x2a3340,0.4,0.5)); skidL.position.set(-1.25,-1.55,0); drone.add(skidL); tagPart(skidL,-1.55,-0.6,-1.9,0);
+        const skidR=skidL.clone(); skidR.position.x=1.25; drone.add(skidR); tagPart(skidR,-1.55,0.6,-1.9,0);
+        labelDefs.push({key:'lLeg', anchor:skidL, off:new THREE.Vector3(0,-0.3,0)});
+    }
+
+    function makeArrow(){
+        const g=new THREE.Group();
+        const shaft=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,1,8), new THREE.MeshBasicMaterial({color:0x0e7490})); shaft.position.y=0.5; g.add(shaft);
+        const head=new THREE.Mesh(new THREE.ConeGeometry(0.16,0.35,12), new THREE.MeshBasicMaterial({color:0x0e7490})); head.position.y=1.1; g.add(head);
+        g.userData={shaft,head}; return g;
+    }
+
+    function buildMotorCards(){
+        const wrap=document.getElementById('motors'); wrap.innerHTML='';
+        const names=['M1 ↖','M2 ↗','M3 ↙','M4 ↘'];
+        for(let i=0;i<4;i++){ const d=document.createElement('div'); d.className='motor';
+            d.innerHTML='<div class="mlabel"><span>'+names[i]+'</span><span id="mrpm-'+i+'">0</span></div><div class="mbar"><div id="mfill-'+i+'"></div></div>'; wrap.appendChild(d); }
+    }
+
+    function makeLabels(){ labelDefs.forEach(d=>{ const el=document.createElement('div'); el.className='label3d'; labelLayer.appendChild(el); d.el=el; }); }
+    function updateLabels(){
+        labelDefs.forEach(d=>{ const txt=L[d.key]||d.key; if(d.el.textContent!==txt) d.el.textContent=txt;
+            if(!showLabels){ d.el.style.display='none'; return; }
+            const p=d.anchor.getWorldPosition(new THREE.Vector3()).add(d.off);
+            const v=p.project(camera); if(v.z>1){ d.el.style.display='none'; return; }
+            d.el.style.display='block'; d.el.style.left=(v.x*0.5+0.5)*window.innerWidth+'px'; d.el.style.top=(-v.y*0.5+0.5)*window.innerHeight+'px';
+        });
+    }
+
+    function recompute(){
+        const baseRpm=throttle/100*MAX_RPM;
+        const mix=MIX[maneuver];
+        let total=0;
+        for(let i=0;i<4;i++){ motorRpm[i]=baseRpm*mix[i]; const T=K*motorRpm[i]*motorRpm[i]; total+=T;
+            document.getElementById('mrpm-'+i).textContent=Math.round(motorRpm[i]);
+            document.getElementById('mfill-'+i).style.width=Math.min(100,motorRpm[i]/MAX_RPM*100)+'%';
+        }
+        const avg=(motorRpm[0]+motorRpm[1]+motorRpm[2]+motorRpm[3])/4;
+        document.getElementById('thr-value').textContent=throttle+'%';
+        document.getElementById('exp-value').textContent=explode+'%';
+        document.getElementById('ro-rpm').textContent=Math.round(avg)+L.uRpm;
+        document.getElementById('ro-thrust').textContent=total.toFixed(1)+L.uN;
+        document.getElementById('ro-weight').textContent=WEIGHT.toFixed(1)+L.uN;
+        const tEl=document.getElementById('ro-thrust'); tEl.className='ro-val '+(total>=WEIGHT?'good':'bad');
+        document.getElementById('lift-fill').style.width=Math.min(100,total/(WEIGHT*1.6)*100)+'%';
+        document.getElementById('lift-mark').style.left=(WEIGHT/(WEIGHT*1.6)*100)+'%';
+        return total;
+    }
+
+    function applyExplode(){
+        const e=explode/100;
+        parts.forEach(p=>{ p.position.x=p.userData.base.x + e*p.userData.exp.x; p.position.y=p.userData.base.y + e*p.userData.exp.y; p.position.z=p.userData.base.z + e*p.userData.exp.z; });
+    }
+
+    function setupControls(){
+        document.getElementById('thr').addEventListener('input', e=>{ throttle=+e.target.value; recompute(); });
+        document.getElementById('exp').addEventListener('input', e=>{ explode=+e.target.value; applyExplode(); recompute(); });
+        document.querySelectorAll('.seg-btn').forEach(b=>b.addEventListener('click',()=>{ document.querySelectorAll('.seg-btn').forEach(x=>x.classList.remove('active')); b.classList.add('active'); maneuver=b.getAttribute('data-man'); recompute(); }));
+        const tog=(id,fn)=>{ const el=document.getElementById(id); el.addEventListener('click',()=>{ el.classList.toggle('active'); fn(el.classList.contains('active')); }); };
+        tog('t-spin', v=>spin=v);
+        tog('t-thrust', v=>{ showThrust=v; thrustArrows.forEach(a=>a.visible=v); });
+        tog('t-labels', v=>showLabels=v);
+        tog('t-fpv', v=>fpv=v);
+
+        const el=renderer.domElement;
+        el.addEventListener('contextmenu', e=>e.preventDefault());
+        el.addEventListener('mousedown', e=>{ dragMode=(e.button===2||e.shiftKey)?2:1; lastX=e.clientX; lastY=e.clientY; });
+        window.addEventListener('mousemove', e=>{ if(!dragMode)return; const dx=e.clientX-lastX,dy=e.clientY-lastY; lastX=e.clientX; lastY=e.clientY; if(dragMode===1){camTheta-=dx*0.005; camPhi=Math.max(0.2,Math.min(Math.PI-0.2,camPhi-dy*0.005));} else {const ps=camRadius*0.0016; const right=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,0); const up=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,1); camTarget.addScaledVector(right,-dx*ps); camTarget.addScaledVector(up,dy*ps);} updateCamera(); });
+        window.addEventListener('mouseup', ()=>dragMode=0);
+        el.addEventListener('wheel', e=>{ e.preventDefault(); camRadius=Math.max(8,Math.min(30,camRadius+e.deltaY*0.014)); updateCamera(); }, {passive:false});
+        el.addEventListener('touchstart', e=>{ const t=e.touches[0]; dragMode=1; lastX=t.clientX; lastY=t.clientY; }, {passive:true});
+        el.addEventListener('touchmove', e=>{ if(!dragMode)return; const t=e.touches[0]; const dx=t.clientX-lastX,dy=t.clientY-lastY; lastX=t.clientX; lastY=t.clientY; camTheta-=dx*0.006; camPhi=Math.max(0.2,Math.min(Math.PI-0.2,camPhi-dy*0.006)); updateCamera(); e.preventDefault(); }, {passive:false});
+        window.addEventListener('touchend', ()=>dragMode=0);
+        window.addEventListener('resize', ()=>{ camera.aspect=window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); fpvCam.aspect=camera.aspect; fpvCam.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+    }
+
+    function updateCamera(){ const sp=Math.sin(camPhi),cp=Math.cos(camPhi),st=Math.sin(camTheta),ct=Math.cos(camTheta); camera.position.set(camTarget.x+camRadius*sp*ct, camTarget.y+camRadius*cp, camTarget.z+camRadius*sp*st); camera.lookAt(camTarget); camera.updateMatrixWorld(true); }
+
+    function applyI18N(){
+        document.querySelectorAll('[data-i18n]').forEach(el=>{ const k=el.getAttribute('data-i18n'); if(L[k]!=null) el.textContent=L[k]; });
+        document.querySelector('.header h1').textContent=L.headH;
+        document.getElementById('h-sub').textContent=L.headS;
+        document.title=L.headH.replace(/^[^\wА-Яа-яЁё]+/, ''); document.documentElement.lang=LANG;
+    }
+
+    // target tilt per maneuver
+    const targTilt={ pitch:{x:0.28,z:0}, roll:{x:0,z:-0.28}, hover:{x:0,z:0}, yaw:{x:0,z:0} };
+
+    function animate(){
+        requestAnimationFrame(animate);
+        const dt=Math.min(clock.getDelta(),0.05);
+        const total=recompute_light();
+        // altitude dynamics
+        const net=total-WEIGHT;
+        altitude=Math.max(0, Math.min(8, altitude + net*0.02*dt + (net>0?dt*0.4:(altitude>0?-dt*0.6:0))));
+        drone.position.y = 1.5 + altitude;
+        document.getElementById('ro-alt').textContent=altitude.toFixed(1)+L.uM;
+        // body tilt
+        const t=targTilt[maneuver]||targTilt.hover;
+        drone.rotation.x += (t.x - drone.rotation.x)*Math.min(1,dt*4);
+        drone.rotation.z += (t.z - drone.rotation.z)*Math.min(1,dt*4);
+        if(maneuver==='yaw'){ yawAngle += dt*1.2; } 
+        drone.rotation.y += (yawAngle - drone.rotation.y)*Math.min(1,dt*3);
+        // props spin + blur disc
+        props.forEach(p=>{ const rpm=motorRpm[p.i]; const w=rpm/MAX_RPM; if(spin){ p.prop.rotation.y += p.dir*w*dt*60; }
+            const fast=w>0.4; p.prop.children.forEach(c=>{ if(c!==p.disc) c.visible=!fast||!spin; }); p.disc.material.opacity = (spin&&fast)? Math.min(0.5,0.2+w*0.4):0; });
+        // motor bell glow with load
+        motors.forEach(m=>{ const w=motorRpm[m.i]/MAX_RPM; m.bell.material.emissive=new THREE.Color(0xd14b3a); m.bell.material.emissiveIntensity=w*0.5; });
+        // thrust arrows scale with per-motor thrust
+        thrustArrows.forEach((a,i)=>{ const T=K*motorRpm[i]*motorRpm[i]; const s=Math.min(2.2,0.3+T/(WEIGHT/2)); a.scale.y=s; a.userData.shaft.material.color.setHex(T>WEIGHT/4?0x0f9d58:0x0e7490); a.userData.head.material.color.copy(a.userData.shaft.material.color); a.visible=showThrust; });
+        updateLabels();
+        renderer.render(scene, fpv ? fpvCam : camera);
+    }
+    // lightweight per-frame thrust (no DOM thrash beyond needed)
+    function recompute_light(){ const baseRpm=throttle/100*MAX_RPM, mix=MIX[maneuver]; let total=0; for(let i=0;i<4;i++){ motorRpm[i]=baseRpm*mix[i]; total+=K*motorRpm[i]*motorRpm[i]; } return total; }
+
+    init();
+    </script>
+</body>
+</html>

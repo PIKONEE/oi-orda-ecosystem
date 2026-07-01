@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Робот: Логика и Алгоритмы</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', monospace;
+            background: #0f172a;
+            overflow: hidden;
+            color: #fff;
+        }
+
+        #canvas-container {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* UI Overlay */
+        .ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* Header & Controls (Left) */
+        .left-panel {
+            width: 300px;
+            pointer-events: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            color: #38bdf8;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+        }
+
+        .header p {
+            color: #94a3b8;
+            font-size: 14px;
+        }
+
+        .control-card {
+            background: rgba(30, 41, 59, 0.9);
+            border: 1px solid #475569;
+            border-radius: 12px;
+            padding: 20px;
+            
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 10px;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+            text-transform: uppercase;
+            font-size: 12px;
+        }
+
+        .btn-wall {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-wall:hover {
+            background: #dc2626;
+        }
+
+        .btn-reset {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .btn-reset:hover {
+            background: #2563eb;
+        }
+
+        .sensor-data {
+            margin-top: 15px;
+            font-size: 14px;
+            color: #cbd5e1;
+        }
+
+        .sensor-val {
+            font-weight: bold;
+            color: #38bdf8;
+        }
+
+        /* Flowchart (Right) */
+        .flowchart-container {
+            width: 320px;
+            background: rgba(15, 23, 42, 0.95);
+            border-left: 4px solid #38bdf8;
+            border-radius: 12px;
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            pointer-events: auto;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .flow-title {
+            color: #fff;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-align: center;
+            border-bottom: 1px solid #334155;
+            width: 100%;
+            padding-bottom: 10px;
+        }
+
+        /* Flowchart Blocks */
+        .block {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            background: #334155;
+            border: 2px solid #475569;
+            text-align: center;
+            font-size: 13px;
+            position: relative;
+            transition: all 0.2s;
+            opacity: 0.4;
+        }
+
+        .block.active {
+            opacity: 1;
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.6);
+            border-color: #fff;
+            font-weight: bold;
+            color: #fff;
+            z-index: 2;
+        }
+
+        .block-start {
+            background: #059669;
+            border-color: #10b981;
+        }
+
+        /* Green */
+        .block-action {
+            background: #0369a1;
+            border-color: #0ea5e9;
+        }
+
+        /* Blue */
+        .block-condition {
+            background: #d97706;
+            border-color: #f59e0b; /* Orange */
+            margin: 10px 0;
+        }
+
+        .arrow {
+            font-size: 20px;
+            color: #64748b;
+            line-height: 0.5;
+        }
+
+        #code-preview {
+            margin-top: 20px;
+            background: #000;
+            padding: 15px;
+            font-size: 12px;
+            color: #22c55e;
+            width: 100%;
+            border-radius: 6px;
+            font-family: 'Consolas', monospace;
+            border: 1px solid #333;
+        }
+    </style>
+</head>
+<body>
+<script>
+(function(){
+  var lang = new URLSearchParams(location.search).get('lang') || 'ru';
+  var T = {
+    ru: {
+      title: 'Алгоритм Робота', subtitle: 'Визуализация логики управления',
+      btn_wall_add: '🚧 Поставить Стену', btn_wall_remove: '❌ Убрать Стену',
+      btn_reset: '🔄 Сброс Робота', sensor_label: 'Датчик расстояния:', dist_unit: ' см',
+      flow_title: 'ЦИКЛ ПРОГРАММЫ', blk_start: 'НАЧАЛО ЦИКЛА', blk_sense: 'СЧИТАТЬ ДАТЧИК',
+      blk_cond: 'ПРЕПЯТСТВИЕ < 20см?', lbl_no: 'НЕТ ↓', lbl_yes: 'ДА ↘',
+      blk_move: 'ЕХАТЬ ВПЕРЕД', blk_turn: 'ПОВЕРНУТЬ НАПРАВО'
+    },
+    kz: {
+      title: 'Роботтың Алгоритмі', subtitle: 'Басқару логикасының визуализациясы',
+      btn_wall_add: '🚧 Қабырға Орнату', btn_wall_remove: '❌ Қабырғаны Алу',
+      btn_reset: '🔄 Роботты Қалпына Келтіру', sensor_label: 'Қашықтық сенсоры:', dist_unit: ' см',
+      flow_title: 'БАҒДАРЛАМА ЦИКЛЫ', blk_start: 'ЦИКЛ БАСЫ', blk_sense: 'СЕНСОРДЫ ОҚУ',
+      blk_cond: 'КЕДЕРГІ < 20см?', lbl_no: 'ЖОҚ ↓', lbl_yes: 'ИӘ ↘',
+      blk_move: 'АЛҒА ЖҮР', blk_turn: 'ОҢҒА БҰРЫЛ'
+    },
+    en: {
+      title: 'Robot Algorithm', subtitle: 'Control Logic Visualization',
+      btn_wall_add: '🚧 Place Wall', btn_wall_remove: '❌ Remove Wall',
+      btn_reset: '🔄 Reset Robot', sensor_label: 'Distance Sensor:', dist_unit: ' cm',
+      flow_title: 'PROGRAM LOOP', blk_start: 'LOOP START', blk_sense: 'READ SENSOR',
+      blk_cond: 'OBSTACLE < 20cm?', lbl_no: 'NO ↓', lbl_yes: 'YES ↘',
+      blk_move: 'MOVE FORWARD', blk_turn: 'TURN RIGHT'
+    }
+  };
+  window._t = T[lang] || T.ru;
+  document.addEventListener('DOMContentLoaded', function(){
+    var t = window._t;
+    document.querySelector('.header h1').textContent = t.title;
+    document.querySelector('.header p').textContent = t.subtitle;
+    document.getElementById('btn-wall').textContent = t.btn_wall_add;
+    document.getElementById('btn-reset').textContent = t.btn_reset;
+    document.getElementById('sensor-label').textContent = t.sensor_label;
+    document.getElementById('dist-unit').textContent = t.dist_unit;
+    document.querySelector('.flow-title').textContent = t.flow_title;
+    document.getElementById('blk-start').textContent = t.blk_start;
+    document.getElementById('blk-sense').textContent = t.blk_sense;
+    document.getElementById('blk-cond').textContent = t.blk_cond;
+    document.getElementById('lbl-no').textContent = t.lbl_no;
+    document.getElementById('lbl-yes').textContent = t.lbl_yes;
+    document.getElementById('blk-move').textContent = t.blk_move;
+    document.getElementById('blk-turn').textContent = t.blk_turn;
+  });
+})();
+</script>
+
+<div id="canvas-container"></div>
+
+<div class="ui-layer">
+    <div class="left-panel">
+        <div class="header">
+            <h1>Алгоритм Робота</h1>
+            <p>Визуализация логики управления</p>
+        </div>
+
+        <div class="control-card">
+            <button class="btn btn-wall" id="btn-wall">🚧 Поставить Стену</button>
+            <button class="btn btn-reset" id="btn-reset">🔄 Сброс Робота</button>
+
+            <div class="sensor-data">
+                <span id="sensor-label">Датчик расстояния:</span> <span id="dist-val" class="sensor-val">--</span><span id="dist-unit"> см</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="flowchart-container">
+        <div class="flow-title">ЦИКЛ ПРОГРАММЫ</div>
+
+        <div id="blk-start" class="block block-start">НАЧАЛО ЦИКЛА</div>
+        <div class="arrow">↓</div>
+
+        <div id="blk-sense" class="block block-action">СЧИТАТЬ ДАТЧИК</div>
+        <div class="arrow">↓</div>
+
+        <div id="blk-cond" class="block block-condition">
+            ПРЕПЯТСТВИЕ < 20см?
+        </div>
+
+        <div style="display:flex; width:100%; justify-content:space-between; margin-top:5px; font-size:10px; color:#aaa;">
+            <span id="lbl-no">НЕТ ↓</span>
+            <span id="lbl-yes" style="color:#f59e0b;">ДА ↘</span>
+        </div>
+
+        <div id="blk-move" class="block block-action">ЕХАТЬ ВПЕРЕД</div>
+
+        <div id="blk-turn" class="block block-action"
+             style="background: #b91c1c; border-color:#ef4444; margin-top:10px;">ПОВЕРНУТЬ НАПРАВО
+        </div>
+
+        <div id="code-preview">
+            void loop() {
+            dist = sonar.read();
+
+            if (dist < 20) {
+            robot.turnRight();
+            } else {
+            robot.moveForward();
+            }
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Three.js -->
+<script type="importmap">
+    {
+        "imports": {
+            "three": "../../libs/vendor/three-0.160.0/three.module.js",
+            "three/addons/": "../../libs/vendor/three-0.160.0/addons/"
+        }
+    }
+</script>
+
+<script type="module">
+    import * as THREE from 'three';
+    import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+
+    // --- Configuration ---
+    const CONFIG = {
+        speed: 0.15,
+        turnSpeed: 0.05,
+        sensorRange: 25,
+        stopDistance: 6,
+        wallColor: 0xef4444,
+        robotColor: 0x0ea5e9
+    };
+
+    // --- State ---
+    let state = {
+        status: 'move',
+        wallExists: false,
+        distance: 100
+    };
+
+    // --- Globals ---
+    let scene, camera, renderer, controls;
+    let robotGroup, sensorRay, wallMesh;
+    let gridHelper;
+
+    function init() {
+        const container = document.getElementById('canvas-container');
+
+        // Scene
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0f172a);
+        scene.fog = new THREE.FogExp2(0x0f172a, 0.015);
+
+        // Camera
+        camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 500);
+        camera.position.set(-20, 25, 20);
+        camera.lookAt(0, 0, 0);
+
+        // Renderer
+        renderer = new THREE.WebGLRenderer({antialias: true});
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = false;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        container.appendChild(renderer.domElement);
+
+        // --- LIGHTING ---
+        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.8);
+        hemiLight.position.set(0, 50, 0);
+        scene.add(hemiLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        dirLight.position.set(20, 40, 20);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
+        scene.add(dirLight);
+
+        // Controls
+        controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.minDistance = 10;
+        controls.maxDistance = 100;
+
+        // Build
+        createEnvironment();
+        createRobot();
+
+        // UI Events
+        document.getElementById('btn-wall').addEventListener('click', toggleWall);
+        document.getElementById('btn-reset').addEventListener('click', resetRobot);
+        window.addEventListener('resize', onResize);
+
+        // Loops
+        setInterval(logicLoop, 150); // Logic update (simulation of MCU clock)
+        animate();
+    }
+
+    function createEnvironment() {
+        // Floor
+        const planeGeo = new THREE.PlaneGeometry(200, 200);
+        const planeMat = new THREE.MeshPhongMaterial({color: 0x1e293b, depthWrite: false});
+        const plane = new THREE.Mesh(planeGeo, planeMat);
+        plane.rotation.x = -Math.PI / 2;
+        plane.receiveShadow = true;
+        scene.add(plane);
+
+        const grid = new THREE.GridHelper(200, 40, 0x334155, 0x0f172a);
+        grid.position.y = 0.01;
+        scene.add(grid);
+
+        // Wall (Hidden initially)
+        const wallGeo = new THREE.BoxGeometry(6, 4, 15);
+        const wallMat = new THREE.MeshPhongMaterial({color: CONFIG.wallColor});
+        wallMesh = new THREE.Mesh(wallGeo, wallMat);
+        wallMesh.visible = false;
+        wallMesh.castShadow = true;
+        scene.add(wallMesh);
+    }
+
+    function createRobot() {
+        robotGroup = new THREE.Group();
+        scene.add(robotGroup);
+
+        // Chassis
+        const bodyGeo = new THREE.BoxGeometry(4, 2, 6);
+        const bodyMat = new THREE.MeshPhongMaterial({color: CONFIG.robotColor});
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        body.position.y = 1.5;
+        body.castShadow = true;
+        robotGroup.add(body);
+
+        // Wheels
+        const wheelGeo = new THREE.CylinderGeometry(1, 1, 0.8, 24);
+        const wheelMat = new THREE.MeshPhongMaterial({color: 0x111111});
+
+        const wheels = [
+            {x: 2.2, z: 2}, {x: -2.2, z: 2},
+            {x: 2.2, z: -2}, {x: -2.2, z: -2}
+        ];
+
+        wheels.forEach(pos => {
+            const w = new THREE.Mesh(wheelGeo, wheelMat);
+            w.rotation.z = Math.PI / 2;
+            w.position.set(pos.x, 1, pos.z);
+            w.castShadow = true;
+            robotGroup.add(w);
+        });
+
+        // Sensor Head (Ultrasonic visual)
+        const headGroup = new THREE.Group();
+        headGroup.position.set(0, 3, 2.5);
+        robotGroup.add(headGroup);
+
+        // Servo mount
+        const servoBox = new THREE.Mesh(new THREE.BoxGeometry(2, 1, 2), new THREE.MeshPhongMaterial({color: 0x333333}));
+        headGroup.add(servoBox);
+
+        // Eyes
+        const eyeGeo = new THREE.CylinderGeometry(0.4, 0.4, 0.5, 16);
+        const eyeMat = new THREE.MeshBasicMaterial({color: 0xeeeeee}); // Glowing eyes
+        const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
+        eyeL.rotation.x = Math.PI / 2;
+        eyeL.position.set(0.6, 0, 1.1);
+        headGroup.add(eyeL);
+        const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
+        eyeR.rotation.x = Math.PI / 2;
+        eyeR.position.set(-0.6, 0, 1.1);
+        headGroup.add(eyeR);
+
+        // Ray Visual
+        const rayGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 1)]);
+        const rayMat = new THREE.LineBasicMaterial({color: 0x22c55e, transparent: true, opacity: 0.6});
+        sensorRay = new THREE.Line(rayGeo, rayMat);
+        sensorRay.position.set(0, 3, 3);
+        robotGroup.add(sensorRay);
+    }
+
+    // --- Logic ---
+
+    function logicLoop() {
+        // 1. Raycast
+        const origin = new THREE.Vector3(0, 3, 0).applyMatrix4(robotGroup.matrixWorld);
+        const direction = new THREE.Vector3(0, 0, 1).applyQuaternion(robotGroup.quaternion);
+
+        const raycaster = new THREE.Raycaster(origin, direction, 0, CONFIG.sensorRange);
+        // Only check wall if visible
+        const intersects = state.wallExists ? raycaster.intersectObject(wallMesh) : [];
+
+        // Update Data
+        if (intersects.length > 0) {
+            state.distance = intersects[0].distance;
+            sensorRay.scale.z = state.distance;
+            sensorRay.material.color.setHex(state.distance < CONFIG.stopDistance ? 0xef4444 : 0x22c55e);
+        } else {
+            state.distance = 100;
+            sensorRay.scale.z = 5; // Idle scan
+            sensorRay.material.color.setHex(0x22c55e);
+        }
+
+        document.getElementById('dist-val').innerText = state.distance < 99 ? Math.round(state.distance * 10) : "> 200";
+
+        // 2. Control Logic
+        const blocks = {
+            start: document.getElementById('blk-start'),
+            sense: document.getElementById('blk-sense'),
+            cond: document.getElementById('blk-cond'),
+            move: document.getElementById('blk-move'),
+            turn: document.getElementById('blk-turn')
+        };
+
+        // Reset highlights
+        Object.values(blocks).forEach(b => b.classList.remove('active'));
+
+        // Always active loop parts
+        blocks.start.classList.add('active'); // It's a loop
+        blocks.sense.classList.add('active'); // Always sensing
+        blocks.cond.classList.add('active');  // Always checking
+
+        if (state.distance < CONFIG.stopDistance) {
+            state.status = 'turn';
+            blocks.turn.classList.add('active');
+            blocks.cond.style.borderColor = '#ef4444';
+        } else {
+            state.status = 'move';
+            blocks.move.classList.add('active');
+            blocks.cond.style.borderColor = '#f59e0b';
+        }
+    }
+
+    // --- Actions ---
+
+    function toggleWall() {
+        state.wallExists = !state.wallExists;
+        wallMesh.visible = state.wallExists;
+        const btn = document.getElementById('btn-wall');
+
+        if (state.wallExists) {
+            // Place wall 20 units in front of robot
+            const fwd = new THREE.Vector3(0, 0, 20).applyQuaternion(robotGroup.quaternion);
+            wallMesh.position.copy(robotGroup.position).add(fwd);
+            wallMesh.position.y = 2;
+            wallMesh.rotation.y = robotGroup.rotation.y;
+
+            btn.style.background = "#ef4444";
+            btn.innerText = window._t ? window._t.btn_wall_remove : "❌ Убрать Стену";
+        } else {
+            btn.style.background = "#10b981";
+            btn.innerText = window._t ? window._t.btn_wall_add : "🚧 Поставить Стену";
+        }
+    }
+
+    function resetRobot() {
+        robotGroup.position.set(0, 0, 0);
+        robotGroup.rotation.set(0, 0, 0);
+        state.status = 'move';
+
+        // Reset camera
+        controls.target.set(0, 0, 0);
+        camera.position.set(-15, 20, 15);
+    }
+
+    function onResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+
+        // Physics movement
+        if (state.status === 'move') {
+            robotGroup.translateZ(CONFIG.speed);
+        } else if (state.status === 'turn') {
+            robotGroup.rotation.y -= CONFIG.turnSpeed;
+        }
+
+        // Camera Follow
+        const offset = new THREE.Vector3(0, 15, -20).applyQuaternion(robotGroup.quaternion);
+        const camTargetPos = robotGroup.position.clone().add(offset);
+
+        // Smooth camera follow
+        // controls.object.position.lerp(camTargetPos, 0.05); // Optional: Cinematic cam
+        controls.target.lerp(robotGroup.position, 0.1);
+
+        controls.update();
+        renderer.render(scene, camera);
+    }
+
+    // Run
+    window.onload = init;
+
+</script>
+</body>
+</html>

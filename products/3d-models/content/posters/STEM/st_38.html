@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Микроконтроллер (Arduino)</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { width: 100%; height: 100%; overflow: hidden; }
+        body { font-family: 'Segoe UI','Inter',system-ui,sans-serif; background: radial-gradient(circle at 50% 20%,#102218 0%,#0a1410 70%); color:#e7f5ec; }
+        #canvas-container { position: absolute; inset: 0; }
+        #labels { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+        .label3d { position: absolute; transform: translate(-50%,-50%); font-size: 11.5px; font-weight: 800; padding: 2px 8px; border-radius: 7px; background: rgba(10,28,20,0.9); border: 1.5px solid rgba(90,180,140,0.5); box-shadow: 0 2px 8px rgba(0,0,0,0.4); white-space: nowrap; color:#bff0d4; }
+
+        .header { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); text-align: center; z-index: 6; pointer-events: none; width: 92%; }
+        .header h1 { font-size: 25px; font-weight: 800; color:#eafff2; text-shadow: 0 1px 6px rgba(0,0,0,0.5); }
+        .header p { font-size: 13.5px; color:#86b8a0; margin-top: 4px; font-weight: 600; }
+
+        .panel { position: absolute; z-index: 7; background: rgba(11,26,20,0.85);   border: 1px solid rgba(70,150,110,0.32); border-radius: 16px; box-shadow: 0 10px 34px rgba(0,0,0,0.4); }
+        .control-panel { top: 88px; left: 22px; width: 314px; padding: 16px 18px; }
+        .info-panel { top: 88px; right: 22px; width: 296px; padding: 16px 18px; }
+
+        .sec-title { font-size: 12px; font-weight: 800; color:#9fd9bd; text-transform: uppercase; letter-spacing: 0.6px; margin: 2px 0 8px; }
+        .seg { display:grid; grid-template-columns:1fr 1fr; gap:7px; margin-bottom: 13px; }
+        .seg-btn { padding: 9px 6px; border-radius: 9px; border:1.5px solid rgba(70,150,110,0.38); background: rgba(20,45,34,0.5); color:#86b8a0; font-size:12px; font-weight:800; cursor:pointer; transition:all 0.16s; text-align:center; }
+        .seg-btn.active { background: linear-gradient(135deg,#0f9d58,#0b7a44); color:#fff; border-color:#34d399; }
+
+        .param-group { margin-bottom: 11px; }
+        .param-label { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px; }
+        .param-name { font-size: 13px; font-weight: 700; color:#9fd9bd; }
+        .param-value { font-size: 14px; font-weight: 800; color:#34d399; font-variant-numeric: tabular-nums; }
+        input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; border-radius: 6px; outline: none; cursor: pointer; background: linear-gradient(90deg,#13402c,#1c6b48); }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 17px; height: 17px; border-radius: 50%; background:#34d399; border: 3px solid #0a1410; box-shadow: 0 2px 7px rgba(52,211,153,0.5); cursor: pointer; }
+
+        .toggle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 2px; }
+        .toggle-btn { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 9px 6px; border-radius: 10px; border: 1.5px solid rgba(70,150,110,0.38); background: rgba(20,45,34,0.5); color:#86b8a0; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.16s; }
+        .toggle-btn .dot { width: 9px; height: 9px; border-radius: 50%; background:#4a7a62; transition: all 0.16s; }
+        .toggle-btn.active { background: rgba(52,211,153,0.16); border-color:#34d399; color:#eafff2; }
+        .toggle-btn.active .dot { background:#34d399; box-shadow: 0 0 7px rgba(52,211,153,0.9); }
+
+        .action-row { display: flex; gap: 8px; margin-top: 12px; }
+        .btn { flex: 1; padding: 10px; border: none; border-radius: 10px; font-size: 13px; font-weight: 800; cursor: pointer; transition: all 0.16s; color:#fff; }
+        .btn-play { background: linear-gradient(135deg,#0f9d58,#0b7a44); } .btn-step { background: linear-gradient(135deg,#3b82f6,#2563eb); }
+        .btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
+
+        .info-title { font-size: 15px; font-weight: 800; color:#eafff2; margin-bottom: 9px; }
+        .code { background:#06120d; border:1px solid rgba(70,150,110,0.25); border-radius: 10px; padding: 9px 10px; font-family:'Consolas','Courier New',monospace; font-size: 12px; line-height: 1.55; color:#8fbfa6; margin-bottom: 11px; min-height: 150px; }
+        .code .ln { display:block; padding: 0 4px; border-radius: 4px; white-space: pre; }
+        .code .ln.active { background: rgba(52,211,153,0.2); color:#eafff2; }
+        .code .kw { color:#f59e0b; } .code .fn { color:#60a5fa; } .code .nm { color:#e879f9; }
+
+        .pins { display:grid; grid-template-columns: repeat(6,1fr); gap:6px; }
+        .pin-chip { text-align:center; border-radius:7px; padding:5px 0; font-size:11px; font-weight:800; background:#0d2017; border:1px solid rgba(70,150,110,0.3); color:#6f9a83; transition: all 0.12s; }
+        .pin-chip.high { background:#0f9d58; color:#fff; box-shadow:0 0 8px rgba(52,211,153,0.7); }
+
+        .formula-panel { position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 7; background: rgba(6,18,13,0.93); color:#cdeeda; padding: 9px 22px; border-radius: 13px; box-shadow: 0 10px 30px rgba(0,0,0,0.45); text-align: center; max-width: 78%; border:1px solid rgba(70,150,110,0.28); }
+        .formula { font-size: 14.5px; font-weight: 600; } .formula b { color:#34d399; }
+        .hint { position: absolute; bottom: 16px; left: 22px; z-index: 7; font-size: 12px; color:#6f9a83; background: rgba(11,26,20,0.7); padding: 7px 13px; border-radius: 9px; border: 1px solid rgba(70,150,110,0.28); }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div id="labels"></div>
+
+    <div class="header">
+        <h1>🔌 Микроконтроллер (Arduino)</h1>
+        <p><span id="h-sub">Цифровые выводы • программа • Blink, PWM, бегущие огни</span></p>
+    </div>
+
+    <div class="panel control-panel">
+        <div class="sec-title" data-i18n="skTitle">Скетч (программа)</div>
+        <div class="seg">
+            <button class="seg-btn active" data-sk="blink" data-i18n="skBlink">Blink (мигание)</button>
+            <button class="seg-btn" data-sk="fade" data-i18n="skFade">PWM-затухание</button>
+            <button class="seg-btn" data-sk="chase" data-i18n="skChase">Бегущие огни</button>
+            <button class="seg-btn" data-sk="traffic" data-i18n="skTraffic">Светофор</button>
+        </div>
+
+        <div class="param-group"><div class="param-label"><span class="param-name" data-i18n="speedLabel">Скорость (delay)</span><span class="param-value" id="speed-value">300 мс</span></div><input type="range" id="speed" min="60" max="900" value="300"></div>
+        <div class="param-group"><div class="param-label"><span class="param-name" data-i18n="pwmLabel">ШИМ-заполнение (pin 9)</span><span class="param-value" id="pwm-value">50%</span></div><input type="range" id="pwm" min="0" max="100" value="50"></div>
+
+        <div class="toggle-grid">
+            <button class="toggle-btn active" id="t-wires"><span class="dot"></span><span data-i18n="tWires">Провода</span></button>
+            <button class="toggle-btn active" id="t-labels"><span class="dot"></span><span data-i18n="tLabels">Подписи</span></button>
+        </div>
+
+        <div class="action-row">
+            <button class="btn btn-play" id="btn-run" data-i18n="run">▶ Запуск</button>
+            <button class="btn btn-step" id="btn-step" data-i18n="step">⏭ Шаг</button>
+        </div>
+    </div>
+
+    <div class="panel info-panel">
+        <div class="info-title">💻 <span data-i18n="codeTitle">Код скетча</span></div>
+        <div class="code" id="code"></div>
+        <div class="sec-title" data-i18n="pinTitle">Состояние выводов</div>
+        <div class="pins" id="pins"></div>
+    </div>
+
+    <div class="formula-panel">
+        <div class="formula" id="status">millis() = <b>0</b> · <span data-i18n="clk">такт 16 МГц</span></div>
+    </div>
+
+    <div class="hint"><span data-i18n="hint">ЛКМ — вращение • Колесо — зум</span></div>
+
+    <script src="../../libs/vendor/three-r128/three.min.js"></script>
+    <script>
+    const LANG = (new URLSearchParams(window.location.search).get('lang')) || 'ru';
+    const I18N = {
+        ru: { headH:'🔌 Микроконтроллер (Arduino)', headS:'Цифровые выводы • программа • Blink, PWM, бегущие огни',
+              skTitle:'Скетч (программа)', skBlink:'Blink (мигание)', skFade:'PWM-затухание', skChase:'Бегущие огни', skTraffic:'Светофор',
+              speedLabel:'Скорость (delay)', pwmLabel:'ШИМ-заполнение (pin 9)', tWires:'Провода', tLabels:'Подписи',
+              run:'▶ Запуск', pause:'⏸ Пауза', step:'⏭ Шаг', codeTitle:'Код скетча', pinTitle:'Состояние выводов', clk:'такт 16 МГц',
+              hint:'ЛКМ — вращение • Колесо — зум',
+              lChip:'ATmega328P (МК)', lUsb:'USB', lXtal:'Кварц 16 МГц', lLed:'Светодиод "L" (pin 13)', lDig:'Цифровые выводы', lReg:'Стабилизатор 5 В', lBread:'Макетная плата',
+              uMs:' мс' },
+        kz: { headH:'🔌 Микроконтроллер (Arduino)', headS:'Цифрлық шығыстар • бағдарлама • Blink, PWM, жүгіруші оттар',
+              skTitle:'Скетч (бағдарлама)', skBlink:'Blink (жыпылықтау)', skFade:'PWM-сөну', skChase:'Жүгіруші оттар', skTraffic:'Бағдаршам',
+              speedLabel:'Жылдамдық (delay)', pwmLabel:'PWM толтыру (pin 9)', tWires:'Сымдар', tLabels:'Жазулар',
+              run:'▶ Іске қосу', pause:'⏸ Кідірту', step:'⏭ Қадам', codeTitle:'Скетч коды', pinTitle:'Шығыстар күйі', clk:'такт 16 МГц',
+              hint:'СБ — айналдыру • Дөңгелек — масштаб',
+              lChip:'ATmega328P (МК)', lUsb:'USB', lXtal:'Кварц 16 МГц', lLed:'"L" жарықдиоды (pin 13)', lDig:'Цифрлық шығыстар', lReg:'Тұрақтандырғыш 5 В', lBread:'Макет тақтасы',
+              uMs:' мс' },
+        en: { headH:'🔌 Microcontroller (Arduino)', headS:'Digital pins • a sketch • Blink, PWM, running lights',
+              skTitle:'Sketch (program)', skBlink:'Blink', skFade:'PWM fade', skChase:'Running lights', skTraffic:'Traffic light',
+              speedLabel:'Speed (delay)', pwmLabel:'PWM duty (pin 9)', tWires:'Wires', tLabels:'Labels',
+              run:'▶ Run', pause:'⏸ Pause', step:'⏭ Step', codeTitle:'Sketch code', pinTitle:'Pin states', clk:'16 MHz clock',
+              hint:'LMB — rotate • Wheel — zoom',
+              lChip:'ATmega328P (MCU)', lUsb:'USB', lXtal:'16 MHz crystal', lLed:'LED "L" (pin 13)', lDig:'Digital pins', lReg:'5 V regulator', lBread:'Breadboard',
+              uMs:' ms' },
+    };
+    const L = I18N[LANG] || I18N.ru;
+
+    const SKETCHES = {
+        blink: { lines:['void setup() {','  pinMode(13, OUTPUT);','}','void loop() {','  digitalWrite(13, HIGH);','  delay(d);','  digitalWrite(13, LOW);','  delay(d);','}'] },
+        fade:  { lines:['void setup() {','  pinMode(9, OUTPUT);','}','void loop() {','  analogWrite(9, duty);','  // ШИМ 0..255','  delay(d);','}'] },
+        chase: { lines:['void setup() {','  for(p=2;p<8;p++)','    pinMode(p, OUTPUT);','}','void loop() {','  light(seq[i]);','  i = (i+1) % N;','  delay(d);','}'] },
+        traffic:{ lines:['// 2:red 3:yellow 4:green','void loop() {','  set(RED);  wait();','  set(R+YEL);wait();','  set(GREEN);wait();','  set(YEL);  wait();','}'] },
+    };
+
+    let sketch='blink', running=false, speed=300, pwmDuty=50;
+    let showWires=true, showLabels=true;
+    let simT=0, stepReq=false;
+    const pinBright = {}; for(let p=2;p<=13;p++) pinBright[p]=0;
+
+    let scene, camera, renderer, root, board;
+    const leds={}, pinMeshes={}, wires={};
+    const labelDefs=[];
+    const clock=new THREE.Clock();
+    const container=document.getElementById('canvas-container');
+    const labelLayer=document.getElementById('labels');
+
+    let camTheta=0.9, camPhi=0.85, camRadius=17;
+    const camTarget=new THREE.Vector3(0,0.5,0);
+    let dragMode=0,lastX=0,lastY=0;
+
+    // LED color per pin
+    const LED_COLOR = {2:0xff3b30,3:0xffcc00,4:0x34c759,5:0x34d399,6:0x34d399,7:0x34d399,8:0x34d399,9:0x60a5fa,10:0x34d399,11:0x34d399,12:0x34d399,13:0xff3b30};
+
+    function init() {
+        scene=new THREE.Scene();
+        scene.background=new THREE.Color(0x0a1410);
+        scene.fog=new THREE.Fog(0x0a1410, 26, 56);
+        camera=new THREE.PerspectiveCamera(46, window.innerWidth/window.innerHeight, 0.1, 200);
+        renderer=new THREE.WebGLRenderer({antialias: true});
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+        renderer.shadowMap.enabled=false; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+        renderer.outputEncoding=THREE.sRGBEncoding;
+        container.appendChild(renderer.domElement);
+
+        scene.add(new THREE.AmbientLight(0xffffff,0.7));
+        const key=new THREE.DirectionalLight(0xffffff,0.7); key.position.set(6,14,8); key.castShadow=true; key.shadow.mapSize.set(2048,2048);
+        key.shadow.camera.left=-16;key.shadow.camera.right=16;key.shadow.camera.top=16;key.shadow.camera.bottom=-16; scene.add(key);
+        scene.add(new THREE.DirectionalLight(0x88ccff,0.25).translateX(-8));
+
+        root=new THREE.Group(); scene.add(root);
+        buildGround(); buildBoard(); buildBreadboard();
+        makeLabels(); buildPinGrid(); renderCode();
+        applyI18N(); setupControls();
+        updateCamera(); apply(); animate();
+    }
+    function mat(c,m,r,o){ return new THREE.MeshStandardMaterial(Object.assign({color:c,metalness:m,roughness:r},o||{})); }
+
+    function buildGround(){
+        const g=new THREE.Mesh(new THREE.CircleGeometry(20,64), mat(0x0c1a13,0.1,0.95)); g.rotation.x=-Math.PI/2; g.position.y=-1.2; g.receiveShadow=true; root.add(g);
+        const grid=new THREE.GridHelper(40,40,0x1c4733,0x12301f); grid.position.y=-1.19; root.add(grid);
+    }
+
+    function buildBoard(){
+        board=new THREE.Group(); root.add(board);
+        const pcb=new THREE.Mesh(new THREE.BoxGeometry(11,0.3,7.5), mat(0x0d8a5a,0.2,0.6)); pcb.castShadow=true; pcb.receiveShadow=true; board.add(pcb);
+        // silkscreen lines
+        const edge=new THREE.Mesh(new THREE.BoxGeometry(11.02,0.32,7.52), new THREE.MeshBasicMaterial({color:0x0a6b46,wireframe:false,transparent:true,opacity:0.0})); board.add(edge);
+        // ATmega chip
+        const chip=new THREE.Mesh(new THREE.BoxGeometry(3.4,0.5,1.3), mat(0x14181c,0.3,0.5)); chip.position.set(0.5,0.4,0); chip.castShadow=true; board.add(chip);
+        const notch=new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.12,0.1,16), mat(0x2a2f35,0.3,0.6)); notch.position.set(-1.0,0.66,0); board.add(notch);
+        labelDefs.push({key:'lChip', pos:new THREE.Vector3(0.5,1.1,0)});
+        // USB
+        const usb=new THREE.Mesh(new THREE.BoxGeometry(1.4,0.9,1.6), mat(0xb8c0cc,0.85,0.3)); usb.position.set(-5.0,0.45,2.2); usb.castShadow=true; board.add(usb);
+        labelDefs.push({key:'lUsb', pos:new THREE.Vector3(-5.6,1.1,2.2)});
+        // power jack
+        const jack=new THREE.Mesh(new THREE.CylinderGeometry(0.55,0.55,1.4,18), mat(0x0c0f12,0.4,0.5)); jack.rotation.z=Math.PI/2; jack.position.set(-5.1,0.4,-2.3); board.add(jack);
+        labelDefs.push({key:'lReg', pos:new THREE.Vector3(-3.2,0.9,-2.4)});
+        const reg=new THREE.Mesh(new THREE.BoxGeometry(0.9,0.7,0.6), mat(0x1a1f24,0.4,0.5)); reg.position.set(-3.2,0.45,-2.4); board.add(reg);
+        // crystal
+        const xtal=new THREE.Mesh(new THREE.BoxGeometry(0.8,0.4,0.45), mat(0xc8ccd2,0.9,0.3)); xtal.position.set(-1.7,0.4,1.4); board.add(xtal);
+        labelDefs.push({key:'lXtal', pos:new THREE.Vector3(-1.7,1.0,1.6)});
+        // power LED (always on)
+        const pled=new THREE.Mesh(new THREE.CylinderGeometry(0.14,0.14,0.2,14), new THREE.MeshStandardMaterial({color:0x34c759,emissive:0x1f8a3d,emissiveIntensity:1.2})); pled.position.set(2.5,0.42,1.6); board.add(pled);
+
+        // digital pin header (top edge, pins 0..13)
+        const headerT=new THREE.Mesh(new THREE.BoxGeometry(8.2,0.4,0.55), mat(0x111416,0.3,0.6)); headerT.position.set(0.6,0.35,3.2); board.add(headerT);
+        const pinXs={};
+        for(let p=0;p<=13;p++){ const x= (p-6.5)*0.58 + 0.6; pinXs[p]=x;
+            const pin=new THREE.Mesh(new THREE.BoxGeometry(0.18,0.42,0.18), mat(0xd4af37,0.9,0.3)); pin.position.set(x,0.55,3.2); board.add(pin);
+            if(p>=2&&p<=13) pinMeshes[p]=pin;
+        }
+        labelDefs.push({key:'lDig', pos:new THREE.Vector3(0.6,1.0,3.6)});
+        // analog header (bottom)
+        const headerB=new THREE.Mesh(new THREE.BoxGeometry(5.2,0.4,0.55), mat(0x111416,0.3,0.6)); headerB.position.set(1.5,0.35,-3.2); board.add(headerB);
+        for(let p=0;p<8;p++){ const pin=new THREE.Mesh(new THREE.BoxGeometry(0.18,0.42,0.18), mat(0xd4af37,0.9,0.3)); pin.position.set(-0.6+p*0.58,0.55,-3.2); board.add(pin); }
+
+        // onboard L LED (pin 13)
+        const lled=new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.16,0.22,16), new THREE.MeshStandardMaterial({color:0xff3b30,emissive:0x661510,emissiveIntensity:0.2})); lled.position.set(1.5,0.43,1.6); board.add(lled);
+        leds[13]=lled; lled.userData.base=0xff3b30;
+        labelDefs.push({key:'lLed', pos:new THREE.Vector3(1.5,1.0,1.6)});
+
+        board.userData.pinXs=pinXs;
+    }
+
+    function buildBreadboard(){
+        const bb=new THREE.Group(); bb.position.set(0.6,0,7.0); root.add(bb);
+        const base=new THREE.Mesh(new THREE.BoxGeometry(8.2,0.5,3.2), mat(0xf2f3f5,0.1,0.7)); base.position.y=0.05; base.castShadow=true; base.receiveShadow=true; bb.add(base);
+        // power rails
+        [1.3,-1.3].forEach((z,i)=>{ const r=new THREE.Mesh(new THREE.BoxGeometry(8.0,0.04,0.12), new THREE.MeshBasicMaterial({color:i===0?0xff3b30:0x2563eb})); r.position.set(0,0.31,z); bb.add(r); });
+        // external LEDs for pins 2..12 (skip 13 onboard)
+        const pinXs=board.userData.pinXs;
+        for(let p=2;p<=12;p++){
+            const x=(p-7)*0.66;
+            const led=new THREE.Mesh(new THREE.SphereGeometry(0.22,16,12), new THREE.MeshStandardMaterial({color:LED_COLOR[p],emissive:LED_COLOR[p],emissiveIntensity:0.15,metalness:0.1,roughness:0.3,transparent:true,opacity:0.95}));
+            led.position.set(x,0.5,-0.4); led.castShadow=true; bb.add(led); led.userData.base=LED_COLOR[p];
+            leds[p]=led;
+            // legs
+            const leg=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,0.4,8), mat(0xcfd6df,0.9,0.3)); leg.position.set(x,0.28,-0.4); bb.add(leg);
+            // wire from board pin to breadboard LED
+            const from=new THREE.Vector3(pinXs[p]+0.6, 0.75, 3.2);
+            const to=new THREE.Vector3(x+0.6, 0.55, 7.0-0.4);
+            const mid=from.clone().lerp(to,0.5); mid.y+=1.6;
+            const curve=new THREE.QuadraticBezierCurve3(from,mid,to);
+            const wg=new THREE.TubeGeometry(curve,20,0.045,6,false);
+            const wire=new THREE.Mesh(wg, new THREE.MeshStandardMaterial({color:LED_COLOR[p],metalness:0.3,roughness:0.5,emissive:LED_COLOR[p],emissiveIntensity:0.1}));
+            root.add(wire); wires[p]=wire;
+        }
+        labelDefs.push({key:'lBread', pos:new THREE.Vector3(0.6,1.2,7.0)});
+    }
+
+    function makeLabels(){ labelDefs.forEach(d=>{ const el=document.createElement('div'); el.className='label3d'; labelLayer.appendChild(el); d.el=el; }); }
+    function updateLabels(){ labelDefs.forEach(d=>{ const txt=L[d.key]||d.key; if(d.el.textContent!==txt) d.el.textContent=txt; if(!showLabels){d.el.style.display='none';return;} const v=d.pos.clone().project(camera); if(v.z>1){d.el.style.display='none';return;} d.el.style.display='block'; d.el.style.left=(v.x*0.5+0.5)*window.innerWidth+'px'; d.el.style.top=(-v.y*0.5+0.5)*window.innerHeight+'px'; }); }
+
+    function buildPinGrid(){
+        const wrap=document.getElementById('pins'); wrap.innerHTML='';
+        for(let p=2;p<=13;p++){ const c=document.createElement('div'); c.className='pin-chip'; c.id='pin-'+p; c.textContent='D'+p; wrap.appendChild(c); }
+    }
+
+    function renderCode(){
+        const c=document.getElementById('code'); c.innerHTML='';
+        SKETCHES[sketch].lines.forEach((ln,i)=>{ const d=document.createElement('span'); d.className='ln'; d.id='ln-'+i; d.textContent=ln; c.appendChild(d); });
+    }
+    function highlight(idx){ SKETCHES[sketch].lines.forEach((_,i)=>{ const el=document.getElementById('ln-'+i); if(el) el.classList.toggle('active', i===idx); }); }
+
+    // ---- simulation per sketch; returns active code line index ----
+    function simulate(t){
+        const d=speed; for(let p=2;p<=13;p++) pinBright[p]=0;
+        if(sketch==='blink'){
+            const period=d*2, ph=t%period; const on=ph<d; pinBright[13]=on?1:0; pinBright[8]=on?1:0;
+            return on? (ph<d*0.15?4:5) : (ph-d<d*0.15?6:7);
+        }
+        if(sketch==='fade'){
+            // PWM on pin 9: brightness from duty; show flicker proportion
+            const b=pwmDuty/100; pinBright[9]=b; return 4;
+        }
+        if(sketch==='chase'){
+            const seq=[2,3,4,5,6,7,6,5,4,3]; const i=Math.floor(t/d)%seq.length; pinBright[seq[i]]=1; return 5;
+        }
+        if(sketch==='traffic'){
+            const T=[ [d*4,[2]], [d*1.5,[2,3]], [d*4,[4]], [d*1.5,[3]] ];
+            const tot=T.reduce((a,b)=>a+b[0],0); let tt=t%tot, k=0; while(k<T.length-1 && tt>T[k][0]){ tt-=T[k][0]; k++; }
+            T[k][1].forEach(p=>pinBright[p]=1); return 2+k;
+        }
+        return 0;
+    }
+
+    function apply(){
+        const line=simulate(simT);
+        highlight(line);
+        for(let p=2;p<=13;p++){
+            const b=pinBright[p];
+            if(leds[p]){ leds[p].material.emissiveIntensity=0.12+b*1.6; leds[p].scale.setScalar(1+b*0.18); }
+            if(wires[p]) wires[p].material.emissiveIntensity=0.08+b*0.9;
+            if(pinMeshes[p]){ pinMeshes[p].material.emissive=new THREE.Color(b>0.05?0x34d399:0x000000); pinMeshes[p].material.emissiveIntensity=b*0.8; }
+            const chip=document.getElementById('pin-'+p); if(chip) chip.classList.toggle('high', b>0.05);
+        }
+        document.getElementById('status').innerHTML='millis() = <b>'+Math.floor(simT)+'</b> · '+L.clk;
+    }
+
+    function setupControls(){
+        document.querySelectorAll('.seg-btn').forEach(b=>b.addEventListener('click',()=>{ document.querySelectorAll('.seg-btn').forEach(x=>x.classList.remove('active')); b.classList.add('active'); sketch=b.getAttribute('data-sk'); simT=0; renderCode(); apply(); }));
+        document.getElementById('speed').addEventListener('input', e=>{ speed=+e.target.value; document.getElementById('speed-value').textContent=speed+L.uMs; });
+        document.getElementById('pwm').addEventListener('input', e=>{ pwmDuty=+e.target.value; document.getElementById('pwm-value').textContent=pwmDuty+'%'; if(sketch==='fade'&&!running) apply(); });
+        const tog=(id,fn)=>{ const el=document.getElementById(id); el.addEventListener('click',()=>{ el.classList.toggle('active'); fn(el.classList.contains('active')); }); };
+        tog('t-wires', v=>{ showWires=v; Object.values(wires).forEach(w=>w.visible=v); });
+        tog('t-labels', v=>showLabels=v);
+        document.getElementById('btn-run').addEventListener('click', ()=>{ running=!running; document.getElementById('btn-run').textContent=running?L.pause:L.run; });
+        document.getElementById('btn-step').addEventListener('click', ()=>{ simT+=speed; apply(); });
+
+        const el=renderer.domElement;
+        el.addEventListener('contextmenu', e=>e.preventDefault());
+        el.addEventListener('mousedown', e=>{ dragMode=(e.button===2||e.shiftKey)?2:1; lastX=e.clientX; lastY=e.clientY; });
+        window.addEventListener('mousemove', e=>{ if(!dragMode)return; const dx=e.clientX-lastX,dy=e.clientY-lastY; lastX=e.clientX; lastY=e.clientY; if(dragMode===1){camTheta-=dx*0.005; camPhi=Math.max(0.18,Math.min(Math.PI/2-0.05,camPhi-dy*0.005));} else {const ps=camRadius*0.0016; const right=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,0); const up=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,1); camTarget.addScaledVector(right,-dx*ps); camTarget.addScaledVector(up,dy*ps);} updateCamera(); });
+        window.addEventListener('mouseup', ()=>dragMode=0);
+        el.addEventListener('wheel', e=>{ e.preventDefault(); camRadius=Math.max(10,Math.min(32,camRadius+e.deltaY*0.015)); updateCamera(); }, {passive:false});
+        el.addEventListener('touchstart', e=>{ const t=e.touches[0]; dragMode=1; lastX=t.clientX; lastY=t.clientY; }, {passive:true});
+        el.addEventListener('touchmove', e=>{ if(!dragMode)return; const t=e.touches[0]; const dx=t.clientX-lastX,dy=t.clientY-lastY; lastX=t.clientX; lastY=t.clientY; camTheta-=dx*0.006; camPhi=Math.max(0.18,Math.min(Math.PI/2-0.05,camPhi-dy*0.006)); updateCamera(); e.preventDefault(); }, {passive:false});
+        window.addEventListener('touchend', ()=>dragMode=0);
+        window.addEventListener('resize', ()=>{ camera.aspect=window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+    }
+
+    function updateCamera(){ const sp=Math.sin(camPhi),cp=Math.cos(camPhi),st=Math.sin(camTheta),ct=Math.cos(camTheta); camera.position.set(camTarget.x+camRadius*sp*ct, camTarget.y+camRadius*cp, camTarget.z+camRadius*sp*st); camera.lookAt(camTarget); camera.updateMatrixWorld(true); }
+
+    function applyI18N(){
+        document.querySelectorAll('[data-i18n]').forEach(el=>{ const k=el.getAttribute('data-i18n'); if(L[k]!=null) el.textContent=L[k]; });
+        document.querySelector('.header h1').textContent=L.headH;
+        document.getElementById('h-sub').textContent=L.headS;
+        document.getElementById('speed-value').textContent=speed+L.uMs;
+        document.title=L.headH.replace(/^[^\wА-Яа-яЁё]+/, ''); document.documentElement.lang=LANG;
+    }
+
+    function animate(){
+        requestAnimationFrame(animate);
+        const dt=Math.min(clock.getDelta(),0.05);
+        if(running){ simT+=dt*1000; apply(); }
+        updateLabels();
+        renderer.render(scene, camera);
+    }
+
+    init();
+    </script>
+</body>
+</html>

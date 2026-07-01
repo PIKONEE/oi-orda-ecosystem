@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="page_title">Вписанный и центральный угол</title>
+<style>
+
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#f2f3f6;--surface:rgba(255,255,255,0.94);--border:rgba(20,30,55,0.08);
+  --text:#161e2c;--muted:#5e6a7a;--faint:#9aa6b4;
+  --central:#7c3aed;--central-dim:rgba(124,58,237,0.10);
+  --inscribed:#0d9488;--inscribed-dim:rgba(13,148,136,0.10);
+  --arc:#d97706;--ptAB:#2563eb;--ptP:#e11d48;
+  --accent:#7c3aed;--accent-dim:rgba(124,58,237,0.10);
+  --shadow:0 2px 22px rgba(20,30,60,0.07);--shadow-lg:0 18px 56px rgba(20,30,70,0.15);
+}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);overflow:hidden;height:100vh;}
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(1200px 760px at 70% 30%, rgba(167,139,250,0.11), transparent 60%),radial-gradient(820px 560px at 16% 84%, rgba(13,148,136,0.05), transparent 55%);}
+#canvas-container{position:fixed;inset:0;z-index:1;}
+#labels-layer{position:fixed;inset:0;z-index:40;pointer-events:none;overflow:hidden;}
+.dim-label{position:absolute;transform:translate(-50%,-50%);font-family:'Roboto Mono',monospace;font-size:14px;font-weight:700;padding:3px 9px;border-radius:9px;white-space:nowrap;letter-spacing:-0.3px;background:rgba(255,255,255,0.97);box-shadow:0 3px 12px rgba(20,30,60,0.13);transition:opacity 0.18s;}
+.dim-label.hidden{opacity:0;}
+.dim-label.lcen{background:var(--central);color:#fff;border:none;box-shadow:0 4px 14px rgba(124,58,237,0.4);}
+.dim-label.lins{background:var(--inscribed);color:#fff;border:none;box-shadow:0 4px 14px rgba(13,148,136,0.4);}
+.dim-label.lpt{font-size:14px;font-weight:800;color:#fff;border:none;padding:2px 8px;}
+.dim-label.lab{background:var(--ptAB);box-shadow:0 3px 10px rgba(37,99,235,0.4);}
+.dim-label.lp{background:var(--ptP);box-shadow:0 3px 10px rgba(225,29,72,0.4);}
+.dim-label.lo{background:#334155;box-shadow:0 3px 10px rgba(0,0,0,0.25);}
+.dim-label.lghost{background:rgba(13,148,136,0.85);color:#fff;border:none;font-size:13px;}
+.header{position:fixed;top:0;left:0;right:0;z-index:200;background:var(--surface);border-bottom:1px solid var(--border);padding:0 38px;height:84px;display:flex;align-items:center;gap:15px;box-shadow:var(--shadow);}
+.h-badge{width:46px;height:46px;border-radius:14px;flex-shrink:0;background:linear-gradient(135deg,#7c3aed,#a78bfa);display:flex;align-items:center;justify-content:center;box-shadow:0 7px 20px rgba(124,58,237,0.36);}
+.h-badge svg{width:25px;height:25px;}
+.header-title{font-size:23px;font-weight:800;letter-spacing:-0.5px;}
+.header-tag{font-family:'Roboto Mono',monospace;font-size:13px;color:var(--accent);background:var(--accent-dim);padding:4px 11px;border-radius:8px;}
+.header-sub{font-size:14px;color:var(--muted);margin-left:auto;text-align:right;line-height:1.45;}
+.eq-banner{position:fixed;top:96px;left:50%;transform:translateX(-50%);z-index:150;background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-lg);padding:10px 24px;font-family:'Roboto Mono',monospace;font-size:17px;font-weight:700;pointer-events:none;}
+.eq-banner .ec{color:var(--central);} .eq-banner .ei{color:var(--inscribed);}
+.panel{position:fixed;z-index:100;background:var(--surface);border:1px solid var(--border);border-radius:22px;box-shadow:var(--shadow-lg);}
+.panel h3{font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;color:var(--faint);}
+.panel-left{left:22px;top:98px;width:336px;padding:18px 18px;overflow:hidden;min-height:330px;}
+.ld-list,.ld-detail{transition:transform 0.4s cubic-bezier(0.4,0,0.2,1),opacity 0.28s;}
+.ld-list h3{margin-bottom:12px;padding-left:4px;}
+.ld-detail{position:absolute;inset:18px 18px;transform:translateX(26px);opacity:0;pointer-events:none;overflow-y:auto;}
+.panel-left.detail .ld-list{transform:translateX(-26px);opacity:0;pointer-events:none;}
+.panel-left.detail .ld-detail{transform:translateX(0);opacity:1;pointer-events:auto;}
+.metric{display:flex;align-items:center;gap:12px;padding:12px 12px;border-radius:14px;cursor:pointer;border:1px solid transparent;transition:all 0.15s;margin-bottom:2px;}
+.metric:hover{background:rgba(20,30,60,0.04);}
+.metric.active{background:var(--accent-dim);border-color:rgba(124,58,237,0.22);}
+.metric-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0;}
+.metric-main{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;}
+.metric-name{font-size:15px;font-weight:700;line-height:1.15;}
+.metric-sub{font-family:'Roboto Mono',monospace;font-size:13px;color:var(--muted);}
+.metric-val{font-family:'Roboto Mono',monospace;font-size:21px;font-weight:500;color:var(--accent);letter-spacing:-1px;flex-shrink:0;}
+.ld-back{display:inline-flex;align-items:center;gap:5px;cursor:pointer;border:none;background:none;font-family:'Inter',sans-serif;font-size:14px;font-weight:700;color:var(--accent);padding:4px 6px 4px 0;margin-bottom:12px;}
+.d-tag{display:inline-block;padding:4px 12px;border-radius:99px;font-size:13px;font-weight:700;margin-bottom:10px;background:var(--accent-dim);color:var(--accent);}
+.d-title{font-size:22px;font-weight:800;letter-spacing:-0.4px;line-height:1.15;margin-bottom:14px;}
+.d-bigval{display:flex;align-items:baseline;gap:9px;margin-bottom:4px;}
+.d-bigval b{font-family:'Roboto Mono',monospace;font-size:35px;font-weight:500;color:var(--accent);letter-spacing:-1.5px;line-height:1;}
+.d-bigval span{font-size:14px;color:var(--muted);font-weight:600;}
+.d-formula{margin:13px 0 4px;padding:13px 15px;border-radius:13px;background:linear-gradient(135deg,rgba(167,139,250,0.12),rgba(124,58,237,0.05));border:1px solid rgba(124,58,237,0.16);font-family:'Roboto Mono',monospace;font-size:14px;color:#5b21b6;font-weight:500;line-height:1.95;white-space:pre-line;}
+.d-para{font-size:15px;line-height:1.62;color:#2c3744;margin-top:13px;}
+.panel-right{right:22px;top:98px;width:300px;padding:18px;}
+.point-row{display:flex;align-items:center;gap:11px;padding:11px 13px;border-radius:14px;margin-bottom:9px;background:rgba(20,30,60,0.035);}
+.pr-badge{width:30px;height:30px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:'Roboto Mono',monospace;font-weight:800;font-size:16px;color:#fff;}
+.pr-badge.ab{background:var(--ptAB);} .pr-badge.p{background:var(--ptP);}
+.pr-text{flex:1;}.pr-name{font-size:14.5px;font-weight:700;}.pr-sub{font-size:13px;color:var(--muted);}
+.show-label{font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;color:var(--faint);margin:12px 0 11px 2px;}
+.show-chip{display:flex;align-items:center;gap:12px;width:100%;padding:12px 15px;margin-bottom:9px;border-radius:14px;cursor:pointer;background:rgba(20,30,60,0.035);border:1.5px solid transparent;transition:all 0.16s;}
+.show-chip:hover{background:rgba(20,30,60,0.06);}
+.show-chip.on{background:var(--accent-dim);border-color:rgba(124,58,237,0.30);}
+.chip-ico{width:34px;height:34px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:17px;background:rgba(124,58,237,0.10);transition:all 0.16s;}
+.show-chip.on .chip-ico{background:var(--accent);}
+.chip-text{flex:1;min-width:0;}.chip-name{font-size:14.5px;font-weight:700;}.chip-sub{font-size:12.5px;color:var(--muted);font-family:'Roboto Mono',monospace;}
+.chip-state{width:21px;height:21px;border-radius:50%;flex-shrink:0;border:2px solid rgba(20,30,60,0.16);display:flex;align-items:center;justify-content:center;transition:all 0.16s;}
+.show-chip.on .chip-state{background:var(--accent);border-color:var(--accent);}
+.show-chip.on .chip-state::after{content:'✓';color:#fff;font-size:13px;font-weight:700;}
+.hint-bar{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:100;background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:9px 22px;font-size:13.5px;color:var(--muted);box-shadow:var(--shadow);white-space:nowrap;display:flex;align-items:center;gap:9px;}
+.hint-grab{color:var(--accent);font-weight:700;}.hint-dot{color:var(--faint);}
+@media (max-width:1180px){.panel-left{width:300px;}.panel-right{width:272px;}}
+</style>
+</head>
+<body>
+<div id="canvas-container"><canvas id="c"></canvas></div>
+<div id="labels-layer"></div>
+<header class="header">
+  <div class="h-badge"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.7" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 12 L5 16 M12 12 L19 16 M5 16 L19 16"/><circle cx="12" cy="12" r="1.4" fill="#fff"/></svg></div>
+  <div class="header-title" data-i18n="header_title">Вписанный и центральный угол</div>
+  <div class="header-tag" data-i18n="tag_text">вписанный = ½ центрального</div>
+  <div class="header-sub" data-i18n-html="header_sub">Опираются на одну дугу AB<br>двигайте точку P — вписанный угол не меняется</div>
+</header>
+<div class="eq-banner" id="eq-banner"></div>
+<div class="panel panel-left" id="panel-left">
+  <div class="ld-list"><h3 data-i18n="props_title">Углы и дуга</h3><div id="metrics"></div></div>
+  <div class="ld-detail"><button class="ld-back" onclick="window.showList()"><span>‹</span> <span data-i18n="back">Назад</span></button><div id="detail-content"></div></div>
+</div>
+<div class="panel panel-right">
+  <h3 data-i18n="pts_title" style="margin-bottom:12px;padding-left:2px;">Точки на окружности</h3>
+  <div class="point-row"><div class="pr-badge ab">A</div><div class="pr-text"><div class="pr-name" data-i18n="pr_ab_name">Концы дуги A и B</div><div class="pr-sub" data-i18n="pr_ab_sub">задают дугу и хорду</div></div></div>
+  <div class="point-row"><div class="pr-badge p">P</div><div class="pr-text"><div class="pr-name" data-i18n="pr_p_name">Вершина P</div><div class="pr-sub" data-i18n="pr_p_sub">вписанный угол ∠APB</div></div></div>
+  <div class="show-label" data-i18n="show_title">Показать</div>
+  <div class="show-chip" id="chip-ghost" onclick="window.toggleGhost()"><div class="chip-ico">👥</div><div class="chip-text"><span class="chip-name" data-i18n="ch_ghost">Ещё точки P</span><span class="chip-sub" data-i18n="ch_ghost_sub">все углы равны</span></div><div class="chip-state"></div></div>
+  <div class="show-chip" id="chip-diam" onclick="window.toggleDiam()"><div class="chip-ico">⌀</div><div class="chip-text"><span class="chip-name" data-i18n="ch_diam">AB — диаметр</span><span class="chip-sub" data-i18n="ch_diam_sub">∠APB = 90° (Фалес)</span></div><div class="chip-state"></div></div>
+</div>
+<div class="hint-bar" data-i18n-html="hint"><span class="hint-grab">Тяните точки A, B, P</span><span class="hint-dot">·</span><span>фон — поворот</span><span class="hint-dot">·</span><span>клик по строке — пояснение</span></div>
+
+<script>
+const R=9;
+const I18N={
+ru:{page_title:'Вписанный и центральный угол',header_title:'Вписанный и центральный угол',header_sub:'Опираются на одну дугу AB<br>двигайте точку P — вписанный угол не меняется',
+  props_title:'Углы и дуга',back:'Назад',pts_title:'Точки на окружности',show_title:'Показать',tag_text:'вписанный = ½ центрального',
+  pr_ab_name:'Концы дуги A и B',pr_ab_sub:'задают дугу и хорду',pr_p_name:'Вершина P',pr_p_sub:'вписанный угол ∠APB',
+  ch_ghost:'Ещё точки P',ch_ghost_sub:'все углы равны',ch_diam:'AB — диаметр',ch_diam_sub:'∠APB = 90° (Фалес)',
+  hint:'<span class="hint-grab">Тяните точки A, B, P</span><span class="hint-dot">·</span><span>фон — поворот</span><span class="hint-dot">·</span><span>клик по строке — пояснение</span>',
+  m_cen:'Центральный угол ∠AOB',m_ins:'Вписанный угол ∠APB',m_arc:'Дуга AB',m_chord:'Хорда AB',
+  sub_cen:'в центре O',sub_ins:'= ½ центрального',sub_arc:'градусная мера дуги',sub_chord:'2R·sin(дуга/2)',u_deg:'°',u_len:'ед.'},
+kz:{page_title:'Іштей және центрлік бұрыш',header_title:'Іштей және центрлік бұрыш',header_sub:'Бір AB доғасына сүйенеді<br>P нүктесін жылжытыңыз — іштей бұрыш өзгермейді',
+  props_title:'Бұрыштар мен доға',back:'Артқа',pts_title:'Шеңбердегі нүктелер',show_title:'Көрсету',tag_text:'іштей = центрліктің жартысы',
+  pr_ab_name:'Доға ұштары A мен B',pr_ab_sub:'доға мен хорданы береді',pr_p_name:'P төбесі',pr_p_sub:'іштей бұрыш ∠APB',
+  ch_ghost:'Тағы P нүктелері',ch_ghost_sub:'барлық бұрыш тең',ch_diam:'AB — диаметр',ch_diam_sub:'∠APB = 90° (Фалес)',
+  hint:'<span class="hint-grab">A, B, P нүктелерін сүйреңіз</span><span class="hint-dot">·</span><span>фон — бұру</span><span class="hint-dot">·</span><span>жолды басу — түсіндірме</span>',
+  m_cen:'Центрлік бұрыш ∠AOB',m_ins:'Іштей бұрыш ∠APB',m_arc:'AB доғасы',m_chord:'AB хордасы',
+  sub_cen:'O центрінде',sub_ins:'= центрліктің ½-і',sub_arc:'доғаның градустық мөлшері',sub_chord:'2R·sin(доға/2)',u_deg:'°',u_len:'бір.'},
+en:{page_title:'Inscribed and Central Angle',header_title:'Inscribed and Central Angle',header_sub:'Both subtend the same arc AB<br>drag point P — the inscribed angle stays the same',
+  props_title:'Angles and arc',back:'Back',pts_title:'Points on the circle',show_title:'Show',tag_text:'inscribed = ½ of central',
+  pr_ab_name:'Arc ends A and B',pr_ab_sub:'set the arc and chord',pr_p_name:'Vertex P',pr_p_sub:'inscribed angle ∠APB',
+  ch_ghost:'More P points',ch_ghost_sub:'all angles equal',ch_diam:'AB is a diameter',ch_diam_sub:'∠APB = 90° (Thales)',
+  hint:'<span class="hint-grab">Drag points A, B, P</span><span class="hint-dot">·</span><span>background — rotate</span><span class="hint-dot">·</span><span>click a row — explanation</span>',
+  m_cen:'Central angle ∠AOB',m_ins:'Inscribed angle ∠APB',m_arc:'Arc AB',m_chord:'Chord AB',
+  sub_cen:'at the centre O',sub_ins:'= ½ of central',sub_arc:'degree measure of the arc',sub_chord:'2R·sin(arc/2)',u_deg:'°',u_len:'u'}
+};
+const LANG=(()=>{const q=new URLSearchParams(location.search).get('lang');return(q&&I18N[q])?q:'ru';})();
+const tr=key=>(I18N[LANG]&&I18N[LANG][key])!==undefined?I18N[LANG][key]:I18N.ru[key];
+function applyStaticI18N(){document.documentElement.lang=LANG;const tv=tr('page_title');if(tv)document.title=tv;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{const v=tr(el.getAttribute('data-i18n'));if(v!==undefined)el.textContent=v;});
+  document.querySelectorAll('[data-i18n-html]').forEach(el=>{const v=tr(el.getAttribute('data-i18n-html'));if(v!==undefined)el.innerHTML=v;});}
+applyStaticI18N();
+const f1=x=>x.toFixed(1);
+const nd=d=>((d%360)+360)%360;
+window.A={tA:210,tB:330,tP:90};
+function central(){const a=nd(window.A.tA),b=nd(window.A.tB),p=nd(window.A.tP);
+  const ccw=(b-a+360)%360;const pRel=(p-a+360)%360;const pOnCCW=pRel>0.02&&pRel<ccw-0.02;
+  return pOnCCW?(360-ccw):ccw;}
+const inscribed=()=>central()/2;
+function sep(){const a=nd(window.A.tA),b=nd(window.A.tB);const d=(b-a+360)%360;return Math.min(d,360-d);}
+const chord=()=>2*R*Math.sin(sep()/2*Math.PI/180);
+const METRICS=[
+  {key:'cen', dot:'var(--central)',  i:'m_cen', fmt:()=>f1(central()),   sub:()=>tr('sub_cen'),  u:'u_deg'},
+  {key:'ins', dot:'var(--inscribed)',i:'m_ins', fmt:()=>f1(inscribed()), sub:()=>tr('sub_ins'),  u:'u_deg'},
+  {key:'arc', dot:'var(--arc)',      i:'m_arc', fmt:()=>f1(central()),   sub:()=>tr('sub_arc'),  u:'u_deg'},
+  {key:'chord',dot:'#64748b',        i:'m_chord',fmt:()=>f1(chord()),    sub:()=>tr('sub_chord'),u:'u_len'},
+];
+function renderMetrics(){document.getElementById('metrics').innerHTML=METRICS.map(m=>`
+  <div class="metric" data-key="${m.key}" onclick="window.openDetail('${m.key}')"><div class="metric-dot" style="background:${m.dot}"></div>
+  <div class="metric-main"><span class="metric-name">${tr(m.i)}</span><span class="metric-sub" id="ms-${m.key}"></span></div>
+  <span class="metric-val" id="mv-${m.key}">—</span></div>`).join('');}
+function updateMetricValues(){METRICS.forEach(m=>{const v=document.getElementById('mv-'+m.key);if(v)v.textContent=m.fmt()+(m.u==='u_deg'?'°':'');const s=document.getElementById('ms-'+m.key);if(s)s.textContent=m.sub();});
+  document.getElementById('eq-banner').innerHTML=`<span class="ei">∠APB ${f1(inscribed())}°</span> = ½ · <span class="ec">∠AOB ${f1(central())}°</span>`;}
+renderMetrics();
+</script>
+<script type="importmap">{"imports":{"three":"../../libs/vendor/three-0.160.0/three.module.js"}}</script>
+<script type="module">
+import * as THREE from 'three';
+const canvas=document.getElementById('c');
+const renderer=new THREE.WebGLRenderer({canvas,antialias: true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);renderer.outputColorSpace=THREE.SRGBColorSpace;
+const R=9;
+const scene=new THREE.Scene();scene.background=null;
+const camera=new THREE.PerspectiveCamera(42,innerWidth/innerHeight,0.1,8000);
+const CAM_DIR=new THREE.Vector3(0.16,0.13,1).normalize();
+let camDist=34,camDistTarget=34,userZoom=1.0;let showGhost=false,diam=false;
+const PI=Math.PI,RAD=d=>d*PI/180;
+const f1=x=>x.toFixed(1);
+const nd=d=>((d%360)+360)%360;
+function computeCamTarget(){const R0=R*1.55*1.1;const fovy=camera.fov*PI/180;const dV=R0/Math.sin(fovy/2);const usableW=Math.max(420,innerWidth-660);const fovx=2*Math.atan(Math.tan(fovy/2)*usableW/innerHeight);const dH=R0/Math.sin(fovx/2);return Math.max(dV,dH)*userZoom;}
+function applyCamera(){camera.position.copy(CAM_DIR).multiplyScalar(camDist);camera.lookAt(0,0,0);}
+scene.add(new THREE.AmbientLight(0xffffff,0.84));
+const kL=new THREE.DirectionalLight(0xffffff,0.78);kL.position.set(4,8,12);scene.add(kL);
+const fL=new THREE.DirectionalLight(0xc4b5fd,0.3);fL.position.set(-8,-3,4);scene.add(fL);
+const V=(x,y,z)=>new THREE.Vector3(x,y,z);
+const root=new THREE.Group();scene.add(root);const obj=new THREE.Group();root.add(obj);
+const COL={circle:0x9aa6b4,central:0x7c3aed,inscribed:0x0d9488,arc:0xd97706,ptAB:0x2563eb,ptP:0xe11d48,O:0x334155,chord:0x94a3b8,ghost:0x5eead4};
+const tR=R*0.013;
+function cyl(from,to,rr,mat){const dir=new THREE.Vector3().subVectors(to,from),len=dir.length();const m=new THREE.Mesh(new THREE.CylinderGeometry(rr,rr,len,10),mat);m.position.addVectors(from,to).multiplyScalar(0.5);if(len>1e-6)m.quaternion.setFromUnitVectors(V(0,1,0),dir.normalize());return m;}
+function sphere(r,mat){return new THREE.Mesh(new THREE.SphereGeometry(r,20,16),mat);}
+function ptOn(deg,z){return V(R*Math.cos(RAD(deg)),R*Math.sin(RAD(deg)),z||0);}
+function line2(pts,col){return new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:col}));}
+function arcPts(cx,cy,r,startDeg,spanDeg,ccw,z,steps){steps=steps||Math.max(8,Math.round(Math.abs(spanDeg)/4));const out=[],dir=ccw?1:-1;for(let i=0;i<=steps;i++){const a=RAD(startDeg+dir*spanDeg*i/steps);out.push(V(cx+r*Math.cos(a),cy+r*Math.sin(a),z||0));}return out;}
+// circle ring (static)
+const staticG=new THREE.Group();obj.add(staticG);
+// coordinate grid (always on)
+(function(){const GW=15,step=3;const gMat=new THREE.MeshBasicMaterial({color:0xccd3de,transparent:true,opacity:0.55});const aMat=new THREE.MeshBasicMaterial({color:0xaab4c2,transparent:true,opacity:0.85});
+  for(let i=-GW;i<=GW;i+=step){const ax=(i===0);const m=ax?aMat:gMat;staticG.add(cyl(V(i,-GW,-0.1),V(i,GW,-0.1),tR*(ax?0.55:0.32),m));staticG.add(cyl(V(-GW,i,-0.1),V(GW,i,-0.1),tR*(ax?0.55:0.32),m));}
+})();
+staticG.add(new THREE.Mesh(new THREE.TorusGeometry(R,tR*0.8,12,128),new THREE.MeshStandardMaterial({color:COL.circle,roughness:0.4})));
+staticG.add(sphere(tR*1.7,new THREE.MeshStandardMaterial({color:COL.O,roughness:0.4})));
+const dynG=new THREE.Group();obj.add(dynG);
+function disposeDyn(){while(dynG.children.length){const o=dynG.children[0];o.traverse(x=>{if(x.geometry)x.geometry.dispose();});dynG.remove(o);}}
+let hiKey=null;const ptMesh={A:null,B:null,P:null};let ptProxies=[];
+function arcInfo(){const a=nd(window.A.tA),b=nd(window.A.tB),p=nd(window.A.tP);
+  const ccw=(b-a+360)%360;const pRel=(p-a+360)%360;const pOnCCW=pRel>0.02&&pRel<ccw-0.02;
+  const useCCW=!pOnCCW;return {a,b,p,central:useCCW?ccw:(360-ccw),useCCW};}
+function inscribedArcAt(P,A,B,col,r){
+  let a1=Math.atan2(A.y-P.y,A.x-P.x),a2=Math.atan2(B.y-P.y,B.x-P.x);
+  let da=a2-a1;while(da>PI)da-=2*PI;while(da<-PI)da+=2*PI;
+  const pts=[];for(let i=0;i<=18;i++){const a=a1+da*i/18;pts.push(V(P.x+r*Math.cos(a),P.y+r*Math.sin(a),0.05));}
+  return line2(pts,col);
+}
+function buildDyn(){
+  disposeDyn();
+  const info=arcInfo();
+  const A=ptOn(window.A.tA,0.04),B=ptOn(window.A.tB,0.04),P=ptOn(window.A.tP,0.04),O=V(0,0,0.04);
+  // subtended arc AB (not containing P) — highlighted
+  dynG.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(arcPts(0,0,R,info.a,info.central,info.useCCW,0.06,48)),60,tR*1.7,8,false),new THREE.MeshStandardMaterial({color:COL.arc,roughness:0.35,emissive:hiKey==='arc'?COL.arc:0,emissiveIntensity:hiKey==='arc'?0.4:0})));
+  // chord AB (faint)
+  dynG.add(cyl(A,B,tR*0.5,new THREE.MeshStandardMaterial({color:COL.chord,roughness:0.5,transparent:true,opacity:hiKey==='chord'?0.95:0.55,emissive:hiKey==='chord'?COL.chord:0,emissiveIntensity:hiKey==='chord'?0.4:0})));
+  // radii OA, OB (central angle)
+  const cenHi=(hiKey==='cen'||hiKey==='arc');
+  const rMat=new THREE.MeshStandardMaterial({color:COL.central,roughness:0.32,metalness:0.1,emissive:cenHi?COL.central:0,emissiveIntensity:cenHi?0.4:0});
+  dynG.add(cyl(O,A,tR*(cenHi?1.5:1),rMat));dynG.add(cyl(O,B,tR*(cenHi?1.5:1),rMat));
+  // central angle arc at O
+  dynG.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(arcPts(0,0,R*0.2,info.a,info.central,info.useCCW,0.06,40)),40,tR*0.9,6,false),new THREE.MeshStandardMaterial({color:COL.central,roughness:0.4})));
+  // chords PA, PB (inscribed angle)
+  const insHi=(hiKey==='ins');
+  const cMat=new THREE.MeshStandardMaterial({color:COL.inscribed,roughness:0.32,metalness:0.1,emissive:insHi?COL.inscribed:0,emissiveIntensity:insHi?0.4:0});
+  dynG.add(cyl(P,A,tR*(insHi?1.5:1),cMat));dynG.add(cyl(P,B,tR*(insHi?1.5:1),cMat));
+  // inscribed angle arc at P
+  dynG.add(inscribedArcAt(P,A,B,COL.inscribed,R*0.16));
+  // ghost extra P points
+  if(showGhost){
+    const majStart=info.b, majSpan=360-info.central, gdir=info.useCCW?1:-1;
+    [0.32,0.68].forEach(fr=>{const gdeg=majStart+gdir*majSpan*fr;const G=ptOn(gdeg,0.03);
+      const gm=new THREE.MeshStandardMaterial({color:COL.inscribed,roughness:0.4,transparent:true,opacity:0.45});
+      dynG.add(cyl(G,A,tR*0.55,gm));dynG.add(cyl(G,B,tR*0.55,gm));
+      dynG.add(inscribedArcAt(G,A,B,COL.ghost,R*0.14));
+      dynG.add(sphere(tR*1.6,new THREE.MeshStandardMaterial({color:COL.inscribed,roughness:0.3,transparent:true,opacity:0.7})).translateX(G.x).translateY(G.y).translateZ(0.07));
+    });
+  }
+  // points
+  ptMesh.A=sphere(tR*2.1,new THREE.MeshStandardMaterial({color:COL.ptAB,roughness:0.25,metalness:0.3,emissive:COL.ptAB,emissiveIntensity:0.2}));ptMesh.A.position.copy(A).setZ(0.1);ptMesh.A.userData.pt='A';dynG.add(ptMesh.A);
+  ptMesh.B=sphere(tR*2.1,new THREE.MeshStandardMaterial({color:COL.ptAB,roughness:0.25,metalness:0.3,emissive:COL.ptAB,emissiveIntensity:0.2}));ptMesh.B.position.copy(B).setZ(0.1);ptMesh.B.userData.pt='B';dynG.add(ptMesh.B);
+  ptMesh.P=sphere(tR*2.5,new THREE.MeshStandardMaterial({color:COL.ptP,roughness:0.25,metalness:0.3,emissive:COL.ptP,emissiveIntensity:0.28}));ptMesh.P.position.copy(P).setZ(0.1);ptMesh.P.userData.pt='P';dynG.add(ptMesh.P);
+  // invisible larger hit-areas so the points are easy to grab
+  ptProxies=[];
+  [['A',A],['B',B],['P',P]].forEach(([k,pos])=>{const pr=sphere(tR*6,new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false}));pr.position.copy(pos).setZ(0.13);pr.userData.pt=k;ptProxies.push(pr);dynG.add(pr);});
+  updateLabelAnchors();
+}
+const layer=document.getElementById('labels-layer');
+function mkLabel(cls){const d=document.createElement('div');d.className='dim-label '+cls;layer.appendChild(d);return d;}
+const L_A=mkLabel('lpt lab'),L_B=mkLabel('lpt lab'),L_P=mkLabel('lpt lp'),L_O=mkLabel('lpt lo'),L_cen=mkLabel('lcen'),L_ins=mkLabel('lins');
+const anc={A:V(),B:V(),P:V(),O:V(0,0,0),cen:V(),ins:V()};
+function updateLabelAnchors(){
+  const info=arcInfo();const A=ptOn(window.A.tA),B=ptOn(window.A.tB),P=ptOn(window.A.tP);
+  anc.A.copy(A).multiplyScalar(1.1);anc.B.copy(B).multiplyScalar(1.1);anc.P.copy(P).multiplyScalar(1.12);
+  // central label: midpoint direction of subtended arc, near O
+  const midDeg=info.a+(info.useCCW?1:-1)*info.central/2;anc.cen.set(R*0.33*Math.cos(RAD(midDeg)),R*0.33*Math.sin(RAD(midDeg)),0);
+  // inscribed label: bisector from P
+  const bis=new THREE.Vector3().subVectors(A,P).normalize().add(new THREE.Vector3().subVectors(B,P).normalize()).normalize();anc.ins.copy(P).add(bis.multiplyScalar(R*0.24));
+  L_A.textContent='A';L_B.textContent='B';L_P.textContent='P';L_O.textContent='O';
+  L_cen.textContent=f1(central())+'°';L_ins.textContent=f1(inscribed())+'°';
+}
+function central(){const a=nd(window.A.tA),b=nd(window.A.tB),p=nd(window.A.tP);const ccw=(b-a+360)%360;const pRel=(p-a+360)%360;const pOnCCW=pRel>0.02&&pRel<ccw-0.02;return pOnCCW?(360-ccw):ccw;}
+const inscribed=()=>central()/2;
+function project(localVec){const w=localVec.clone().applyMatrix4(obj.matrixWorld).project(camera);return {x:(w.x*0.5+0.5)*innerWidth,y:(-w.y*0.5+0.5)*innerHeight,behind:w.z>1};}
+function place(el,v,vis){if(!vis){el.classList.add('hidden');return;}const s=project(v);if(s.behind){el.classList.add('hidden');return;}el.classList.remove('hidden');el.style.left=s.x+'px';el.style.top=s.y+'px';}
+function updateLabels(){place(L_A,anc.A,true);place(L_B,anc.B,true);place(L_P,anc.P,true);place(L_O,anc.O,true);place(L_cen,anc.cen,true);place(L_ins,anc.ins,true);}
+const DETAIL_ALL={
+ru:{
+  cen:{tag:'Центральный угол',p:'Центральный угол ∠AOB — это угол с вершиной в центре окружности O, опирающийся на дугу AB. Его градусная мера в точности равна градусной мере дуги, на которую он опирается.'},
+  ins:{tag:'Вписанный угол',p:'Вписанный угол ∠APB — угол с вершиной P на самой окружности, опирающийся на ту же дугу AB. Главная теорема: вписанный угол вдвое меньше центрального, опирающегося на ту же дугу: ∠APB = ½·∠AOB. Поэтому, куда бы вы ни двигали P по дуге, угол не меняется.'},
+  arc:{tag:'Дуга',p:'Дуга AB — часть окружности между точками A и B. На неё «опираются» оба угла. Градусная мера дуги равна центральному углу. Вписанный угол равен половине этой дуги.'},
+  chord:{tag:'Хорда',p:'Хорда AB — отрезок, соединяющий концы дуги. Её длина связана с дугой: AB = 2R·sin(дуга/2), где R — радиус. Чем больше дуга (до 180°), тем длиннее хорда.'},
+},
+kz:{
+  cen:{tag:'Центрлік бұрыш',p:'Центрлік бұрыш ∠AOB — төбесі O центрінде, AB доғасына сүйенген бұрыш. Оның градустық мөлшері сүйенген доғаның мөлшеріне тең.'},
+  ins:{tag:'Іштей бұрыш',p:'Іштей бұрыш ∠APB — төбесі P шеңбердің өзінде, сол AB доғасына сүйенеді. Басты теорема: іштей бұрыш центрліктен екі есе кіші: ∠APB = ½·∠AOB. Сондықтан P-ны доға бойымен қайда жылжытсаңыз да, бұрыш өзгермейді.'},
+  arc:{tag:'Доға',p:'AB доғасы — A мен B арасындағы шеңбер бөлігі. Екі бұрыш та оған сүйенеді. Доғаның мөлшері центрлік бұрышқа тең.'},
+  chord:{tag:'Хорда',p:'AB хордасы — доға ұштарын қосатын кесінді. Ұзындығы: AB = 2R·sin(доға/2).'},
+},
+en:{
+  cen:{tag:'Central angle',p:'The central angle ∠AOB has its vertex at the centre O and subtends the arc AB. Its degree measure is exactly equal to the degree measure of that arc.'},
+  ins:{tag:'Inscribed angle',p:'The inscribed angle ∠APB has its vertex P on the circle itself and subtends the same arc AB. The key theorem: an inscribed angle is half the central angle on the same arc: ∠APB = ½·∠AOB. So wherever you move P along the arc, the angle stays the same.'},
+  arc:{tag:'Arc',p:'The arc AB is the part of the circle between A and B. Both angles subtend it. The arc\'s degree measure equals the central angle, and the inscribed angle is half of it.'},
+  chord:{tag:'Chord',p:'The chord AB joins the ends of the arc. Its length relates to the arc: AB = 2R·sin(arc/2), where R is the radius.'},
+}
+};
+const DETAIL=DETAIL_ALL[LANG]||DETAIL_ALL.ru;
+function openDetail(key){const d=DETAIL[key];if(!d)return;const m=METRICS.find(x=>x.key===key);
+  document.querySelectorAll('.metric').forEach(el=>el.classList.toggle('active',el.dataset.key===key));
+  hiKey=key;buildDyn();
+  const calc={cen:`∠AOB = ${f1(central())}°  (= дуга AB)`,
+    ins:`∠APB = ½·∠AOB\n   = ½·${f1(central())}° = ${f1(inscribed())}°`,
+    arc:`дуга AB = ${f1(central())}°`,
+    chord:`AB = 2R·sin(${f1(sepM())}°/2)\n   = ${f1(chordM())}`}[key];
+  document.getElementById('detail-content').innerHTML=`<div class="d-tag">${d.tag}</div><div class="d-title">${tr(m.i)}</div>
+    <div class="d-bigval"><b>${m.fmt()}${m.u==='u_deg'?'°':''}</b><span>${tr(m.u)}</span></div><div class="d-formula">${calc}</div><div class="d-para">${d.p}</div>`;
+  document.getElementById('panel-left').classList.add('detail');currentDetail=key;markInteract();}
+function sepM(){const a=nd(window.A.tA),b=nd(window.A.tB);const d=(b-a+360)%360;return Math.min(d,360-d);}
+function chordM(){return 2*R*Math.sin(sepM()/2*PI/180);}
+let currentDetail=null;window.openDetail=openDetail;
+window.showList=function(){document.getElementById('panel-left').classList.remove('detail');currentDetail=null;
+  document.querySelectorAll('.metric').forEach(m=>m.classList.remove('active'));hiKey=null;buildDyn();};
+window.toggleGhost=function(){showGhost=!showGhost;document.getElementById('chip-ghost').classList.toggle('on',showGhost);buildDyn();markInteract();};
+let savedAB=null;
+window.toggleDiam=function(){diam=!diam;document.getElementById('chip-diam').classList.toggle('on',diam);
+  if(diam){savedAB={tA:window.A.tA,tB:window.A.tB};window.A.tB=nd(window.A.tA+180);}
+  else if(savedAB){window.A.tA=savedAB.tA;window.A.tB=savedAB.tB;savedAB=null;}
+  buildDyn();updateMetricValues();markInteract();};
+/* drag points */
+const ray=new THREE.Raycaster(),m2=new THREE.Vector2();
+function pick(e,objs){m2.x=(e.clientX/innerWidth)*2-1;m2.y=-(e.clientY/innerHeight)*2+1;ray.setFromCamera(m2,camera);return ray.intersectObjects(objs,false);}
+function planeDeg(e){m2.x=(e.clientX/innerWidth)*2-1;m2.y=-(e.clientY/innerHeight)*2+1;ray.setFromCamera(m2,camera);
+  const normal=new THREE.Vector3(0,0,1).transformDirection(obj.matrixWorld);const plane=new THREE.Plane().setFromNormalAndCoplanarPoint(normal,V(0,0,0));
+  const hit=new THREE.Vector3();if(!ray.ray.intersectPlane(plane,hit))return null;hit.applyMatrix4(new THREE.Matrix4().copy(obj.matrixWorld).invert());
+  return nd(Math.atan2(hit.y,hit.x)*180/PI);}
+let mode=null,dragPt=null,last={x:0,y:0},dd=0,isDragging=false;
+let lastInteract=performance.now()-16000,autoSpeed=0;const AUTO_TARGET=0.0010,IDLE_MS=15000;
+function markInteract(){lastInteract=performance.now();}
+canvas.addEventListener('mousedown',e=>{markInteract();const h=pick(e,ptProxies);
+  if(h.length>0){mode='pt';dragPt=h[0].object.userData.pt;canvas.style.cursor='grabbing';return;}
+  mode='rotate';last={x:e.clientX,y:e.clientY};isDragging=false;dd=0;});
+canvas.addEventListener('mousemove',e=>{
+  if(mode==='pt'){const dg=planeDeg(e);if(dg!==null){
+    if(dragPt==='A'){window.A.tA=dg;if(diam)window.A.tB=nd(dg+180);}
+    else if(dragPt==='B'){window.A.tB=dg;if(diam)window.A.tA=nd(dg-180);}
+    else window.A.tP=dg;
+    buildDyn();updateMetricValues();if(currentDetail)openDetail(currentDetail);}markInteract();return;}
+  if(mode==='rotate'){dd=Math.hypot(e.clientX-last.x,e.clientY-last.y);if(dd>4)isDragging=true;
+    if(isDragging){root.rotation.y+=(e.clientX-last.x)*0.008;root.rotation.x=Math.max(-1.0,Math.min(1.0,root.rotation.x+(e.clientY-last.y)*0.006));markInteract();}last={x:e.clientX,y:e.clientY};return;}
+  const h=pick(e,ptProxies);canvas.style.cursor=h.length>0?'grab':'default';});
+window.addEventListener('mouseup',()=>{if(mode==='pt')canvas.style.cursor='default';mode=null;dragPt=null;});
+canvas.addEventListener('wheel',e=>{e.preventDefault();userZoom=Math.max(0.6,Math.min(1.7,userZoom+e.deltaY*0.0015));markInteract();},{passive:false});
+window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+let t=0;
+function animate(){requestAnimationFrame(animate);t+=0.016;const idle=performance.now()-lastInteract;
+  if(idle>IDLE_MS)autoSpeed+=(AUTO_TARGET-autoSpeed)*0.025;else autoSpeed+=(0-autoSpeed)*0.18;
+  root.rotation.y+=autoSpeed;camDistTarget=computeCamTarget();camDist+=(camDistTarget-camDist)*0.18;applyCamera();
+  // gentle pulse on P to invite dragging
+  if(ptMesh.P){const pl=idle>IDLE_MS?(1+Math.sin(t*2.4)*0.12):1;ptMesh.P.scale.setScalar(pl);}
+  renderer.render(scene,camera);obj.updateWorldMatrix(true,false);updateLabels();}
+buildDyn();updateMetricValues();camDistTarget=computeCamTarget();camDist=camDistTarget;applyCamera();animate();
+</script>
+</body>
+</html>

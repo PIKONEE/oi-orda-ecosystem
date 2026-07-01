@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Линзы — ход лучей</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { width: 100%; height: 100%; overflow: hidden; }
+        body {
+            font-family: 'Segoe UI', 'Inter', system-ui, sans-serif;
+            background: linear-gradient(135deg, #eef3fb 0%, #e6edf8 100%);
+            color: #16233f;
+        }
+        #canvas-container { position: absolute; inset: 0; }
+        #labels { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+        .label3d {
+            position: absolute; transform: translate(-50%, -50%);
+            font-size: 12.5px; font-weight: 800; padding: 2px 7px; border-radius: 7px;
+            background: rgba(255,255,255,0.9); border: 1px solid rgba(150,170,205,0.6);
+            box-shadow: 0 2px 8px rgba(40,60,110,0.16); white-space: nowrap;
+        }
+        .label3d.obj { color: #15803d; }
+        .label3d.img { color: #b45309; }
+        .label3d.foc { color: #6b7280; }
+
+        .header {
+            position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+            text-align: center; z-index: 6; pointer-events: none; width: 92%;
+        }
+        .header h1 { font-size: 26px; font-weight: 800; color: #1b2a4a; text-shadow: 0 1px 0 rgba(255,255,255,0.7); }
+        .header p { font-size: 14px; color: #5a6b8c; margin-top: 4px; font-weight: 600; }
+
+        .panel {
+            position: absolute; z-index: 7; background: rgba(255,255,255,0.82);
+             
+            border: 1px solid rgba(150,170,205,0.5); border-radius: 16px;
+            box-shadow: 0 10px 34px rgba(40,60,110,0.14);
+        }
+        .control-panel { top: 92px; left: 22px; width: 316px; padding: 15px 18px; }
+        .info-panel { top: 92px; right: 22px; width: 292px; padding: 15px 18px; }
+
+        .seg { display: flex; gap: 8px; margin-bottom: 14px; }
+        .seg button {
+            flex: 1; padding: 10px 6px; border-radius: 10px; border: 1.5px solid rgba(150,170,205,0.6);
+            background: rgba(255,255,255,0.55); color: #44537a; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.16s;
+        }
+        .seg button.active { background: rgba(37,99,235,0.13); border-color: #2563eb; color: #1b2a4a; }
+
+        .param-group { margin-bottom: 13px; }
+        .param-label { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 7px; }
+        .param-name { font-size: 13.5px; font-weight: 700; color: #33405e; display: flex; align-items: center; gap: 6px; }
+        .param-icon { font-size: 15px; }
+        .param-value { font-size: 15px; font-weight: 800; color: #2563eb; font-variant-numeric: tabular-nums; }
+
+        input[type=range] {
+            -webkit-appearance: none; appearance: none; width: 100%; height: 6px;
+            border-radius: 6px; outline: none; cursor: pointer;
+            background: linear-gradient(90deg, #c4d2ec, #aebfe0);
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none; width: 19px; height: 19px;
+            border-radius: 50%; background: #fff; border: 3px solid #2563eb;
+            box-shadow: 0 2px 7px rgba(37,99,235,0.4); cursor: pointer; margin-top: -1px;
+        }
+
+        .toggle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
+        .toggle-btn {
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+            padding: 9px 6px; border-radius: 10px; border: 1.5px solid rgba(150,170,205,0.6);
+            background: rgba(255,255,255,0.55); color: #44537a; font-size: 12.5px; font-weight: 700;
+            cursor: pointer; transition: all 0.16s;
+        }
+        .toggle-btn .dot { width: 9px; height: 9px; border-radius: 50%; background: #b7c2d8; transition: all 0.16s; }
+        .toggle-btn.active { background: rgba(37,99,235,0.12); border-color: #2563eb; color: #1b2a4a; }
+        .toggle-btn.active .dot { background: #2563eb; box-shadow: 0 0 7px rgba(37,99,235,0.8); }
+
+        .action-row { display: flex; gap: 8px; margin-top: 12px; }
+        .btn { flex: 1; padding: 9px; border: none; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.16s; color: #fff; }
+        .btn-reset { background: linear-gradient(135deg, #64748b, #475569); }
+        .btn:hover { filter: brightness(1.07); transform: translateY(-1px); }
+
+        .info-title { font-size: 15px; font-weight: 800; color: #1b2a4a; margin-bottom: 11px; display: flex; align-items: center; gap: 7px; }
+        .readout { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px dashed rgba(150,170,205,0.45); font-size: 13px; }
+        .ro-name { color: #5a6b8c; font-weight: 600; }
+        .ro-val { font-weight: 800; color: #1b2a4a; font-variant-numeric: tabular-nums; }
+        .ro-val.real { color: #b45309; }
+        .ro-val.virt { color: #7c3aed; }
+
+        .status-box { margin-top: 11px; padding: 9px 11px; border-radius: 10px; font-size: 12.5px; font-weight: 700; text-align: center; }
+        .status-real { background: rgba(180,83,9,0.13); color: #b45309; }
+        .status-virt { background: rgba(124,58,237,0.13); color: #7c3aed; }
+        .status-inf { background: rgba(37,99,235,0.12); color: #1d4ed8; }
+
+        .formula-panel {
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 7;
+            background: rgba(27,42,74,0.93); color: #eaf0fb; padding: 11px 24px; border-radius: 14px;
+            box-shadow: 0 10px 30px rgba(20,35,70,0.34); text-align: center; max-width: 90%;
+        }
+        .formula { font-family: 'Cambria Math','Times New Roman', serif; font-size: 18px; font-weight: 600; }
+        .formula .sep { color: #6b7da6; margin: 0 14px; }
+        .formula-note { font-size: 12.5px; color: #9fb2d8; margin-top: 5px; }
+
+        .hint {
+            position: absolute; bottom: 18px; left: 22px; z-index: 7; font-size: 12px; color: #5a6b8c;
+            background: rgba(255,255,255,0.72); padding: 7px 13px; border-radius: 9px;
+            border: 1px solid rgba(150,170,205,0.45);
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div id="labels"></div>
+
+    <div class="header">
+        <h1>🔍 Линзы — ход лучей</h1>
+        <p><span>Собирающая и рассеивающая линзы • построение изображения • формула линзы</span></p>
+    </div>
+
+    <div class="panel control-panel">
+        <div class="seg">
+            <button id="lt-conv" class="active" data-i18n="convex">Собирающая</button>
+            <button id="lt-conc" data-i18n="concave">Рассеивающая</button>
+        </div>
+
+        <div class="param-group">
+            <div class="param-label">
+                <span class="param-name"><span class="param-icon">🎯</span><span data-i18n="fLabel">Фокусное расстояние |F|</span></span>
+                <span class="param-value" id="f-value">4.0</span>
+            </div>
+            <input type="range" id="focal" min="2" max="8" step="0.1" value="4">
+        </div>
+        <div class="param-group">
+            <div class="param-label">
+                <span class="param-name"><span class="param-icon">📏</span><span data-i18n="doLabel">Расстояние до предмета d</span></span>
+                <span class="param-value" id="do-value">10.0</span>
+            </div>
+            <input type="range" id="dobj" min="2" max="18" step="0.1" value="10">
+        </div>
+        <div class="param-group">
+            <div class="param-label">
+                <span class="param-name"><span class="param-icon">↕️</span><span data-i18n="hLabel">Высота предмета h</span></span>
+                <span class="param-value" id="h-value">2.5</span>
+            </div>
+            <input type="range" id="hobj" min="1" max="4" step="0.1" value="2.5">
+        </div>
+
+        <div class="toggle-grid">
+            <button class="toggle-btn active" id="t-rays"><span class="dot"></span><span data-i18n="tRays">Лучи</span></button>
+            <button class="toggle-btn active" id="t-foc"><span class="dot"></span><span data-i18n="tFoc">Фокусы</span></button>
+        </div>
+
+        <div class="action-row">
+            <button class="btn btn-reset" id="btn-reset" data-i18n="reset">↺ Сброс</button>
+        </div>
+    </div>
+
+    <div class="panel info-panel">
+        <div class="info-title">📊 <span data-i18n="infoTitle">Параметры</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roType">Тип линзы</span><span class="ro-val" id="ro-type">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roDi">Расстояние до изображения f</span><span class="ro-val" id="ro-di">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roMag">Увеличение Γ</span><span class="ro-val" id="ro-mag">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roHi">Высота изображения</span><span class="ro-val" id="ro-hi">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roOrient">Ориентация</span><span class="ro-val" id="ro-orient">—</span></div>
+        <div class="status-box status-real" id="status">—</div>
+    </div>
+
+    <div class="formula-panel">
+        <div class="formula">
+            1∕F = 1∕d + 1∕f′
+            <span class="sep">|</span>
+            Γ = −f′∕d = H∕h
+        </div>
+        <div class="formula-note" data-i18n="note">Собирающая F&gt;0 • Рассеивающая F&lt;0 • мнимое изображение — пунктир</div>
+    </div>
+
+    <div class="hint"><span data-i18n="hint">ЛКМ — вращение • ПКМ — перемещение • Колесо — зум</span></div>
+
+    <script src="../../libs/vendor/three-r128/three.min.js"></script>
+    <script>
+    const RAD = 180 / Math.PI;
+    const LANG = (new URLSearchParams(window.location.search).get('lang')) || 'ru';
+    const I18N = {
+        ru: { headH:'🔍 Линзы — ход лучей', headS:'Собирающая и рассеивающая линзы • построение изображения • формула линзы',
+              convex:'Собирающая', concave:'Рассеивающая',
+              fLabel:'Фокусное расстояние |F|', doLabel:'Расстояние до предмета d', hLabel:'Высота предмета h',
+              tRays:'Лучи', tFoc:'Фокусы', reset:'↺ Сброс', infoTitle:'Параметры',
+              roType:'Тип линзы', roDi:'Расстояние до изображения f′', roMag:'Увеличение Γ', roHi:'Высота изображения', roOrient:'Ориентация',
+              note:'Собирающая F&gt;0 • Рассеивающая F&lt;0 • мнимое изображение — пунктир',
+              hint:'ЛКМ — вращение • ПКМ — перемещение • Колесо — зум',
+              tConv:'Собирающая', tConc:'Рассеивающая',
+              real:'Действительное изображение', virt:'Мнимое изображение', atInf:'Изображение в бесконечности',
+              upr:'прямое', inv:'перевёрнутое', enl:'увеличенное', red:'уменьшенное', eq:'в натуральную величину',
+              lObj:'Предмет', lImg:'Изображение', lF:'F', lL:'Линза' },
+        kz: { headH:'🔍 Линзалар — сәулелер жолы', headS:'Жинағыш және шашыратқыш линзалар • кескін салу • линза формуласы',
+              convex:'Жинағыш', concave:'Шашыратқыш',
+              fLabel:'Фокус қашықтығы |F|', doLabel:'Затқа дейінгі қашықтық d', hLabel:'Зат биіктігі h',
+              tRays:'Сәулелер', tFoc:'Фокустар', reset:'↺ Қайтару', infoTitle:'Параметрлер',
+              roType:'Линза түрі', roDi:'Кескінге дейінгі қашықтық f′', roMag:'Үлкейту Γ', roHi:'Кескін биіктігі', roOrient:'Бағдар',
+              note:'Жинағыш F&gt;0 • Шашыратқыш F&lt;0 • жалған кескін — пунктир',
+              hint:'СБ — айналдыру • ОБ — жылжыту • Дөңгелек — масштаб',
+              tConv:'Жинағыш', tConc:'Шашыратқыш',
+              real:'Нақты кескін', virt:'Жалған кескін', atInf:'Кескін шексіздікте',
+              upr:'тік', inv:'төңкерілген', enl:'үлкейтілген', red:'кішірейтілген', eq:'нақты өлшемде',
+              lObj:'Зат', lImg:'Кескін', lF:'F', lL:'Линза' },
+        en: { headH:'🔍 Lenses — Ray Tracing', headS:'Converging & diverging lenses • image construction • lens formula',
+              convex:'Converging', concave:'Diverging',
+              fLabel:'Focal length |F|', doLabel:'Object distance d', hLabel:'Object height h',
+              tRays:'Rays', tFoc:'Foci', reset:'↺ Reset', infoTitle:'Parameters',
+              roType:'Lens type', roDi:'Image distance f′', roMag:'Magnification Γ', roHi:'Image height', roOrient:'Orientation',
+              note:'Converging F&gt;0 • Diverging F&lt;0 • virtual image — dashed',
+              hint:'LMB — rotate • RMB — pan • Wheel — zoom',
+              tConv:'Converging', tConc:'Diverging',
+              real:'Real image', virt:'Virtual image', atInf:'Image at infinity',
+              upr:'upright', inv:'inverted', enl:'enlarged', red:'reduced', eq:'same size',
+              lObj:'Object', lImg:'Image', lF:'F', lL:'Lens' }
+    };
+    const L = I18N[LANG] || I18N.ru;
+
+    // ---- state (optical axis = +z; lens plane = z=0) ----
+    let lensType = 'convex';   // 'convex' (F>0) | 'concave' (F<0)
+    let fAbs = 4.0;            // |focal length|
+    let dObj = 10.0;           // object distance (>0, on -z side)
+    let hObj = 2.5;            // object height
+    let showRays = true, showFoc = true;
+
+    const APERTURE = 4.5;      // lens half-height (>= max object height so principal rays pass through)
+    const DI_MAX = 40;         // beyond this the image is treated as "at infinity" for rendering
+
+    function focal() { return lensType === 'convex' ? fAbs : -fAbs; }
+    function solve() {
+        const f = focal();
+        const inv = 1 / f - 1 / dObj;        // 1/di = 1/f - 1/do
+        const di = Math.abs(inv) < 1e-4 ? Infinity : 1 / inv;
+        const m = (di === Infinity) ? Infinity : -di / dObj;   // magnification
+        const hi = (m === Infinity) ? Infinity : m * hObj;
+        return { f, di, m, hi };
+    }
+
+    // ---- three.js ----
+    let scene, camera, renderer, root;
+    let lensMesh, axisLine, objArrow, imgArrow;
+    let rayGroup, focGroup;
+    const clock = new THREE.Clock();
+    const container = document.getElementById('canvas-container');
+    const labelLayer = document.getElementById('labels');
+
+    let camTheta = -0.55, camPhi = 1.18, camRadius = 30;
+    const camTarget = new THREE.Vector3(0, 0.5, 0);
+    let dragMode = 0, lastX = 0, lastY = 0;
+
+    const COL = { obj: 0x16a34a, img: 0xd97706, ray1: 0xdc2626, ray2: 0x2563eb, ray3: 0x9333ea, virt: 0x94a3b8, lens: 0x7cc4ff, axis: 0x94a3b8 };
+
+    function init() {
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xeef3fb);
+        scene.fog = new THREE.Fog(0xeef3fb, 42, 90);
+
+        camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 300);
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        container.appendChild(renderer.domElement);
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.92));
+        const key = new THREE.DirectionalLight(0xffffff, 0.55); key.position.set(8, 16, 14); scene.add(key);
+        const fill = new THREE.DirectionalLight(0x9fc0ff, 0.28); fill.position.set(-10, 6, -8); scene.add(fill);
+
+        root = new THREE.Group(); scene.add(root);
+
+        // ground grid for spatial reference
+        const grid = new THREE.GridHelper(60, 30, 0xc2cee4, 0xdde5f1);
+        grid.position.y = -APERTURE - 1.4; root.add(grid);
+
+        // optical axis (z)
+        axisLine = new THREE.Line(
+            new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, -22), new THREE.Vector3(0, 0, 22)]),
+            new THREE.LineDashedMaterial({ color: COL.axis, dashSize: 0.5, gapSize: 0.35, transparent: true, opacity: 0.9 })
+        );
+        axisLine.computeLineDistances(); root.add(axisLine);
+
+        // lens mesh (rebuilt on type/F change)
+        lensMesh = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshPhysicalMaterial({
+            color: COL.lens, transparent: true, opacity: 0.32, roughness: 0.08, metalness: 0,
+            clearcoat: 1, clearcoatRoughness: 0.1, side: THREE.DoubleSide
+        }));
+        root.add(lensMesh);
+        // lens rim ring
+        lensRim = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0x3b82f6, transparent: true, opacity: 0.8 }));
+        root.add(lensRim);
+
+        objArrow = makeArrow(COL.obj);
+        imgArrow = makeArrow(COL.img);
+        root.add(objArrow); root.add(imgArrow);
+
+        rayGroup = new THREE.Group(); root.add(rayGroup);
+        focGroup = new THREE.Group(); root.add(focGroup);
+
+        makeLabels();
+        applyI18N();
+        setupControls();
+        buildLens();
+        rebuild();
+        updateCamera();
+        animate();
+    }
+
+    let lensRim;
+    function makeArrow(color) {
+        const g = new THREE.Group();
+        const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.4, metalness: 0.15, emissive: color, emissiveIntensity: 0.18 });
+        const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 1, 14), mat);
+        const head = new THREE.Mesh(new THREE.ConeGeometry(0.26, 0.6, 18), mat);
+        g.add(shaft); g.add(head);
+        g.userData = { shaft, head, mat };
+        return g;
+    }
+    // place vertical arrow: base on axis at z, tip at height h (h can be negative -> points down)
+    function setArrow(g, z, h, dashed) {
+        const { shaft, head } = g.userData;
+        const H = Math.abs(h), sign = Math.sign(h) || 1;
+        const bodyLen = Math.max(0.001, H - 0.6);
+        shaft.scale.set(1, bodyLen, 1);
+        shaft.position.set(0, sign * (bodyLen / 2), z);
+        head.position.set(0, sign * (bodyLen + 0.3), z);
+        head.scale.set(1, sign, 1);
+        g.visible = true;
+        g.userData.mat.opacity = dashed ? 0.4 : 1;
+        g.userData.mat.transparent = dashed;
+    }
+
+    function buildLens() {
+        const A = APERTURE, n = 26;
+        const pts = [];
+        if (lensType === 'convex') {
+            const T = 0.55 + 1.1 / fAbs; // thicker center for shorter focal length
+            for (let i = 0; i <= n; i++) { const r = A * i / n; pts.push(new THREE.Vector2(r, T * Math.sqrt(Math.max(0, 1 - (r / A) ** 2)))); }
+            for (let i = 1; i <= n; i++) { const r = A * (n - i) / n; pts.push(new THREE.Vector2(r, -T * Math.sqrt(Math.max(0, 1 - (r / A) ** 2)))); }
+        } else {
+            const tc = 0.16, te = 0.5 + 1.0 / fAbs; // thin center, thick rim
+            for (let i = 0; i <= n; i++) { const r = A * i / n; pts.push(new THREE.Vector2(r, tc + (te - tc) * (r / A) ** 2)); }
+            for (let i = 1; i <= n; i++) { const r = A * (n - i) / n; pts.push(new THREE.Vector2(r, -(tc + (te - tc) * (r / A) ** 2))); }
+        }
+        const geo = new THREE.LatheGeometry(pts, 48);
+        geo.rotateX(Math.PI / 2); // lathe axis (Y) -> optical axis (Z)
+        lensMesh.geometry.dispose(); lensMesh.geometry = geo;
+
+        // rim ring at z=0
+        const rim = [];
+        for (let i = 0; i <= 64; i++) { const a = i / 64 * Math.PI * 2; rim.push(new THREE.Vector3(A * Math.cos(a), A * Math.sin(a), 0)); }
+        lensRim.geometry.dispose();
+        lensRim.geometry = new THREE.BufferGeometry().setFromPoints(rim);
+    }
+
+    // ---- ray construction (meridional rays in x=0 plane: axes used = z (horizontal), y (vertical)) ----
+    function lineSeg(p1, p2, color, dashed, width) {
+        const geo = new THREE.BufferGeometry().setFromPoints([p1, p2]);
+        let mat;
+        if (dashed) { mat = new THREE.LineDashedMaterial({ color, dashSize: 0.35, gapSize: 0.25, transparent: true, opacity: 0.85 }); }
+        else { mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.95 }); }
+        const line = new THREE.Line(geo, mat);
+        if (dashed) line.computeLineDistances();
+        return line;
+    }
+    function V(z, y) { return new THREE.Vector3(0, y, z); }
+
+    function rebuild() {
+        const { f, di, m, hi } = solve();
+        const A = APERTURE;
+
+        // object arrow at z=-dObj, height hObj (upright, +y)
+        setArrow(objArrow, -dObj, hObj, false);
+        // image arrow (hidden when image is effectively at infinity or runs off the scene)
+        const imgVirtual = (di !== Infinity) && di < 0;
+        const imgVisible = (di !== Infinity) && Math.abs(di) <= DI_MAX && Math.abs(hi) <= 28;
+        if (imgVisible) setArrow(imgArrow, di, hi, imgVirtual); else imgArrow.visible = false;
+
+        // rays — all refracted rays pass through the image point Q (or its back-extension if virtual)
+        rayGroup.clear();
+        if (showRays) {
+            const P = V(-dObj, hObj);
+            const Q = (di === Infinity) ? null : V(di, hi);
+            const yC = (Math.abs(dObj - f) < 1e-4) ? Infinity : -hObj * f / (dObj - f); // focal-ray height at lens
+            drawRay(hObj, P, Q, di, COL.ray1);                 // parallel ray
+            drawRay(0, P, Q, di, COL.ray2);                    // chief ray (through optical center)
+            if (yC !== Infinity) drawRay(yC, P, Q, di, COL.ray3); // focal ray
+        }
+
+        // foci
+        focGroup.clear();
+        if (showFoc) {
+            const fm = Math.abs(f);
+            [fm, -fm, 2 * fm, -2 * fm].forEach((zz, idx) => {
+                const major = (idx < 2);
+                const s = new THREE.Mesh(new THREE.SphereGeometry(major ? 0.16 : 0.11, 12, 10),
+                    new THREE.MeshBasicMaterial({ color: major ? 0x6b7280 : 0xb6bfce }));
+                s.position.set(0, 0, zz); focGroup.add(s);
+            });
+        }
+
+        updateLabels();
+        updateReadouts();
+    }
+
+    // Draw one principal ray: incident P -> lens(0,yL), then refracted through image point Q.
+    function drawRay(yL, P, Q, di, color) {
+        if (Math.abs(yL) > APERTURE) return;
+        const hit = V(0, yL);
+        rayGroup.add(lineSeg(P, hit, color, false));        // incident segment
+        const FAR = 24;
+        if (di === Infinity) {
+            const sl = (0 - P.y) / (0 - P.z);               // emerges parallel to the chief ray
+            rayGroup.add(lineSeg(hit, V(FAR, yL + sl * FAR), color, false));
+            return;
+        }
+        const sl = (Q.y - yL) / (Q.z - 0);                   // refracted slope (line through Q)
+        rayGroup.add(lineSeg(hit, V(FAR, yL + sl * FAR), color, false)); // real refracted ray (passes Q when di>0)
+        if (di < 0) rayGroup.add(lineSeg(hit, Q, COL.virt, true));       // dashed back-extension to virtual image
+    }
+
+    // ---- labels ----
+    let lblObj, lblImg, lblF1, lblF2, lblLens;
+    function makeLabels() {
+        lblObj = mk('obj'); lblImg = mk('img'); lblF1 = mk('foc'); lblF2 = mk('foc'); lblLens = mk('foc');
+        function mk(cls) { const d = document.createElement('div'); d.className = 'label3d ' + cls; labelLayer.appendChild(d); return d; }
+    }
+    function proj(el, pos, show, text) {
+        if (!show) { el.style.display = 'none'; return; }
+        const v = pos.clone().project(camera);
+        if (v.z > 1) { el.style.display = 'none'; return; }
+        el.style.display = 'block'; el.textContent = text;
+        el.style.left = (v.x * 0.5 + 0.5) * window.innerWidth + 'px';
+        el.style.top = (-v.y * 0.5 + 0.5) * window.innerHeight + 'px';
+    }
+    function updateLabels() {
+        const { di, hi } = solve();
+        proj(lblObj, V(-dObj, hObj + 0.9), true, L.lObj);
+        const imgLblOk = (di !== Infinity) && Math.abs(di) <= DI_MAX && Math.abs(hi) <= 28;
+        proj(lblImg, V(imgLblOk ? di : 0, (imgLblOk ? hi : 0) + (hi >= 0 ? 0.9 : -0.9)), imgLblOk, L.lImg);
+        proj(lblLens, V(0, APERTURE + 0.5), true, L.lL);
+        if (showFoc) {
+            proj(lblF1, V(-Math.abs(focal()), -0.55), true, 'F');
+            proj(lblF2, V(Math.abs(focal()), -0.55), true, "F′");
+        } else { lblF1.style.display = 'none'; lblF2.style.display = 'none'; }
+    }
+
+    function updateReadouts() {
+        const { di, m, hi } = solve();
+        setTxt('ro-type', lensType === 'convex' ? L.tConv : L.tConc);
+        const diEl = document.getElementById('ro-di');
+        if (di === Infinity) { diEl.textContent = '∞'; diEl.className = 'ro-val'; }
+        else { diEl.textContent = di.toFixed(2); diEl.className = 'ro-val ' + (di > 0 ? 'real' : 'virt'); }
+        setTxt('ro-mag', m === Infinity ? '∞' : (Math.abs(m).toFixed(2) + '×'));
+        setTxt('ro-hi', hi === Infinity ? '∞' : Math.abs(hi).toFixed(2));
+
+        let orient;
+        if (m === Infinity) orient = '—';
+        else {
+            const o = m > 0 ? L.upr : L.inv;
+            const am = Math.abs(m);
+            const sz = am > 1.05 ? L.enl : (am < 0.95 ? L.red : L.eq);
+            orient = o + ', ' + sz;
+        }
+        setTxt('ro-orient', orient);
+
+        const st = document.getElementById('status');
+        if (di === Infinity) { st.textContent = L.atInf; st.className = 'status-box status-inf'; }
+        else if (di > 0) { st.textContent = L.real; st.className = 'status-box status-real'; }
+        else { st.textContent = L.virt; st.className = 'status-box status-virt'; }
+    }
+    function setTxt(id, v) { const el = document.getElementById(id); if (el) el.textContent = v; }
+
+    // ---- camera ----
+    function updateCamera() {
+        const sp = Math.sin(camPhi), cp = Math.cos(camPhi), st = Math.sin(camTheta), ct = Math.cos(camTheta);
+        camera.position.set(camTarget.x + camRadius * sp * ct, camTarget.y + camRadius * cp, camTarget.z + camRadius * sp * st);
+        camera.lookAt(camTarget);
+    }
+
+    function setupControls() {
+        const setType = (t) => {
+            lensType = t;
+            document.getElementById('lt-conv').classList.toggle('active', t === 'convex');
+            document.getElementById('lt-conc').classList.toggle('active', t === 'concave');
+            buildLens(); rebuild();
+        };
+        document.getElementById('lt-conv').addEventListener('click', () => setType('convex'));
+        document.getElementById('lt-conc').addEventListener('click', () => setType('concave'));
+
+        document.getElementById('focal').addEventListener('input', e => { fAbs = parseFloat(e.target.value); setTxt('f-value', fAbs.toFixed(1)); buildLens(); rebuild(); });
+        document.getElementById('dobj').addEventListener('input', e => { dObj = parseFloat(e.target.value); setTxt('do-value', dObj.toFixed(1)); rebuild(); });
+        document.getElementById('hobj').addEventListener('input', e => { hObj = parseFloat(e.target.value); setTxt('h-value', hObj.toFixed(1)); rebuild(); });
+
+        const tog = (id, fn) => { const el = document.getElementById(id); el.addEventListener('click', () => { el.classList.toggle('active'); fn(el.classList.contains('active')); rebuild(); }); };
+        tog('t-rays', v => showRays = v);
+        tog('t-foc', v => showFoc = v);
+
+        document.getElementById('btn-reset').addEventListener('click', () => {
+            lensType = 'convex'; fAbs = 4; dObj = 10; hObj = 2.5; showRays = true; showFoc = true;
+            document.getElementById('lt-conv').classList.add('active'); document.getElementById('lt-conc').classList.remove('active');
+            document.getElementById('focal').value = 4; document.getElementById('dobj').value = 10; document.getElementById('hobj').value = 2.5;
+            setTxt('f-value', '4.0'); setTxt('do-value', '10.0'); setTxt('h-value', '2.5');
+            document.getElementById('t-rays').classList.add('active'); document.getElementById('t-foc').classList.add('active');
+            camTheta = -0.55; camPhi = 1.18; camRadius = 30; camTarget.set(0, 0.5, 0);
+            buildLens(); rebuild(); updateCamera();
+        });
+
+        const el = renderer.domElement;
+        el.addEventListener('contextmenu', e => e.preventDefault());
+        el.addEventListener('mousedown', e => { dragMode = (e.button === 2 || e.shiftKey) ? 2 : 1; lastX = e.clientX; lastY = e.clientY; });
+        window.addEventListener('mousemove', e => {
+            if (!dragMode) return;
+            const dx = e.clientX - lastX, dy = e.clientY - lastY; lastX = e.clientX; lastY = e.clientY;
+            if (dragMode === 1) { camTheta -= dx * 0.005; camPhi = Math.max(0.2, Math.min(Math.PI - 0.2, camPhi - dy * 0.005)); }
+            else { const ps = camRadius * 0.0016; const right = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0); const up = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 1); camTarget.addScaledVector(right, -dx * ps); camTarget.addScaledVector(up, dy * ps); }
+            updateCamera();
+        });
+        window.addEventListener('mouseup', () => dragMode = 0);
+        el.addEventListener('wheel', e => { e.preventDefault(); camRadius = Math.max(10, Math.min(64, camRadius + e.deltaY * 0.016)); updateCamera(); }, { passive: false });
+
+        el.addEventListener('touchstart', e => { const t = e.touches[0]; dragMode = 1; lastX = t.clientX; lastY = t.clientY; }, { passive: true });
+        el.addEventListener('touchmove', e => { if (!dragMode) return; const t = e.touches[0]; const dx = t.clientX - lastX, dy = t.clientY - lastY; lastX = t.clientX; lastY = t.clientY; camTheta -= dx * 0.006; camPhi = Math.max(0.2, Math.min(Math.PI - 0.2, camPhi - dy * 0.006)); updateCamera(); e.preventDefault(); }, { passive: false });
+        window.addEventListener('touchend', () => dragMode = 0);
+
+        window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+    }
+
+    function applyI18N() {
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const k = el.getAttribute('data-i18n');
+            if (L[k] != null) { if (k === 'note') el.innerHTML = L[k]; else el.textContent = L[k]; }
+        });
+        document.querySelector('.header h1').textContent = L.headH;
+        document.querySelector('.header p span').textContent = L.headS;
+        document.title = L.headH.replace(/^[^\wА-Яа-яЁё]+/, '');
+        document.documentElement.lang = LANG;
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+        updateLabels();
+        renderer.render(scene, camera);
+    }
+
+    init();
+    </script>
+</body>
+</html>

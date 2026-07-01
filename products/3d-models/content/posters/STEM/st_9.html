@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мобильный Робот — Анатомия</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #1e293b;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            color: #e2e8f0;
+        }
+
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        .header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 20px;
+            text-align: center;
+            background: linear-gradient(180deg, rgba(15, 23, 42, 0.9) 0%, transparent 100%);
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        h1 {
+            color: #38bdf8;
+            margin: 0;
+            font-size: 24px;
+            text-transform: uppercase;
+            text-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+        }
+
+        .control-panel {
+            position: absolute;
+            top: 80px;
+            left: 20px;
+            width: 300px;
+            background: rgba(15, 23, 42, 0.9);
+            border-radius: 12px;
+            padding: 20px;
+            z-index: 10;
+            border-left: 4px solid #38bdf8;
+            max-height: calc(100vh - 100px);
+            overflow-y: auto;
+        }
+
+        .slider-group {
+            margin-bottom: 15px;
+        }
+
+        .slider-group label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            color: #cbd5e1;
+            margin-bottom: 5px;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+            accent-color: #38bdf8;
+        }
+
+        .info-card {
+            position: absolute;
+            top: 80px;
+            right: 20px;
+            width: 320px;
+            background: rgba(15, 23, 42, 0.95);
+            border-radius: 12px;
+            padding: 20px;
+            z-index: 10;
+            border-right: 4px solid #22c55e;
+            transform: translateX(120%);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .info-card.active {
+            transform: translateX(0);
+        }
+
+        .card-title {
+            color: #22c55e;
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #334155;
+            padding-bottom: 5px;
+        }
+
+        .card-text {
+            font-size: 14px;
+            color: #cbd5e1;
+            line-height: 1.5;
+            margin-bottom: 15px;
+        }
+
+        .card-tag {
+            display: inline-block;
+            background: #334155;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #94a3b8;
+        }
+
+        .hint {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            text-align: center;
+            font-size: 13px;
+            color: #aaa;
+            pointer-events: none;
+            z-index: 5;
+            text-shadow: 0 1px 2px black;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: none;
+            border: none;
+            color: #64748b;
+            cursor: pointer;
+            font-size: 20px;
+        }
+
+        .close-btn:hover {
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+<script>
+/* i18n */
+(function(){
+  var lang=new URLSearchParams(location.search).get('lang')||'ru';
+  var T={
+    ru:{title:'🚙 Анатомия Мобильного Робота',panelH3:'⚙️ Тест систем',
+      lbl_l:'Скорость левых:',lbl_r:'Скорость правых:',
+      helper:'Двигайте ползунки, чтобы увидеть работу моторов и колес.',
+      card_title:'Название компонента',card_desc:'Описание...',card_tag:'Категория',
+      hint:'🖱️ Кликните по любой детали робота, чтобы узнать, что это и зачем нужно',
+      components:{
+        Chassis:{title:'Шасси (Корпус)',desc:'Несущая рама робота. Обычно делается из акрила, металла или печатается на 3D-принтере. На неё крепятся все остальные компоненты: моторы, платы и датчики.',tag:'Конструкция'},
+        Wheel:{title:'Колесо',desc:'Обеспечивает сцепление с поверхностью. Резиновые шины нужны для хорошего трения. Диаметр колес влияет на скорость и проходимость робота.',tag:'Движение'},
+        Motor:{title:'Мотор-редуктор (DC)',desc:'Электрическое сердце движения. Желтый корпус скрывает редуктор — набор шестеренок, который снижает скорость вращения вала, но увеличивает силу (крутящий момент), чтобы робот мог сдвинуться с места.',tag:'Привод'},
+        Controller:{title:'Микроконтроллер (Arduino/ESP)',desc:'Мозг робота. Выполняет программу (код), считывает данные с датчиков и отправляет команды на драйвер моторов. Принимает решения: "вижу стену — поворачивай".',tag:'Управление'},
+        Driver:{title:'Драйвер моторов (L298N)',desc:'Силовой посредник. Микроконтроллер слишком слаб, чтобы крутить моторы напрямую. Драйвер берет мощный ток от аккумулятора и подает его на моторы по команде "мозга".',tag:'Силовая электроника'},
+        Battery:{title:'Аккумулятор (Li-Ion)',desc:'Источник питания. Обычно используются литиевые батареи (например, тип 18650) из-за их высокой емкости и способности отдавать большой ток для моторов.',tag:'Питание'},
+        Sensor:{title:'Ультразвуковой датчик',desc:'Глаза робота. Измеряет расстояние до препятствий с помощью эхолокации (как летучая мышь). Позволяет роботу не врезаться в стены.',tag:'Сенсоры'}
+      }},
+    kz:{title:'🚙 Мобильді Роботтың Анатомиясы',panelH3:'⚙️ Жүйелерді тексеру',
+      lbl_l:'Сол жылдамдық:',lbl_r:'Оң жылдамдық:',
+      helper:'Мотор мен дөңгелектердің жұмысын көру үшін жүгірткілерді жылжытыңыз.',
+      card_title:'Компонент атауы',card_desc:'Сипаттама...',card_tag:'Санат',
+      hint:'🖱️ Не екенін білу үшін роботтың кез келген бөлігіне басыңыз',
+      components:{
+        Chassis:{title:'Шасси (Корпус)',desc:'Роботтың тірек жақтауы. Әдетте акрилден, металдан жасалады немесе 3D принтерде басылады. Барлық компоненттер осыған бекітіледі.',tag:'Конструкция'},
+        Wheel:{title:'Дөңгелек',desc:'Беттіктен жабысуды қамтамасыз етеді. Резеңке шиналар жақсы үйкеліс үшін қажет. Дөңгелек диаметрі жылдамдық пен өтімділікке әсер етеді.',tag:'Қозғалыс'},
+        Motor:{title:'Мотор-редуктор (DC)',desc:'Қозғалыстың электр жүрегі. Сары корпус редукторды жасырады — ол білік айналу жылдамдығын төмендетіп, күшті (айналу моменті) арттырады.',tag:'Жетек'},
+        Controller:{title:'Микроконтроллер (Arduino/ESP)',desc:'Роботтың миы. Бағдарламаны орындайды, датчиктерден деректерді оқиды және мотор драйверіне команда береді.',tag:'Басқару'},
+        Driver:{title:'Мотор драйвері (L298N)',desc:'Қуат делдалы. Микроконтроллер моторларды тікелей айналдыруға тым әлсіз. Драйвер аккумулятордан қуатты токты алып, "ми" командасы бойынша моторларға береді.',tag:'Қуат электроникасы'},
+        Battery:{title:'Аккумулятор (Li-Ion)',desc:'Қуат көзі. Литий батареялары (мысалы, 18650 түрі) жоғары сыйымдылығы және моторларға үлкен ток бере алуы үшін қолданылады.',tag:'Қоректендіру'},
+        Sensor:{title:'Ультрадыбыстық датчик',desc:'Роботтың көзі. Эхолокация арқылы (жарқанаттай) кедергіге дейінгі қашықтықты өлшейді. Роботтың қабырғаға соқтықпауына мүмкіндік береді.',tag:'Сенсорлар'}
+      }},
+    en:{title:'🚙 Mobile Robot Anatomy',panelH3:'⚙️ System test',
+      lbl_l:'Left speed:',lbl_r:'Right speed:',
+      helper:'Move the sliders to see motors and wheels in action.',
+      card_title:'Component name',card_desc:'Description...',card_tag:'Category',
+      hint:'🖱️ Click any part of the robot to learn what it is and why it is needed',
+      components:{
+        Chassis:{title:'Chassis (Frame)',desc:'The load-bearing frame of the robot. Usually made of acrylic, metal, or 3D-printed. All other components — motors, boards and sensors — are mounted on it.',tag:'Structure'},
+        Wheel:{title:'Wheel',desc:'Provides traction with the surface. Rubber tires are needed for good grip. Wheel diameter affects speed and maneuverability.',tag:'Motion'},
+        Motor:{title:'Gear motor (DC)',desc:'The electric heart of movement. The yellow housing hides a gearbox — a set of gears that reduces shaft speed but increases force (torque) so the robot can move.',tag:'Drive'},
+        Controller:{title:'Microcontroller (Arduino/ESP)',desc:'The brain of the robot. Executes the program (code), reads sensor data, and sends commands to the motor driver. Makes decisions: "see a wall — turn".',tag:'Control'},
+        Driver:{title:'Motor driver (L298N)',desc:'The power intermediary. The microcontroller is too weak to drive motors directly. The driver takes high current from the battery and delivers it to the motors on command.',tag:'Power electronics'},
+        Battery:{title:'Battery (Li-Ion)',desc:'Power source. Lithium batteries (e.g. type 18650) are commonly used for their high capacity and ability to deliver large current to motors.',tag:'Power'},
+        Sensor:{title:'Ultrasonic sensor',desc:'The eyes of the robot. Measures distance to obstacles using echolocation (like a bat). Allows the robot to avoid collisions with walls.',tag:'Sensors'}
+      }}
+  };
+  window._t=T[lang]||T.ru;
+  document.addEventListener('DOMContentLoaded',function(){
+    var t=window._t;
+    var h1=document.querySelector('.header h1');if(h1)h1.textContent=t.title;
+    var h3=document.querySelector('.control-panel h3');if(h3)h3.textContent=t.panelH3;
+    var sl=document.querySelectorAll('.slider-group label > span:first-child');
+    if(sl[0])sl[0].textContent=t.lbl_l;
+    if(sl[1])sl[1].textContent=t.lbl_r;
+    var hp=document.querySelector('.control-panel p');if(hp)hp.textContent=t.helper;
+    var ct=document.getElementById('card-title');if(ct)ct.textContent=t.card_title;
+    var cd=document.getElementById('card-desc');if(cd)cd.textContent=t.card_desc;
+    var cg=document.getElementById('card-tag');if(cg)cg.textContent=t.card_tag;
+    var hint=document.querySelector('.hint');if(hint)hint.textContent=t.hint;
+  });
+})();
+</script>
+
+<div id="canvas-container"></div>
+
+<div class="header">
+    <h1>🚙 Анатомия Мобильного Робота</h1>
+</div>
+
+<div class="control-panel">
+    <h3 style="color:#fff; margin-bottom:15px; font-size:16px;">⚙️ Тест систем</h3>
+    <div class="slider-group">
+        <label><span>Скорость левых:</span><span id="val-l">0%</span></label>
+        <input type="range" id="input-l" min="-100" max="100" value="0">
+    </div>
+    <div class="slider-group">
+        <label><span>Скорость правых:</span><span id="val-r">0%</span></label>
+        <input type="range" id="input-r" min="-100" max="100" value="0">
+    </div>
+    <p style="font-size:12px; color:#94a3b8; margin-top:10px;">
+        Двигайте ползунки, чтобы увидеть работу моторов и колес.
+    </p>
+</div>
+
+<div class="info-card" id="info-card">
+    <button class="close-btn" onclick="closeCard()">×</button>
+    <div class="card-title" id="card-title">Название компонента</div>
+    <div class="card-text" id="card-desc">Описание...</div>
+    <div class="card-tag" id="card-tag">Категория</div>
+</div>
+
+<div class="hint">🖱️ Кликните по любой детали робота, чтобы узнать, что это и зачем нужно</div>
+
+<!-- Three.js -->
+<script type="importmap">
+    {
+        "imports": {
+            "three": "../../libs/vendor/three-0.160.0/three.module.js",
+            "three/addons/": "../../libs/vendor/three-0.160.0/addons/"
+        }
+    }
+</script>
+
+<script type="module">
+    import * as THREE from 'three';
+    import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+
+    // --- Configuration ---
+    const CONFIG = {
+        chassisColor: 0x334155, // Dark Grey (Plastic/Acrylic)
+        wheelColor: 0x111111,   // Rubber Black
+        motorColor: 0xfacc15,   // Yellow Gearbox
+        pcbColor: 0x0055aa,     // Arduino Blue
+        driverColor: 0xef4444,  // L298N Red
+        batteryColor: 0x3b82f6  // LiPo Blue
+    };
+
+    // --- Data ---
+    const COMPONENTS = (window._t && window._t.components) || {
+        "Chassis": {
+            title: "Шасси (Корпус)",
+            desc: "Несущая рама робота. Обычно делается из акрила, металла или печатается на 3D-принтере. На неё крепятся все остальные компоненты: моторы, платы и датчики.",
+            tag: "Конструкция"
+        },
+        "Wheel": {
+            title: "Колесо",
+            desc: "Обеспечивает сцепление с поверхностью. Резиновые шины нужны для хорошего трения. Диаметр колес влияет на скорость и проходимость робота.",
+            tag: "Движение"
+        },
+        "Motor": {
+            title: "Мотор-редуктор (DC)",
+            desc: "Электрическое сердце движения. Желтый корпус скрывает редуктор — набор шестеренок, который снижает скорость вращения вала, но увеличивает силу (крутящий момент), чтобы робот мог сдвинуться с места.",
+            tag: "Привод"
+        },
+        "Controller": {
+            title: "Микроконтроллер (Arduino/ESP)",
+            desc: "Мозг робота. Выполняет программу (код), считывает данные с датчиков и отправляет команды на драйвер моторов. Принимает решения: 'вижу стену — поворачивай'.",
+            tag: "Управление"
+        },
+        "Driver": {
+            title: "Драйвер моторов (L298N)",
+            desc: "Силовой посредник. Микроконтроллер слишком слаб, чтобы крутить моторы напрямую. Драйвер берет мощный ток от аккумулятора и подает его на моторы по команде 'мозга'.",
+            tag: "Силовая электроника"
+        },
+        "Battery": {
+            title: "Аккумулятор (Li-Ion)",
+            desc: "Источник питания. Обычно используются литиевые батареи (например, тип 18650) из-за их высокой емкости и способности отдавать большой ток для моторов.",
+            tag: "Питание"
+        },
+        "Sensor": {
+            title: "Ультразвуковой датчик",
+            desc: "Глаза робота. Измеряет расстояние до препятствий с помощью эхолокации (как летучая мышь). Позволяет роботу не врезаться в стены.",
+            tag: "Сенсоры"
+        }
+    };
+
+    // --- State ---
+    let state = {
+        speedL: 0,
+        speedR: 0,
+        selectedObj: null
+    };
+
+    // --- Globals ---
+    let scene, camera, renderer, controls;
+    let robotGroup;
+    let wheels = []; // Array of wheel meshes for animation
+
+    // --- Init ---
+    function init() {
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x1e293b);
+        scene.fog = new THREE.Fog(0x1e293b, 50, 200);
+
+        camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(25, 20, 25);
+        camera.lookAt(0, 0, 0);
+
+        renderer = new THREE.WebGLRenderer({antialias: true});
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = false;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        // Lighting
+        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.8);
+        scene.add(hemiLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        dirLight.position.set(20, 40, 20);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
+        scene.add(dirLight);
+
+        // Controls
+        controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.minDistance = 10;
+        controls.maxDistance = 100;
+
+        // Build Scene
+        createEnvironment();
+        createRobot();
+
+        // Listeners
+        window.addEventListener('resize', onResize);
+        window.addEventListener('mousedown', onMouseDown);
+        setupUI();
+
+        // Loop
+        animate();
+    }
+
+    function createEnvironment() {
+        const grid = new THREE.GridHelper(100, 20, 0x334155, 0x0f172a);
+        grid.position.y = -2; // Slightly below wheels
+        scene.add(grid);
+
+        // Floor reflection plane (optional visual flair)
+        const planeGeo = new THREE.PlaneGeometry(200, 200);
+        const planeMat = new THREE.MeshPhongMaterial({color: 0x1e293b, depthWrite: false});
+        const plane = new THREE.Mesh(planeGeo, planeMat);
+        plane.rotation.x = -Math.PI / 2;
+        plane.position.y = -2.01;
+        plane.receiveShadow = true;
+        scene.add(plane);
+    }
+
+    function createRobot() {
+        robotGroup = new THREE.Group();
+        scene.add(robotGroup);
+
+        // 1. Chassis (Base Plate)
+        const chassisGeo = new THREE.BoxGeometry(14, 0.5, 22);
+        const chassisMat = new THREE.MeshStandardMaterial({color: CONFIG.chassisColor, roughness: 0.5});
+        const chassis = new THREE.Mesh(chassisGeo, chassisMat);
+        chassis.userData = {id: "Chassis"};
+        chassis.castShadow = true;
+        robotGroup.add(chassis);
+
+        // Upper Deck (for components)
+        const deckGeo = new THREE.BoxGeometry(14, 0.5, 22);
+        const deck = new THREE.Mesh(deckGeo, chassisMat);
+        deck.position.y = 3;
+        deck.userData = {id: "Chassis"};
+        deck.castShadow = true;
+        robotGroup.add(deck);
+
+        // Standoffs (Connecting plates)
+        const standGeo = new THREE.CylinderGeometry(0.2, 0.2, 3, 8);
+        const standMat = new THREE.MeshStandardMaterial({color: 0xc0c0c0});
+        const pos = [[6, 1.5, 10], [-6, 1.5, 10], [6, 1.5, -10], [-6, 1.5, -10]];
+        pos.forEach(p => {
+            const stand = new THREE.Mesh(standGeo, standMat);
+            stand.position.set(...p);
+            robotGroup.add(stand);
+        });
+
+        // 2. Wheels & Motors (4WD)
+        const wheelGeo = new THREE.CylinderGeometry(2.5, 2.5, 2, 32);
+        const wheelMat = new THREE.MeshStandardMaterial({color: CONFIG.wheelColor, roughness: 0.9});
+
+        // Adding tread pattern texture or geometry helps see rotation
+        const treadGeo = new THREE.BoxGeometry(0.5, 5.2, 2.1);
+        const treadMat = new THREE.MeshBasicMaterial({color: 0x333333});
+
+        const motorGeo = new THREE.BoxGeometry(2, 2, 5); // Gearbox shape
+        const motorMat = new THREE.MeshStandardMaterial({color: CONFIG.motorColor});
+
+        const positions = [
+            {x: 8, z: 6, side: 'R'}, {x: -8, z: 6, side: 'L'},
+            {x: 8, z: -6, side: 'R'}, {x: -8, z: -6, side: 'L'}
+        ];
+
+        positions.forEach((p, i) => {
+            // Wheel Group
+            const wGroup = new THREE.Group();
+            wGroup.position.set(p.x, 0, p.z);
+            wGroup.userData = {id: "Wheel", side: p.side};
+
+            const wheel = new THREE.Mesh(wheelGeo, wheelMat);
+            wheel.rotation.z = Math.PI / 2;
+            wheel.castShadow = true;
+            wGroup.add(wheel);
+
+            // Treads visual
+            for (let j = 0; j < 8; j++) {
+                const tread = new THREE.Mesh(treadGeo, treadMat);
+                tread.rotation.x = (j / 8) * Math.PI * 2;
+                wheel.add(tread); // Attach to wheel mesh so it rotates
+            }
+
+            robotGroup.add(wGroup);
+            wheels.push(wGroup); // Store for animation
+
+            // Motor
+            const motor = new THREE.Mesh(motorGeo, motorMat);
+            // Position motor inside chassis connecting to wheel
+            motor.position.set(p.x > 0 ? 5 : -5, 0, p.z);
+            motor.userData = {id: "Motor"};
+            robotGroup.add(motor);
+        });
+
+        // 3. Controller (Arduino-like)
+        const boardGeo = new THREE.BoxGeometry(5, 0.5, 7);
+        const boardMat = new THREE.MeshStandardMaterial({color: CONFIG.pcbColor, roughness: 0.6});
+        const board = new THREE.Mesh(boardGeo, boardMat);
+        board.position.set(0, 3.5, -4);
+        board.userData = {id: "Controller"};
+        board.castShadow = true;
+        robotGroup.add(board);
+
+        // Chips on board
+        const chipGeo = new THREE.BoxGeometry(1.5, 0.3, 4);
+        const chipMat = new THREE.MeshStandardMaterial({color: 0x111111});
+        const chip = new THREE.Mesh(chipGeo, chipMat);
+        chip.position.y = 0.4;
+        board.add(chip);
+
+        // 4. Motor Driver (L298N)
+        const driverGeo = new THREE.BoxGeometry(4, 0.5, 4);
+        const driverMat = new THREE.MeshStandardMaterial({color: CONFIG.driverColor});
+        const driver = new THREE.Mesh(driverGeo, driverMat);
+        driver.position.set(0, 3.5, 4);
+        driver.userData = {id: "Driver"};
+        // Heatsink visual
+        const heatGeo = new THREE.BoxGeometry(1, 2, 3);
+        const heatMat = new THREE.MeshStandardMaterial({color: 0x888888});
+        const heat = new THREE.Mesh(heatGeo, heatMat);
+        heat.position.set(0, 1, 0);
+        driver.add(heat);
+        robotGroup.add(driver);
+
+        // 5. Battery
+        const batGeo = new THREE.BoxGeometry(6, 1.5, 3);
+        const batMat = new THREE.MeshStandardMaterial({color: CONFIG.batteryColor});
+        const battery = new THREE.Mesh(batGeo, batMat);
+        battery.position.set(0, 0.5, 0); // Inside chassis
+        battery.userData = {id: "Battery"};
+        robotGroup.add(battery);
+
+        // 6. Sensor (Ultrasonic front)
+        const sensorGroup = new THREE.Group();
+        sensorGroup.position.set(0, 3.5, 11); // Front edge
+
+        const pcb = new THREE.Mesh(new THREE.BoxGeometry(4, 1.5, 0.2), new THREE.MeshStandardMaterial({color: 0x0055aa}));
+        sensorGroup.add(pcb);
+
+        const eyeGeo = new THREE.CylinderGeometry(0.6, 0.6, 1, 16);
+        const eyeMat = new THREE.MeshStandardMaterial({color: 0xcccccc});
+
+        const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
+        eyeL.rotation.x = Math.PI / 2;
+        eyeL.position.set(-1, 0, 0.6);
+        sensorGroup.add(eyeL);
+
+        const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
+        eyeR.rotation.x = Math.PI / 2;
+        eyeR.position.set(1, 0, 0.6);
+        sensorGroup.add(eyeR);
+
+        // Raycast helper box for easier clicking
+        const hitBox = new THREE.Mesh(new THREE.BoxGeometry(4, 2, 2), new THREE.MeshBasicMaterial({visible: false}));
+        hitBox.userData = {id: "Sensor"};
+        sensorGroup.add(hitBox);
+
+        robotGroup.add(sensorGroup);
+    }
+
+    // --- Interaction ---
+    function onMouseDown(event) {
+        if (event.target.closest('.control-panel') || event.target.closest('.info-card')) return;
+
+        const mouse = new THREE.Vector2(
+                (event.clientX / window.innerWidth) * 2 - 1,
+                -(event.clientY / window.innerHeight) * 2 + 1
+        );
+        const raycaster = new THREE.Raycaster();
+        raycaster.setFromCamera(mouse, camera);
+
+        const intersects = raycaster.intersectObjects(scene.children, true);
+
+        for (let hit of intersects) {
+            // Traverse up to find object with ID
+            let obj = hit.object;
+            while (obj && !obj.userData.id) {
+                obj = obj.parent;
+            }
+
+            if (obj && obj.userData.id) {
+                showInfo(obj.userData.id);
+
+                // Highlight effect
+                if (state.selectedObj) {
+                    // Reset prev color if we stored it (omitted for simplicity, just flashing)
+                }
+
+                // Simple flash effect
+                const originalScale = obj.scale.clone();
+                obj.scale.multiplyScalar(1.2);
+                setTimeout(() => {
+                    obj.scale.copy(originalScale);
+                }, 200);
+
+                break;
+            }
+        }
+    }
+
+    function showInfo(id) {
+        const data = COMPONENTS[id];
+        if (!data) return;
+
+        document.getElementById('card-title').textContent = data.title;
+        document.getElementById('card-desc').textContent = data.desc;
+        document.getElementById('card-tag').textContent = data.tag;
+
+        const card = document.getElementById('info-card');
+        card.classList.add('active');
+    }
+
+    window.closeCard = function () {
+        document.getElementById('info-card').classList.remove('active');
+    }
+
+    // --- UI Setup ---
+    function setupUI() {
+        document.getElementById('input-l').addEventListener('input', e => {
+            state.speedL = parseInt(e.target.value);
+            document.getElementById('val-l').textContent = state.speedL + '%';
+        });
+        document.getElementById('input-r').addEventListener('input', e => {
+            state.speedR = parseInt(e.target.value);
+            document.getElementById('val-r').textContent = state.speedR + '%';
+        });
+    }
+
+    function onResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+
+        // Animate Wheels
+        const maxSpeed = 0.5; // rad/frame
+
+        wheels.forEach(w => {
+            // Find the actual mesh inside the group (it's the first child)
+            const mesh = w.children[0];
+            if (w.userData.side === 'L') {
+                mesh.rotation.x -= (state.speedL / 100) * maxSpeed;
+            } else {
+                mesh.rotation.x -= (state.speedR / 100) * maxSpeed;
+            }
+        });
+
+        controls.update();
+        renderer.render(scene, camera);
+    }
+
+    // Run
+    window.onload = init;
+
+</script>
+</body>
+</html>

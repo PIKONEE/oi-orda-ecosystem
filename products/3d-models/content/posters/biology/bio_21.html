@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="page_title">Клещ — анатомическая модель</title>
+    <link rel="stylesheet" href="_poster.css">
+</head>
+<body>
+<div id="canvas-container"></div>
+<div id="header">
+    <h1 data-i18n="header_title">Клещ</h1>
+    <p data-i18n="header_subtitle">Интерактивная модель — 5 анатомических зон</p>
+</div>
+<div id="hint" data-i18n="hint">Кликните по любой части тела, чтобы узнать больше</div>
+<button id="reset-btn" data-i18n="reset_btn" data-i18n-title="reset_btn_title" title="Сбросить вид">↺ Сбросить вид</button>
+<div id="info-panel" aria-hidden="true"></div>
+<div id="legend"></div>
+<div id="hover-label"></div>
+<div id="loading"><div class="spinner"></div><div id="loading-text" data-i18n="loading">Загрузка модели…</div></div>
+
+<script type="importmap">
+    { "imports": { "three": "../../libs/vendor/three-0.160.0/three.module.js", "three/addons/": "../../libs/vendor/three-0.160.0/addons/" } }
+</script>
+
+<script type="module">
+    import { initPoster } from './_poster_lib.js';
+
+    const I18N = {
+        ru: {
+            page_title: 'Клещ — анатомическая модель',
+            header_title: 'Клещ',
+            header_subtitle: 'Интерактивная модель — 5 анатомических зон',
+            hint: 'Кликните по любой части тела, чтобы узнать больше',
+            reset_btn: '↺ Сбросить вид', reset_btn_title: 'Сбросить вид', close_btn_label: 'Закрыть',
+            loading: 'Загрузка модели…', error_load: 'Не удалось загрузить tick.glb', error_no_mesh: 'В модели нет меша',
+            facts_label: 'Интересный факт',
+            zones: {
+                gnathosoma: { title: 'Хоботок (гнатосома)', desc: 'Передняя часть тела с ротовым аппаратом. Включает пару хелицер (режущих) и гипостом — длинный шипастый «гарпун», который клещ погружает в кожу жертвы. Зубцы на гипостоме направлены назад и не дают паразиту выпасть.', facts: 'Удалить присосавшегося клеща сложно именно из-за зубцов гипостома — поэтому нужно крутить его, а не тянуть, или использовать специальный пинцет.' },
+                body: { title: 'Тело (идиосома)', desc: 'Основная часть тела, объединяющая грудь и брюшко (у клещей они слиты). Покрыта плотным панцирем — щитком. У голодного клеща тело плоское, размером 2–4 мм, но после кормления может раздуться до 1–2 см, увеличиваясь в массе в 100 раз.', facts: 'Самка иксодового клеща способна высосать столько крови, что её вес увеличивается в 80–120 раз — это эквивалентно тому, как если бы человек выпил 6 000 литров воды за раз.' },
+                legs: { title: 'Ноги', desc: 'У взрослого клеща 4 пары ног (8 ног), у личинки — 3 пары. Каждая нога состоит из 7 члеников и заканчивается коготками и присоской. На передних ногах расположен орган Галлера — особый сенсор, улавливающий запах, тепло и углекислый газ хозяина.', facts: 'Орган Галлера на передних лапах позволяет клещу почувствовать жертву с расстояния до 10 метров по запаху, теплу и выдыхаемому CO₂.' },
+                shield: { title: 'Спинной щиток', desc: 'Твёрдая хитиновая пластина на спинной стороне тела. У самцов покрывает всё тело, у самок — только переднюю часть, что позволяет брюшку растягиваться при насыщении кровью. По форме щитка определяют вид клеща.', facts: 'По щитку клеща можно определить вид и пол не хуже, чем по отпечатку пальца — у каждого вида рисунок уникален.' },
+                eyes: { title: 'Глаза', desc: 'Простые глазки (если есть) расположены по бокам щитка. У большинства видов клещей зрение очень плохое, и они полагаются на хемо- и терморецепторы. Иксодовые клещи могут вообще не иметь глаз.', facts: 'Большинство клещей слепы — они «видят» мир через химические рецепторы органа Галлера, реагируя на пот, аммиак и тепло жертвы.' }
+            }
+        },
+        kz: {
+            page_title: 'Кене — анатомиялық модель',
+            header_title: 'Кене',
+            header_subtitle: 'Интерактивті модель — 5 анатомиялық аймақ',
+            hint: 'Толығырақ білу үшін дененің кез келген бөлігіне басыңыз',
+            reset_btn: '↺ Көріністі қалпына келтіру', reset_btn_title: 'Көріністі қалпына келтіру', close_btn_label: 'Жабу',
+            loading: 'Модель жүктелуде…', error_load: 'tick.glb файлын жүктеу мүмкін болмады', error_no_mesh: 'Модельде меш табылмады',
+            facts_label: 'Қызықты факт',
+            zones: {
+                gnathosoma: { title: 'Хоботша (гнатосома)', desc: 'Ауыз аппараты бар дененің алдыңғы бөлігі. Жұп хелицера және ұзын тікенді «гарпун» — гипостоманы қамтиды. Гипостомадағы тікенектер артқа қарай бағытталған, паразиттің құлап түсуіне жол бермейді.', facts: 'Сорған кенені алып тастау гипостоманың тікенектеріне байланысты қиын — сондықтан оны тартпай айналдыру керек.' },
+                body: { title: 'Дене (идиосома)', desc: 'Дененің негізгі бөлігі, кеуде мен құрсақты біріктіреді. Тығыз хитиндік қалқанмен жабылған. Аш кененің денесі тегіс, 2–4 мм, ал қанмен қоректенгеннен кейін 1–2 см-ге дейін кеңіп, салмағы 100 есеге артуы мүмкін.', facts: 'Иксод кене ұрғашысының салмағы қанмен қоректенгенде 80–120 есеге артады — бұл адам бір отырғанда 6 000 литр су ішіп қойғанмен бірдей.' },
+                legs: { title: 'Аяқтар', desc: 'Ересек кенеде 4 жұп аяқ (8 аяқ), личинкада — 3 жұп. Әр аяқ 7 буыннан тұрады және тырнақтар мен сорғышпен аяқталады. Алдыңғы аяқтарында Галлер мүшесі — иесінің иісін, жылуын және көмірқышқыл газын сезетін арнайы сенсор бар.', facts: 'Алдыңғы аяқтардағы Галлер мүшесі кенеге олжаны 10 метр қашықтықтан иіс, жылу және демдегі CO₂ арқылы сезуге мүмкіндік береді.' },
+                shield: { title: 'Арқа қалқаны', desc: 'Дененің арқа жағындағы қатты хитиндік пластина. Еркектерде бүкіл денені жабады, ұрғашыларда тек алдыңғы бөлігін — бұл құрсақтың қанмен қаныққанда созылуына мүмкіндік береді.', facts: 'Кенеге қарап оның түрі мен жынысын саусақ ізі сияқты дәл анықтауға болады — әр түрдің өрнегі бірегей.' },
+                eyes: { title: 'Көздер', desc: 'Қарапайым көздер (бар болса) қалқанның бүйірінде орналасады. Көптеген кенелердің көзі өте нашар, олар химиялық және термолқорлерге сүйенеді.', facts: 'Кенелердің көпшілігі соқыр — олар әлемді Галлер мүшесінің химиялық рецепторлары арқылы «көреді».' }
+            }
+        },
+        en: {
+            page_title: 'Tick — Anatomical Model',
+            header_title: 'Tick',
+            header_subtitle: 'Interactive model — 5 anatomical zones',
+            hint: 'Click any part of the body to learn more',
+            reset_btn: '↺ Reset view', reset_btn_title: 'Reset view', close_btn_label: 'Close',
+            loading: 'Loading model…', error_load: 'Failed to load tick.glb', error_no_mesh: 'No mesh found in the model',
+            facts_label: 'Did you know?',
+            zones: {
+                gnathosoma: { title: 'Mouthparts (Gnathosoma)', desc: 'The anterior part of the body with the mouth apparatus. Includes a pair of cutting chelicerae and the hypostome — a long barbed "harpoon" the tick drives into the host\'s skin. The barbs point backward, preventing the parasite from falling off.', facts: 'Removing an attached tick is difficult because of hypostome barbs — that\'s why you must twist it rather than pull, or use special tweezers.' },
+                body: { title: 'Body (Idiosoma)', desc: 'The main body region combining thorax and abdomen. Covered with a tough chitinous shield. A hungry tick is flat, 2–4 mm; after feeding the body swells up to 1–2 cm, increasing mass 100-fold.', facts: 'A female Ixodes tick can suck so much blood that her weight increases 80–120 times — like a human drinking 6,000 liters in one sitting.' },
+                legs: { title: 'Legs', desc: 'An adult tick has 4 pairs of legs (8 legs); a larva has 3 pairs. Each leg has 7 segments ending with claws and a sucker. The Haller\'s organ on the front legs detects host odor, heat, and CO₂.', facts: 'Haller\'s organ allows ticks to sense prey from up to 10 meters away through smell, heat, and exhaled CO₂.' },
+                shield: { title: 'Dorsal Shield (Scutum)', desc: 'A hard chitinous plate on the dorsal body. In males it covers the entire body; in females only the anterior part, allowing the abdomen to stretch during feeding. Species are identified by shield pattern.', facts: 'A tick\'s scutum identifies species and sex as accurately as a fingerprint — each species has a unique pattern.' },
+                eyes: { title: 'Eyes', desc: 'Simple eyes (if present) lie on the sides of the scutum. Most tick species have very poor vision and rely on chemo- and thermoreceptors. Many Ixodes ticks have no eyes at all.', facts: 'Most ticks are blind — they "see" the world through chemoreceptors of Haller\'s organ, reacting to sweat, ammonia, and host heat.' }
+            }
+        }
+    };
+
+    const ZONES = [
+        { id: 'gnathosoma', subtitle: 'Gnathosoma',     color: 0xff6b6b },
+        { id: 'body',       subtitle: 'Idiosoma',       color: 0xc77dff },
+        { id: 'legs',       subtitle: 'Pedes (4 paria)', color: 0x6bcb77 },
+        { id: 'shield',     subtitle: 'Scutum dorsale', color: 0x4d96ff },
+        { id: 'eyes',       subtitle: 'Oculi',          color: 0xffd93d }
+    ];
+    const SEEDS = {
+    "gnathosoma": [
+        [-0.626, -0.309, 1.08],
+        [-0.664, -0.025, 0.857],
+        [-0.507, 0.084, 0.61],
+        [-0.061, 0.054, 0.561],
+        [0.03, -0.043, 0.68],
+        [0.506, 0.084, 0.604],
+        [0.616, -0.35, 1.094],
+        [0.675, -0.035, 0.864]
+    ],
+    "body": [
+        [0.014, 0.116, -0.818],
+        [0.01, 0.012, -0.529],
+        [-0.193, -0.008, -0.188],
+        [-0.285, 0.048, 0.205],
+        [0.249, 0.003, -0.074],
+        [0.284, 0.059, 0.341],
+        [0.133, 0.066, 0.447],
+        [-0.202, 0.055, 0.441]
+    ],
+    "legs": [
+        [-0.822, -0.161, -1.004],
+        [-0.994, -0.12, -0.403],
+        [-0.749, -0.109, 0.313],
+        [-0.495, 0.105, -0.238],
+        [0.494, 0.072, 0.075],
+        [0.641, 0.089, -0.362],
+        [0.908, -0.204, -0.832],
+        [0.935, -0.25, 0.34]
+    ],
+    "shield": [
+        [-0.611, 0.251, -0.601],
+        [-0.346, 0.332, -0.222],
+        [-0.286, 0.322, -0.765],
+        [0.077, 0.305, -0.896],
+        [-0.03, 0.427, -0.466],
+        [0.371, 0.328, -0.636],
+        [0.326, 0.337, -0.21],
+        [0.676, 0.23, -0.618]
+    ],
+    "eyes": [
+        [-0.311, 0.284, 0.082],
+        [-0.158, 0.362, 0.075],
+        [-0.158, 0.306, 0.253],
+        [-0.001, 0.289, 0.355],
+        [0.009, 0.383, 0.107],
+        [0.154, 0.306, 0.26],
+        [0.167, 0.36, 0.072],
+        [0.302, 0.288, 0.094]
+    ]
+};
+
+    initPoster({ modelFile: 'tick.glb', zones: ZONES, seeds: SEEDS, i18n: I18N });
+</script>
+</body>
+</html>

@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="page_title">Мышечная система человека</title>
+    <link rel="stylesheet" href="_poster.css">
+</head>
+<body>
+<div id="canvas-container"></div>
+<div id="header">
+    <h1 data-i18n="header_title">Мышечная система</h1>
+    <p data-i18n="header_subtitle">Интерактивная анатомическая модель — 6 групп мышц</p>
+</div>
+<div id="hint" data-i18n="hint">Кликните по любой группе мышц, чтобы узнать больше</div>
+<button id="reset-btn" data-i18n="reset_btn" data-i18n-title="reset_btn_title" title="Сбросить вид">↺ Сбросить вид</button>
+<div id="info-panel" aria-hidden="true"></div>
+<div id="legend"></div>
+<div id="hover-label"></div>
+<div id="loading"><div class="spinner"></div><div id="loading-text" data-i18n="loading">Загрузка модели…</div></div>
+
+<script type="importmap">
+    { "imports": { "three": "../../libs/vendor/three-0.160.0/three.module.js", "three/addons/": "../../libs/vendor/three-0.160.0/addons/" } }
+</script>
+
+<script type="module">
+    import { initPoster } from './_poster_lib.js';
+
+    const I18N = {
+        ru: {
+            page_title: 'Мышечная система человека',
+            header_title: 'Мышечная система',
+            header_subtitle: 'Интерактивная анатомическая модель — 6 групп мышц',
+            hint: 'Кликните по любой группе мышц, чтобы узнать больше',
+            reset_btn: '↺ Сбросить вид', reset_btn_title: 'Сбросить вид', close_btn_label: 'Закрыть',
+            loading: 'Загрузка модели…', error_load: 'Не удалось загрузить muscles.glb', error_no_mesh: 'В модели нет меша',
+            facts_label: 'Интересный факт',
+            zones: {
+                head_neck: { title: 'Мышцы головы и шеи', desc: 'Включают мимические мышцы (создающие выражение лица), жевательные мышцы и мышцы шеи (грудино-ключично-сосцевидная, трапециевидная). Мимические мышцы — единственные, которые крепятся одним концом к коже, что позволяет передавать эмоции.', facts: 'Для улыбки используется 17 мышц, а для нахмуривания — 43. Самая быстрая мышца тела — круговая мышца глаза, моргает за 100 мс.' },
+                chest: { title: 'Мышцы груди и плеч', desc: 'Большая грудная мышца — основная мышца, приводящая руку. Дельтовидная мышца плеча состоит из 3 пучков (передний, средний, задний), отвечающих за разные движения руки. Эти мышцы хорошо видны на передней поверхности торса.', facts: 'Большая грудная мышца может развивать силу до 240 кг при жиме лёжа у профессиональных спортсменов.' },
+                arms: { title: 'Мышцы рук', desc: 'Двуглавая мышца плеча (бицепс) сгибает руку в локте, трёхглавая (трицепс) — разгибает. Мышцы предплечья управляют кистью и пальцами через длинные сухожилия. В каждой руке более 30 мышц, обеспечивающих тонкие движения.', facts: 'В большом пальце руки 9 отдельных мышц — это позволяет ему противопоставляться остальным пальцам, что и делает руку человека уникальной.' },
+                abdomen: { title: 'Мышцы живота', desc: 'Прямая мышца живота («кубики пресса»), наружные и внутренние косые мышцы, поперечная мышца. Образуют брюшной пресс, который защищает внутренние органы, участвует в дыхании, наклонах и поворотах туловища.', facts: 'Мышцы пресса при кашле и чихании могут создавать давление до 100 мм рт. ст. — этого достаточно, чтобы вытолкнуть воздух со скоростью 160 км/ч.' },
+                back: { title: 'Мышцы спины', desc: 'Широчайшие мышцы спины — самые крупные мышцы туловища. Трапециевидные мышцы поддерживают голову и плечи. Мышца, выпрямляющая позвоночник, идёт вдоль всего хребта и удерживает тело в вертикальном положении.', facts: 'Мышцы спины способны удерживать осанку 24 часа в сутки, даже когда мы спим — некоторые из них никогда не расслабляются полностью.' },
+                legs: { title: 'Мышцы ног', desc: 'Включают четырёхглавую (квадрицепс) и двуглавую мышцы бедра, ягодичные мышцы, икроножную и камбаловидную мышцы. Это самые мощные мышцы тела — обеспечивают ходьбу, бег, прыжки и поддержание позы.', facts: 'Большая ягодичная мышца — самая крупная мышца тела по массе. Икроножная мышца у профессиональных бегунов может развивать силу более 300 кг при отталкивании.' }
+            }
+        },
+        kz: {
+            page_title: 'Адамның бұлшықет жүйесі',
+            header_title: 'Бұлшықет жүйесі',
+            header_subtitle: 'Интерактивті анатомиялық модель — 6 бұлшықет тобы',
+            hint: 'Толығырақ білу үшін бұлшықет тобына басыңыз',
+            reset_btn: '↺ Көріністі қалпына келтіру', reset_btn_title: 'Көріністі қалпына келтіру', close_btn_label: 'Жабу',
+            loading: 'Модель жүктелуде…', error_load: 'muscles.glb файлын жүктеу мүмкін болмады', error_no_mesh: 'Модельде меш табылмады',
+            facts_label: 'Қызықты факт',
+            zones: {
+                head_neck: { title: 'Бас және мойын бұлшықеттері', desc: 'Мимикалық, шайнау және мойын бұлшықеттерін қамтиды. Мимикалық бұлшықеттер бір ұшымен теріге бекитіндіктен эмоцияларды жеткізеді.', facts: 'Жымию үшін 17 бұлшықет, ал қабақ түю үшін 43 бұлшықет жұмыс істейді.' },
+                chest: { title: 'Кеуде және иық бұлшықеттері', desc: 'Үлкен кеуде бұлшықеті — қолды денеге жақындататын негізгі бұлшықет. Дельта тәрізді бұлшықет 3 шоғырдан тұрады және қолдың әртүрлі қозғалысын қамтамасыз етеді.', facts: 'Үлкен кеуде бұлшықеті кәсіби спортшыларда жатып итеру кезінде 240 кг-ға дейін күш дамыта алады.' },
+                arms: { title: 'Қол бұлшықеттері', desc: 'Иықтың екі басты бұлшықеті (бицепс) қолды шынтақтан бүгеді, үш басты (трицепс) — жазады. Білек бұлшықеттері ұзын сіңірлер арқылы алақан мен саусақтарды басқарады.', facts: 'Қолдың бас бармағында 9 бөлек бұлшықет бар — соның арқасында ол басқа саусақтарға қарсы тұра алады.' },
+                abdomen: { title: 'Іш бұлшықеттері', desc: 'Тіке іш бұлшықеті («кубиктер»), сыртқы және ішкі қиғаш бұлшықеттер, көлденең бұлшықет. Ішкі ағзаларды қорғайды, тыныс алуға, дене бұрылыстарына қатысады.', facts: 'Жөтел және түшкіру кезінде іш бұлшықеттері 100 мм с.б. дейін қысым жасайды — бұл ауаны 160 км/сағ жылдамдықпен шығаруға жеткілікті.' },
+                back: { title: 'Арқа бұлшықеттері', desc: 'Арқаның ең кең бұлшықеттері — кеуденің ең ірі бұлшықеттері. Трапециялы бұлшықеттер бас пен иықтарды ұстайды. Омыртқаны тіктейтін бұлшықет денені тік ұстайды.', facts: 'Арқа бұлшықеттері тәулігіне 24 сағат бойы дене сымбатын ұстайды, тіпті ұйықтаған кезде де.' },
+                legs: { title: 'Аяқ бұлшықеттері', desc: 'Санның төрт басты және екі басты бұлшықеттері, бөксе бұлшықеттері, балтыр бұлшықеттері. Дененің ең күшті бұлшықеттері — жүру, жүгіру, секіруге жауап береді.', facts: 'Үлкен бөксе бұлшықеті — дененің ең ауыр бұлшықеті. Кәсіби жүгірушілерде балтыр бұлшықеті теуіп кету кезінде 300 кг-нан астам күш дамыта алады.' }
+            }
+        },
+        en: {
+            page_title: 'Human Muscular System',
+            header_title: 'Muscular System',
+            header_subtitle: 'Interactive anatomical model — 6 muscle groups',
+            hint: 'Click any muscle group to learn more',
+            reset_btn: '↺ Reset view', reset_btn_title: 'Reset view', close_btn_label: 'Close',
+            loading: 'Loading model…', error_load: 'Failed to load muscles.glb', error_no_mesh: 'No mesh found in the model',
+            facts_label: 'Did you know?',
+            zones: {
+                head_neck: { title: 'Head & Neck Muscles', desc: 'Include facial expression muscles, masticatory muscles, and neck muscles. Facial muscles uniquely attach to the skin on one end, allowing them to convey emotions.', facts: 'It takes 17 muscles to smile and 43 to frown. The fastest muscle in the body — orbicularis oculi — blinks in 100 ms.' },
+                chest: { title: 'Chest & Shoulder Muscles', desc: 'The pectoralis major is the main muscle that adducts the arm. The deltoid has 3 fascicles (anterior, middle, posterior) responsible for different arm movements.', facts: 'The pectoralis major can develop up to 240 kg of force in the bench press in professional athletes.' },
+                arms: { title: 'Arm Muscles', desc: 'The biceps flexes the arm at the elbow; the triceps extends it. Forearm muscles control the hand and fingers through long tendons. Each arm has over 30 muscles.', facts: 'The thumb has 9 separate muscles — this enables opposition, which makes the human hand unique.' },
+                abdomen: { title: 'Abdominal Muscles', desc: 'Rectus abdominis ("six-pack"), external and internal obliques, transversus abdominis. Protect internal organs and assist in breathing, bending, and twisting.', facts: 'During a cough or sneeze, abdominal muscles can create pressure up to 100 mmHg — enough to expel air at 160 km/h.' },
+                back: { title: 'Back Muscles', desc: 'Latissimus dorsi are the largest trunk muscles. Trapezius supports the head and shoulders. Erector spinae runs along the entire spine and maintains upright posture.', facts: 'Back muscles maintain posture 24/7, even while we sleep — some never fully relax.' },
+                legs: { title: 'Leg Muscles', desc: 'Quadriceps and hamstrings of the thigh, gluteal muscles, gastrocnemius and soleus of the calf. The most powerful muscles in the body — they power walking, running, and jumping.', facts: 'The gluteus maximus is the largest muscle by mass. The calf muscle of professional runners can develop over 300 kg of force during push-off.' }
+            }
+        }
+    };
+
+    const ZONES = [
+        { id: 'head_neck', subtitle: 'Mm. capitis et cervicis', color: 0xff6b6b },
+        { id: 'chest',     subtitle: 'Mm. pectorales',          color: 0x4d96ff },
+        { id: 'arms',      subtitle: 'Mm. membri superioris',   color: 0xffd93d },
+        { id: 'abdomen',   subtitle: 'Mm. abdominis',           color: 0x6bcb77 },
+        { id: 'back',      subtitle: 'Mm. dorsi',               color: 0xc77dff },
+        { id: 'legs',      subtitle: 'Mm. membri inferioris',   color: 0xff9f45 }
+    ];
+    const SEEDS = {
+    "head_neck": [
+        [-0.205, 0.768, -0.063],
+        [-0.07, 0.964, -0.048],
+        [0.005, 1.146, -0.023],
+        [-0.001, 1.058, 0.135],
+        [-0.021, 0.826, 0.091],
+        [0.071, 0.957, -0.03],
+        [0.101, 0.798, -0.031],
+        [0.251, 0.75, -0.052]
+    ],
+    "chest": [
+        [-0.22, 0.6, 0.048],
+        [-0.206, 0.462, 0.025],
+        [-0.113, 0.454, 0.156],
+        [-0.095, 0.618, 0.164],
+        [0.112, 0.615, 0.159],
+        [0.054, 0.436, 0.175],
+        [0.182, 0.441, 0.07],
+        [0.226, 0.59, 0.032]
+    ],
+    "arms": [
+        [-0.405, 0.099, -0.012],
+        [-0.355, 0.286, -0.061],
+        [-0.316, 0.45, -0.071],
+        [-0.306, 0.62, -0.049],
+        [0.329, 0.378, -0.07],
+        [0.373, 0.211, -0.044],
+        [0.311, 0.579, -0.058],
+        [0.417, 0.068, -0.003]
+    ],
+    "abdomen": [
+        [-0.196, 0.174, 0.052],
+        [-0.157, 0.054, 0.105],
+        [-0.143, 0.291, 0.113],
+        [-0.053, 0.176, 0.165],
+        [0.061, 0.069, 0.14],
+        [0.058, 0.273, 0.169],
+        [0.18, 0.255, 0.071],
+        [0.203, 0.087, 0.069]
+    ],
+    "back": [
+        [0.128, 0.143, -0.116],
+        [-0.116, 0.097, -0.13],
+        [-0.076, 0.291, -0.101],
+        [0.193, 0.438, -0.091],
+        [-0.222, 0.478, -0.089],
+        [-0.042, 0.461, -0.158],
+        [-0.153, 0.616, -0.174],
+        [0.176, 0.583, -0.165]
+    ],
+    "legs": [
+        [-0.014, -1.168, 0.092],
+        [0.048, -1.025, -0.077],
+        [-0.151, -0.729, -0.062],
+        [0.134, -0.561, -0.038],
+        [0.013, -0.124, -0.016],
+        [-0.162, -0.316, 0.001],
+        [-0.413, -0.133, 0.04],
+        [0.388, -0.139, 0.043]
+    ]
+};
+
+    initPoster({ modelFile: 'muscles.glb', zones: ZONES, seeds: SEEDS, i18n: I18N });
+</script>
+</body>
+</html>

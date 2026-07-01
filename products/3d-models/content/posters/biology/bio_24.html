@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="page_title">Морская звезда — анатомическая модель</title>
+    <link rel="stylesheet" href="_poster.css">
+</head>
+<body>
+<div id="canvas-container"></div>
+<div id="header">
+    <h1 data-i18n="header_title">Морская звезда</h1>
+    <p data-i18n="header_subtitle">Интерактивная модель — 5 анатомических зон</p>
+</div>
+<div id="hint" data-i18n="hint">Кликните по любой части тела, чтобы узнать больше</div>
+<button id="reset-btn" data-i18n="reset_btn" data-i18n-title="reset_btn_title" title="Сбросить вид">↺ Сбросить вид</button>
+<div id="info-panel" aria-hidden="true"></div>
+<div id="legend"></div>
+<div id="hover-label"></div>
+<div id="loading"><div class="spinner"></div><div id="loading-text" data-i18n="loading">Загрузка модели…</div></div>
+
+<script type="importmap">
+    { "imports": { "three": "../../libs/vendor/three-0.160.0/three.module.js", "three/addons/": "../../libs/vendor/three-0.160.0/addons/" } }
+</script>
+
+<script type="module">
+    import { initPoster } from './_poster_lib.js';
+
+    const I18N = {
+        ru: {
+            page_title: 'Морская звезда — анатомическая модель',
+            header_title: 'Морская звезда',
+            header_subtitle: 'Интерактивная модель — 5 анатомических зон',
+            hint: 'Кликните по любой части тела, чтобы узнать больше',
+            reset_btn: '↺ Сбросить вид', reset_btn_title: 'Сбросить вид', close_btn_label: 'Закрыть',
+            loading: 'Загрузка модели…', error_load: 'Не удалось загрузить starfish.glb', error_no_mesh: 'В модели нет меша',
+            facts_label: 'Интересный факт',
+            zones: {
+                central_disc: { title: 'Центральный диск', desc: 'Центральная часть тела, от которой расходятся лучи. В диске находятся желудок, нервное кольцо и часть половых органов. На верхней (аборальной) стороне диска расположена мадрепоровая пластинка — отверстие, через которое в водно-сосудистую систему поступает морская вода.', facts: 'Морская звезда выворачивает желудок наружу через рот, обволакивает им добычу (например, мидию) и переваривает её прямо снаружи, всасывая уже жидкую пищу.' },
+                arms: { title: 'Лучи (руки)', desc: 'У большинства звёзд 5 лучей, но бывает и 7, 10, 20 или даже 40 лучей. В каждом луче находятся: ветвь желудка, половая железа и сложная сеть нервов. На конце луча — простой светочувствительный глазок.', facts: 'Морская звезда может полностью отрастить потерянный луч за несколько месяцев. У некоторых видов даже из одного оторванного луча с кусочком диска может вырасти целая новая звезда.' },
+                tube_feet: { title: 'Амбулакральные ножки', desc: 'Сотни маленьких трубчатых ножек с присосками, расположенных на нижней стороне каждого луча. Работают за счёт водно-сосудистой системы: давление воды выдвигает их, а мышцы втягивают. С их помощью звезда передвигается, держится за дно и открывает раковины моллюсков.', facts: 'Морская звезда может одновременно тянуть створки мидии с силой, в 100 раз превышающей её собственный вес — и часами «выжидать», пока та не устанет.' },
+                madreporite: { title: 'Мадрепоровая пластинка', desc: 'Небольшое сетчатое отверстие на верхней стороне центрального диска. Через него морская вода поступает в водно-сосудистую систему (амбулакральную) — уникальную для иглокожих гидравлическую систему, управляющую движением ножек.', facts: 'Водно-сосудистая система морской звезды работает как древний гидравлический «компьютер» — без мозга, но с тысячами «исполнительных механизмов» (ножек).' },
+                mouth: { title: 'Рот и анус', desc: 'Рот расположен в центре нижней (оральной) стороны диска и окружён ротовыми пластинками. От рта идёт короткий пищевод к желудку. У большинства видов есть и анальное отверстие на верхней стороне диска, но часть звёзд лишена ануса — отходы выбрасываются через рот.', facts: 'Морские звёзды относятся к иглокожим — родственникам морских ежей и голотурий. Их ближайшие родственники среди всех животных — позвоночные (включая нас!).' }
+            }
+        },
+        kz: {
+            page_title: 'Теңіз жұлдызы — анатомиялық модель',
+            header_title: 'Теңіз жұлдызы',
+            header_subtitle: 'Интерактивті модель — 5 анатомиялық аймақ',
+            hint: 'Толығырақ білу үшін дененің кез келген бөлігіне басыңыз',
+            reset_btn: '↺ Көріністі қалпына келтіру', reset_btn_title: 'Көріністі қалпына келтіру', close_btn_label: 'Жабу',
+            loading: 'Модель жүктелуде…', error_load: 'starfish.glb файлын жүктеу мүмкін болмады', error_no_mesh: 'Модельде меш табылмады',
+            facts_label: 'Қызықты факт',
+            zones: {
+                central_disc: { title: 'Орталық диск', desc: 'Сәулелер тарайтын дененің ортаңғы бөлігі. Дискте асқазан, жүйке сақинасы және жыныс ағзаларының бір бөлігі орналасқан. Үстіңгі (аборальды) жағында мадрепор тақташасы бар.', facts: 'Теңіз жұлдызы асқазанын ауыз арқылы сыртқа аударып, олжаны (мысалы, мидияны) онымен орап, тікелей сыртта қорытып, сұйық тағамды сорып алады.' },
+                arms: { title: 'Сәулелер (қолдар)', desc: 'Көптеген жұлдыздарда 5 сәуле болады, бірақ 7, 10, 20, тіпті 40 сәулелі түрлері бар. Әр сәуле ішінде: асқазан тармағы, жыныс безі және күрделі жүйке торы. Сәуле ұшында жарық сезімтал қарапайым көзше орналасқан.', facts: 'Теңіз жұлдызы жоғалтқан сәулесін бірнеше айда толық қалпына келтіре алады. Кейбір түрлерде дискінің бір бөлігі бар бір сәуледен жаңа толық жұлдыз өсіп шығуы мүмкін.' },
+                tube_feet: { title: 'Амбулакра аяқшалары', desc: 'Әр сәуленің төменгі жағында жүздеген сорғышы бар майда түтікше аяқшалар орналасқан. Су-тамыр жүйесінің есебінен жұмыс істейді: су қысымы оларды шығарады, бұлшықеттер тартып алады.', facts: 'Теңіз жұлдызы мидия қабыршағын өзінің салмағынан 100 есе көп күшпен тарта алады — және ол шаршағанша сағаттап күтеді.' },
+                madreporite: { title: 'Мадрепор тақташасы', desc: 'Орталық дискінің үстіңгі жағындағы кішкене торлы тесік. Ол арқылы теңіз суы тікентерілілердің бірегей гидравликалық су-тамыр жүйесіне түседі.', facts: 'Теңіз жұлдызының су-тамыр жүйесі көне гидравликалық «компьютер» сияқты жұмыс істейді — мисіз, бірақ мыңдаған «атқарушы механизмдермен».' },
+                mouth: { title: 'Ауыз және анус', desc: 'Ауыз дискінің төменгі (оральды) жағының ортасында орналасқан және ауыз тақташаларымен қоршалған. Көптеген түрлерінде үстінде анальды тесік бар, бірақ кейбіреулерінде анус жоқ — қалдықтар ауыз арқылы шығады.', facts: 'Теңіз жұлдыздары тікентерілілерге жатады — теңіз кірпілерінің туыстары. Олардың барлық жануарлар арасындағы ең жақын туыстары — омыртқалылар (соның ішінде біз)!' }
+            }
+        },
+        en: {
+            page_title: 'Starfish — Anatomical Model',
+            header_title: 'Starfish',
+            header_subtitle: 'Interactive model — 5 anatomical zones',
+            hint: 'Click any part of the body to learn more',
+            reset_btn: '↺ Reset view', reset_btn_title: 'Reset view', close_btn_label: 'Close',
+            loading: 'Loading model…', error_load: 'Failed to load starfish.glb', error_no_mesh: 'No mesh found in the model',
+            facts_label: 'Did you know?',
+            zones: {
+                central_disc: { title: 'Central Disc', desc: 'The central body region from which the arms radiate. Contains the stomach, nerve ring, and parts of the gonads. The aboral (upper) surface bears the madreporite — the inlet for the water vascular system.', facts: 'A starfish everts its stomach through the mouth, wraps it around prey (e.g., a mussel), digests it externally, and absorbs the liquefied food.' },
+                arms: { title: 'Arms (Rays)', desc: 'Most starfish have 5 arms, but some have 7, 10, 20, or even 40. Each arm contains a branch of the stomach, gonads, and a complex nerve net. A simple light-sensitive eyespot sits at the arm tip.', facts: 'A starfish can fully regrow a lost arm in months. In some species, even a single severed arm with a bit of disc can grow into a whole new starfish.' },
+                tube_feet: { title: 'Tube Feet (Podia)', desc: 'Hundreds of tiny tubular feet with suckers on the underside of each arm. They operate via the water vascular system — water pressure extends them, muscles retract them. Used for locomotion, gripping, and prying open mollusk shells.', facts: 'A starfish can pull on a mussel\'s shells with a force 100 times its body weight — and patiently wait hours until the mussel tires.' },
+                madreporite: { title: 'Madreporite', desc: 'A small sieve-like plate on the upper side of the central disc. Seawater enters here into the water vascular (ambulacral) system — a hydraulic system unique to echinoderms that powers the tube feet.', facts: 'The starfish water vascular system is like an ancient hydraulic "computer" — no brain, but thousands of "actuators" (tube feet).' },
+                mouth: { title: 'Mouth & Anus', desc: 'The mouth is in the center of the lower (oral) surface, surrounded by mouth plates. A short esophagus leads to the stomach. Most species also have an anus on the upper side; some lack an anus and excrete through the mouth.', facts: 'Starfish are echinoderms — relatives of sea urchins and sea cucumbers. Their closest relatives among all animals are vertebrates (including us)!' }
+            }
+        }
+    };
+
+    const ZONES = [
+        { id: 'central_disc', subtitle: 'Discus centralis',    color: 0xff6b6b },
+        { id: 'arms',         subtitle: 'Brachia',             color: 0xff9f45 },
+        { id: 'tube_feet',    subtitle: 'Pedicelli ambulacri', color: 0x6bcb77 },
+        { id: 'madreporite',  subtitle: 'Madreporite',         color: 0xffd93d },
+        { id: 'mouth',        subtitle: 'Os et Anus',          color: 0xc77dff }
+    ];
+    const SEEDS = {
+    "central_disc": [
+        [-0.275, -0.012, -0.26],
+        [-0.239, -0.008, -0.271],
+        [-0.224, -0.011, -0.301],
+        [-0.213, -0.008, -0.329],
+        [0.22, -0.007, -0.315],
+        [0.236, -0.023, -0.276],
+        [0.254, 0.009, -0.268],
+        [0.272, -0.016, -0.26]
+    ],
+    "arms": [
+        [0.002, 0.091, -0.685],
+        [-0.732, 0.096, -0.212],
+        [0.893, 0.076, -0.278],
+        [0.538, 0.119, -0.127],
+        [-0.301, 0.12, 0.494],
+        [0.299, 0.122, 0.496],
+        [-0.558, 0.1, 0.848],
+        [0.559, 0.103, 0.839]
+    ],
+    "tube_feet": [
+        [0.002, -0.091, -1.057],
+        [-0.011, -0.059, -0.55],
+        [1.028, -0.074, -0.362],
+        [0.508, -0.069, -0.042],
+        [-0.834, -0.071, -0.274],
+        [0.602, -0.066, 0.901],
+        [-0.25, -0.072, 0.484],
+        [-0.701, -0.064, 1.052]
+    ],
+    "madreporite": [
+        [-0.322, 0.139, -0.072],
+        [-0.191, 0.141, 0.033],
+        [-0.158, 0.138, 0.286],
+        [0.006, 0.145, -0.11],
+        [-0.01, 0.139, -0.283],
+        [0.156, 0.143, 0.244],
+        [0.201, 0.13, -0.172],
+        [0.319, 0.14, -0.044]
+    ],
+    "mouth": [
+        [0.041, -0.108, -0.228],
+        [-0.201, -0.093, -0.238],
+        [0.22, -0.122, -0.028],
+        [-0.277, -0.118, -0.017],
+        [-0.138, -0.131, 0.002],
+        [0.156, -0.123, 0.257],
+        [-0.064, -0.136, 0.223],
+        [-0.165, -0.116, 0.274]
+    ]
+};
+
+    initPoster({ modelFile: 'starfish.glb', zones: ZONES, seeds: SEEDS, i18n: I18N });
+</script>
+</body>
+</html>

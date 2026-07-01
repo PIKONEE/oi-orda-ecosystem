@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="page_title">Пищеварительная система человека</title>
+    <link rel="stylesheet" href="_poster.css">
+</head>
+<body>
+<div id="canvas-container"></div>
+<div id="header">
+    <h1 data-i18n="header_title">Пищеварительная система</h1>
+    <p data-i18n="header_subtitle">Интерактивная анатомическая модель — 6 ключевых органов</p>
+</div>
+<div id="hint" data-i18n="hint">Кликните по любому органу, чтобы узнать больше</div>
+<button id="reset-btn" data-i18n="reset_btn" data-i18n-title="reset_btn_title" title="Сбросить вид">↺ Сбросить вид</button>
+<div id="info-panel" aria-hidden="true"></div>
+<div id="legend"></div>
+<div id="hover-label"></div>
+<div id="loading"><div class="spinner"></div><div id="loading-text" data-i18n="loading">Загрузка модели…</div></div>
+
+<script type="importmap">
+    { "imports": { "three": "../../libs/vendor/three-0.160.0/three.module.js", "three/addons/": "../../libs/vendor/three-0.160.0/addons/" } }
+</script>
+
+<script type="module">
+    import { initPoster } from './_poster_lib.js';
+
+    const I18N = {
+        ru: {
+            page_title: 'Пищеварительная система человека',
+            header_title: 'Пищеварительная система',
+            header_subtitle: 'Интерактивная анатомическая модель — 6 ключевых органов',
+            hint: 'Кликните по любому органу, чтобы узнать больше',
+            reset_btn: '↺ Сбросить вид', reset_btn_title: 'Сбросить вид', close_btn_label: 'Закрыть',
+            loading: 'Загрузка модели…', error_load: 'Не удалось загрузить digestive.glb', error_no_mesh: 'В модели нет меша',
+            facts_label: 'Интересный факт',
+            zones: {
+                esophagus: { title: 'Пищевод', desc: 'Мышечная трубка длиной 25–30 см, соединяющая глотку с желудком. Стенки совершают перистальтические сокращения, проталкивающие пищу к желудку независимо от положения тела. Внутренняя оболочка покрыта многослойным плоским эпителием.', facts: 'Пищевод может пропустить пищу даже если вы стоите вниз головой — благодаря мощным круговым сокращениям мышц.' },
+                stomach: { title: 'Желудок', desc: 'Полый мышечный орган объёмом 1–2 литра (растягивается до 4 л). Вырабатывает соляную кислоту (pH 1,5–2,0) и пепсин для расщепления белков. Слизистая образует складки и содержит миллионы желёз.', facts: 'Желудочный сок настолько кислый, что может растворить лезвие бритвы за неделю. Слизистая желудка обновляется каждые 3–5 дней, чтобы не быть переваренной.' },
+                liver: { title: 'Печень', desc: 'Самая крупная железа тела (1,5 кг), расположенная справа под диафрагмой. Выполняет более 500 функций: вырабатывает желчь, обезвреживает токсины, синтезирует белки крови, запасает гликоген, регулирует обмен веществ.', facts: 'Печень — единственный орган, способный полностью восстановиться даже после удаления 75% ткани. Через печень за минуту проходит 1,5 л крови.' },
+                small_intestine: { title: 'Тонкий кишечник', desc: 'Длиной 5–7 метров, делится на двенадцатиперстную, тощую и подвздошную кишку. Здесь происходит основное переваривание и всасывание питательных веществ. Внутренняя поверхность покрыта ворсинками и микроворсинками, увеличивающими площадь до 200 м².', facts: 'Площадь всасывания тонкого кишечника равна площади теннисного корта благодаря ворсинкам — это самая большая внутренняя поверхность тела.' },
+                large_intestine: { title: 'Толстый кишечник', desc: 'Длиной около 1,5 м, включает слепую, ободочную и прямую кишку. Всасывает воду и электролиты, формирует каловые массы. В нём обитают триллионы бактерий микробиоты, которые синтезируют витамины K и группы B.', facts: 'В толстом кишечнике обитает около 100 триллионов микроорганизмов — их общая масса достигает 1,5–2 кг и больше количества клеток в самом теле.' },
+                pancreas: { title: 'Поджелудочная железа', desc: 'Удлинённый орган длиной 15–20 см, расположенный позади желудка. Выполняет двойную функцию: вырабатывает пищеварительные ферменты (для жиров, белков, углеводов) и гормоны (инсулин, глюкагон), регулирующие уровень глюкозы.', facts: 'Поджелудочная железа выделяет около 1,5 л пищеварительного сока в день — этого достаточно, чтобы переварить мясо и даже железо в очень малых количествах.' }
+            }
+        },
+        kz: {
+            page_title: 'Адамның ас қорыту жүйесі',
+            header_title: 'Ас қорыту жүйесі',
+            header_subtitle: 'Интерактивті анатомиялық модель — 6 негізгі мүше',
+            hint: 'Толығырақ білу үшін кез келген мүшеге басыңыз',
+            reset_btn: '↺ Көріністі қалпына келтіру', reset_btn_title: 'Көріністі қалпына келтіру', close_btn_label: 'Жабу',
+            loading: 'Модель жүктелуде…', error_load: 'digestive.glb файлын жүктеу мүмкін болмады', error_no_mesh: 'Модельде меш табылмады',
+            facts_label: 'Қызықты факт',
+            zones: {
+                esophagus: { title: 'Өңеш', desc: 'Жұтқыншақты асқазанмен жалғайтын ұзындығы 25–30 см бұлшықетті түтік. Қабырғалары перистальтикалық жиырылыстар жасап, тағамды дене қалпына қарамастан асқазанға жылжытады.', facts: 'Өңеш тіпті басыңызды төмен қаратып тұрса да тағамды өткізе алады — бұлшықеттердің мықты сақина тәрізді жиырылыстарының арқасында.' },
+                stomach: { title: 'Асқазан', desc: 'Көлемі 1–2 литр (4 л-ге дейін созыла алатын) қуыс бұлшықетті мүше. Белоктарды ыдырату үшін тұз қышқылы (pH 1,5–2,0) мен пепсин шығарады.', facts: 'Асқазан сөлі ұстара жүзін бір аптада ерітіп жібере алатындай қышқыл. Асқазан кілегейі өздігінен қорытылып кетпеу үшін әр 3–5 күн сайын жаңарып тұрады.' },
+                liver: { title: 'Бауыр', desc: 'Дененің ең ірі безі (1,5 кг), диафрагма астында оң жақта орналасқан. 500-ден астам функция атқарады: өт шығарады, токсиндерді залалсыздандырады, қан белоктарын синтездейді, гликоген сақтайды.', facts: 'Бауыр — тіндердің 75%-ы алып тасталған соң да толық қалпына келе алатын жалғыз мүше. Бауыр арқылы минутына 1,5 л қан өтеді.' },
+                small_intestine: { title: 'Аш ішек', desc: 'Ұзындығы 5–7 метр, он екі елі ішек, аш және мықын ішектерге бөлінеді. Мұнда тағамның негізгі қорытылуы мен қоректік заттардың сіңірілуі жүреді. Беті бүрлермен қапталған.', facts: 'Аш ішектің сіңіру беті теннис кортының ауданына тең — бұл дененің ең үлкен ішкі беті.' },
+                large_intestine: { title: 'Тоқ ішек', desc: 'Ұзындығы шамамен 1,5 м, соқыр, тоқ және тік ішектерден тұрады. Суды, электролиттерді сіңіреді, нәжіс түзеді. Ішінде триллиондаған пайдалы бактериялар тіршілік етеді.', facts: 'Тоқ ішекте шамамен 100 триллион микроорганизм өмір сүреді — олардың жалпы салмағы 1,5–2 кг-ға жетеді.' },
+                pancreas: { title: 'Ұйқы безі', desc: 'Асқазанның артында орналасқан ұзындығы 15–20 см ұзынша мүше. Қос функция атқарады: ас қорыту ферменттерін және гормондарды (инсулин, глюкагон) шығарады.', facts: 'Ұйқы безі тәулігіне шамамен 1,5 л ас қорыту сөлін бөліп шығарады.' }
+            }
+        },
+        en: {
+            page_title: 'Human Digestive System',
+            header_title: 'Digestive System',
+            header_subtitle: 'Interactive anatomical model — 6 key organs',
+            hint: 'Click any organ to learn more',
+            reset_btn: '↺ Reset view', reset_btn_title: 'Reset view', close_btn_label: 'Close',
+            loading: 'Loading model…', error_load: 'Failed to load digestive.glb', error_no_mesh: 'No mesh found in the model',
+            facts_label: 'Did you know?',
+            zones: {
+                esophagus: { title: 'Esophagus', desc: 'A muscular tube 25–30 cm long connecting the pharynx to the stomach. Its walls perform peristaltic contractions that push food toward the stomach regardless of body position.', facts: 'The esophagus can pass food even if you stand upside down — thanks to powerful circular muscle contractions.' },
+                stomach: { title: 'Stomach', desc: 'A hollow muscular organ with a volume of 1–2 liters (stretches to 4 L). Produces hydrochloric acid (pH 1.5–2.0) and pepsin to break down proteins.', facts: 'Gastric juice is acidic enough to dissolve a razor blade in a week. The stomach lining renews every 3–5 days to avoid being digested.' },
+                liver: { title: 'Liver', desc: 'The largest gland in the body (1.5 kg), located on the right under the diaphragm. Performs over 500 functions: produces bile, detoxifies, synthesizes blood proteins, stores glycogen.', facts: 'The liver is the only organ that can fully regenerate even after 75% removal. 1.5 L of blood pass through it per minute.' },
+                small_intestine: { title: 'Small Intestine', desc: '5–7 meters long, divided into duodenum, jejunum, and ileum. This is where main digestion and absorption occur. The inner surface is covered with villi increasing absorptive area to 200 m².', facts: 'The absorption area of the small intestine equals a tennis court — the largest internal surface of the body.' },
+                large_intestine: { title: 'Large Intestine', desc: 'About 1.5 m long, includes cecum, colon, and rectum. Absorbs water and electrolytes, forms feces. Houses trillions of microbiota bacteria that synthesize vitamins K and B.', facts: 'The large intestine harbors about 100 trillion microorganisms — their total mass reaches 1.5–2 kg, more than the number of cells in the body.' },
+                pancreas: { title: 'Pancreas', desc: 'An elongated organ 15–20 cm long behind the stomach. Has dual function: produces digestive enzymes and hormones (insulin, glucagon) that regulate glucose levels.', facts: 'The pancreas secretes about 1.5 L of digestive juice per day — enough to digest meat and even iron in very small amounts.' }
+            }
+        }
+    };
+
+    const ZONES = [
+        { id: 'esophagus',       subtitle: 'Oesophagus',         color: 0xffd93d },
+        { id: 'stomach',         subtitle: 'Gaster',             color: 0xff6b6b },
+        { id: 'liver',           subtitle: 'Hepar',              color: 0xc77dff },
+        { id: 'small_intestine', subtitle: 'Intestinum tenue',   color: 0x4d96ff },
+        { id: 'large_intestine', subtitle: 'Intestinum crassum', color: 0x6bcb77 },
+        { id: 'pancreas',        subtitle: 'Pancreas',           color: 0xff9f45 }
+    ];
+    const SEEDS = {
+    "esophagus": [
+        [-0.343, 0.769, 0.052],
+        [-0.127, 1.098, 0.086],
+        [-0.08, 0.832, -0.118],
+        [0.211, 0.645, -0.201],
+        [0.207, 0.936, 0.023],
+        [0.213, 0.652, -0.048],
+        [0.427, 0.689, -0.112],
+        [0.522, 0.762, 0.14]
+    ],
+    "stomach": [
+        [-0.56, 0.285, 0.172],
+        [-0.513, 0.286, -0.019],
+        [-0.422, 0.205, 0.078],
+        [-0.263, 0.289, -0.098],
+        [-0.417, 0.433, 0.077],
+        [-0.12, 0.374, 0.107],
+        [-0.123, 0.203, 0.047],
+        [-0.238, 0.47, 0.237]
+    ],
+    "liver": [
+        [0.103, 0.245, 0.07],
+        [0.18, 0.275, -0.09],
+        [0.215, 0.242, 0.107],
+        [0.176, 0.474, 0.045],
+        [0.197, 0.453, 0.191],
+        [0.299, 0.325, 0.074],
+        [0.455, 0.256, 0.053],
+        [0.515, 0.493, 0.02]
+    ],
+    "small_intestine": [
+        [0.118, -0.314, -0.02],
+        [-0.175, -0.25, -0.001],
+        [-0.014, -0.16, 0.031],
+        [0.153, -0.083, -0.003],
+        [-0.049, 0.023, 0.059],
+        [0.087, -0.015, -0.109],
+        [-0.151, 0.014, -0.033],
+        [0.132, 0.257, 0.112]
+    ],
+    "large_intestine": [
+        [-0.006, -1.033, 0.117],
+        [0.294, -0.559, 0.046],
+        [-0.18, -0.552, 0.045],
+        [0.412, -0.316, 0.063],
+        [-0.471, -0.376, 0.096],
+        [-0.322, -0.121, 0.032],
+        [0.412, 0.017, 0.044],
+        [-0.467, 0.033, 0.098]
+    ],
+    "pancreas": [
+        [0.036, 0.168, -0.148],
+        [0.001, 0.258, -0.061],
+        [0.108, 0.161, 0.088],
+        [0.003, 0.315, 0.106],
+        [-0.077, 0.123, 0.077],
+        [0.021, 0.21, 0.061],
+        [-0.026, 0.198, 0.122],
+        [0.013, 0.293, 0.178]
+    ]
+};
+
+    initPoster({ modelFile: 'digestive.glb', zones: ZONES, seeds: SEEDS, i18n: I18N });
+</script>
+</body>
+</html>

@@ -1,0 +1,1270 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Инерция — Первый закон Ньютона</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #0a1628;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        /* Header */
+        .header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 20px 30px;
+            background: linear-gradient(180deg, rgba(0,0,0,0.8) 0%, transparent 100%);
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .header h1 {
+            color: white;
+            font-size: 28px;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .header p {
+            color: rgba(255,255,255,0.7);
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        /* Control Panel */
+        .control-panel {
+            position: absolute;
+            top: 100px;
+            left: 20px;
+            width: 280px;
+            background: rgba(0,0,0,0.85);
+            
+            border-radius: 16px;
+            padding: 20px;
+            z-index: 10;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 10px;
+            background: rgba(255,255,255,0.1);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            transition: all 0.3s;
+        }
+
+        .tab-btn.active {
+            background: #3498db;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Slider */
+        .slider-group {
+            margin-bottom: 20px;
+        }
+
+        .slider-group label {
+            color: white;
+            font-size: 14px;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        .slider-group input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+            height: 6px;
+            border-radius: 3px;
+            -webkit-appearance: none;
+            background: rgba(255,255,255,0.2);
+        }
+
+        .slider-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #3498db;
+            cursor: pointer;
+        }
+
+        /* Buttons */
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            color: white;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 15px;
+            transition: all 0.3s;
+        }
+
+        .btn-push-right {
+            background: linear-gradient(135deg, #27ae60, #2ecc71);
+            box-shadow: 0 4px 15px rgba(46,204,113,0.4);
+        }
+
+        .btn-push-left {
+            background: linear-gradient(135deg, #2980b9, #3498db);
+            box-shadow: 0 4px 15px rgba(52,152,219,0.4);
+        }
+
+        .btn-brake {
+            background: linear-gradient(135deg, #c0392b, #e74c3c);
+            box-shadow: 0 4px 15px rgba(231,76,60,0.4);
+        }
+
+        .btn-brake:disabled {
+            background: rgba(255,255,255,0.1);
+            box-shadow: none;
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-reset {
+            padding: 12px;
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.3);
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+        }
+
+        /* Checkbox */
+        .checkbox-group {
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            padding: 12px;
+        }
+
+        .checkbox-group label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: white;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .checkbox-group input {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        /* Theory tab */
+        .theory-content {
+            color: rgba(255,255,255,0.9);
+            font-size: 13px;
+            line-height: 1.7;
+        }
+
+        .theory-content h3 {
+            color: #3498db;
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+
+        .theory-content h4 {
+            margin-bottom: 8px;
+        }
+
+        .theory-content h4.green { color: #2ecc71; }
+        .theory-content h4.orange { color: #f39c12; }
+
+        .theory-content ol {
+            padding-left: 20px;
+            margin: 0 0 15px;
+        }
+
+        /* Stats Panel */
+        .stats-panel {
+            position: absolute;
+            top: 100px;
+            right: 20px;
+            background: rgba(0,0,0,0.85);
+            
+            border-radius: 16px;
+            padding: 20px;
+            z-index: 10;
+            min-width: 200px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .stats-panel h3 {
+            color: white;
+            margin: 0 0 15px;
+            font-size: 16px;
+        }
+
+        .stat-item {
+            margin-bottom: 15px;
+        }
+
+        .stat-label {
+            color: rgba(255,255,255,0.6);
+            font-size: 12px;
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            font-family: monospace;
+        }
+
+        .stat-value.green { color: #2ecc71; }
+        .stat-value.red { color: #e74c3c; }
+
+        .stat-value span {
+            font-size: 14px;
+        }
+
+        .velocity-bar {
+            width: 100%;
+            height: 6px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 3px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+
+        .velocity-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #2ecc71, #27ae60);
+            border-radius: 3px;
+            transition: width 0.1s;
+        }
+
+        .direction-value {
+            color: white;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .cargo-status {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        /* Formula */
+        .formula-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            
+            border-radius: 12px;
+            padding: 15px 25px;
+            z-index: 10;
+            border: 1px solid rgba(255,255,255,0.1);
+            text-align: center;
+        }
+
+        .formula {
+            color: white;
+            font-size: 20px;
+            font-family: serif;
+            font-style: italic;
+        }
+
+        .formula .blue { color: #3498db; }
+        .formula .green { color: #2ecc71; }
+
+        .formula-desc {
+            color: rgba(255,255,255,0.6);
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        /* Alert */
+        .alert-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.8);
+            background: rgba(231,76,60,0.95);
+            border-radius: 16px;
+            padding: 25px 40px;
+            z-index: 25;
+            text-align: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s;
+        }
+
+        .alert-overlay.show {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+            pointer-events: auto;
+        }
+
+        .alert-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        .alert-title {
+            color: white;
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .alert-desc {
+            color: rgba(255,255,255,0.8);
+            font-size: 14px;
+            margin-top: 8px;
+        }
+
+        .alert-btn {
+            margin-top: 15px;
+            padding: 10px 25px;
+            background: white;
+            border: none;
+            border-radius: 8px;
+            color: #e74c3c;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        /* Instructions hint */
+        .hint {
+            position: absolute;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255,255,255,0.5);
+            font-size: 12px;
+            z-index: 5;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="canvas-container"></div>
+
+    <!-- Header -->
+    <div class="header">
+        <h1>🚃 Инерция — Первый закон Ньютона</h1>
+        <p>Тело сохраняет состояние покоя или равномерного движения, пока на него не действует сила</p>
+    </div>
+
+    <!-- Control Panel -->
+    <div class="control-panel">
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="demo">🎮 Управление</button>
+            <button class="tab-btn" data-tab="theory">📚 Теория</button>
+        </div>
+
+        <!-- Demo Tab -->
+        <div id="demo-tab" class="tab-content active">
+            <div class="slider-group">
+                <label>Сила толчка: <strong id="force-value">1.0</strong> Н</label>
+                <input type="range" id="force-slider" min="0.2" max="3" step="0.1" value="1">
+            </div>
+
+            <div class="btn-group">
+                <button class="btn btn-push-right" id="btn-push-right">➡️ ТОЛКНУТЬ ВПРАВО</button>
+                <button class="btn btn-push-left" id="btn-push-left">⬅️ ТОЛКНУТЬ ВЛЕВО</button>
+                <button class="btn btn-brake" id="btn-brake" disabled>🛑 РЕЗКО ЗАТОРМОЗИТЬ</button>
+                <button class="btn btn-reset" id="btn-reset">🔄 Сбросить</button>
+            </div>
+
+            <div class="checkbox-group">
+                <label>
+                    <input type="checkbox" id="show-trail" checked>
+                    Показать след движения
+                </label>
+            </div>
+        </div>
+
+        <!-- Theory Tab -->
+        <div id="theory-tab" class="tab-content">
+            <div class="theory-content">
+                <h3>Первый закон Ньютона</h3>
+                <p>
+                    Тело сохраняет состояние покоя или равномерного прямолинейного движения
+                    до тех пор, пока на него не подействует внешняя сила.
+                </p>
+
+                <h4 class="green">Эксперимент:</h4>
+                <ol>
+                    <li>Толкните тележку — она продолжит двигаться</li>
+                    <li>Резко затормозите — груз упадёт вперёд</li>
+                    <li>Это и есть проявление инерции!</li>
+                </ol>
+
+                <h4 class="orange">Почему груз падает?</h4>
+                <p style="margin: 0;">
+                    При торможении тележка останавливается, но груз по инерции
+                    продолжает движение вперёд — и опрокидывается!
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Panel -->
+    <div class="stats-panel">
+        <h3>📊 Показатели</h3>
+
+        <div class="stat-item">
+            <div class="stat-label">Скорость</div>
+            <div class="stat-value green" id="velocity-value">0.0 <span>м/с</span></div>
+            <div class="velocity-bar">
+                <div class="velocity-fill" id="velocity-bar" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <div class="stat-item">
+            <div class="stat-label">Направление</div>
+            <div class="direction-value" id="direction-value">⏸️ Покой</div>
+        </div>
+
+        <div class="stat-item">
+            <div class="stat-label">Состояние груза</div>
+            <div class="cargo-status green" id="cargo-status">✅ Стоит</div>
+        </div>
+    </div>
+
+    <!-- Formula -->
+    <div class="formula-panel">
+        <div class="formula">
+            Σ<span class="blue">F</span> = 0 → <span class="green">v</span> = const
+        </div>
+        <div class="formula-desc">Если сумма сил равна нулю, скорость постоянна</div>
+    </div>
+
+    <!-- Hint -->
+    <div class="hint">Вращайте сцену мышью • Колёсико для зума</div>
+
+    <!-- Alert -->
+    <div class="alert-overlay" id="alert">
+        <div class="alert-icon">💥</div>
+        <div class="alert-title">Груз упал!</div>
+        <div class="alert-desc">Это инерция в действии!</div>
+        <button class="alert-btn" id="alert-btn">Попробовать снова</button>
+    </div>
+
+    <script src="../../libs/vendor/three-r128/three.min.js"></script>
+    <script>
+        // Physics state
+        const physics = {
+            cartPosition: 0,
+            cartVelocity: 0,
+            cartAcceleration: 0,
+            cargoAngle: 0,
+            cargoAngularVelocity: 0,
+            cargoFallen: false
+        };
+
+        const FRICTION = 0.003;
+        const CARGO_FALL_THRESHOLD = 0.25;
+
+        // Three.js variables
+        let scene, camera, renderer, mainGroup;
+        let cart, cargo, wheels = [];
+        let velocityArrow;
+        let trailLine, trailPoints = [];
+
+        // Controls
+        let isDragging = false;
+        let lastMouse = { x: 0, y: 0 };
+        let rotation = { x: 0.3, y: -0.3 };
+
+        // DOM elements
+        const container = document.getElementById('canvas-container');
+        const forceSlider = document.getElementById('force-slider');
+        const forceValue = document.getElementById('force-value');
+        const btnPushRight = document.getElementById('btn-push-right');
+        const btnPushLeft = document.getElementById('btn-push-left');
+        const btnBrake = document.getElementById('btn-brake');
+        const btnReset = document.getElementById('btn-reset');
+        const showTrailCheckbox = document.getElementById('show-trail');
+        const velocityValueEl = document.getElementById('velocity-value');
+        const velocityBar = document.getElementById('velocity-bar');
+        const directionValue = document.getElementById('direction-value');
+        const cargoStatus = document.getElementById('cargo-status');
+        const alertEl = document.getElementById('alert');
+        const alertBtn = document.getElementById('alert-btn');
+
+        // Tab switching
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById(btn.dataset.tab + '-tab').classList.add('active');
+            });
+        });
+
+        // Force slider
+        forceSlider.addEventListener('input', () => {
+            forceValue.textContent = parseFloat(forceSlider.value).toFixed(1);
+        });
+
+        // Initialize Three.js
+        function init() {
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color('#0a1628');
+            scene.fog = new THREE.Fog('#0a1628', 15, 40);
+
+            // Camera
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 5, 12);
+            camera.lookAt(0, 0, 0);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = false;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+
+            // Lights
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+            scene.add(ambientLight);
+
+            const mainLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            mainLight.position.set(10, 20, 10);
+            mainLight.castShadow = true;
+            mainLight.shadow.mapSize.width = 2048;
+            mainLight.shadow.mapSize.height = 2048;
+            scene.add(mainLight);
+
+            const fillLight = new THREE.DirectionalLight(0x4a90d9, 0.3);
+            fillLight.position.set(-5, 5, -5);
+            scene.add(fillLight);
+
+            // Main group
+            mainGroup = new THREE.Group();
+            scene.add(mainGroup);
+
+            createScene();
+            setupControls();
+            animate();
+        }
+
+        function createScene() {
+            // Ground
+            const ground = new THREE.Mesh(
+                new THREE.PlaneGeometry(50, 20),
+                new THREE.MeshStandardMaterial({ color: '#1a2a3a', roughness: 0.8 })
+            );
+            ground.rotation.x = -Math.PI / 2;
+            ground.position.y = -0.5;
+            ground.receiveShadow = true;
+            mainGroup.add(ground);
+
+            // Grid
+            const grid = new THREE.GridHelper(50, 50, '#2a3a4a', '#1a2a3a');
+            grid.position.y = -0.49;
+            mainGroup.add(grid);
+
+            // Rails
+            createRails();
+
+            // Cart
+            createCart();
+
+            // Trail line
+            const trailGeometry = new THREE.BufferGeometry();
+            const trailMaterial = new THREE.LineBasicMaterial({
+                color: '#3498db',
+                transparent: true,
+                opacity: 0.6
+            });
+            trailLine = new THREE.Line(trailGeometry, trailMaterial);
+            trailLine.position.y = 0.1;
+            mainGroup.add(trailLine);
+
+            // Distance markers
+            for (let i = -12; i <= 12; i += 2) {
+                const canvas = document.createElement('canvas');
+                canvas.width = 64;
+                canvas.height = 32;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 20px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(i + 'м', 32, 24);
+
+                const texture = new THREE.CanvasTexture(canvas);
+                const marker = new THREE.Mesh(
+                    new THREE.PlaneGeometry(0.3, 0.15),
+                    new THREE.MeshBasicMaterial({ map: texture, transparent: true })
+                );
+                marker.position.set(i, -0.3, 1);
+                marker.rotation.x = -Math.PI / 4;
+                mainGroup.add(marker);
+            }
+        }
+
+        function createRails() {
+            [-0.4, 0.4].forEach(offsetZ => {
+                // Rail beam
+                const rail = new THREE.Mesh(
+                    new THREE.BoxGeometry(30, 0.15, 0.12),
+                    new THREE.MeshStandardMaterial({ color: '#708090', roughness: 0.3, metalness: 0.8 })
+                );
+                rail.position.set(0, -0.35, offsetZ);
+                rail.castShadow = true;
+                mainGroup.add(rail);
+            });
+
+            // Ties
+            for (let i = -14; i <= 14; i += 1) {
+                const tie = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.2, 0.08, 1.2),
+                    new THREE.MeshStandardMaterial({ color: '#4a3728', roughness: 0.9 })
+                );
+                tie.position.set(i, -0.45, 0);
+                tie.receiveShadow = true;
+                mainGroup.add(tie);
+            }
+        }
+
+        function createCart() {
+            cart = new THREE.Group();
+
+            // Platform
+            const platform = new THREE.Mesh(
+                new THREE.BoxGeometry(2, 0.15, 1.2),
+                new THREE.MeshStandardMaterial({ color: '#e74c3c', roughness: 0.4, metalness: 0.3 })
+            );
+            platform.castShadow = true;
+            cart.add(platform);
+
+            // Walls
+            const wallMaterial = new THREE.MeshStandardMaterial({ color: '#c0392b', roughness: 0.5 });
+
+            const backWall = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.6, 1.1), wallMaterial);
+            backWall.position.set(-0.9, 0.35, 0);
+            backWall.castShadow = true;
+            cart.add(backWall);
+
+            const frontWall = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.3, 1.1), wallMaterial);
+            frontWall.position.set(0.9, 0.2, 0);
+            frontWall.castShadow = true;
+            cart.add(frontWall);
+
+            [-0.5, 0.5].forEach(z => {
+                const sideWall = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.4, 0.08), wallMaterial);
+                sideWall.position.set(0, 0.25, z);
+                sideWall.castShadow = true;
+                cart.add(sideWall);
+            });
+
+            // Wheels
+            const wheelGeometry = new THREE.CylinderGeometry(0.18, 0.18, 0.1, 24);
+            const wheelMaterial = new THREE.MeshStandardMaterial({ color: '#2c3e50', roughness: 0.3, metalness: 0.7 });
+
+            [[-0.7, -0.25, -0.45], [-0.7, -0.25, 0.45], [0.7, -0.25, -0.45], [0.7, -0.25, 0.45]].forEach(pos => {
+                const wheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
+                wheel.position.set(...pos);
+                wheel.rotation.x = Math.PI / 2;
+                wheel.castShadow = true;
+                cart.add(wheel);
+                wheels.push(wheel);
+            });
+
+            // Cargo
+            cargo = new THREE.Group();
+
+            const crate = new THREE.Mesh(
+                new THREE.BoxGeometry(0.6, 0.6, 0.6),
+                new THREE.MeshStandardMaterial({ color: '#f39c12', roughness: 0.7 })
+            );
+            crate.castShadow = true;
+            cargo.add(crate);
+
+            // Straps
+            const strapMaterial = new THREE.MeshStandardMaterial({ color: '#2c3e50' });
+            [-0.15, 0.15].forEach(offset => {
+                const strap1 = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.05, 0.05), strapMaterial);
+                strap1.position.set(0, offset, 0.31);
+                cargo.add(strap1);
+
+                const strap2 = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.05, 0.05), strapMaterial);
+                strap2.position.set(0, offset, -0.31);
+                cargo.add(strap2);
+            });
+
+            // Label
+            const labelCanvas = document.createElement('canvas');
+            labelCanvas.width = 128;
+            labelCanvas.height = 48;
+            const ctx = labelCanvas.getContext('2d');
+            ctx.fillStyle = '#2c3e50';
+            ctx.fillRect(0, 0, 128, 48);
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 24px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('ГРУЗ', 64, 32);
+            const labelTexture = new THREE.CanvasTexture(labelCanvas);
+            const label = new THREE.Mesh(
+                new THREE.PlaneGeometry(0.4, 0.15),
+                new THREE.MeshBasicMaterial({ map: labelTexture })
+            );
+            label.position.set(0, 0, 0.31);
+            cargo.add(label);
+
+            cargo.position.set(0, 0.45, 0);
+            cart.add(cargo);
+
+            // Velocity arrow
+            velocityArrow = new THREE.Group();
+
+            const arrowShaft = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.03, 0.03, 1, 8),
+                new THREE.MeshStandardMaterial({ color: '#2ecc71' })
+            );
+            arrowShaft.rotation.z = -Math.PI / 2;
+            arrowShaft.position.x = 0.5;
+            velocityArrow.add(arrowShaft);
+
+            const arrowHead = new THREE.Mesh(
+                new THREE.ConeGeometry(0.08, 0.2, 8),
+                new THREE.MeshStandardMaterial({ color: '#2ecc71' })
+            );
+            arrowHead.rotation.z = -Math.PI / 2;
+            arrowHead.position.x = 1.1;
+            velocityArrow.add(arrowHead);
+
+            velocityArrow.position.set(0, 1.2, 0);
+            velocityArrow.visible = false;
+            cart.add(velocityArrow);
+
+            cart.position.y = 0.1;
+            mainGroup.add(cart);
+        }
+
+        function setupControls() {
+            // Mouse controls
+            renderer.domElement.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                lastMouse = { x: e.clientX, y: e.clientY };
+            });
+
+            renderer.domElement.addEventListener('mousemove', (e) => {
+                if (isDragging) {
+                    const deltaX = e.clientX - lastMouse.x;
+                    const deltaY = e.clientY - lastMouse.y;
+                    rotation.y += deltaX * 0.008;
+                    rotation.x += deltaY * 0.008;
+                    rotation.x = Math.max(-0.5, Math.min(1, rotation.x));
+                    lastMouse = { x: e.clientX, y: e.clientY };
+                }
+            });
+
+            renderer.domElement.addEventListener('mouseup', () => isDragging = false);
+            renderer.domElement.addEventListener('mouseleave', () => isDragging = false);
+
+            renderer.domElement.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                camera.position.z = Math.max(6, Math.min(25, camera.position.z + e.deltaY * 0.02));
+            }, { passive: false });
+
+            // Buttons
+            btnPushRight.addEventListener('click', () => pushCart(parseFloat(forceSlider.value)));
+            btnPushLeft.addEventListener('click', () => pushCart(-parseFloat(forceSlider.value)));
+            btnBrake.addEventListener('click', brakeCart);
+            btnReset.addEventListener('click', resetSimulation);
+            alertBtn.addEventListener('click', resetSimulation);
+
+            // Resize
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+        }
+
+        function pushCart(force) {
+            // Уменьшенная сила - умножаем на 0.08 вместо 0.5
+            physics.cartVelocity += force * 0.08;
+
+            // Cargo reaction - тоже уменьшена
+            if (!physics.cargoFallen) {
+                physics.cargoAngularVelocity -= force * 0.03;
+            }
+        }
+
+        function brakeCart() {
+            const currentVel = physics.cartVelocity;
+            if (Math.abs(currentVel) > 0.02) {
+                // Cargo falls forward on sudden brake
+                if (!physics.cargoFallen && Math.abs(currentVel) > CARGO_FALL_THRESHOLD) {
+                    physics.cargoAngularVelocity += currentVel * 1.5;
+                }
+                physics.cartVelocity = 0;
+            }
+        }
+
+        function resetSimulation() {
+            physics.cartPosition = 0;
+            physics.cartVelocity = 0;
+            physics.cartAcceleration = 0;
+            physics.cargoAngle = 0;
+            physics.cargoAngularVelocity = 0;
+            physics.cargoFallen = false;
+
+            trailPoints = [];
+            trailLine.geometry.setFromPoints([]);
+
+            alertEl.classList.remove('show');
+
+            updateUI();
+        }
+
+        function updateUI() {
+            const speed = Math.abs(physics.cartVelocity * 10);
+            velocityValueEl.innerHTML = speed.toFixed(1) + ' <span>м/с</span>';
+            velocityBar.style.width = Math.min(speed * 10, 100) + '%';
+
+            if (Math.abs(physics.cartVelocity) < 0.01) {
+                directionValue.textContent = '⏸️ Покой';
+            } else if (physics.cartVelocity > 0) {
+                directionValue.textContent = '➡️ Вправо';
+            } else {
+                directionValue.textContent = '⬅️ Влево';
+            }
+
+            btnBrake.disabled = Math.abs(physics.cartVelocity) < 0.02;
+
+            if (physics.cargoFallen) {
+                cargoStatus.textContent = '⚠️ Упал!';
+                cargoStatus.classList.remove('green');
+                cargoStatus.classList.add('red');
+            } else {
+                cargoStatus.textContent = '✅ Стоит';
+                cargoStatus.classList.remove('red');
+                cargoStatus.classList.add('green');
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Physics update
+            // Friction
+            if (Math.abs(physics.cartVelocity) > 0.0005) {
+                physics.cartVelocity *= (1 - FRICTION);
+            } else {
+                physics.cartVelocity = 0;
+            }
+
+            // Update position
+            physics.cartPosition += physics.cartVelocity;
+
+            // Boundaries
+            if (Math.abs(physics.cartPosition) > 12) {
+                physics.cartPosition = Math.sign(physics.cartPosition) * 12;
+                physics.cartVelocity = 0;
+            }
+
+            // Update cart
+            cart.position.x = physics.cartPosition;
+
+            // Wheels rotation
+            wheels.forEach(wheel => {
+                wheel.rotation.y += physics.cartVelocity * 0.5;
+            });
+
+            // Cargo physics
+            if (!physics.cargoFallen) {
+                const springForce = -physics.cargoAngle * 8;
+                const dampingForce = -physics.cargoAngularVelocity * 2;
+                physics.cargoAngularVelocity += (springForce + dampingForce) * 0.016;
+                physics.cargoAngle += physics.cargoAngularVelocity * 0.016;
+
+                if (Math.abs(physics.cargoAngle) > Math.PI / 4) {
+                    physics.cargoFallen = true;
+                    alertEl.classList.add('show');
+                }
+
+                cargo.rotation.z = physics.cargoAngle;
+                cargo.position.y = 0.45 + Math.abs(Math.sin(physics.cargoAngle)) * 0.1;
+            } else {
+                // Fallen animation
+                const targetAngle = Math.sign(physics.cargoAngle) * Math.PI / 2.2;
+                physics.cargoAngle += (targetAngle - physics.cargoAngle) * 0.1;
+                cargo.rotation.z = physics.cargoAngle;
+                cargo.position.y = 0.3;
+                cargo.position.x = Math.sign(physics.cargoAngle) * 0.4;
+            }
+
+            // Velocity arrow
+            velocityArrow.visible = Math.abs(physics.cartVelocity) > 0.015;
+            if (velocityArrow.visible) {
+                const arrowScale = Math.min(Math.abs(physics.cartVelocity) * 3, 2);
+                velocityArrow.scale.x = arrowScale;
+                velocityArrow.rotation.y = physics.cartVelocity < 0 ? Math.PI : 0;
+            }
+
+            // Trail
+            if (showTrailCheckbox.checked && Math.abs(physics.cartVelocity) > 0.005) {
+                trailPoints.push(new THREE.Vector3(physics.cartPosition, 0, 0));
+                if (trailPoints.length > 200) trailPoints.shift();
+                trailLine.geometry.setFromPoints(trailPoints);
+            }
+
+            // Rotation
+            mainGroup.rotation.x = rotation.x;
+            mainGroup.rotation.y = rotation.y;
+
+            updateUI();
+            renderer.render(scene, camera);
+        }
+
+        // Start
+        init();
+    </script>
+<script>
+(function() {
+    const TEXT_MAP = {
+    "Инерция — Первый закон Ньютона": {
+        "kz": "Инерция — Ньютонның бірінші заңы",
+        "en": "Inertia — Newton's First Law"
+    },
+    "🚃 Инерция — Первый закон Ньютона": {
+        "kz": "🚃 Инерция — Ньютонның бірінші заңы",
+        "en": "🚃 Inertia — Newton's First Law"
+    },
+    "Тело сохраняет состояние покоя или равномерного движения, пока на него не действует сила": {
+        "kz": "Дене күш әсер еткенше тыныштық немесе бірқалыпты қозғалыс күйін сақтайды",
+        "en": "A body remains at rest or in uniform motion until a force acts upon it"
+    },
+    "🎮 Управление": {
+        "kz": "🎮 Басқару",
+        "en": "🎮 Controls"
+    },
+    "📚 Теория": {
+        "kz": "📚 Теория",
+        "en": "📚 Theory"
+    },
+    "Сила толчка:": {
+        "kz": "Итеру күші:",
+        "en": "Push force:"
+    },
+    "➡️ ТОЛКНУТЬ ВПРАВО": {
+        "kz": "➡️ ОҢҒА ИТЕРУ",
+        "en": "➡️ PUSH RIGHT"
+    },
+    "⬅️ ТОЛКНУТЬ ВЛЕВО": {
+        "kz": "⬅️ СОЛҒА ИТЕРУ",
+        "en": "⬅️ PUSH LEFT"
+    },
+    "🛑 РЕЗКО ЗАТОРМОЗИТЬ": {
+        "kz": "🛑 КЕНЕТ ТЕЖЕУ",
+        "en": "🛑 EMERGENCY BRAKE"
+    },
+    "🔄 Сбросить": {
+        "kz": "🔄 Қалпына келтіру",
+        "en": "🔄 Reset"
+    },
+    "Показать след движения": {
+        "kz": "Қозғалыс ізін көрсету",
+        "en": "Show motion trail"
+    },
+    "Первый закон Ньютона": {
+        "kz": "Ньютонның бірінші заңы",
+        "en": "Newton's First Law"
+    },
+    "Тело сохраняет состояние покоя или равномерного прямолинейного движения": {
+        "kz": "Дене сыртқы күш әсер еткенше тыныштық немесе бірқалыпты түзу сызықты қозғалыс күйін сақтайды.",
+        "en": "A body remains at rest or in uniform rectilinear motion until an external force acts upon it."
+    },
+    "Эксперимент:": {
+        "kz": "Тәжірибе:",
+        "en": "Experiment:"
+    },
+    "Толкните тележку — она продолжит двигаться": {
+        "kz": "Арбаны итеріңіз — ол қозғала береді",
+        "en": "Push the cart — it keeps moving"
+    },
+    "Резко затормозите — груз упадёт вперёд": {
+        "kz": "Кенет тежеңіз — жүк алға құлайды",
+        "en": "Brake sharply — the cargo falls forward"
+    },
+    "Это и есть проявление инерции!": {
+        "kz": "Бұл инерцияның көрінісі!",
+        "en": "This is inertia in action!"
+    },
+    "Почему груз падает?": {
+        "kz": "Неге жүк құлайды?",
+        "en": "Why does the cargo fall?"
+    },
+    "📊 Показатели": {
+        "kz": "📊 Көрсеткіштер",
+        "en": "📊 Parameters"
+    },
+    "Скорость": {
+        "kz": "Жылдамдық",
+        "en": "Speed"
+    },
+    "Направление": {
+        "kz": "Бағыт",
+        "en": "Direction"
+    },
+    "Состояние груза": {
+        "kz": "Жүктің күйі",
+        "en": "Cargo status"
+    },
+    "Если сумма сил равна нулю, скорость постоянна": {
+        "kz": "Күштер қосындысы нөлге тең болса, жылдамдық тұрақты",
+        "en": "If the net force is zero, velocity is constant"
+    },
+    "Вращайте сцену мышью • Колёсико для зума": {
+        "kz": "Тінтуірмен сахнаны айналдырыңыз • Масштабтау үшін дөңгелек",
+        "en": "Rotate scene with mouse • Scroll to zoom"
+    },
+    "Груз упал!": {
+        "kz": "Жүк құлады!",
+        "en": "Cargo fell!"
+    },
+    "Это инерция в действии!": {
+        "kz": "Бұл инерция іс-әрекетте!",
+        "en": "This is inertia in action!"
+    },
+    "Попробовать снова": {
+        "kz": "Қайта көру",
+        "en": "Try again"
+    },
+    "⏸️ Покой": {
+        "kz": "⏸️ Тыныштық",
+        "en": "⏸️ Rest"
+    },
+    "✅ Стоит": {
+        "kz": "✅ Тұр",
+        "en": "✅ Standing"
+    }
+,
+    "Волновая оптика — 3D Модель": {
+        "kz": "Толқындық оптика — 3D Модель",
+        "en": "Wave Optics — 3D Model"
+    },
+    "🌈 Волновая оптика": {
+        "kz": "🌈 Толқындық оптика",
+        "en": "🌈 Wave Optics"
+    },
+    "Дифракция • Интерференция • Поляризация": {
+        "kz": "Дифракция • Интерференция • Поляризация",
+        "en": "Diffraction • Interference • Polarization"
+    },
+    "Дифракция на щели": {
+        "kz": "Саңылаудағы дифракция",
+        "en": "Single-slit diffraction"
+    },
+    "Двойная щель": {
+        "kz": "Қос саңылау",
+        "en": "Double slit"
+    },
+    "Дифракционная решётка": {
+        "kz": "Дифракциялық тор",
+        "en": "Diffraction grating"
+    },
+    "Длина волны": {
+        "kz": "Толқын ұзындығы",
+        "en": "Wavelength"
+    },
+    "Ширина щели": {
+        "kz": "Саңылау ені",
+        "en": "Slit width"
+    },
+    "Расстояние между щелями": {
+        "kz": "Саңылаулар арасындағы қашықтық",
+        "en": "Distance between slits"
+    },
+    "Количество щелей": {
+        "kz": "Саңылаулар саны",
+        "en": "Number of slits"
+    },
+    "Расстояние до экрана": {
+        "kz": "Экранға дейінгі қашықтық",
+        "en": "Distance to screen"
+    },
+    "Показать волновые фронты": {
+        "kz": "Толқын фронттарын көрсету",
+        "en": "Show wave fronts"
+    },
+    "Показать интенсивность": {
+        "kz": "Қарқындылығын көрсету",
+        "en": "Show intensity"
+    },
+    "↺ Сбросить": {
+        "kz": "↺ Қалпына келтіру",
+        "en": "↺ Reset"
+    },
+    "Параметры": {
+        "kz": "Параметрлер",
+        "en": "Parameters"
+    },
+    "Режим": {
+        "kz": "Режим",
+        "en": "Mode"
+    },
+    "Отображение": {
+        "kz": "Бейнелеу",
+        "en": "Display"
+    },
+    "ЛКМ — вращение • ПКМ — перемещение • Колёсико — зум": {
+        "kz": "Сол жақ батырма — айналдыру • Оң жақ батырма — жылжыту • Дөңгелек — масштабтау",
+        "en": "LMB — rotate • RMB — pan • Scroll — zoom"
+    }
+,
+    "Первый закон Ньютона — Инерция": {
+        "kz": "Ньютонның бірінші заңы — Инерция",
+        "en": "Newton's First Law — Inertia"
+    },
+    "Тело сохраняет состояние покоя или равномерного прямолинейного движения, если на него не действуют силы": {
+        "kz": "Денеге күш әсер етпесе, ол тыныштық күйін немесе бірқалыпты түзу сызықты қозғалысын сақтайды",
+        "en": "A body maintains its state of rest or uniform linear motion unless acted upon by forces"
+    },
+    "При торможении тележка останавливается, но груз по инерции продолжает движение вперёд": {
+        "kz": "Тежегенде арба тоқтайды, бірақ жүк инерция бойынша алға қозғала береді",
+        "en": "When braking, the cart stops but the load continues forward by inertia"
+    },
+    "м/с": {
+        "kz": "м/с",
+        "en": "m/s"
+    },
+    "➡️ Вправо": {
+        "kz": "➡️ Оңға",
+        "en": "➡️ Right"
+    },
+    "⬅️ Влево": {
+        "kz": "⬅️ Солға",
+        "en": "⬅️ Left"
+    },
+    "⏹ Покой": {
+        "kz": "⏹ Тыныштық",
+        "en": "⏹ Rest"
+    }
+,
+    "до тех пор, пока на него не подействует внешняя сила.": {"kz": "оған сыртқы күш әсер еткенше.", "en": "until an external force acts upon it."},
+    "продолжает движение вперёд — и опрокидывается!": {"kz": "алға қозғала береді — және аударылады!", "en": "continues moving forward — and tips over!"},
+    "⚠️ Упал!": {"kz": "⚠️ Құлады!", "en": "⚠️ Fell!"},
+    "ГРУЗ": {"kz": "ЖҮК", "en": "CARGO"},
+    "<span>м/с</span>": {"kz": "<span>м/с</span>", "en": "<span>m/s</span>"}
+};
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentLang = urlParams.get('lang') || 'ru';
+
+    if (currentLang === 'ru') return; // No translation needed
+
+    function translateTextNodes(root) {
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
+        const nodes = [];
+        while (walker.nextNode()) nodes.push(walker.currentNode);
+        
+        nodes.forEach(node => {
+            let text = node.textContent;
+            if (!text || !text.trim()) return;
+            
+            const trimmed = text.trim();
+            if (TEXT_MAP[trimmed] && TEXT_MAP[trimmed][currentLang]) {
+                node.textContent = text.replace(trimmed, TEXT_MAP[trimmed][currentLang]);
+            }
+        });
+    }
+
+    function translateAttributes(root) {
+        root.querySelectorAll('[title]').forEach(el => {
+            const t = el.getAttribute('title');
+            if (TEXT_MAP[t] && TEXT_MAP[t][currentLang]) {
+                el.setAttribute('title', TEXT_MAP[t][currentLang]);
+            }
+        });
+        root.querySelectorAll('[placeholder]').forEach(el => {
+            const t = el.getAttribute('placeholder');
+            if (TEXT_MAP[t] && TEXT_MAP[t][currentLang]) {
+                el.setAttribute('placeholder', TEXT_MAP[t][currentLang]);
+            }
+        });
+        // Translate page title
+        const titleText = document.title.trim();
+        if (TEXT_MAP[titleText] && TEXT_MAP[titleText][currentLang]) {
+            document.title = TEXT_MAP[titleText][currentLang];
+        }
+    }
+
+    
+
+    function applyTranslations() {
+        translateTextNodes(document.body);
+        translateAttributes(document);
+        if (typeof translateData === 'function') translateData(currentLang);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', applyTranslations);
+    } else {
+        applyTranslations();
+    }
+
+    // Re-translate after dynamic content changes
+    window.currentLang = currentLang;
+    window._currentLang = currentLang;
+    window._TEXT_MAP = TEXT_MAP;
+
+    // One-time delayed re-translate for dynamic content
+    let _tc=0;const _ti=setInterval(()=>{translateTextNodes(document.body);translateAttributes(document);if(++_tc>=20)clearInterval(_ti);},500);
+})();
+</script>
+</body>
+</html>

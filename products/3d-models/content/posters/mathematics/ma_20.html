@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="page_title">Преобразования графиков функций</title>
+<style>
+
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#f3f3f7;--surface:rgba(255,255,255,0.94);--border:rgba(25,25,55,0.08);
+  --text:#171627;--muted:#63627a;--faint:#a3a1b4;
+  --accent:#0d9488;--accent-dim:rgba(13,148,136,0.10);
+  --base:#94a3b8;--curve:#0d9488;--pt:#ea580c;
+  --shadow:0 2px 22px rgba(30,25,80,0.07);--shadow-lg:0 18px 56px rgba(35,28,90,0.15);
+}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);overflow:hidden;height:100vh;}
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(1200px 760px at 70% 30%, rgba(13,148,136,0.10), transparent 60%),radial-gradient(820px 560px at 16% 84%, rgba(234,88,12,0.05), transparent 55%);}
+#canvas-container{position:fixed;inset:0;z-index:1;}
+#labels-layer{position:fixed;inset:0;z-index:40;pointer-events:none;overflow:hidden;}
+.dim-label{position:absolute;transform:translate(-50%,-50%);font-family:'Roboto Mono',monospace;font-size:14px;font-weight:700;padding:2px 8px;border-radius:8px;white-space:nowrap;letter-spacing:-0.3px;background:rgba(255,255,255,0.97);box-shadow:0 3px 12px rgba(30,25,80,0.13);transition:opacity 0.18s;}
+.dim-label.hidden{opacity:0;}
+.dim-label.lpt{background:var(--pt);color:#fff;border:none;box-shadow:0 3px 12px rgba(234,88,12,0.42);font-size:14.5px;}
+.dim-label.lbase{background:var(--base);color:#fff;border:none;box-shadow:0 3px 12px rgba(100,116,139,0.4);}
+.dim-label.lax{color:var(--muted);border:1px solid rgba(25,25,55,0.12);font-weight:700;}
+.header{position:fixed;top:0;left:0;right:0;z-index:200;background:var(--surface);border-bottom:1px solid var(--border);padding:0 38px;height:84px;display:flex;align-items:center;gap:15px;box-shadow:var(--shadow);}
+.h-badge{width:46px;height:46px;border-radius:14px;flex-shrink:0;background:linear-gradient(135deg,#0d9488,#2dd4bf);display:flex;align-items:center;justify-content:center;box-shadow:0 7px 20px rgba(13,148,136,0.36);}
+.h-badge svg{width:25px;height:25px;}
+.header-title{font-size:24px;font-weight:800;letter-spacing:-0.5px;}
+.header-tag{font-family:'Roboto Mono',monospace;font-size:13px;color:var(--accent);background:var(--accent-dim);padding:4px 11px;border-radius:8px;}
+.header-sub{font-size:14px;color:var(--muted);margin-left:auto;text-align:right;line-height:1.45;}
+.eq-banner{position:fixed;top:96px;left:50%;transform:translateX(-50%);z-index:150;background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-lg);padding:10px 24px;font-family:'Roboto Mono',monospace;font-size:16px;font-weight:700;color:var(--text);pointer-events:none;}
+.eq-banner b{color:var(--accent);}
+.panel{position:fixed;z-index:100;background:var(--surface);border:1px solid var(--border);border-radius:22px;box-shadow:var(--shadow-lg);}
+.panel h3{font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;color:var(--faint);}
+.panel-left{left:22px;top:98px;width:336px;padding:18px 18px;overflow:hidden;min-height:300px;}
+.ld-list,.ld-detail{transition:transform 0.4s cubic-bezier(0.4,0,0.2,1),opacity 0.28s;}
+.ld-list h3{margin-bottom:12px;padding-left:4px;}
+.ld-detail{position:absolute;inset:18px 18px;transform:translateX(26px);opacity:0;pointer-events:none;overflow-y:auto;}
+.panel-left.detail .ld-list{transform:translateX(-26px);opacity:0;pointer-events:none;}
+.panel-left.detail .ld-detail{transform:translateX(0);opacity:1;pointer-events:auto;}
+.metric{display:flex;align-items:center;gap:12px;padding:12px 12px;border-radius:14px;cursor:pointer;border:1px solid transparent;transition:all 0.15s;margin-bottom:2px;}
+.metric:hover{background:rgba(30,25,80,0.04);}
+.metric.active{background:var(--accent-dim);border-color:rgba(13,148,136,0.22);}
+.metric-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0;}
+.metric-main{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;}
+.metric-name{font-size:15px;font-weight:700;line-height:1.15;}
+.metric-sub{font-family:'Roboto Mono',monospace;font-size:13px;color:var(--muted);}
+.metric-val{font-family:'Roboto Mono',monospace;font-size:21px;font-weight:500;color:var(--accent);letter-spacing:-1px;flex-shrink:0;}
+.ld-back{display:inline-flex;align-items:center;gap:5px;cursor:pointer;border:none;background:none;font-family:'Inter',sans-serif;font-size:14px;font-weight:700;color:var(--accent);padding:4px 6px 4px 0;margin-bottom:12px;}
+.d-tag{display:inline-block;padding:4px 12px;border-radius:99px;font-size:13px;font-weight:700;margin-bottom:10px;background:var(--accent-dim);color:var(--accent);}
+.d-title{font-size:22px;font-weight:800;letter-spacing:-0.4px;line-height:1.15;margin-bottom:14px;}
+.d-bigval{display:flex;align-items:baseline;gap:9px;margin-bottom:4px;}
+.d-bigval b{font-family:'Roboto Mono',monospace;font-size:35px;font-weight:500;color:var(--accent);letter-spacing:-1px;line-height:1;}
+.d-bigval span{font-size:14px;color:var(--muted);font-weight:600;}
+.d-formula{margin:13px 0 4px;padding:13px 15px;border-radius:13px;background:linear-gradient(135deg,rgba(45,212,191,0.13),rgba(13,148,136,0.05));border:1px solid rgba(13,148,136,0.16);font-family:'Roboto Mono',monospace;font-size:14px;color:#0f766e;font-weight:500;line-height:1.95;white-space:pre-line;}
+.d-para{font-size:15px;line-height:1.62;color:#2a2735;margin-top:13px;}
+.panel-right{right:22px;top:98px;width:300px;padding:18px;}
+.seg-title{font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;color:var(--faint);margin:2px 2px 9px;}
+.mode-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px;}
+.mode-btn{padding:11px 5px;border-radius:13px;border:1.5px solid var(--border);background:rgba(255,255,255,0.7);font-family:'Inter',sans-serif;font-size:13px;font-weight:700;color:var(--text);cursor:pointer;transition:all 0.15s;display:flex;flex-direction:column;align-items:center;gap:5px;}
+.mode-btn svg{width:30px;height:24px;}
+.mode-btn:hover{border-color:var(--accent);}
+.mode-btn.sel{border-color:var(--accent);background:var(--accent-dim);color:var(--accent);}
+.sliders{margin-bottom:6px;}
+.sl-row{margin-bottom:12px;}
+.sl-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;}
+.sl-name{font-size:14px;font-weight:700;}.sl-name b{font-family:'Roboto Mono',monospace;font-style:italic;color:var(--accent);}
+.sl-val{font-family:'Roboto Mono',monospace;font-size:16px;font-weight:600;color:var(--accent);background:var(--accent-dim);padding:2px 9px;border-radius:8px;}
+.sliders input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:3px;background:linear-gradient(90deg,var(--accent) var(--fill,50%),rgba(13,148,136,0.16) var(--fill,50%));outline:none;cursor:pointer;}
+.sliders input::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:19px;height:19px;border-radius:50%;background:#fff;border:3px solid var(--accent);box-shadow:0 3px 10px rgba(13,148,136,0.4);cursor:pointer;transition:transform 0.12s;}
+.sliders input::-webkit-slider-thumb:hover{transform:scale(1.16);}
+.show-chip{display:flex;align-items:center;gap:11px;width:100%;padding:10px 14px;margin-top:6px;border-radius:14px;cursor:pointer;background:rgba(30,25,80,0.035);border:1.5px solid transparent;transition:all 0.16s;}
+.show-chip:hover{background:rgba(30,25,80,0.06);}
+.show-chip.on{background:var(--accent-dim);border-color:rgba(13,148,136,0.30);}
+.chip-ico{width:32px;height:32px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:16px;background:rgba(13,148,136,0.10);transition:all 0.16s;}
+.show-chip.on .chip-ico{background:var(--accent);}
+.chip-text{flex:1;min-width:0;}.chip-name{font-size:14px;font-weight:700;}.chip-sub{font-size:11.5px;color:var(--muted);font-family:'Roboto Mono',monospace;}
+.chip-state{width:21px;height:21px;border-radius:50%;flex-shrink:0;border:2px solid rgba(30,25,80,0.16);display:flex;align-items:center;justify-content:center;transition:all 0.16s;}
+.show-chip.on .chip-state{background:var(--accent);border-color:var(--accent);}
+.show-chip.on .chip-state::after{content:'✓';color:#fff;font-size:12px;font-weight:700;}
+.hint-bar{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:100;background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:9px 22px;font-size:13px;color:var(--muted);box-shadow:var(--shadow);white-space:nowrap;display:flex;align-items:center;gap:9px;}
+.hint-grab{color:var(--accent);font-weight:700;}.hint-dot{color:var(--faint);}
+@media (max-width:1180px){.panel-left{width:300px;}.panel-right{width:276px;}}
+</style>
+</head>
+<body>
+<div id="canvas-container"><canvas id="c"></canvas></div>
+<div id="labels-layer"></div>
+<header class="header">
+  <div class="h-badge"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21 L3 3 M3 21 L21 21"/><path d="M5 17 C 9 5, 13 5, 20 16" /></svg></div>
+  <div class="header-title" data-i18n="header_title">Преобразования графиков</div>
+  <div class="header-tag">y = a·f(x−p)+q</div>
+  <div class="header-sub" data-i18n-html="header_sub">Двигайте a, p, q — и базовый график<br>растягивается, сдвигается, отражается</div>
+</header>
+<div class="eq-banner" id="eq-banner"></div>
+<div class="panel panel-left" id="panel-left">
+  <div class="ld-list"><h3 data-i18n="props_title">Характеристики</h3><div id="metrics"></div></div>
+  <div class="ld-detail"><button class="ld-back" onclick="window.showList()"><span>‹</span> <span data-i18n="back">Назад</span></button><div id="detail-content"></div></div>
+</div>
+<div class="panel panel-right">
+  <div class="seg-title" data-i18n="fn_title">Базовая функция</div>
+  <div class="mode-grid" id="fn-grid"></div>
+  <div class="sliders" id="sliders"></div>
+  <div class="show-chip on" id="chip-base" onclick="window.toggleBase()"><div class="chip-ico">∿</div><div class="chip-text"><span class="chip-name" data-i18n="ch_base">Базовый график</span><span class="chip-sub" data-i18n="ch_base_sub">до преобразования</span></div><div class="chip-state"></div></div>
+  <div class="show-chip on" id="chip-anchor" onclick="window.toggleAnchor()"><div class="chip-ico">⌖</div><div class="chip-text"><span class="chip-name" data-i18n="ch_anchor">Опорная точка</span><span class="chip-sub" data-i18n="ch_anchor_sub">(0;0) → (p;q)</span></div><div class="chip-state"></div></div>
+</div>
+<div class="hint-bar" data-i18n-html="hint"><span class="hint-grab">Двигайте ползунки</span><span class="hint-dot">·</span><span>фон — поворот</span><span class="hint-dot">·</span><span>клик по строке — пояснение</span></div>
+
+<script>
+const FNS=['sq','abs','cubic'];
+const ICONS={
+  sq:'<svg viewBox="0 0 30 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 3 C 9 22, 21 22, 27 3"/></svg>',
+  abs:'<svg viewBox="0 0 30 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 4 L15 21 L27 4"/></svg>',
+  cubic:'<svg viewBox="0 0 30 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 21 C 12 21, 11 4, 26 3" transform="rotate(8 15 12)"/></svg>'};
+const FBASE={sq:t=>t*t,abs:t=>Math.abs(t),cubic:t=>t*t*t};
+const FSTR={sq:'x²',abs:'|x|',cubic:'x³'};
+const SL=[['a','s_a',-3,3,0.25],['p','s_p',-6,6,0.5],['q','s_q',-6,6,0.5]];
+const I18N={
+ru:{page_title:'Преобразования графиков функций',header_title:'Преобразования графиков',
+  header_sub:'Двигайте a, p, q — и базовый график<br>растягивается, сдвигается, отражается',
+  props_title:'Характеристики',back:'Назад',fn_title:'Базовая функция',
+  ch_base:'Базовый график',ch_base_sub:'до преобразования',ch_anchor:'Опорная точка',ch_anchor_sub:'(0;0) → (p;q)',
+  hint:'<span class="hint-grab">Двигайте ползунки</span><span class="hint-dot">·</span><span>фон — поворот</span><span class="hint-dot">·</span><span>клик по строке — пояснение</span>',
+  fn_sq:'Парабола',fn_abs:'Модуль',fn_cubic:'Кубическая',
+  m_a:'Коэффициент a',m_p:'Сдвиг по x',m_q:'Сдвиг по y',m_anchor:'Опорная точка',
+  sub_a:'растяжение / отражение',sub_p:'p (по горизонтали)',sub_q:'q (по вертикали)',sub_anchor:'(0;0) переходит в',
+  s_a:'коэффициент a',s_p:'сдвиг p (по x)',s_q:'сдвиг q (по y)',
+  about_a:'a — коэффициент при функции. Если |a|>1, график растягивается вертикально (становится «круче»); если |a|<1 — сжимается. При a<0 график отражается относительно оси x.',
+  about_p:'p — сдвиг вдоль оси x. В записи f(x − p): при p>0 график сдвигается вправо, при p<0 — влево. Внимание: «минус» в скобке даёт сдвиг вправо.',
+  about_q:'q — сдвиг вдоль оси y. Прибавляя q ко всей функции, мы поднимаем график вверх (q>0) или опускаем вниз (q<0).',
+  about_anchor:'Опорная (характерная) точка базового графика — например, вершина параболы (0;0) — после преобразования попадает в точку (p; q). Коэффициент a на её положение не влияет.',
+  dir_right:'вправо',dir_left:'влево',dir_up:'вверх',dir_down:'вниз',dir_refl:'отражение',
+},
+kz:{page_title:'Функциялар графиктерін түрлендіру',header_title:'Графиктерді түрлендіру',
+  header_sub:'a, p, q-ны жылжытыңыз — базалық график<br>созылады, жылжиды, шағылысады',
+  props_title:'Сипаттамалар',back:'Артқа',fn_title:'Базалық функция',
+  ch_base:'Базалық график',ch_base_sub:'түрлендіруге дейін',ch_anchor:'Тірек нүкте',ch_anchor_sub:'(0;0) → (p;q)',
+  hint:'<span class="hint-grab">Ползунктерді жылжытыңыз</span><span class="hint-dot">·</span><span>фон — бұру</span><span class="hint-dot">·</span><span>жолды басу — түсіндірме</span>',
+  fn_sq:'Парабола',fn_abs:'Модуль',fn_cubic:'Кубтық',
+  m_a:'Коэффициент a',m_p:'x бойынша ығысу',m_q:'y бойынша ығысу',m_anchor:'Тірек нүкте',
+  sub_a:'созу / шағылысу',sub_p:'p (көлденеңінен)',sub_q:'q (тігінен)',sub_anchor:'(0;0) көшетін нүкте',
+  s_a:'коэффициент a',s_p:'ығысу p (x)',s_q:'ығысу q (y)',
+  about_a:'a — функция алдындағы коэффициент. |a|>1 болса, график тік бойымен созылады («тіктеу» болады); |a|<1 болса — сығылады. a<0 болғанда график x осіне қатысты шағылысады.',
+  about_p:'p — x осі бойынша ығысу. f(x − p) жазуында: p>0 болса график оңға, p<0 болса солға жылжиды. Назар аударыңыз: жақшадағы «минус» оңға ығысуды береді.',
+  about_q:'q — y осі бойынша ығысу. Бүкіл функцияға q қосып, графикті жоғары (q>0) немесе төмен (q<0) жылжытамыз.',
+  about_anchor:'Базалық графиктің тірек (сипатты) нүктесі — мысалы, параболаның төбесі (0;0) — түрлендіруден кейін (p; q) нүктесіне көшеді. a коэффициенті оның орнына әсер етпейді.',
+  dir_right:'оңға',dir_left:'солға',dir_up:'жоғары',dir_down:'төмен',dir_refl:'шағылысу',
+},
+en:{page_title:'Graph Transformations',header_title:'Graph Transformations',
+  header_sub:'Move a, p, q — and the base graph<br>stretches, shifts and reflects',
+  props_title:'Properties',back:'Back',fn_title:'Base function',
+  ch_base:'Base graph',ch_base_sub:'before the transform',ch_anchor:'Anchor point',ch_anchor_sub:'(0;0) → (p;q)',
+  hint:'<span class="hint-grab">Move the sliders</span><span class="hint-dot">·</span><span>background — rotate</span><span class="hint-dot">·</span><span>click a row — explanation</span>',
+  fn_sq:'Parabola',fn_abs:'Modulus',fn_cubic:'Cubic',
+  m_a:'Coefficient a',m_p:'Shift along x',m_q:'Shift along y',m_anchor:'Anchor point',
+  sub_a:'stretch / reflection',sub_p:'p (horizontal)',sub_q:'q (vertical)',sub_anchor:'(0;0) maps to',
+  s_a:'coefficient a',s_p:'shift p (x)',s_q:'shift q (y)',
+  about_a:'a is the coefficient in front of the function. If |a|>1 the graph stretches vertically (gets "steeper"); if |a|<1 it compresses. When a<0 the graph reflects across the x-axis.',
+  about_p:'p is the shift along the x-axis. In f(x − p): when p>0 the graph moves right, when p<0 it moves left. Note: the minus inside the brackets gives a shift to the right.',
+  about_q:'q is the shift along the y-axis. Adding q to the whole function raises the graph up (q>0) or lowers it down (q<0).',
+  about_anchor:'The anchor (key) point of the base graph — e.g. the vertex of the parabola (0;0) — after the transformation lands at (p; q). The coefficient a does not affect its position.',
+  dir_right:'right',dir_left:'left',dir_up:'up',dir_down:'down',dir_refl:'reflection',
+}
+};
+const LANG=(()=>{const q=new URLSearchParams(location.search).get('lang');return(q&&I18N[q])?q:'ru';})();
+const tr=key=>(I18N[LANG]&&I18N[LANG][key])!==undefined?I18N[LANG][key]:I18N.ru[key];
+function applyStaticI18N(){document.documentElement.lang=LANG;const tv=tr('page_title');if(tv)document.title=tv;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{const v=tr(el.getAttribute('data-i18n'));if(v!==undefined)el.textContent=v;});
+  document.querySelectorAll('[data-i18n-html]').forEach(el=>{const v=tr(el.getAttribute('data-i18n-html'));if(v!==undefined)el.innerHTML=v;});}
+applyStaticI18N();
+const fmtN=x=>{let r=Math.round(x*100)/100;if(Object.is(r,-0))r=0;return r.toString();};
+window.A={fn:'sq',a:1.5,p:2,q:1};
+function ftrans(x){return window.A.a*FBASE[window.A.fn](x-window.A.p)+window.A.q;}
+const METRICS=[
+  {key:'a',dot:'var(--accent)',i:'m_a',fmt:()=>fmtN(window.A.a),sub:()=>tr('sub_a')},
+  {key:'p',dot:'#64748b',i:'m_p',fmt:()=>fmtN(window.A.p),sub:()=>tr('sub_p')},
+  {key:'q',dot:'#64748b',i:'m_q',fmt:()=>fmtN(window.A.q),sub:()=>tr('sub_q')},
+  {key:'anchor',dot:'var(--pt)',i:'m_anchor',fmt:()=>'('+fmtN(window.A.p)+'; '+fmtN(window.A.q)+')',sub:()=>tr('sub_anchor')},
+];
+function bannerStr(){const a=fmtN(window.A.a),p=window.A.p,q=window.A.q,fn=window.A.fn;
+  const inner=p===0?'x':(p>0?`x−${fmtN(p)}`:`x+${fmtN(-p)}`);
+  const body=fn==='abs'?`|${inner}|`:`(${inner})${fn==='sq'?'²':'³'}`;
+  const tail=q===0?'':(q>0?` + ${fmtN(q)}`:` − ${fmtN(-q)}`);
+  return `y = ${a}·<b>${body}</b>${tail}`;}
+function renderMetrics(){document.getElementById('metrics').innerHTML=METRICS.map(m=>`
+  <div class="metric" data-key="${m.key}" onclick="window.openDetail('${m.key}')"><div class="metric-dot" style="background:${m.dot}"></div>
+  <div class="metric-main"><span class="metric-name">${tr(m.i)}</span><span class="metric-sub" id="ms-${m.key}"></span></div>
+  <span class="metric-val" id="mv-${m.key}">—</span></div>`).join('');}
+function renderFns(){document.getElementById('fn-grid').innerHTML=FNS.map(m=>`
+  <button class="mode-btn${m===window.A.fn?' sel':''}" onclick="window.setFn('${m}')">${ICONS[m]}<span>${tr('fn_'+m)}</span></button>`).join('');}
+function renderSliders(){document.getElementById('sliders').innerHTML=SL.map(([key,lab,min,max,step])=>`
+  <div class="sl-row"><div class="sl-top"><span class="sl-name">${tr(lab)}</span><span class="sl-val" id="sv-${key}">${fmtN(window.A[key])}</span></div>
+  <input type="range" min="${min}" max="${max}" step="${step}" value="${window.A[key]}" id="slm-${key}" oninput="window.setDim('${key}',+this.value)"></div>`).join('');
+  SL.forEach(([key,,min,max])=>{document.getElementById('slm-'+key).style.setProperty('--fill',((window.A[key]-min)/(max-min)*100)+'%');});}
+function updateMetricValues(){METRICS.forEach(m=>{const v=document.getElementById('mv-'+m.key);if(v)v.textContent=m.fmt();const s=document.getElementById('ms-'+m.key);if(s)s.textContent=m.sub();});
+  SL.forEach(([key,,min,max])=>{const sv=document.getElementById('sv-'+key);if(sv)sv.textContent=fmtN(window.A[key]);const sl=document.getElementById('slm-'+key);if(sl)sl.style.setProperty('--fill',((window.A[key]-min)/(max-min)*100)+'%');});
+  document.getElementById('eq-banner').innerHTML=bannerStr();}
+renderMetrics();renderFns();renderSliders();updateMetricValues();
+</script>
+<script type="importmap">{"imports":{"three":"../../libs/vendor/three-0.160.0/three.module.js"}}</script>
+<script type="module">
+import * as THREE from 'three';
+const canvas=document.getElementById('c');
+const renderer=new THREE.WebGLRenderer({canvas,antialias: true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);renderer.outputColorSpace=THREE.SRGBColorSpace;
+const scene=new THREE.Scene();scene.background=null;
+const camera=new THREE.PerspectiveCamera(42,innerWidth/innerHeight,0.1,8000);
+const CAM_DIR=new THREE.Vector3(0.06,0.06,1).normalize();
+let camDist=44,camDistTarget=44,userZoom=1.0;
+const PI=Math.PI;const fmtN=x=>{let r=Math.round(x*100)/100;if(Object.is(r,-0))r=0;return r.toString();};
+const VIEW=10.5,GN=10,AX=11;let contentR=AX*1.04;
+function computeCamTarget(){const R0=contentR;const fovy=camera.fov*PI/180;const dV=R0/Math.sin(fovy/2);const usableW=Math.max(420,innerWidth-660);const fovx=2*Math.atan(Math.tan(fovy/2)*usableW/innerHeight);const dH=R0/Math.sin(fovx/2);return Math.max(dV,dH)*userZoom;}
+function applyCamera(){camera.position.copy(CAM_DIR).multiplyScalar(camDist);camera.lookAt(0,0,0);}
+scene.add(new THREE.AmbientLight(0xffffff,0.88));
+const kL=new THREE.DirectionalLight(0xffffff,0.7);kL.position.set(3,7,12);scene.add(kL);
+const V=(x,y,z)=>new THREE.Vector3(x,y,z||0);
+const root=new THREE.Group();scene.add(root);const obj=new THREE.Group();root.add(obj);
+const COL={grid:0xccd0dd,axis:0x9aa0b2,base:0x94a3b8,curve:0x0d9488,pt:0xea580c};
+const tR=0.075;
+function cyl(from,to,rr,mat){const dir=new THREE.Vector3().subVectors(to,from),len=dir.length();const m=new THREE.Mesh(new THREE.CylinderGeometry(rr,rr,len,10),mat);m.position.addVectors(from,to).multiplyScalar(0.5);if(len>1e-6)m.quaternion.setFromUnitVectors(V(0,1,0),dir.normalize());return m;}
+function cone3(at,dir,rr,hh,mat){const m=new THREE.Mesh(new THREE.ConeGeometry(rr,hh,16),mat);m.position.copy(at);m.quaternion.setFromUnitVectors(V(0,1,0),dir.clone().normalize());return m;}
+function sphere(r,mat){return new THREE.Mesh(new THREE.SphereGeometry(r,18,14),mat);}
+function dashed(from,to,rr,col,seg){const g=new THREE.Group();const n=seg||20;for(let i=0;i<n;i+=2){const a=from.clone().lerp(to,i/n),b=from.clone().lerp(to,(i+1)/n);g.add(cyl(a,b,rr,new THREE.MeshBasicMaterial({color:col})));}return g;}
+function tube(pts,rr,mat){if(pts.length<2)return null;return new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),Math.max(8,pts.length*2),rr,8,false),mat);}
+// static: grid + axes (always on)
+const staticG=new THREE.Group();obj.add(staticG);
+(function(){const gMat=new THREE.MeshBasicMaterial({color:COL.grid,transparent:true,opacity:0.6});
+  for(let i=-GN;i<=GN;i++){if(i===0)continue;staticG.add(cyl(V(i,-GN,-0.08),V(i,GN,-0.08),tR*0.4,gMat));staticG.add(cyl(V(-GN,i,-0.08),V(GN,i,-0.08),tR*0.4,gMat));}
+  const aMat=new THREE.MeshStandardMaterial({color:COL.axis,roughness:0.5});
+  staticG.add(cyl(V(-AX,0,-0.04),V(AX,0,-0.04),tR*0.7,aMat));staticG.add(cyl(V(0,-AX,-0.04),V(0,AX,-0.04),tR*0.7,aMat));
+  staticG.add(cone3(V(AX,0,-0.04),V(1,0,0),tR*2,tR*6,aMat));staticG.add(cone3(V(0,AX,-0.04),V(0,1,0),tR*2,tR*6,aMat));
+})();
+const dynG=new THREE.Group();obj.add(dynG);
+function disposeDyn(){while(dynG.children.length){const o=dynG.children[0];o.traverse(x=>{if(x.geometry)x.geometry.dispose();});dynG.remove(o);}}
+let hiKey=null,showBase=true,showAnchor=true;
+function curvePts(g){const pts=[];const N=220;for(let i=0;i<=N;i++){const x=-VIEW+2*VIEW*i/N;const y=g(x);if(Math.abs(y)<=VIEW+0.02)pts.push(V(x,y,0.05));}return pts;}
+function buildDyn(){
+  disposeDyn();
+  const fb=window.__FBASE[window.A.fn];
+  // base graph (faint)
+  if(showBase){const bp=curvePts(x=>fb(x));const bm=tube(bp,tR*0.85,new THREE.MeshStandardMaterial({color:COL.base,roughness:0.5,transparent:true,opacity:0.5}));if(bm)dynG.add(bm);}
+  // transformed graph (bold)
+  const tp=curvePts(x=>window.__ftrans(x));
+  const cm=tube(tp,tR*1.5,new THREE.MeshStandardMaterial({color:COL.curve,roughness:0.32,metalness:0.05,emissive:COL.curve,emissiveIntensity:hiKey?0.18:0.08}));if(cm)dynG.add(cm);
+  // anchor point + its image
+  if(showAnchor){
+    const px=window.A.p,py=window.A.q;
+    if(showBase)dynG.add(sphere(tR*1.7,new THREE.MeshStandardMaterial({color:COL.base,roughness:0.5})).translateZ(0.12));
+    dynG.add(dashed(V(0,0,0.06),V(px,py,0.06),tR*0.5,0xcbd5e1,Math.max(6,Math.round(Math.hypot(px,py)*2))));
+    dynG.add(sphere(tR*2.6,new THREE.MeshStandardMaterial({color:COL.pt,roughness:0.3,emissive:COL.pt,emissiveIntensity:hiKey==='anchor'?0.3:0.12})).translateX(px).translateY(py).translateZ(0.13));
+  }
+  updateAnchors();
+}
+const layer=document.getElementById('labels-layer');
+function mkLabel(cls,txt){const d=document.createElement('div');d.className='dim-label '+cls;if(txt)d.textContent=txt;layer.appendChild(d);return d;}
+const L_pt=mkLabel('lpt'),L_x=mkLabel('lax','x'),L_y=mkLabel('lax','y');
+const anc={pt:V(),x:V(AX-0.5,-0.7,0),y:V(-0.7,AX-0.5,0)};
+function updateAnchors(){anc.pt.set(window.A.p,window.A.q,0.13);L_pt.textContent='('+fmtN(window.A.p)+'; '+fmtN(window.A.q)+')';}
+function project(localVec){const w=localVec.clone().applyMatrix4(obj.matrixWorld).project(camera);return {x:(w.x*0.5+0.5)*innerWidth,y:(-w.y*0.5+0.5)*innerHeight,behind:w.z>1};}
+function place(el,v,vis,dx,dy){if(!vis){el.classList.add('hidden');return;}const s=project(v);if(s.behind){el.classList.add('hidden');return;}el.classList.remove('hidden');el.style.left=(s.x+(dx||0))+'px';el.style.top=(s.y+(dy||0))+'px';}
+function updateLabels(){place(L_pt,anc.pt,showAnchor,0,-18);place(L_x,anc.x,true,0,0);place(L_y,anc.y,true,0,0);}
+function openDetail(key){const mm=window.__metrics.find(x=>x.key===key);
+  document.querySelectorAll('.metric').forEach(el=>el.classList.toggle('active',el.dataset.key===key));
+  hiKey=key;buildDyn();
+  const about=tr('about_'+key);
+  let calc;const a=fmtN(window.A.a),p=fmtN(window.A.p),q=fmtN(window.A.q),fs=window.__FSTR[window.A.fn];
+  if(key==='a')calc=`y = a·f(x) ,  a = ${a}`+(window.A.a<0?`   (${tr('dir_refl')})`:'');
+  else if(key==='p')calc=`f(x − p) ,  p = ${p}`+(window.A.p>0?'  →  '+tr('dir_right'):window.A.p<0?'  →  '+tr('dir_left'):'');
+  else if(key==='q')calc=`… + q ,  q = ${q}`+(window.A.q>0?'  →  '+tr('dir_up'):window.A.q<0?'  →  '+tr('dir_down'):'');
+  else calc=`(0; 0)  →  (p; q) = (${p}; ${q})`;
+  document.getElementById('detail-content').innerHTML=`<div class="d-tag">${tr('fn_'+window.A.fn)} · ${fs}</div><div class="d-title">${tr(mm.i)}</div>
+    <div class="d-bigval"><b>${mm.fmt()}</b></div><div class="d-formula">${calc}</div><div class="d-para">${about}</div>`;
+  document.getElementById('panel-left').classList.add('detail');currentDetail=key;markInteract();}
+let currentDetail=null;window.openDetail=openDetail;
+window.showList=function(){document.getElementById('panel-left').classList.remove('detail');currentDetail=null;document.querySelectorAll('.metric').forEach(m=>m.classList.remove('active'));hiKey=null;buildDyn();};
+window.setFn=function(f){window.A.fn=f;window.__renderFns();buildDyn();window.__updateMetricValues();if(currentDetail)openDetail(currentDetail);markInteract();};
+window.setDim=function(k,val){window.A[k]=val;buildDyn();window.__updateMetricValues();if(currentDetail)openDetail(currentDetail);markInteract();};
+window.toggleBase=function(){showBase=!showBase;document.getElementById('chip-base').classList.toggle('on',showBase);buildDyn();markInteract();};
+window.toggleAnchor=function(){showAnchor=!showAnchor;document.getElementById('chip-anchor').classList.toggle('on',showAnchor);buildDyn();markInteract();};
+let mode=null,last={x:0,y:0},dd=0,isDragging=false,rotX=0.0;
+let lastInteract=performance.now()-16000,autoSpeed=0;const AUTO_TARGET=0.0009,IDLE_MS=15000;
+function markInteract(){lastInteract=performance.now();}
+canvas.addEventListener('mousedown',e=>{markInteract();mode='rotate';last={x:e.clientX,y:e.clientY};isDragging=false;dd=0;});
+canvas.addEventListener('mousemove',e=>{if(mode==='rotate'){dd=Math.hypot(e.clientX-last.x,e.clientY-last.y);if(dd>4)isDragging=true;
+  if(isDragging){root.rotation.y+=(e.clientX-last.x)*0.007;rotX=Math.max(-0.9,Math.min(0.9,rotX+(e.clientY-last.y)*0.005));root.rotation.x=rotX;markInteract();}last={x:e.clientX,y:e.clientY};}});
+window.addEventListener('mouseup',()=>{mode=null;});
+canvas.addEventListener('wheel',e=>{e.preventDefault();userZoom=Math.max(0.6,Math.min(1.7,userZoom+e.deltaY*0.0015));markInteract();},{passive:false});
+window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+function animate(){requestAnimationFrame(animate);const idle=performance.now()-lastInteract;
+  if(idle>IDLE_MS)autoSpeed+=(AUTO_TARGET-autoSpeed)*0.025;else autoSpeed+=(0-autoSpeed)*0.18;
+  root.rotation.y+=autoSpeed;root.rotation.x=rotX;camDistTarget=computeCamTarget();camDist+=(camDistTarget-camDist)*0.18;applyCamera();
+  renderer.render(scene,camera);obj.updateWorldMatrix(true,false);updateLabels();}
+buildDyn();camDistTarget=computeCamTarget();camDist=camDistTarget;applyCamera();animate();
+</script>
+<script>
+window.__FBASE=FBASE;window.__FSTR=FSTR;window.__ftrans=ftrans;window.__metrics=METRICS;
+window.__renderFns=renderFns;window.__updateMetricValues=updateMetricValues;
+</script>
+</body>
+</html>

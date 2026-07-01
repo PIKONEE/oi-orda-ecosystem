@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="page_title">Шкала pH — Концентрация ионов водорода</title>
+<script src="../../libs/vendor/three-r128/three.min.js"></script>
+<style>
+
+
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --blue:#38bdf8;--purple:#a78bfa;--orange:#fb923c;--green:#4ade80;--red:#f87171;
+  --yellow:#facc15;--cyan:#22d3ee;
+  --acid:#ef4444;--neutral:#22c55e;--base:#3b82f6;
+  --glass-bg:rgba(22,30,55,0.58);--glass-border:rgba(255,255,255,0.14);
+  --text:#ecf0f8;--text-dim:#8fa0be;
+  --mono:'JetBrains Mono',monospace;--serif:'Playfair Display',serif;--sans:'Nunito',sans-serif;
+}
+body{background:radial-gradient(ellipse at 50% 35%,#1e2848 0%,#121a30 50%,#0a0f1e 100%);color:var(--text);font-family:var(--sans);overflow:hidden;height:100vh;width:100vw;}
+#canvas-container{position:absolute;inset:0;z-index:0;}
+canvas{display:block;}
+.glass{background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:16px;box-shadow:0 6px 28px rgba(0,0,0,0.3),inset 0 1px 0 rgba(255,255,255,0.07);}
+::-webkit-scrollbar{width:5px;}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.15);border-radius:3px;}
+
+#left-panel{position:absolute;top:56px;left:16px;width:370px;z-index:10;padding:24px;display:flex;flex-direction:column;gap:16px;max-height:calc(100vh - 72px);overflow-y:auto;}
+.panel-title{font-family:var(--serif);font-size:28px;font-weight:700;background:linear-gradient(135deg,var(--acid),var(--neutral),var(--base));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.panel-subtitle{font-size:15px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1.5px;}
+.separator{height:1px;background:linear-gradient(90deg,transparent,var(--glass-border),transparent);}
+
+.control-group{display:flex;flex-direction:column;gap:8px;}
+.control-label{display:flex;justify-content:space-between;align-items:baseline;font-size:18px;color:var(--text-dim);}
+.control-value{font-family:var(--mono);font-weight:600;font-size:22px;}
+
+input[type="range"]{-webkit-appearance:none;width:100%;height:12px;border-radius:6px;background:linear-gradient(90deg,#ef4444,#f97316,#facc15,#a3e635,#22c55e,#14b8a6,#06b6d4,#3b82f6,#6366f1,#7c3aed,#9333ea);outline:none;cursor:pointer;}
+input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:30px;height:30px;border-radius:50%;background:white;box-shadow:0 0 12px rgba(0,0,0,0.5),0 0 4px rgba(255,255,255,0.8);cursor:pointer;transition:transform .15s;border:2px solid rgba(0,0,0,0.2);}
+input[type="range"]::-webkit-slider-thumb:hover{transform:scale(1.15);}
+
+.slider-plain{background:rgba(255,255,255,0.1) !important;}
+.slider-plain::-webkit-slider-thumb{background:var(--cyan);box-shadow:0 0 12px rgba(34,211,238,0.4);}
+
+.btn{padding:14px 20px;border:none;border-radius:14px;font-family:var(--sans);font-weight:700;font-size:20px;cursor:pointer;transition:all .2s;letter-spacing:.5px;width:100%;}
+.btn-reset{background:rgba(255,255,255,0.08);color:var(--text);border:1px solid var(--glass-border);font-size:18px;padding:12px 16px;}
+.btn-reset:hover{background:rgba(255,255,255,0.14);}
+
+.toggle-row{display:flex;align-items:center;justify-content:space-between;font-size:18px;color:var(--text-dim);}
+.toggle{width:52px;height:28px;border-radius:14px;background:rgba(255,255,255,0.12);position:relative;cursor:pointer;transition:background .3s;}
+.toggle.active{background:var(--blue);}
+.toggle::after{content:'';position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:white;transition:transform .3s;}
+.toggle.active::after{transform:translateX(24px);}
+
+/* SUBSTANCE BUTTONS */
+.substance-grid{display:flex;flex-wrap:wrap;gap:6px;}
+.sub-btn{padding:8px 6px;border:1px solid var(--glass-border);border-radius:10px;background:rgba(255,255,255,0.04);color:var(--text-dim);font-size:14px;cursor:pointer;transition:all .2s;text-align:center;min-width:70px;flex:1;}
+.sub-btn:hover{background:rgba(255,255,255,0.08);}
+.sub-btn.active{border-width:2px;}
+.sub-btn .sub-ph{font-family:var(--mono);font-weight:700;font-size:16px;display:block;}
+
+/* RIGHT PANEL */
+#right-panel{position:absolute;top:16px;right:16px;width:400px;z-index:10;padding:24px;display:flex;flex-direction:column;gap:14px;max-height:calc(100vh - 32px);overflow-y:auto;}
+.stat-row{display:flex;justify-content:space-between;align-items:baseline;}
+.stat-label{font-size:17px;color:var(--text-dim);}
+.stat-value{font-family:var(--mono);font-weight:600;font-size:22px;}
+
+.formula-box{background:rgba(0,0,0,0.18);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:14px 16px;font-family:var(--serif);font-size:20px;line-height:2;color:var(--text-dim);}
+.formula-box .f{color:var(--text);font-style:italic;}
+
+.info-box{background:rgba(0,0,0,0.14);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:14px 16px;font-size:17px;line-height:1.7;color:var(--text-dim);}
+.info-box b{color:var(--text);font-weight:600;}
+
+.legend-item{display:flex;align-items:center;gap:10px;font-size:16px;color:var(--text-dim);}
+.legend-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0;}
+
+/* pH BIG DISPLAY */
+.ph-display{text-align:center;padding:16px;border-radius:14px;border:1px solid rgba(255,255,255,0.08);}
+.ph-number{font-family:var(--mono);font-size:64px;font-weight:700;line-height:1;}
+.ph-label{font-size:18px;margin-top:4px;}
+.ph-env{font-size:22px;font-weight:700;margin-top:6px;}
+
+/* CONCENTRATION BAR */
+.conc-bar-container{display:flex;align-items:center;gap:10px;font-size:15px;}
+.conc-bar-bg{flex:1;height:14px;border-radius:7px;background:rgba(255,255,255,0.08);overflow:hidden;position:relative;}
+.conc-bar-fill{height:100%;border-radius:7px;transition:width .5s;}
+
+/* BOTTOM */
+#bottom-panel{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);z-index:10;padding:16px 36px;display:flex;gap:44px;align-items:center;white-space:nowrap;}
+.bottom-stat{display:flex;flex-direction:column;align-items:center;gap:3px;}
+.bottom-stat .label{font-size:14px;text-transform:uppercase;letter-spacing:1.2px;color:var(--text-dim);}
+.bottom-stat .value{font-family:var(--mono);font-size:26px;font-weight:700;}
+
+</style>
+</head>
+<body>
+<div id="canvas-container"></div>
+
+<!-- LEFT PANEL -->
+<div id="left-panel" class="glass">
+  <div>
+    <div class="panel-title" data-i18n="panel_title">Шкала pH</div>
+    <div class="panel-subtitle" data-i18n="panel_subtitle">Концентрация ионов водорода</div>
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="control-group">
+    <div class="control-label">
+      <span data-i18n="ph_label">Водородный показатель</span>
+      <span class="control-value" id="ph-val" style="color:var(--acid);">pH 1.0</span>
+    </div>
+    <input type="range" id="ph-slider" min="0" max="140" value="10" step="1">
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="panel-subtitle" data-i18n="examples_title">Примеры веществ</div>
+  <div class="substance-grid">
+    <div class="sub-btn" data-ph="1" style="border-color:#ef4444;"><span class="sub-ph" style="color:#ef4444;">1</span>HCl</div>
+    <div class="sub-btn" data-ph="2.4" style="border-color:#f97316;"><span class="sub-ph" style="color:#f97316;">2.4</span><span data-i18n="sub_lemon">Лимон</span></div>
+    <div class="sub-btn" data-ph="3" style="border-color:#fb923c;"><span class="sub-ph" style="color:#fb923c;">3</span><span data-i18n="sub_vinegar">Уксус</span></div>
+    <div class="sub-btn" data-ph="4.5" style="border-color:#facc15;"><span class="sub-ph" style="color:#facc15;">4.5</span><span data-i18n="sub_coffee">Кофе</span></div>
+    <div class="sub-btn" data-ph="5.5" style="border-color:#a3e635;"><span class="sub-ph" style="color:#a3e635;">5.5</span><span data-i18n="sub_rain">Дождь</span></div>
+    <div class="sub-btn" data-ph="7" style="border-color:#22c55e;"><span class="sub-ph" style="color:#22c55e;">7.0</span><span data-i18n="sub_water">Вода</span></div>
+    <div class="sub-btn" data-ph="7.4" style="border-color:#14b8a6;"><span class="sub-ph" style="color:#14b8a6;">7.4</span><span data-i18n="sub_blood">Кровь</span></div>
+    <div class="sub-btn" data-ph="8.3" style="border-color:#06b6d4;"><span class="sub-ph" style="color:#06b6d4;">8.3</span><span data-i18n="sub_soda">Сода</span></div>
+    <div class="sub-btn" data-ph="9" style="border-color:#0ea5e9;"><span class="sub-ph" style="color:#0ea5e9;">9</span><span data-i18n="sub_soap">Мыло</span></div>
+    <div class="sub-btn" data-ph="11" style="border-color:#6366f1;"><span class="sub-ph" style="color:#6366f1;">11</span><span data-i18n="sub_ammonia">Аммиак</span></div>
+    <div class="sub-btn" data-ph="13" style="border-color:#7c3aed;"><span class="sub-ph" style="color:#7c3aed;">13</span><span data-i18n="sub_bleach">Отбел.</span></div>
+    <div class="sub-btn" data-ph="14" style="border-color:#9333ea;"><span class="sub-ph" style="color:#9333ea;">14</span>NaOH</div>
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="control-group">
+    <div class="control-label">
+      <span data-i18n="speed_label">Скорость частиц</span>
+      <span class="control-value" id="speed-val" style="color:var(--cyan);">1.0×</span>
+    </div>
+    <input type="range" id="speed-slider" class="slider-plain" min="2" max="30" value="10" step="1">
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="toggle-row">
+    <span data-i18n="toggle_water">Показать H₂O молекулы</span>
+    <div class="toggle" id="toggle-water"></div>
+  </div>
+  <div class="toggle-row">
+    <span data-i18n="toggle_scale">Масштабирование ионов</span>
+    <div class="toggle active" id="toggle-scale"></div>
+  </div>
+
+  <div class="separator"></div>
+
+  <button class="btn btn-reset" id="btn-reset" data-i18n="btn_reset">↺ Сброс (pH 7)</button>
+</div>
+
+<!-- RIGHT PANEL -->
+<div id="right-panel" class="glass">
+
+  <!-- pH BIG -->
+  <div class="ph-display" id="ph-display">
+    <div class="ph-number" id="ph-big">1.0</div>
+    <div class="ph-label" id="ph-substance">Соляная кислота (HCl)</div>
+    <div class="ph-env" id="ph-env">КИСЛАЯ СРЕДА</div>
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="stat-row">
+    <span class="stat-label" data-i18n="stat_h_conc">[H⁺] концентрация</span>
+    <span class="stat-value" id="stat-h-conc" style="color:var(--acid);">10⁻¹ М</span>
+  </div>
+  <div class="stat-row">
+    <span class="stat-label" data-i18n="stat_oh_conc">[OH⁻] концентрация</span>
+    <span class="stat-value" id="stat-oh-conc" style="color:var(--base);">10⁻¹³ М</span>
+  </div>
+  <div class="stat-row">
+    <span class="stat-label">pOH</span>
+    <span class="stat-value" id="stat-poh" style="color:var(--purple);">13.0</span>
+  </div>
+  <div class="stat-row">
+    <span class="stat-label" data-i18n="stat_h_count">Ионов H⁺ (модель)</span>
+    <span class="stat-value" id="stat-h-count" style="color:var(--acid);">0</span>
+  </div>
+  <div class="stat-row">
+    <span class="stat-label" data-i18n="stat_oh_count">Ионов OH⁻ (модель)</span>
+    <span class="stat-value" id="stat-oh-count" style="color:var(--base);">0</span>
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="panel-subtitle" data-i18n="ratio_title">Соотношение H⁺ / OH⁻</div>
+  <div class="conc-bar-container">
+    <span style="color:var(--acid);font-weight:700;">H⁺</span>
+    <div class="conc-bar-bg">
+      <div class="conc-bar-fill" id="h-bar" style="width:90%;background:var(--acid);"></div>
+    </div>
+  </div>
+  <div class="conc-bar-container" style="margin-top:6px;">
+    <span style="color:var(--base);font-weight:700;">OH⁻</span>
+    <div class="conc-bar-bg">
+      <div class="conc-bar-fill" id="oh-bar" style="width:10%;background:var(--base);"></div>
+    </div>
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="panel-subtitle" data-i18n="formulas_title">Формулы</div>
+  <div class="formula-box">
+    <div><span class="f">pH</span> = −lg[H⁺]</div>
+    <div><span class="f">pOH</span> = −lg[OH⁻]</div>
+    <div><span class="f">pH</span> + <span class="f">pOH</span> = 14</div>
+    <div style="margin-top:6px;border-top:1px solid rgba(255,255,255,0.06);padding-top:6px;">[H⁺] · [OH⁻] = 10⁻¹⁴ (<span class="f">K</span><sub>w</sub>)</div>
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="panel-subtitle" data-i18n="legend_title">Легенда частиц</div>
+  <div style="display:flex;flex-direction:column;gap:8px;">
+    <div class="legend-item"><div class="legend-dot" style="background:#ef4444;"></div><span data-i18n="leg_h">H⁺ — ион водорода (кислота)</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:#3b82f6;"></div><span data-i18n="leg_oh">OH⁻ — гидроксид-ион (щёлочь)</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:#67e8f9;opacity:0.5;"></div><span data-i18n="leg_water">H₂O — молекула воды</span></div>
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="panel-subtitle" data-i18n="how_title">Как это работает</div>
+  <div class="info-box" data-i18n-html="info_ph">
+    <b>pH</b> — мера кислотности: чем больше ионов <b>H⁺</b>, тем ниже pH.<br><br>
+    При <b>pH &lt; 7</b> — кислая среда (H⁺ &gt; OH⁻)<br>
+    При <b>pH = 7</b> — нейтральная (H⁺ = OH⁻)<br>
+    При <b>pH &gt; 7</b> — щелочная (OH⁻ &gt; H⁺)<br><br>
+    Каждая единица pH — <b>10-кратное</b> изменение концентрации. pH 3 в <b>10 000 раз</b> кислее pH 7.
+  </div>
+</div>
+
+<!-- BOTTOM -->
+<div id="bottom-panel" class="glass">
+  <div class="bottom-stat">
+    <span class="label">pH</span>
+    <span class="value" id="b-ph" style="color:var(--acid);">1.0</span>
+  </div>
+  <div class="bottom-stat">
+    <span class="label">[H⁺]</span>
+    <span class="value" id="b-h" style="color:var(--acid);">10⁻¹</span>
+  </div>
+  <div class="bottom-stat">
+    <span class="label">[OH⁻]</span>
+    <span class="value" id="b-oh" style="color:var(--base);">10⁻¹³</span>
+  </div>
+  <div class="bottom-stat">
+    <span class="label">pOH</span>
+    <span class="value" id="b-poh" style="color:var(--purple);">13.0</span>
+  </div>
+  <div class="bottom-stat">
+    <span class="label" data-i18n="b_env">Среда</span>
+    <span class="value" id="b-env" style="color:var(--acid);">Кисл.</span>
+  </div>
+</div>
+
+<script>
+// =====================================================================
+//  I18N — встроенные переводы (RU / KZ / EN). Язык: ?lang=ru|kz|en.
+// =====================================================================
+const I18N = {
+  ru: {
+    page_title:'Шкала pH — Концентрация ионов водорода',panel_title:'Шкала pH',panel_subtitle:'Концентрация ионов водорода',
+    ph_label:'Водородный показатель',examples_title:'Примеры веществ',
+    sub_lemon:'Лимон',sub_vinegar:'Уксус',sub_coffee:'Кофе',sub_rain:'Дождь',sub_water:'Вода',sub_blood:'Кровь',sub_soda:'Сода',sub_soap:'Мыло',sub_ammonia:'Аммиак',sub_bleach:'Отбел.',
+    speed_label:'Скорость частиц',toggle_water:'Показать H₂O молекулы',toggle_scale:'Масштабирование ионов',
+    btn_reset:'↺ Сброс (pH 7)',
+    stat_h_conc:'[H⁺] концентрация',stat_oh_conc:'[OH⁻] концентрация',stat_h_count:'Ионов H⁺ (модель)',stat_oh_count:'Ионов OH⁻ (модель)',
+    ratio_title:'Соотношение H⁺ / OH⁻',formulas_title:'Формулы',legend_title:'Легенда частиц',
+    leg_h:'H⁺ — ион водорода (кислота)',leg_oh:'OH⁻ — гидроксид-ион (щёлочь)',leg_water:'H₂O — молекула воды',
+    how_title:'Как это работает',
+    info_ph:'<b>pH</b> — мера кислотности: чем больше ионов <b>H⁺</b>, тем ниже pH.<br><br>При <b>pH &lt; 7</b> — кислая среда (H⁺ &gt; OH⁻)<br>При <b>pH = 7</b> — нейтральная (H⁺ = OH⁻)<br>При <b>pH &gt; 7</b> — щелочная (OH⁻ &gt; H⁺)<br><br>Каждая единица pH — <b>10-кратное</b> изменение концентрации. pH 3 в <b>10 000 раз</b> кислее pH 7.',
+    b_env:'Среда',env_acid:'Кисл.',env_base:'Щел.',env_neutral:'Нейтр.',
+    env_acid_full:'КИСЛАЯ СРЕДА',env_base_full:'ЩЕЛОЧНАЯ СРЕДА',env_neutral_full:'НЕЙТРАЛЬНАЯ СРЕДА',
+    unit_m:'М'
+  },
+  kz: {
+    page_title:'pH шкаласы — Сутек иондарының концентрациясы',panel_title:'pH шкаласы',panel_subtitle:'Сутек иондарының концентрациясы',
+    ph_label:'Сутектік көрсеткіш',examples_title:'Зат мысалдары',
+    sub_lemon:'Лимон',sub_vinegar:'Сірке',sub_coffee:'Кофе',sub_rain:'Жаңбыр',sub_water:'Су',sub_blood:'Қан',sub_soda:'Сода',sub_soap:'Сабын',sub_ammonia:'Аммиак',sub_bleach:'Ағарт.',
+    speed_label:'Бөлшектер жылдамдығы',toggle_water:'H₂O молекулаларын көрсету',toggle_scale:'Иондарды масштабтау',
+    btn_reset:'↺ Қалпына келтіру (pH 7)',
+    stat_h_conc:'[H⁺] концентрация',stat_oh_conc:'[OH⁻] концентрация',stat_h_count:'H⁺ иондары (модель)',stat_oh_count:'OH⁻ иондары (модель)',
+    ratio_title:'H⁺ / OH⁻ қатынасы',formulas_title:'Формулалар',legend_title:'Бөлшектер шартты белгілері',
+    leg_h:'H⁺ — сутек ионы (қышқыл)',leg_oh:'OH⁻ — гидроксид-ион (сілті)',leg_water:'H₂O — су молекуласы',
+    how_title:'Бұл қалай жұмыс істейді',
+    info_ph:'<b>pH</b> — қышқылдық өлшемі: <b>H⁺</b> иондары неғұрлым көп болса, pH соғұрлым төмен.<br><br><b>pH &lt; 7</b> — қышқыл орта (H⁺ &gt; OH⁻)<br><b>pH = 7</b> — бейтарап (H⁺ = OH⁻)<br><b>pH &gt; 7</b> — сілтілі орта (OH⁻ &gt; H⁺)<br><br>pH-тың әр бірлігі — концентрацияның <b>10 есе</b> өзгеруі. pH 3 pH 7-ден <b>10 000 есе</b> қышқыл.',
+    b_env:'Орта',env_acid:'Қышқ.',env_base:'Сілт.',env_neutral:'Бейтар.',
+    env_acid_full:'ҚЫШҚЫЛ ОРТА',env_base_full:'СІЛТІЛІ ОРТА',env_neutral_full:'БЕЙТАРАП ОРТА',
+    unit_m:'М'
+  },
+  en: {
+    page_title:'pH Scale — Hydrogen Ion Concentration',panel_title:'pH Scale',panel_subtitle:'Hydrogen ion concentration',
+    ph_label:'pH value',examples_title:'Substance examples',
+    sub_lemon:'Lemon',sub_vinegar:'Vinegar',sub_coffee:'Coffee',sub_rain:'Rain',sub_water:'Water',sub_blood:'Blood',sub_soda:'Baking soda',sub_soap:'Soap',sub_ammonia:'Ammonia',sub_bleach:'Bleach',
+    speed_label:'Particle speed',toggle_water:'Show H₂O molecules',toggle_scale:'Ion scaling',
+    btn_reset:'↺ Reset (pH 7)',
+    stat_h_conc:'[H⁺] concentration',stat_oh_conc:'[OH⁻] concentration',stat_h_count:'H⁺ ions (model)',stat_oh_count:'OH⁻ ions (model)',
+    ratio_title:'H⁺ / OH⁻ ratio',formulas_title:'Formulas',legend_title:'Particle legend',
+    leg_h:'H⁺ — hydrogen ion (acid)',leg_oh:'OH⁻ — hydroxide ion (base)',leg_water:'H₂O — water molecule',
+    how_title:'How it works',
+    info_ph:'<b>pH</b> is a measure of acidity: the more <b>H⁺</b> ions, the lower the pH.<br><br>At <b>pH &lt; 7</b> — acidic (H⁺ &gt; OH⁻)<br>At <b>pH = 7</b> — neutral (H⁺ = OH⁻)<br>At <b>pH &gt; 7</b> — basic (OH⁻ &gt; H⁺)<br><br>Each pH unit is a <b>10-fold</b> change in concentration. pH 3 is <b>10,000 times</b> more acidic than pH 7.',
+    b_env:'Medium',env_acid:'Acidic',env_base:'Basic',env_neutral:'Neutral',
+    env_acid_full:'ACIDIC',env_base_full:'BASIC',env_neutral_full:'NEUTRAL',
+    unit_m:'M'
+  }
+};
+const LANG=(()=>{const q=new URLSearchParams(location.search).get('lang');return(q&&I18N[q])?q:'ru';})();
+const t=(key)=>(I18N[LANG]&&I18N[LANG][key])??(I18N.ru&&I18N.ru[key]);
+
+function applyStaticI18N(){
+  document.documentElement.lang=LANG;
+  const tv=t('page_title');if(tv)document.title=tv;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{const v=t(el.getAttribute('data-i18n'));if(v)el.textContent=v;});
+  document.querySelectorAll('[data-i18n-html]').forEach(el=>{const v=t(el.getAttribute('data-i18n-html'));if(v)el.innerHTML=v;});
+}
+applyStaticI18N();
+// ═══════════════════════════════════════
+// SUBSTANCES
+// ═══════════════════════════════════════
+const SUBSTANCES_DATA = {
+  ru:{0:[],1:['Соляная кислота (HCl)'],2:['Желудочный сок'],2.4:['Лимонный сок'],3:['Уксус'],4:['Томатный сок'],4.5:['Кофе'],5:['Банан'],5.5:['Дождевая вода'],6:['Молоко'],6.5:['Слюна'],7:['Чистая вода'],7.4:['Кровь человека'],8:['Морская вода'],8.3:['Пищевая сода'],9:['Мыло'],10:['Магнезия'],11:['Раствор аммиака'],12:['Известь'],13:['Отбеливатель'],14:['NaOH (щёлочь)']},
+  kz:{0:[],1:['Тұз қышқылы (HCl)'],2:['Асқазан сөлі'],2.4:['Лимон шырыны'],3:['Сірке'],4:['Томат шырыны'],4.5:['Кофе'],5:['Банан'],5.5:['Жаңбыр суы'],6:['Сүт'],6.5:['Сілекей'],7:['Таза су'],7.4:['Адам қаны'],8:['Теңіз суы'],8.3:['Ас содасы'],9:['Сабын'],10:['Магнезия'],11:['Аммиак ерітіндісі'],12:['Әк'],13:['Ағартқыш'],14:['NaOH (сілті)']},
+  en:{0:[],1:['Hydrochloric acid (HCl)'],2:['Stomach acid'],2.4:['Lemon juice'],3:['Vinegar'],4:['Tomato juice'],4.5:['Coffee'],5:['Banana'],5.5:['Rainwater'],6:['Milk'],6.5:['Saliva'],7:['Pure water'],7.4:['Human blood'],8:['Seawater'],8.3:['Baking soda'],9:['Soap'],10:['Magnesia'],11:['Ammonia solution'],12:['Lime'],13:['Bleach'],14:['NaOH (base)']}
+};
+const SUBSTANCES = SUBSTANCES_DATA[LANG] || SUBSTANCES_DATA.ru;
+
+function getSubstanceName(ph){
+  const rounded = Math.round(ph*10)/10;
+  // find closest
+  let best='',bestDist=999;
+  for(const k in SUBSTANCES){
+    const d=Math.abs(+k-rounded);
+    if(d<bestDist){bestDist=d;best=SUBSTANCES[k][0]||'';}
+  }
+  return bestDist<0.6 ? best : '';
+}
+
+// ═══════════════════════════════════════
+// pH COLOR (continuous rainbow scale)
+// ═══════════════════════════════════════
+function phToColor(ph){
+  const stops=[
+    {p:0,r:239,g:68,b:68},{p:2,r:249,g:115,b:22},{p:4,r:250,g:204,b:21},
+    {p:6,r:163,g:230,b:53},{p:7,r:34,g:197,b:94},{p:8,r:20,g:184,b:166},
+    {p:10,r:6,g:182,b:212},{p:12,r:99,g:102,b:241},{p:14,r:147,g:51,b:234}
+  ];
+  let lo=stops[0],hi=stops[stops.length-1];
+  for(let i=0;i<stops.length-1;i++){
+    if(ph>=stops[i].p&&ph<=stops[i+1].p){lo=stops[i];hi=stops[i+1];break;}
+  }
+  const t=Math.max(0,Math.min(1,(ph-lo.p)/(hi.p-lo.p||1)));
+  return{
+    r:Math.round(lo.r+(hi.r-lo.r)*t),
+    g:Math.round(lo.g+(hi.g-lo.g)*t),
+    b:Math.round(lo.b+(hi.b-lo.b)*t)
+  };
+}
+
+function phToHex(ph){const c=phToColor(ph);return(c.r<<16)|(c.g<<8)|c.b;}
+function phToCss(ph){const c=phToColor(ph);return`rgb(${c.r},${c.g},${c.b})`;}
+
+// ═══════════════════════════════════════
+// SCENE
+// ═══════════════════════════════════════
+const container=document.getElementById('canvas-container');
+const scene=new THREE.Scene();
+scene.fog=new THREE.FogExp2(0x121a30,0.004);
+
+const camera=new THREE.PerspectiveCamera(50,innerWidth/innerHeight,0.1,300);
+const renderer=new THREE.WebGLRenderer({antialias: true,alpha:true});
+renderer.setSize(innerWidth,innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.shadowMap.enabled=false;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.15;
+container.appendChild(renderer.domElement);
+
+scene.add(new THREE.AmbientLight(0x556677,0.65));
+const dirLight=new THREE.DirectionalLight(0xffeedd,0.8);
+dirLight.position.set(8,20,12);dirLight.castShadow=true;dirLight.shadow.mapSize.set(2048,2048);
+scene.add(dirLight);
+scene.add(new THREE.PointLight(0x7799bb,0.25,40));
+
+// Floor
+const floorMesh = new THREE.Mesh(new THREE.PlaneGeometry(100,100), new THREE.MeshStandardMaterial({color:0x111828,roughness:0.85}));
+floorMesh.rotation.x = -Math.PI/2;
+floorMesh.position.y = -0.5;
+floorMesh.receiveShadow = true;
+scene.add(floorMesh);
+
+// ═══════════════════════════════════════
+// BEAKER
+// ═══════════════════════════════════════
+const bkW=10,bkH=8,bkD=7;
+const glassMat=new THREE.MeshStandardMaterial({color:0xaaccee,transparent:true,opacity:0.1,roughness:0.05,metalness:0.1,side:THREE.DoubleSide});
+const edgeMat=new THREE.LineBasicMaterial({color:0xaaccee,transparent:true,opacity:0.22});
+
+function addWall(w,h,px,py,pz,ry){
+  const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),glassMat.clone());
+  m.position.set(px,py,pz);if(ry)m.rotation.y=ry;scene.add(m);
+}
+addWall(bkW,bkH,0,bkH/2,bkD/2,0);
+addWall(bkW,bkH,0,bkH/2,-bkD/2,0);
+addWall(bkD,bkH,-bkW/2,bkH/2,0,Math.PI/2);
+addWall(bkD,bkH,bkW/2,bkH/2,0,Math.PI/2);
+
+const btm=new THREE.Mesh(new THREE.PlaneGeometry(bkW,bkD),new THREE.MeshStandardMaterial({color:0x1e293b,roughness:0.5,metalness:0.3}));
+btm.rotation.x=-Math.PI/2;btm.position.y=0.01;scene.add(btm);
+
+// Edges
+const W=bkW/2,H=bkH,D=bkD/2;
+[[-W,0,-D,-W,0,D],[-W,0,D,-W,H,D],[-W,H,D,-W,H,-D],[-W,H,-D,-W,0,-D],
+ [W,0,-D,W,0,D],[W,0,D,W,H,D],[W,H,D,W,H,-D],[W,H,-D,W,0,-D],
+ [-W,0,D,W,0,D],[-W,0,-D,W,0,-D],[-W,H,D,W,H,D],[-W,H,-D,W,H,-D]
+].forEach(e=>{
+  scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(e[0],e[1],e[2]),new THREE.Vector3(e[3],e[4],e[5])]),edgeMat));
+});
+
+// Solution
+const solH=bkH*0.7;
+const solGeo=new THREE.BoxGeometry(bkW-0.6,solH,bkD-0.6);
+const solMat=new THREE.MeshStandardMaterial({color:0xef4444,transparent:true,opacity:0.18,roughness:0.1,side:THREE.DoubleSide});
+const solMesh=new THREE.Mesh(solGeo,solMat);
+solMesh.position.set(0,solH/2+0.05,0);
+scene.add(solMesh);
+
+// ═══════════════════════════════════════
+// PARTICLES
+// ═══════════════════════════════════════
+const MAX_PARTICLES=200;
+const particles=[];
+const hw=bkW/2-0.6, hd=bkD/2-0.6, topY=solH-0.4;
+
+function createParticleMesh(type){
+  if(type==='h'){
+    return new THREE.Mesh(new THREE.SphereGeometry(0.3,10,10),new THREE.MeshStandardMaterial({color:0xef4444,emissive:0xef4444,emissiveIntensity:0.3,roughness:0.3}));
+  } else if(type==='oh'){
+    const g=new THREE.Group();
+    g.add(new THREE.Mesh(new THREE.SphereGeometry(0.3,10,10),new THREE.MeshStandardMaterial({color:0x3b82f6,emissive:0x3b82f6,emissiveIntensity:0.3,roughness:0.3})));
+    const h=new THREE.Mesh(new THREE.SphereGeometry(0.18,8,8),new THREE.MeshStandardMaterial({color:0x93c5fd,roughness:0.3}));
+    h.position.x=0.28;g.add(h);
+    return g;
+  } else {
+    return new THREE.Mesh(new THREE.SphereGeometry(0.18,8,8),new THREE.MeshStandardMaterial({color:0x67e8f9,transparent:true,opacity:0.2,roughness:0.3}));
+  }
+}
+
+function spawnParticle(type){
+  if(particles.length>=MAX_PARTICLES) return;
+  const mesh=createParticleMesh(type);
+  mesh.position.set((Math.random()-0.5)*hw*1.6,0.5+Math.random()*(topY-0.8),(Math.random()-0.5)*hd*1.6);
+  scene.add(mesh);
+  const sp=1.5+Math.random()*2;const a=Math.random()*Math.PI*2;
+  particles.push({mesh,type,vx:Math.cos(a)*sp,vy:(Math.random()-0.5)*sp,vz:Math.sin(a)*sp});
+}
+
+function clearParticles(){
+  particles.forEach(p=>scene.remove(p.mesh));
+  particles.length=0;
+}
+
+// ═══════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════
+const state={ph:1.0,speed:1.0,showWater:false,scaleIons:true};
+
+// ═══════════════════════════════════════
+// REBUILD PARTICLES for given pH
+// ═══════════════════════════════════════
+function rebuildForPH(ph){
+  clearParticles();
+  // H+ count: high at low pH, zero at high pH
+  // OH- count: zero at low pH, high at high pH
+  // Water: always some background
+  const maxIons=50;
+  let nH,nOH;
+  if(ph<=7){
+    nH=Math.round(maxIons*Math.pow(10,-(ph-0)/3.5));
+    nH=Math.max(1,Math.min(maxIons,nH));
+    nOH=Math.max(0,Math.round(maxIons*Math.pow(10,-(14-ph-0)/3.5)-0.5));
+  } else {
+    nOH=Math.round(maxIons*Math.pow(10,-((14-ph))/3.5));
+    nOH=Math.max(1,Math.min(maxIons,nOH));
+    nH=Math.max(0,Math.round(maxIons*Math.pow(10,-(14-(14-ph))/3.5)-0.5));
+  }
+  // at pH 7 both ~1
+  if(Math.abs(ph-7)<0.3){nH=3;nOH=3;}
+
+  for(let i=0;i<nH;i++) spawnParticle('h');
+  for(let i=0;i<nOH;i++) spawnParticle('oh');
+
+  if(state.showWater){
+    const nW=15;
+    for(let i=0;i<nW;i++) spawnParticle('water');
+  }
+}
+
+rebuildForPH(1);
+
+// ═══════════════════════════════════════
+// UI
+// ═══════════════════════════════════════
+const phSlider=document.getElementById('ph-slider');
+phSlider.addEventListener('input',e=>{
+  state.ph=+e.target.value/10;
+  applyPH();
+});
+
+function applyPH(){
+  const ph=state.ph;
+  document.getElementById('ph-val').textContent='pH '+ph.toFixed(1);
+  document.getElementById('ph-val').style.color=phToCss(ph);
+
+  rebuildForPH(ph);
+  updateUI();
+
+  // Highlight matching substance button
+  document.querySelectorAll('.sub-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.sub-btn').forEach(b=>{
+    if(Math.abs(+b.dataset.ph-ph)<0.3) b.classList.add('active');
+  });
+}
+
+document.querySelectorAll('.sub-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    state.ph=+btn.dataset.ph;
+    phSlider.value=Math.round(state.ph*10);
+    applyPH();
+  });
+});
+
+document.getElementById('speed-slider').addEventListener('input',e=>{
+  state.speed=+e.target.value/10;
+  document.getElementById('speed-val').textContent=state.speed.toFixed(1)+'×';
+});
+
+document.getElementById('toggle-water').addEventListener('click',function(){
+  this.classList.toggle('active');
+  state.showWater=this.classList.contains('active');
+  rebuildForPH(state.ph);
+});
+document.getElementById('toggle-scale').addEventListener('click',function(){
+  this.classList.toggle('active');
+  state.scaleIons=this.classList.contains('active');
+});
+
+document.getElementById('btn-reset').addEventListener('click',()=>{
+  state.ph=7;phSlider.value=70;
+  applyPH();
+  camSph={r:26,theta:Math.PI*0.5,phi:Math.PI*0.42};camTarget.set(0,4,0);updateCam();
+});
+
+function superscript(n){
+  const sup={'0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹','-':'⁻','.'  :'·'};
+  return String(n).split('').map(c=>sup[c]||c).join('');
+}
+
+function updateUI(){
+  const ph=state.ph;
+  const poh=14-ph;
+  const hConc=Math.pow(10,-ph);
+  const ohConc=Math.pow(10,-poh);
+  const color=phToCss(ph);
+
+  // Big display
+  document.getElementById('ph-big').textContent=ph.toFixed(1);
+  document.getElementById('ph-big').style.color=color;
+  document.getElementById('ph-display').style.background=phToCss(ph).replace('rgb','rgba').replace(')',',0.08)');
+  document.getElementById('ph-display').style.borderColor=phToCss(ph).replace('rgb','rgba').replace(')',',0.3)');
+
+  const sub=getSubstanceName(ph);
+  document.getElementById('ph-substance').textContent=sub||'';
+
+  let envText,envColor;
+  if(ph<6.5){envText=t('env_acid_full');envColor='var(--acid)';}
+  else if(ph>7.5){envText=t('env_base_full');envColor='var(--base)';}
+  else{envText=t('env_neutral_full');envColor='var(--neutral)';}
+  document.getElementById('ph-env').textContent=envText;
+  document.getElementById('ph-env').style.color=envColor;
+
+  // Stats
+  document.getElementById('stat-h-conc').textContent='10'+superscript((-ph).toFixed(1))+' '+t('unit_m');
+  document.getElementById('stat-oh-conc').textContent='10'+superscript((-poh).toFixed(1))+' '+t('unit_m');
+  document.getElementById('stat-poh').textContent=poh.toFixed(1);
+
+  const nH=particles.filter(p=>p.type==='h').length;
+  const nOH=particles.filter(p=>p.type==='oh').length;
+  document.getElementById('stat-h-count').textContent=nH;
+  document.getElementById('stat-oh-count').textContent=nOH;
+
+  // Bars
+  const total=Math.max(1,nH+nOH);
+  document.getElementById('h-bar').style.width=(nH/total*100)+'%';
+  document.getElementById('oh-bar').style.width=(nOH/total*100)+'%';
+
+  // Bottom
+  document.getElementById('b-ph').textContent=ph.toFixed(1);
+  document.getElementById('b-ph').style.color=color;
+  document.getElementById('b-h').textContent='10'+superscript(Math.round(-ph));
+  document.getElementById('b-oh').textContent='10'+superscript(Math.round(-poh));
+  document.getElementById('b-poh').textContent=poh.toFixed(1);
+
+  const benv=document.getElementById('b-env');
+  if(ph<6.5){benv.textContent=t('env_acid');benv.style.color='var(--acid)';}
+  else if(ph>7.5){benv.textContent=t('env_base');benv.style.color='var(--base)';}
+  else{benv.textContent=t('env_neutral');benv.style.color='var(--neutral)';}
+
+  // Solution color
+  solMat.color.setHex(phToHex(ph));
+  solMat.opacity=0.12+0.08*Math.abs(ph-7)/7;
+}
+
+applyPH();
+
+// ═══════════════════════════════════════
+// CAMERA
+// ═══════════════════════════════════════
+let isDrag=false,isPan=false,prevM={x:0,y:0};
+let camSph={r:26,theta:Math.PI*0.5,phi:Math.PI*0.42};
+let camTarget=new THREE.Vector3(0,4,0);
+
+function updateCam(){
+  camera.position.set(
+    camTarget.x+camSph.r*Math.sin(camSph.phi)*Math.cos(camSph.theta),
+    camTarget.y+camSph.r*Math.cos(camSph.phi),
+    camTarget.z+camSph.r*Math.sin(camSph.phi)*Math.sin(camSph.theta)
+  );camera.lookAt(camTarget);
+}
+updateCam();
+
+renderer.domElement.addEventListener('mousedown',e=>{if(e.button===0)isDrag=true;if(e.button===2)isPan=true;prevM={x:e.clientX,y:e.clientY};});
+renderer.domElement.addEventListener('mousemove',e=>{
+  const dx=e.clientX-prevM.x,dy=e.clientY-prevM.y;prevM={x:e.clientX,y:e.clientY};
+  if(isDrag){camSph.theta-=dx*0.005;camSph.phi=Math.max(0.1,Math.min(Math.PI*0.48,camSph.phi+dy*0.005));updateCam();}
+  if(isPan){const r2=new THREE.Vector3();camera.getWorldDirection(r2);r2.cross(new THREE.Vector3(0,1,0)).normalize();camTarget.addScaledVector(r2,-dx*0.04);camTarget.y=Math.max(-2,camTarget.y+dy*0.04);updateCam();}
+});
+renderer.domElement.addEventListener('mouseup',()=>{isDrag=false;isPan=false;});
+renderer.domElement.addEventListener('contextmenu',e=>e.preventDefault());
+renderer.domElement.addEventListener('wheel',e=>{camSph.r=Math.max(8,Math.min(80,camSph.r+e.deltaY*0.03));updateCam();});
+
+// ═══════════════════════════════════════
+// ANIMATE
+// ═══════════════════════════════════════
+const clock=new THREE.Clock();
+
+function animate(){
+  requestAnimationFrame(animate);
+  const dt=Math.min(clock.getDelta(),0.05);
+  const spd=state.speed;
+
+  particles.forEach(p=>{
+    const pos=p.mesh.position;
+    pos.x+=p.vx*dt*spd;
+    pos.y+=p.vy*dt*spd;
+    pos.z+=p.vz*dt*spd;
+
+    // Brownian
+    p.vx+=(Math.random()-0.5)*4*dt*spd;
+    p.vy+=(Math.random()-0.5)*4*dt*spd;
+    p.vz+=(Math.random()-0.5)*4*dt*spd;
+
+    // Speed limit
+    const s=Math.sqrt(p.vx*p.vx+p.vy*p.vy+p.vz*p.vz);
+    const maxS=3.5*spd;
+    if(s>maxS){const f=maxS/s;p.vx*=f;p.vy*=f;p.vz*=f;}
+
+    // Bounce
+    if(pos.x<-hw){pos.x=-hw;p.vx=Math.abs(p.vx);}
+    if(pos.x>hw){pos.x=hw;p.vx=-Math.abs(p.vx);}
+    if(pos.y<0.5){pos.y=0.5;p.vy=Math.abs(p.vy);}
+    if(pos.y>topY){pos.y=topY;p.vy=-Math.abs(p.vy);}
+    if(pos.z<-hd){pos.z=-hd;p.vz=Math.abs(p.vz);}
+    if(pos.z>hd){pos.z=hd;p.vz=-Math.abs(p.vz);}
+
+    if(p.mesh.rotation) p.mesh.rotation.y+=dt*0.4;
+
+    // Scale ions based on dominance
+    if(state.scaleIons && (p.type==='h'||p.type==='oh')){
+      const nH=particles.filter(q=>q.type==='h').length;
+      const nOH=particles.filter(q=>q.type==='oh').length;
+      const total=Math.max(1,nH+nOH);
+      const myCount=p.type==='h'?nH:nOH;
+      const scale=0.7+0.6*(myCount/total);
+      p.mesh.scale.setScalar(scale);
+    }
+  });
+
+  renderer.render(scene,camera);
+}
+
+animate();
+
+window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+</script>
+</body>
+</html>

@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Солнечная Система</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: #000;
+        }
+
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+
+        /* Панель информации */
+        #info-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 340px;
+            background: rgba(10, 15, 30, 0.9);
+            
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 0 40px rgba(255, 200, 50, 0.1);
+            transform: translateX(120%);
+            transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+            border-left: 4px solid #ffd700;
+            z-index: 10;
+            color: #d0d0d0;
+        }
+
+        #info-panel.active {
+            transform: translateX(0);
+        }
+
+        #info-title {
+            margin: 0 0 10px 0;
+            color: #ffffff;
+            font-size: 24px;
+            font-weight: 600;
+            border-bottom: 1px solid #444;
+            padding-bottom: 10px;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+        }
+
+        #info-desc {
+            color: #b0c4de;
+            font-size: 15px;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+
+        .info-stat {
+            font-size: 13px;
+            color: #8899a6;
+            margin-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .info-stat span {
+            color: #fff;
+            font-weight: 500;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: transparent;
+            border: none;
+            color: #666;
+            font-size: 24px;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .close-btn:hover {
+            color: #fff;
+        }
+
+        /* Маркер названия планеты при наведении */
+        #planet-label {
+            position: absolute;
+            top: 0;
+            left: 0;
+            background: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            padding: 5px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            transform: translate(-50%, -150%);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            white-space: nowrap;
+        }
+
+        /* Заголовок сверху */
+        #main-title {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #fff;
+            font-family: 'Segoe UI', sans-serif;
+            font-size: 28px;
+            font-weight: 300;
+            letter-spacing: 6px;
+            text-transform: uppercase;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+            pointer-events: none;
+            z-index: 5;
+            text-align: center;
+            width: 100%;
+        }
+
+        /* Инструкция внизу */
+        #controls-hint {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 12px;
+            pointer-events: none;
+        }
+
+    </style>
+</head>
+<body>
+
+
+<h1 id="main-title">Солнечная Система</h1>
+<div id="controls-hint">Кликните по планете для информации • Колесо мыши для зума • ЛКМ для вращения</div>
+
+<div id="canvas-container"></div>
+<div id="planet-label">Земля</div>
+
+<div id="info-panel">
+    <button class="close-btn" onclick="closePanel()">&times;</button>
+    <h2 id="info-title">Название</h2>
+    <div id="info-stats">
+        <!-- Сюда вставляются данные -->
+    </div>
+    <p id="info-desc">Описание</p>
+</div>
+
+<script type="importmap">
+    {
+        "imports": {
+            "three": "../../libs/vendor/three-0.160.0/three.module.js",
+            "three/addons/": "../../libs/vendor/three-0.160.0/addons/"
+        }
+    }
+</script>
+
+<script type="module">
+    import * as THREE from 'three';
+    import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+
+    // --- ДАННЫЕ О ПЛАНЕТАХ ---
+    const solarSystemData = {
+        "Sun": {
+            name: "Солнце",
+            desc: "Звезда, вокруг которой вращается наша планетная система.",
+            type: "Звезда",
+            radius: 5,
+            distance: 0,
+            speed: 0,
+            color: 0xffaa00,
+            textureType: "sun"
+        },
+        "Mercury": {
+            name: "Меркурий",
+            desc: "Самая маленькая и ближайшая к Солнцу планета. Покрыта кратерами.",
+            type: "Планета земной группы",
+            radius: 0.6,
+            distance: 9,
+            speed: 0.04,
+            color: 0x8c8c8c, // Серый
+            textureType: "terrestrial"
+        },
+        "Venus": {
+            name: "Венера",
+            desc: "Самая горячая планета. Плотная атмосфера скрывает поверхность.",
+            type: "Планета земной группы",
+            radius: 1.1,
+            distance: 13,
+            speed: 0.015,
+            color: 0xe3bb76, // Бежевый
+            textureType: "atmosphere"
+        },
+        "Earth": {
+            name: "Земля",
+            desc: "Наш дом. Единственная планета с жидкой водой на поверхности.",
+            type: "Планета земной группы",
+            radius: 1.2,
+            distance: 18,
+            speed: 0.01,
+            color: 0x1144cc, // Синий океан
+            textureType: "earth"
+        },
+        "Mars": {
+            name: "Марс",
+            desc: "«Красная планета». Поверхность богата оксидом железа.",
+            type: "Планета земной группы",
+            radius: 0.8,
+            distance: 23,
+            speed: 0.008,
+            color: 0xdd4422, // Ржавый
+            textureType: "terrestrial"
+        },
+        "Jupiter": {
+            name: "Юпитер",
+            desc: "Газовый гигант с характерными полосами ветров.",
+            type: "Газовый гигант",
+            radius: 2.8,
+            distance: 34,
+            speed: 0.004,
+            color: 0xd8ca9d,
+            textureType: "gas"
+        },
+        "Saturn": {
+            name: "Сатурн",
+            desc: "Газовый гигант с великолепной системой колец.",
+            type: "Газовый гигант",
+            radius: 2.4,
+            distance: 44,
+            speed: 0.003,
+            color: 0xf4d03f,
+            hasRings: true,
+            textureType: "gas"
+        },
+        "Uranus": {
+            name: "Уран",
+            desc: "Ледяной гигант бирюзового цвета.",
+            type: "Ледяной гигант",
+            radius: 1.6,
+            distance: 54,
+            speed: 0.002,
+            color: 0x40e0d0,
+            textureType: "gas_smooth"
+        },
+        "Neptune": {
+            name: "Нептун",
+            desc: "Ледяной гигант глубокого синего цвета.",
+            type: "Ледяной гигант",
+            radius: 1.6,
+            distance: 64,
+            speed: 0.001,
+            color: 0x3333ff,
+            textureType: "gas_smooth"
+        }
+    };
+
+
+    // --- I18N для планет ---
+    const planetNamesI18N = {
+        ru: { Sun: "Солнце", Mercury: "Меркурий", Venus: "Венера", Earth: "Земля", Mars: "Марс", Jupiter: "Юпитер", Saturn: "Сатурн", Uranus: "Уран", Neptune: "Нептун" },
+        kz: { Sun: "Күн", Mercury: "Меркурий", Venus: "Шолпан", Earth: "Жер", Mars: "Марс", Jupiter: "Юпитер", Saturn: "Сатурн", Uranus: "Уран", Neptune: "Нептун" },
+        en: { Sun: "Sun", Mercury: "Mercury", Venus: "Venus", Earth: "Earth", Mars: "Mars", Jupiter: "Jupiter", Saturn: "Saturn", Uranus: "Uranus", Neptune: "Neptune" }
+    };
+    const planetDescI18N = {
+        ru: { Sun: "Звезда, вокруг которой вращается наша планетная система.", Mercury: "Самая маленькая и ближайшая к Солнцу планета. Покрыта кратерами.", Venus: "Самая горячая планета. Плотная атмосфера скрывает поверхность.", Earth: "Наш дом. Единственная планета с жидкой водой на поверхности.", Mars: "«Красная планета». Поверхность богата оксидом железа.", Jupiter: "Газовый гигант с характерными полосами ветров.", Saturn: "Газовый гигант с великолепной системой колец.", Uranus: "Ледяной гигант бирюзового цвета.", Neptune: "Ледяной гигант глубокого синего цвета." },
+        kz: { Sun: "Біздің планеталық жүйе айналатын жұлдыз.", Mercury: "Ең кішкентай және Күнге ең жақын ғаламшар. Кратерлермен жабылған.", Venus: "Ең ыстық ғаламшар. Тығыз атмосферасы бетін жасырады.", Earth: "Біздің үйіміз. Бетінде сұйық суы бар жалғыз ғаламшар.", Mars: "«Қызыл ғаламшар». Беті темір оксидіне бай.", Jupiter: "Тән жел белдеулері бар газ алыбы.", Saturn: "Керемет сақиналар жүйесі бар газ алыбы.", Uranus: "Көгілдір түсті мұз алыбы.", Neptune: "Қою көк түсті мұз алыбы." },
+        en: { Sun: "The star around which our planetary system revolves.", Mercury: "The smallest planet and closest to the Sun. Covered with craters.", Venus: "The hottest planet. Dense atmosphere hides the surface.", Earth: "Our home. The only planet with liquid water on its surface.", Mars: "The Red Planet. Surface is rich in iron oxide.", Jupiter: "A gas giant with characteristic wind bands.", Saturn: "A gas giant with a magnificent ring system.", Uranus: "An ice giant of turquoise color.", Neptune: "An ice giant of deep blue color." }
+    };
+    const planetTypeI18N = {
+        ru: { star: "Звезда", terrestrial: "Планета земной группы", gas: "Газовый гигант", ice: "Ледяной гигант" },
+        kz: { star: "Жұлдыз", terrestrial: "Жер тобының ғаламшары", gas: "Газ алыбы", ice: "Мұз алыбы" },
+        en: { star: "Star", terrestrial: "Terrestrial planet", gas: "Gas giant", ice: "Ice giant" }
+    };
+    function onLangChanged(lang) {
+        // Planet data will use these when showing info
+    }
+    // --- СЦЕНА ---
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x000000, 0.002);
+
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 2000);
+    camera.position.set(0, 40, 80);
+
+    const renderer = new THREE.WebGLRenderer({antialias: true});
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.0;
+    renderer.shadowMap.enabled = false; // Тени для колец
+    container.appendChild(renderer.domElement);
+
+    // --- ОСВЕЩЕНИЕ ---
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambientLight);
+
+    const sunLight = new THREE.PointLight(0xffffff, 5, 400);
+    sunLight.position.set(0, 0, 0);
+    sunLight.castShadow = true;
+    scene.add(sunLight);
+
+    // --- УПРАВЛЕНИЕ ---
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.maxDistance = 200;
+    controls.minDistance = 10;
+
+    // --- ЗВЕЗДНОЕ НЕБО ---
+    function createStars() {
+        const geometry = new THREE.BufferGeometry();
+        const vertices = [];
+        for (let i = 0; i < 5000; i++) {
+            vertices.push(
+                    THREE.MathUtils.randFloatSpread(500),
+                    THREE.MathUtils.randFloatSpread(500),
+                    THREE.MathUtils.randFloatSpread(500)
+            );
+        }
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+        const material = new THREE.PointsMaterial({color: 0xffffff, size: 0.5, transparent: true, opacity: 0.8});
+        const stars = new THREE.Points(geometry, material);
+        scene.add(stars);
+    }
+
+    createStars();
+
+    // --- ГЕНЕРАТОР ТЕКСТУР ПЛАНЕТ ---
+    function createPlanetTexture(type, colorHex) {
+        const width = 512;
+        const height = 256;
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        const baseColor = new THREE.Color(colorHex);
+
+        // Фон
+        ctx.fillStyle = `#${baseColor.getHexString()}`;
+        ctx.fillRect(0, 0, width, height);
+
+        if (type === 'gas') {
+            // Полосы для Юпитера/Сатурна
+            for (let i = 0; i < 20; i++) {
+                const y = Math.random() * height;
+                const h = Math.random() * 20 + 5;
+                const hsl = {};
+                baseColor.getHSL(hsl);
+                hsl.l += (Math.random() - 0.5) * 0.2; // Вариация яркости
+                hsl.s += (Math.random() - 0.5) * 0.1;
+                const bandColor = new THREE.Color().setHSL(hsl.h, hsl.s, hsl.l);
+
+                ctx.fillStyle = `#${bandColor.getHexString()}`;
+                ctx.fillRect(0, y, width, h);
+            }
+            // Размытие для мягкости
+            ctx.filter = 'blur(4px)';
+            ctx.drawImage(canvas, 0, 0);
+
+        } else if (type === 'terrestrial') {
+            // Кратеры и пятна (Меркурий, Марс)
+            for (let i = 0; i < 150; i++) {
+                const x = Math.random() * width;
+                const y = Math.random() * height;
+                const r = Math.random() * 15 + 2;
+
+                const hsl = {};
+                baseColor.getHSL(hsl);
+                hsl.l += (Math.random() - 0.5) * 0.3; // Пятна темнее/светлее
+                const spotColor = new THREE.Color().setHSL(hsl.h, hsl.s, hsl.l);
+
+                ctx.beginPath();
+                ctx.arc(x, y, r, 0, Math.PI * 2);
+                ctx.fillStyle = `#${spotColor.getHexString()}`;
+                ctx.fill();
+            }
+
+        } else if (type === 'earth') {
+            // Континенты (Зеленые пятна)
+            ctx.fillStyle = '#2d6a4f'; // Темно-зеленый
+            for (let i = 0; i < 40; i++) {
+                const x = Math.random() * width;
+                const y = Math.random() * height;
+                const r = Math.random() * 40 + 10;
+                ctx.beginPath();
+                ctx.arc(x, y, r, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            // Облака (Белые полосы/пятна)
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+            for (let i = 0; i < 60; i++) {
+                const x = Math.random() * width;
+                const y = Math.random() * height;
+                const w = Math.random() * 60 + 20;
+                const h = Math.random() * 20 + 5;
+                ctx.fillRect(x, y, w, h);
+            }
+
+        } else if (type === 'atmosphere') {
+            // Венера (облачная дымка)
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+            for (let i = 0; i < 50; i++) {
+                const y = Math.random() * height;
+                const h = Math.random() * 40 + 10;
+                ctx.fillRect(0, y, width, h);
+            }
+            ctx.filter = 'blur(8px)';
+            ctx.drawImage(canvas, 0, 0);
+
+        } else if (type === 'sun') {
+            // Солнечные пятна/плазма
+            for (let i = 0; i < 200; i++) {
+                const x = Math.random() * width;
+                const y = Math.random() * height;
+                const r = Math.random() * 10 + 2;
+                ctx.beginPath();
+                ctx.arc(x, y, r, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255, 200, 50, 0.3)';
+                ctx.fill();
+            }
+        } else if (type === 'gas_smooth') {
+            // Уран/Нептун (плавный градиент)
+            const grad = ctx.createLinearGradient(0, 0, 0, height);
+            const hsl = {};
+            baseColor.getHSL(hsl);
+            const c1 = new THREE.Color().setHSL(hsl.h, hsl.s, hsl.l + 0.05);
+            const c2 = new THREE.Color().setHSL(hsl.h, hsl.s, hsl.l - 0.05);
+            grad.addColorStop(0, `#${c1.getHexString()}`);
+            grad.addColorStop(1, `#${c2.getHexString()}`);
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, width, height);
+        }
+
+        return new THREE.CanvasTexture(canvas);
+    }
+
+    function createGlowTexture() {
+        const canvas = document.createElement('canvas');
+        canvas.width = 64;
+        canvas.height = 64;
+        const context = canvas.getContext('2d');
+        const gradient = context.createRadialGradient(32, 32, 0, 32, 32, 32);
+        gradient.addColorStop(0, 'rgba(255, 170, 0, 1)');
+        gradient.addColorStop(0.2, 'rgba(255, 170, 0, 0.6)');
+        gradient.addColorStop(0.5, 'rgba(255, 170, 0, 0.1)');
+        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        context.fillStyle = gradient;
+        context.fillRect(0, 0, 64, 64);
+        return new THREE.CanvasTexture(canvas);
+    }
+
+    // --- СОЗДАНИЕ ПЛАНЕТ ---
+    const planets = [];
+    const orbitGroup = new THREE.Group();
+    scene.add(orbitGroup);
+
+    Object.keys(solarSystemData).forEach(key => {
+        const data = solarSystemData[key];
+
+        // Генерируем текстуру
+        const texture = createPlanetTexture(data.textureType, data.color);
+
+        let material;
+        if (key === 'Sun') {
+            material = new THREE.MeshBasicMaterial({
+                map: texture,
+                color: 0xffffff // Используем карту, цвет белый
+            });
+
+            // Свечение
+            const sunGlowMat = new THREE.SpriteMaterial({
+                map: createGlowTexture(),
+                color: 0xffaa00,
+                transparent: true,
+                opacity: 1.0,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false // ИСПРАВЛЕНИЕ: предотвращаем перекрытие орбит квадратом
+            });
+            const sunGlow = new THREE.Sprite(sunGlowMat);
+            sunGlow.scale.set(data.radius * 8, data.radius * 8, 1);
+            scene.add(sunGlow);
+        } else {
+            material = new THREE.MeshStandardMaterial({
+                map: texture,
+                roughness: 0.8,
+                metalness: 0.1
+            });
+        }
+
+        const geometry = new THREE.SphereGeometry(data.radius, 32, 32);
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.userData = {key: key};
+        mesh.name = key;
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+
+        // Орбита
+        if (data.distance > 0) {
+            const orbitGeo = new THREE.RingGeometry(data.distance - 0.08, data.distance + 0.08, 128);
+            const orbitMat = new THREE.MeshBasicMaterial({
+                color: 0xffffff,
+                transparent: true,
+                opacity: 0.15,
+                side: THREE.DoubleSide
+            });
+            const orbitMesh = new THREE.Mesh(orbitGeo, orbitMat);
+            orbitMesh.rotation.x = Math.PI / 2;
+            orbitGroup.add(orbitMesh);
+        }
+
+        // Кольца Сатурна
+        if (data.hasRings) {
+            const ringGeo = new THREE.RingGeometry(data.radius * 1.4, data.radius * 2.2, 64);
+            // Текстура для колец (шум)
+            const ringTex = createPlanetTexture('terrestrial', 0xcfb56b);
+            const ringMat = new THREE.MeshStandardMaterial({
+                map: ringTex,
+                color: 0xffffff,
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.8
+            });
+            const ring = new THREE.Mesh(ringGeo, ringMat);
+            ring.rotation.x = Math.PI / 2;
+            ring.receiveShadow = true;
+            mesh.add(ring);
+        }
+
+        orbitGroup.add(mesh);
+
+        planets.push({
+            mesh: mesh,
+            distance: data.distance,
+            speed: data.speed,
+            angle: Math.random() * Math.PI * 2
+        });
+    });
+
+
+    // --- ИНТЕРАКТИВНОСТЬ ---
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+
+    const panel = document.getElementById('info-panel');
+    const titleEl = document.getElementById('info-title');
+    const descEl = document.getElementById('info-desc');
+    const statsEl = document.getElementById('info-stats');
+    const labelEl = document.getElementById('planet-label');
+
+    let highlightedPlanet = null;
+
+    function updateRaycaster(event) {
+        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+        raycaster.setFromCamera(mouse, camera);
+    }
+
+    function onMouseMove(event) {
+        updateRaycaster(event);
+        const intersects = raycaster.intersectObjects(orbitGroup.children);
+
+        let found = null;
+        for (let hit of intersects) {
+            if (hit.object.userData.key) {
+                found = hit.object;
+                break;
+            }
+        }
+
+        if (found) {
+            const key = found.userData.key;
+            const data = solarSystemData[key];
+
+            labelEl.textContent = data.name;
+            labelEl.style.opacity = 1;
+
+            const vector = found.position.clone();
+            vector.project(camera);
+            const x = (vector.x * .5 + .5) * window.innerWidth;
+            const y = (-(vector.y * .5) + .5) * window.innerHeight;
+            labelEl.style.left = `${x}px`;
+            labelEl.style.top = `${y}px`;
+
+            document.body.style.cursor = 'pointer';
+        } else {
+            labelEl.style.opacity = 0;
+            document.body.style.cursor = 'default';
+        }
+    }
+
+    function onClick(event) {
+        if (event.target.closest('#info-panel') || event.target.closest('.close-btn')) return;
+
+        updateRaycaster(event);
+        const intersects = raycaster.intersectObjects(orbitGroup.children);
+
+        let found = null;
+        for (let hit of intersects) {
+            if (hit.object.userData.key) {
+                found = hit.object;
+                break;
+            }
+        }
+
+        if (found) {
+            showInfo(found.userData.key);
+
+            if (highlightedPlanet && highlightedPlanet !== found && highlightedPlanet.material.emissive) {
+                highlightedPlanet.material.emissive.setHex(0x000000);
+            }
+            if (found.material.emissive) {
+                highlightedPlanet = found;
+                if (found.userData.key !== 'Sun') {
+                    found.material.emissive.setHex(0x333333);
+                }
+            }
+        } else {
+            closePanel();
+        }
+    }
+
+    function showInfo(key) {
+        const data = solarSystemData[key];
+        titleEl.textContent = data.name;
+        descEl.textContent = data.desc;
+
+        statsEl.innerHTML = `
+                <div class="info-stat">Тип объекта <span>${data.type}</span></div>
+                <div class="info-stat">Радиус (усл.) <span>${data.radius}</span></div>
+                <div class="info-stat">Расстояние (усл.) <span>${data.distance}</span></div>
+            `;
+
+        const hexColor = '#' + data.color.toString(16).padStart(6, '0');
+        panel.style.borderLeftColor = hexColor;
+
+        panel.classList.add('active');
+    }
+
+    window.closePanel = function () {
+        panel.classList.remove('active');
+        if (highlightedPlanet && highlightedPlanet.userData.key !== 'Sun') {
+            highlightedPlanet.material.emissive.setHex(0x000000);
+        }
+        highlightedPlanet = null;
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('click', onClick);
+
+    // --- АНИМАЦИЯ ---
+    function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+
+        const timeScale = 0.5;
+
+        planets.forEach(p => {
+            if (p.distance > 0) {
+                p.angle += p.speed * timeScale;
+                p.mesh.position.x = Math.cos(p.angle) * p.distance;
+                p.mesh.position.z = Math.sin(p.angle) * p.distance;
+            }
+            p.mesh.rotation.y += 0.005;
+        });
+
+        renderer.render(scene, camera);
+    }
+
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    animate();
+</script>
+<script>
+(function() {
+    const TEXT_MAP = {
+    "Солнечная Система": {
+        "kz": "Күн жүйесі",
+        "en": "Solar System"
+    },
+    "Кликните по планете для информации • Колесо мыши для зума • ЛКМ для вращения": {
+        "kz": "Ақпарат алу үшін ғаламшарға басыңыз • Масштабтау — дөңгелек • Айналдыру — сол батырма",
+        "en": "Click a planet for info • Scroll to zoom • LMB to rotate"
+    },
+    "Земля": {
+        "kz": "Жер",
+        "en": "Earth"
+    },
+    "Название": {
+        "kz": "Атауы",
+        "en": "Name"
+    },
+    "Описание": {
+        "kz": "Сипаттама",
+        "en": "Description"
+    },
+    "Тип объекта": {
+        "kz": "Нысан түрі",
+        "en": "Object type"
+    },
+    "Радиус (усл.)": {
+        "kz": "Радиус (шартты)",
+        "en": "Radius (rel.)"
+    },
+    "Расстояние (усл.)": {
+        "kz": "Қашықтық (шартты)",
+        "en": "Distance (rel.)"
+    },
+    "Солнце": {
+        "kz": "Күн",
+        "en": "Sun"
+    },
+    "Меркурий": {
+        "kz": "Меркурий",
+        "en": "Mercury"
+    },
+    "Венера": {
+        "kz": "Шолпан",
+        "en": "Venus"
+    },
+    "Марс": {
+        "kz": "Марс",
+        "en": "Mars"
+    },
+    "Юпитер": {
+        "kz": "Юпитер",
+        "en": "Jupiter"
+    },
+    "Сатурн": {
+        "kz": "Сатурн",
+        "en": "Saturn"
+    },
+    "Уран": {
+        "kz": "Уран",
+        "en": "Uranus"
+    },
+    "Нептун": {
+        "kz": "Нептун",
+        "en": "Neptune"
+    },
+    "Звезда": {
+        "kz": "Жұлдыз",
+        "en": "Star"
+    },
+    "Планета земной группы": {
+        "kz": "Жер тобының ғаламшары",
+        "en": "Terrestrial planet"
+    },
+    "Газовый гигант": {
+        "kz": "Газ алыбы",
+        "en": "Gas giant"
+    },
+    "Ледяной гигант": {
+        "kz": "Мұз алыбы",
+        "en": "Ice giant"
+    },
+    "Звезда, вокруг которой вращается наша планетная система.": {
+        "kz": "Біздің планеталық жүйе айналатын жұлдыз.",
+        "en": "The star around which our planetary system revolves."
+    },
+    "Самая маленькая и ближайшая к Солнцу планета. Покрыта кратерами.": {
+        "kz": "Ең кішкентай және Күнге ең жақын ғаламшар. Кратерлермен жабылған.",
+        "en": "The smallest planet and closest to the Sun. Covered with craters."
+    },
+    "Самая горячая планета. Плотная атмосфера скрывает поверхность.": {
+        "kz": "Ең ыстық ғаламшар. Тығыз атмосферасы бетін жасырады.",
+        "en": "The hottest planet. Dense atmosphere hides the surface."
+    },
+    "Наш дом. Единственная планета с жидкой водой на поверхности.": {
+        "kz": "Біздің үйіміз. Бетінде сұйық суы бар жалғыз ғаламшар.",
+        "en": "Our home. The only planet with liquid water on its surface."
+    },
+    "«Красная планета». Поверхность богата оксидом железа.": {
+        "kz": "«Қызыл ғаламшар». Беті темір оксидіне бай.",
+        "en": "The Red Planet. Surface is rich in iron oxide."
+    },
+    "Газовый гигант с характерными полосами ветров.": {
+        "kz": "Тән жел белдеулері бар газ алыбы.",
+        "en": "A gas giant with characteristic wind bands."
+    },
+    "Газовый гигант с великолепной системой колец.": {
+        "kz": "Керемет сақиналар жүйесі бар газ алыбы.",
+        "en": "A gas giant with a magnificent ring system."
+    },
+    "Ледяной гигант бирюзового цвета.": {
+        "kz": "Көгілдір түсті мұз алыбы.",
+        "en": "An ice giant of turquoise color."
+    },
+    "Ледяной гигант глубокого синего цвета.": {
+        "kz": "Қою көк түсті мұз алыбы.",
+        "en": "An ice giant of deep blue color."
+    }
+,
+    "Солнечная система — 3D Модель": {
+        "kz": "Күн жүйесі — 3D Модель",
+        "en": "Solar System — 3D Model"
+    },
+    "🌍 Солнечная система": {
+        "kz": "🌍 Күн жүйесі",
+        "en": "🌍 Solar System"
+    },
+    "Планеты • Орбиты • Масштабы • Вращение": {
+        "kz": "Ғаламшарлар • Орбиталар • Масштабтар • Айналу",
+        "en": "Planets • Orbits • Scales • Rotation"
+    },
+    "Скорость вращения": {
+        "kz": "Айналу жылдамдығы",
+        "en": "Rotation speed"
+    },
+    "Показать орбиты": {
+        "kz": "Орбиталарды көрсету",
+        "en": "Show orbits"
+    },
+    "Показать названия": {
+        "kz": "Атауларды көрсету",
+        "en": "Show names"
+    },
+    "Реальные размеры": {
+        "kz": "Нақты өлшемдер",
+        "en": "Real sizes"
+    },
+    "↺ Сбросить вид": {
+        "kz": "↺ Көріністі қалпына келтіру",
+        "en": "↺ Reset view"
+    },
+    "Информация о планете": {
+        "kz": "Ғаламшар туралы ақпарат",
+        "en": "Planet information"
+    },
+    "Нажмите на планету для подробной информации": {
+        "kz": "Толық ақпарат алу үшін ғаламшарды басыңыз",
+        "en": "Click on a planet for detailed information"
+    },
+    "Расстояние от Солнца:": {
+        "kz": "Күннен қашықтығы:",
+        "en": "Distance from Sun:"
+    },
+    "Период обращения:": {
+        "kz": "Айналу кезеңі:",
+        "en": "Orbital period:"
+    },
+    "Радиус:": {
+        "kz": "Радиусы:",
+        "en": "Radius:"
+    },
+    "Масса:": {
+        "kz": "Массасы:",
+        "en": "Mass:"
+    },
+    "Температура:": {
+        "kz": "Температурасы:",
+        "en": "Temperature:"
+    },
+    "ЛКМ — вращение • Колёсико — зум": {
+        "kz": "Сол жақ батырма — айналдыру • Дөңгелек — масштабтау",
+        "en": "LMB — rotate • Scroll — zoom"
+    },
+    "млн км": {
+        "kz": "млн км",
+        "en": "mln km"
+    },
+    "дней": {
+        "kz": "күн",
+        "en": "days"
+    },
+    "лет": {
+        "kz": "жыл",
+        "en": "years"
+    },
+    "Ближайшая к Солнцу планета. Нет атмосферы, поверхность покрыта кратерами.": {
+        "kz": "Күнге ең жақын ғаламшар. Атмосферасы жоқ, беті кратерлермен жабылған.",
+        "en": "The closest planet to the Sun. No atmosphere, surface covered with craters."
+    },
+    "Самая горячая планета из-за парникового эффекта. Вращается в обратном направлении.": {
+        "kz": "Жылыжай эффектісінен ең ыстық ғаламшар. Кері бағытта айналады.",
+        "en": "The hottest planet due to greenhouse effect. Rotates in reverse direction."
+    },
+    "Единственная планета с жизнью. Имеет жидкую воду и кислородную атмосферу.": {
+        "kz": "Тіршілігі бар жалғыз ғаламшар. Сұйық суы және оттекті атмосферасы бар.",
+        "en": "The only planet with life. Has liquid water and oxygen atmosphere."
+    },
+    "Красная планета. Имеет самую высокую гору — Олимп (21 км).": {
+        "kz": "Қызыл ғаламшар. Ең биік тауы бар — Олимп (21 км).",
+        "en": "The Red Planet. Has the tallest mountain — Olympus Mons (21 km)."
+    },
+    "Крупнейшая планета. Газовый гигант с Большим Красным Пятном.": {
+        "kz": "Ең үлкен ғаламшар. Үлкен Қызыл Дағы бар газ алыбы.",
+        "en": "The largest planet. Gas giant with the Great Red Spot."
+    },
+    "Известен кольцами из льда и камней. Плотность меньше воды.": {
+        "kz": "Мұз бен тастардан тұратын сақиналарымен белгілі. Тығыздығы судан аз.",
+        "en": "Known for its rings of ice and rock. Density less than water."
+    },
+    "Ледяной гигант. Вращается \"лёжа на боку\" — наклон оси 98°.": {
+        "kz": "Мұзды алып. \"Жанына жатып\" айналады — осінің көлбеуі 98°.",
+        "en": "Ice giant. Rotates \"on its side\" — axial tilt of 98°."
+    },
+    "Самая далёкая планета. Сильнейшие ветры в Солнечной системе (2100 км/ч).": {
+        "kz": "Ең алыс ғаламшар. Күн жүйесіндегі ең күшті желдер (2100 км/сағ).",
+        "en": "The farthest planet. Strongest winds in the Solar System (2100 km/h)."
+    },
+    "⚙️ Управление": {
+        "kz": "⚙️ Басқару",
+        "en": "⚙️ Controls"
+    },
+    "Замедленно": {
+        "kz": "Баяулатылған",
+        "en": "Slow"
+    },
+    "Ускоренно": {
+        "kz": "Жеделдетілген",
+        "en": "Fast"
+    }
+,
+    "Карликовая планета": {"kz": "Ергежейлі ғаламшар", "en": "Dwarf planet"}
+};
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentLang = urlParams.get('lang') || 'ru';
+
+    if (currentLang === 'ru') return; // No translation needed
+
+    function translateTextNodes(root) {
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
+        const nodes = [];
+        while (walker.nextNode()) nodes.push(walker.currentNode);
+        
+        nodes.forEach(node => {
+            let text = node.textContent;
+            if (!text || !text.trim()) return;
+            
+            const trimmed = text.trim();
+            if (TEXT_MAP[trimmed] && TEXT_MAP[trimmed][currentLang]) {
+                node.textContent = text.replace(trimmed, TEXT_MAP[trimmed][currentLang]);
+            }
+        });
+    }
+
+    function translateAttributes(root) {
+        root.querySelectorAll('[title]').forEach(el => {
+            const t = el.getAttribute('title');
+            if (TEXT_MAP[t] && TEXT_MAP[t][currentLang]) {
+                el.setAttribute('title', TEXT_MAP[t][currentLang]);
+            }
+        });
+        root.querySelectorAll('[placeholder]').forEach(el => {
+            const t = el.getAttribute('placeholder');
+            if (TEXT_MAP[t] && TEXT_MAP[t][currentLang]) {
+                el.setAttribute('placeholder', TEXT_MAP[t][currentLang]);
+            }
+        });
+        // Translate page title
+        const titleText = document.title.trim();
+        if (TEXT_MAP[titleText] && TEXT_MAP[titleText][currentLang]) {
+            document.title = TEXT_MAP[titleText][currentLang];
+        }
+    }
+
+    
+
+    function applyTranslations() {
+        translateTextNodes(document.body);
+        translateAttributes(document);
+        if (typeof translateData === 'function') translateData(currentLang);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', applyTranslations);
+    } else {
+        applyTranslations();
+    }
+
+    // Re-translate after dynamic content changes
+    window.currentLang = currentLang;
+    window._currentLang = currentLang;
+    window._TEXT_MAP = TEXT_MAP;
+
+    // One-time delayed re-translate for dynamic content
+    let _tc=0;const _ti=setInterval(()=>{translateTextNodes(document.body);translateAttributes(document);if(++_tc>=20)clearInterval(_ti);},500);
+})();
+</script>
+</body>
+</html>

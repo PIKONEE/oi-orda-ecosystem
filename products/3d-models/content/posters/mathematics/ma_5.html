@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="page_title">Конус</title>
+<style>
+
+
+*{margin:0;padding:0;box-sizing:border-box;}
+
+:root{
+  --bg:#f3f2ee;
+  --surface:rgba(255,255,255,0.94);
+  --border:rgba(28,20,55,0.07);
+  --text:#1a1722;
+  --muted:#7a7587;
+  --faint:#aaa5b6;
+  --r:#db2777;  --r-dim:rgba(219,39,119,0.10);   /* radius — pink   */
+  --h:#0d9488;  --h-dim:rgba(13,148,136,0.10);    /* height — teal   */
+  --l:#7c3aed;  --l-dim:rgba(124,58,237,0.10);    /* slant  — violet */
+  --accent:#7c3aed;
+  --accent-dim:rgba(124,58,237,0.10);
+  --shadow:0 2px 22px rgba(40,25,80,0.07);
+  --shadow-lg:0 18px 56px rgba(45,28,90,0.15);
+}
+
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);overflow:hidden;height:100vh;}
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(1200px 760px at 70% 32%, rgba(167,139,250,0.12), transparent 60%),
+    radial-gradient(820px 560px at 14% 84%, rgba(219,39,119,0.06), transparent 55%);
+}
+
+#canvas-container{position:fixed;inset:0;z-index:1;}
+#labels-layer{position:fixed;inset:0;z-index:40;pointer-events:none;overflow:hidden;}
+
+.dim-label{
+  position:absolute;transform:translate(-50%,-50%);
+  font-family:'Roboto Mono',monospace;font-size:14px;font-weight:600;
+  padding:3px 10px;border-radius:9px;white-space:nowrap;letter-spacing:-0.3px;
+  background:rgba(255,255,255,0.97);box-shadow:0 3px 12px rgba(40,25,80,0.13);transition:opacity 0.18s;
+}
+.dim-label.hidden{opacity:0;}
+.dim-label.lr{color:var(--r);border:1px solid rgba(219,39,119,0.28);}
+.dim-label.lh{color:var(--h);border:1px solid rgba(13,148,136,0.28);}
+.dim-label.ll{color:var(--l);border:1px solid rgba(124,58,237,0.30);}
+.dim-label.sec{background:#1a1722;color:#fff;border:none;font-weight:600;box-shadow:0 5px 18px rgba(0,0,0,0.3);}
+
+/* ── HEADER ── */
+.header{position:fixed;top:0;left:0;right:0;z-index:200;background:var(--surface);border-bottom:1px solid var(--border);padding:0 38px;height:84px;display:flex;align-items:center;gap:15px;box-shadow:var(--shadow);}
+.h-badge{width:46px;height:46px;border-radius:14px;flex-shrink:0;background:linear-gradient(135deg,#7c3aed,#a78bfa);display:flex;align-items:center;justify-content:center;box-shadow:0 7px 20px rgba(124,58,237,0.36);}
+.h-badge svg{width:25px;height:25px;}
+.header-title{font-size:25px;font-weight:800;letter-spacing:-0.5px;}
+.header-tag{font-family:'Roboto Mono',monospace;font-size:13px;color:var(--accent);background:var(--accent-dim);padding:4px 11px;border-radius:8px;}
+.header-sub{font-size:14px;color:var(--muted);margin-left:auto;text-align:right;line-height:1.45;}
+
+/* ── PANELS ── */
+.panel{position:fixed;z-index:100;background:var(--surface);border:1px solid var(--border);border-radius:22px;box-shadow:var(--shadow-lg);}
+.panel h3{font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;color:var(--faint);}
+
+.panel-left{left:22px;top:98px;width:336px;padding:18px 18px;overflow:hidden;min-height:430px;}
+.ld-list,.ld-detail{transition:transform 0.4s cubic-bezier(0.4,0,0.2,1),opacity 0.28s;}
+.ld-list h3{margin-bottom:12px;padding-left:4px;}
+.ld-detail{position:absolute;inset:18px 18px;transform:translateX(26px);opacity:0;pointer-events:none;overflow-y:auto;}
+.ld-detail::-webkit-scrollbar{width:4px;}
+.ld-detail::-webkit-scrollbar-thumb{background:rgba(40,25,80,0.16);border-radius:4px;}
+.panel-left.detail .ld-list{transform:translateX(-26px);opacity:0;pointer-events:none;}
+.panel-left.detail .ld-detail{transform:translateX(0);opacity:1;pointer-events:auto;}
+
+.metric{display:flex;align-items:center;gap:13px;padding:11px 12px;border-radius:14px;cursor:pointer;border:1px solid transparent;transition:all 0.15s;margin-bottom:2px;}
+.metric:hover{background:rgba(40,25,80,0.04);}
+.metric.active{background:var(--accent-dim);border-color:rgba(124,58,237,0.22);}
+.metric-ico{width:34px;height:34px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:17px;background:rgba(124,58,237,0.10);}
+.metric-main{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;}
+.metric-name{font-size:15.5px;font-weight:700;line-height:1.15;}
+.metric-sub{font-family:'Roboto Mono',monospace;font-size:13px;color:var(--muted);}
+.metric-val{font-family:'Roboto Mono',monospace;font-size:22px;font-weight:500;color:var(--accent);letter-spacing:-1px;flex-shrink:0;}
+
+.ld-back{display:inline-flex;align-items:center;gap:5px;cursor:pointer;border:none;background:none;font-family:'Inter',sans-serif;font-size:14px;font-weight:700;color:var(--accent);padding:4px 6px 4px 0;margin-bottom:12px;}
+.ld-back:hover{opacity:0.7;}
+.d-tag{display:inline-block;padding:4px 12px;border-radius:99px;font-size:13px;font-weight:700;margin-bottom:10px;background:var(--accent-dim);color:var(--accent);}
+.d-title{font-size:22px;font-weight:800;letter-spacing:-0.4px;line-height:1.15;margin-bottom:14px;}
+.d-bigval{display:flex;align-items:baseline;gap:9px;margin-bottom:4px;}
+.d-bigval b{font-family:'Roboto Mono',monospace;font-size:39px;font-weight:500;color:var(--accent);letter-spacing:-1.5px;line-height:1;}
+.d-bigval span{font-size:14px;color:var(--muted);font-weight:600;}
+.d-formula{margin:13px 0 4px;padding:13px 15px;border-radius:13px;background:linear-gradient(135deg,rgba(167,139,250,0.12),rgba(124,58,237,0.05));border:1px solid rgba(124,58,237,0.16);font-family:'Roboto Mono',monospace;font-size:14px;color:#5b21b6;font-weight:500;line-height:1.95;white-space:pre-line;}
+.d-para{font-size:15px;line-height:1.62;color:#3a3545;margin-top:13px;}
+
+/* ── RIGHT ── */
+.panel-right{right:22px;top:98px;width:300px;padding:18px;}
+.dim-slider{margin-bottom:14px;border-radius:15px;padding:12px 14px;border:1px solid;}
+.dim-slider.sr{background:var(--r-dim);border-color:rgba(219,39,119,0.18);}
+.dim-slider.sh{background:var(--h-dim);border-color:rgba(13,148,136,0.18);}
+.ds-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.ds-name{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:700;}
+.ds-key{font-family:'Roboto Mono',monospace;font-style:italic;font-size:18px;}
+.sr .ds-key{color:var(--r);} .sh .ds-key{color:var(--h);}
+.ds-dimname{color:var(--muted);font-weight:600;font-size:13.5px;}
+.ds-pill{font-family:'Roboto Mono',monospace;font-size:19px;font-weight:500;color:#fff;padding:2px 13px;border-radius:9px;letter-spacing:-0.5px;}
+.sr .ds-pill{background:var(--r);} .sh .ds-pill{background:var(--h);}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:3px;outline:none;cursor:pointer;}
+.sr input[type=range]{background:linear-gradient(90deg,var(--r) var(--fill,50%),rgba(219,39,119,0.16) var(--fill,50%));}
+.sh input[type=range]{background:linear-gradient(90deg,var(--h) var(--fill,50%),rgba(13,148,136,0.16) var(--fill,50%));}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:21px;height:21px;border-radius:50%;background:#fff;cursor:pointer;transition:transform 0.12s;}
+.sr input::-webkit-slider-thumb{border:3px solid var(--r);box-shadow:0 3px 10px rgba(219,39,119,0.4);}
+.sh input::-webkit-slider-thumb{border:3px solid var(--h);box-shadow:0 3px 10px rgba(13,148,136,0.4);}
+input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.18);}
+
+/* slant readout */
+.slant-card{display:flex;align-items:center;gap:11px;padding:11px 14px;margin-bottom:6px;border-radius:14px;background:var(--l-dim);border:1px solid rgba(124,58,237,0.18);}
+.slant-key{font-family:'Roboto Mono',monospace;font-style:italic;font-size:17px;color:var(--l);font-weight:600;}
+.slant-text{flex:1;min-width:0;}
+.slant-name{font-size:14px;font-weight:700;}
+.slant-formula{font-size:12.5px;color:var(--muted);font-family:'Roboto Mono',monospace;}
+.slant-val{font-family:'Roboto Mono',monospace;font-size:18px;font-weight:600;color:var(--l);}
+
+.show-label{font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;color:var(--faint);margin:13px 0 11px 2px;}
+.show-chip{display:flex;align-items:center;gap:12px;width:100%;padding:13px 15px;margin-bottom:9px;border-radius:14px;cursor:pointer;background:rgba(40,25,80,0.035);border:1.5px solid transparent;transition:all 0.16s;}
+.show-chip:hover{background:rgba(40,25,80,0.06);}
+.show-chip.on{background:var(--accent-dim);border-color:rgba(124,58,237,0.30);}
+.chip-ico{width:36px;height:36px;border-radius:11px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:19px;background:rgba(124,58,237,0.10);transition:all 0.16s;}
+.show-chip.on .chip-ico{background:var(--accent);}
+.chip-text{display:flex;flex-direction:column;gap:1px;flex:1;min-width:0;}
+.chip-name{font-size:15px;font-weight:700;}
+.chip-sub{font-size:13px;color:var(--muted);font-family:'Roboto Mono',monospace;}
+.chip-state{width:22px;height:22px;border-radius:50%;flex-shrink:0;border:2px solid rgba(40,25,80,0.16);display:flex;align-items:center;justify-content:center;transition:all 0.16s;}
+.show-chip.on .chip-state{background:var(--accent);border-color:var(--accent);}
+.show-chip.on .chip-state::after{content:'✓';color:#fff;font-size:14px;font-weight:700;}
+
+.hint-bar{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:100;background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:9px 22px;font-size:13.5px;color:var(--muted);box-shadow:var(--shadow);white-space:nowrap;display:flex;align-items:center;gap:9px;}
+.hint-grab{color:var(--accent);font-weight:700;}
+.hint-dot{color:var(--faint);}
+
+@media (max-width:1180px){.panel-left{width:300px;}.panel-right{width:268px;}}
+</style>
+</head>
+<body>
+
+<div id="canvas-container"><canvas id="c"></canvas></div>
+<div id="labels-layer"></div>
+
+<header class="header">
+  <div class="h-badge">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.7" stroke-linejoin="round">
+      <path d="M12 3 L4 19"/><path d="M12 3 L20 19"/><ellipse cx="12" cy="19" rx="8" ry="2.6"/>
+    </svg>
+  </div>
+  <div class="header-title" data-i18n="header_title">Конус</div>
+  <div class="header-tag">r · h · l</div>
+  <div class="header-sub" data-i18n-html="header_sub">Круг-основание и вершина над его центром<br>тяните цветные ручки — радиус и высота</div>
+</header>
+
+<!-- LEFT -->
+<div class="panel panel-left" id="panel-left">
+  <div class="ld-list">
+    <h3 data-i18n="props_title">Что получается</h3>
+    <div id="metrics"></div>
+  </div>
+  <div class="ld-detail">
+    <button class="ld-back" onclick="window.showList()"><span>‹</span> <span data-i18n="back">Назад</span></button>
+    <div id="detail-content"></div>
+  </div>
+</div>
+
+<!-- RIGHT -->
+<div class="panel panel-right">
+  <h3 data-i18n="set_title" style="margin-bottom:13px;padding-left:2px;">Измерения</h3>
+  <div class="dim-slider sr">
+    <div class="ds-top">
+      <span class="ds-name"><span class="ds-key">r</span><span class="ds-dimname" data-i18n="dn_r">радиус</span></span>
+      <span class="ds-pill" id="pill-r">12.0</span>
+    </div>
+    <input type="range" min="1" max="100" step="0.5" value="12" id="slider-r" oninput="window.setDim('r',+this.value)">
+  </div>
+  <div class="dim-slider sh">
+    <div class="ds-top">
+      <span class="ds-name"><span class="ds-key">h</span><span class="ds-dimname" data-i18n="dn_h">высота</span></span>
+      <span class="ds-pill" id="pill-h">16.0</span>
+    </div>
+    <input type="range" min="1" max="100" step="0.5" value="16" id="slider-h" oninput="window.setDim('h',+this.value)">
+  </div>
+
+  <div class="slant-card" onclick="window.openDetail('l')" style="cursor:pointer;">
+    <span class="slant-key">l</span>
+    <span class="slant-text"><span class="slant-name" data-i18n="slant_name">Образующая</span><span class="slant-formula">√(r² + h²)</span></span>
+    <span class="slant-val" id="slant-val">20.0</span>
+  </div>
+
+  <div class="show-label" data-i18n="show_title">Показать</div>
+  <div class="show-chip" id="chip-unroll" onclick="window.toggleUnroll()">
+    <div class="chip-ico">🍕</div>
+    <div class="chip-text"><span class="chip-name" data-i18n="ch_unroll">Развёртка в сектор</span><span class="chip-sub">⌔ радиус l</span></div>
+    <div class="chip-state"></div>
+  </div>
+  <div class="show-chip" id="chip-section" onclick="window.toggleSection()">
+    <div class="chip-ico">📐</div>
+    <div class="chip-text"><span class="chip-name" data-i18n="ch_section">Осевое сечение</span><span class="chip-sub">△ 2r · h</span></div>
+    <div class="chip-state"></div>
+  </div>
+</div>
+
+<div class="hint-bar" data-i18n-html="hint">
+  <span class="hint-grab">Тяните ручки</span><span>— размер</span><span class="hint-dot">·</span>
+  <span>фон — поворот</span><span class="hint-dot">·</span><span>клик по конусу — стенка или основание</span>
+</div>
+
+<script>
+const I18N={
+ru:{
+  page_title:'Конус',header_title:'Конус',
+  header_sub:'Круг-основание и вершина над его центром<br>тяните цветные ручки — радиус и высота',
+  props_title:'Что получается',set_title:'Измерения',back:'Назад',show_title:'Показать',
+  dn_r:'радиус',dn_h:'высота',slant_name:'Образующая',
+  ch_unroll:'Развёртка в сектор',ch_section:'Осевое сечение',
+  hint:'<span class="hint-grab">Тяните ручки</span><span>— размер</span><span class="hint-dot">·</span><span>фон — поворот</span><span class="hint-dot">·</span><span>клик по конусу — стенка или основание</span>',
+  m_r:'Радиус',m_h:'Высота',m_l:'Образующая',m_base:'Площадь основания',m_lat:'Боковая поверхность',m_surf:'Полная поверхность',m_vol:'Объём',
+  sub_r:'от оси до края',sub_h:'от центра до вершины',sub_l:'от вершины до края',
+  unit_len:'ед.',unit_area:'ед²',unit_vol:'ед³',
+},
+kz:{
+  page_title:'Конус',header_title:'Конус',
+  header_sub:'Дөңгелек-табан және оның центрі үстіндегі төбе<br>түсті тұтқаларды сүйреңіз — радиус пен биіктік',
+  props_title:'Не шығады',set_title:'Өлшемдер',back:'Артқа',show_title:'Көрсету',
+  dn_r:'радиус',dn_h:'биіктік',slant_name:'Жасаушы',
+  ch_unroll:'Секторға жаю',ch_section:'Білік қимасы',
+  hint:'<span class="hint-grab">Тұтқаларды сүйреңіз</span><span>— өлшем</span><span class="hint-dot">·</span><span>фон — бұру</span><span class="hint-dot">·</span><span>конусты басу — қабырға не табан</span>',
+  m_r:'Радиус',m_h:'Биіктік',m_l:'Жасаушы',m_base:'Табан ауданы',m_lat:'Бүйір беті',m_surf:'Толық бет',m_vol:'Көлем',
+  sub_r:'біліктен шетке',sub_h:'центрден төбеге',sub_l:'төбеден шетке',
+  unit_len:'бір.',unit_area:'бір²',unit_vol:'бір³',
+},
+en:{
+  page_title:'Cone',header_title:'Cone',
+  header_sub:'A circular base with an apex above its centre<br>drag the coloured handles — radius and height',
+  props_title:'What you get',set_title:'Dimensions',back:'Back',show_title:'Show',
+  dn_r:'radius',dn_h:'height',slant_name:'Slant height',
+  ch_unroll:'Unroll to a sector',ch_section:'Axial section',
+  hint:'<span class="hint-grab">Drag handles</span><span>— resize</span><span class="hint-dot">·</span><span>background — rotate</span><span class="hint-dot">·</span><span>click the cone — wall or base</span>',
+  m_r:'Radius',m_h:'Height',m_l:'Slant height',m_base:'Base area',m_lat:'Lateral surface',m_surf:'Total surface',m_vol:'Volume',
+  sub_r:'axis to the rim',sub_h:'centre to apex',sub_l:'apex to the rim',
+  unit_len:'u',unit_area:'u²',unit_vol:'u³',
+}
+};
+const LANG=(()=>{const q=new URLSearchParams(location.search).get('lang');return(q&&I18N[q])?q:'ru';})();
+const tr=key=>(I18N[LANG]&&I18N[LANG][key])!==undefined?I18N[LANG][key]:I18N.ru[key];
+function applyStaticI18N(){
+  document.documentElement.lang=LANG;
+  const tv=tr('page_title');if(tv)document.title=tv;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{const v=tr(el.getAttribute('data-i18n'));if(v!==undefined)el.textContent=v;});
+  document.querySelectorAll('[data-i18n-html]').forEach(el=>{const v=tr(el.getAttribute('data-i18n-html'));if(v!==undefined)el.innerHTML=v;});
+}
+applyStaticI18N();
+
+const PI=Math.PI;
+const f1=x=>x.toFixed(1);
+const f2=x=>x.toFixed(2);
+const slant=()=>Math.hypot(window.A.r,window.A.h);
+
+window.A={r:12,h:16};
+
+const METRICS=[
+  {key:'r',   ico:'📏', i:'m_r',   val:()=>window.A.r,                              sub:()=>tr('sub_r'),                          unit:'unit_len'},
+  {key:'h',   ico:'📐', i:'m_h',   val:()=>window.A.h,                              sub:()=>tr('sub_h'),                          unit:'unit_len'},
+  {key:'l',   ico:'📈', i:'m_l',   val:()=>slant(),                                 sub:()=>`√(${f1(window.A.r)}² + ${f1(window.A.h)}²)`, unit:'unit_len'},
+  {key:'base',ico:'🥏', i:'m_base',val:()=>PI*window.A.r*window.A.r,                sub:()=>`π × ${f1(window.A.r)}²`,             unit:'unit_area'},
+  {key:'lat', ico:'🍕', i:'m_lat', val:()=>PI*window.A.r*slant(),                   sub:()=>`π × ${f1(window.A.r)} × ${f1(slant())}`, unit:'unit_area'},
+  {key:'surf',ico:'🔺', i:'m_surf',val:()=>PI*window.A.r*(window.A.r+slant()),      sub:()=>`πr(r + l)`,                          unit:'unit_area'},
+  {key:'vol', ico:'🍦', i:'m_vol', val:()=>(1/3)*PI*window.A.r*window.A.r*window.A.h,sub:()=>`⅓ × π × ${f1(window.A.r)}² × ${f1(window.A.h)}`, unit:'unit_vol'},
+];
+function renderMetrics(){
+  document.getElementById('metrics').innerHTML=METRICS.map(m=>`
+    <div class="metric" data-key="${m.key}" onclick="window.openDetail('${m.key}')">
+      <div class="metric-ico">${m.ico}</div>
+      <div class="metric-main"><span class="metric-name">${tr(m.i)}</span><span class="metric-sub" id="ms-${m.key}"></span></div>
+      <span class="metric-val" id="mv-${m.key}">—</span>
+    </div>`).join('');
+}
+function updateMetricValues(){
+  METRICS.forEach(m=>{
+    const v=document.getElementById('mv-'+m.key);if(v)v.textContent=f1(m.val());
+    const s=document.getElementById('ms-'+m.key);if(s)s.textContent=m.sub();
+  });
+  [['r',window.A.r],['h',window.A.h]].forEach(([k,val])=>{
+    document.getElementById('pill-'+k).textContent=f1(val);
+    document.getElementById('slider-'+k).style.setProperty('--fill',((val-1)/99*100)+'%');
+  });
+  document.getElementById('slant-val').textContent=f1(slant());
+}
+renderMetrics();
+</script>
+
+<script type="importmap">
+{"imports":{"three":"../../libs/vendor/three-0.160.0/three.module.js"}}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+const canvas=document.getElementById('c');
+const renderer=new THREE.WebGLRenderer({canvas,antialias: true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+
+const scene=new THREE.Scene();scene.background=null;
+const camera=new THREE.PerspectiveCamera(40,innerWidth/innerHeight,0.1,8000);
+const CAM_DIR=new THREE.Vector3(3.6,2.4,14).normalize();
+let camDist=14,camDistTarget=14,userZoom=1.0;
+let showUnroll=false,showSection=false;
+
+const PI=Math.PI;
+const slant=()=>Math.hypot(window.A.r,window.A.h);
+
+function contentR(){
+  const {r,h}=window.A;
+  let R=Math.hypot(r,h/2)*1.15;
+  R=Math.max(R,Math.hypot(r+r*0.36,h/2));
+  if(showUnroll){ R=Math.max(R, slant()+r*0.4); }   // sector of radius l beside the cone
+  return R;
+}
+function computeCamTarget(){
+  const R=contentR()*1.2;
+  const fovy=camera.fov*PI/180;
+  const dV=R/Math.sin(fovy/2);
+  const usableW=Math.max(420,innerWidth-660);
+  const fovx=2*Math.atan(Math.tan(fovy/2)*usableW/innerHeight);
+  const dH=R/Math.sin(fovx/2);
+  return Math.max(dV,dH)*userZoom;
+}
+function applyCamera(){camera.position.copy(CAM_DIR).multiplyScalar(camDist);camera.lookAt(0,0,0);}
+
+scene.add(new THREE.AmbientLight(0xffffff,0.66));
+const kL=new THREE.DirectionalLight(0xffffff,1.12);kL.position.set(6,11,9);scene.add(kL);
+const fL=new THREE.DirectionalLight(0xc4b5fd,0.42);fL.position.set(-8,-3,-5);scene.add(fL);
+const rL=new THREE.DirectionalLight(0xffffff,0.5);rL.position.set(-4,8,-9);scene.add(rL);
+
+const V=(x,y,z)=>new THREE.Vector3(x,y,z);
+
+const shadowTex=(()=>{const cv=document.createElement('canvas');cv.width=cv.height=256;const x=cv.getContext('2d');
+  const g=x.createRadialGradient(128,128,8,128,128,124);g.addColorStop(0,'rgba(60,30,90,0.28)');g.addColorStop(1,'rgba(60,30,90,0)');
+  x.fillStyle=g;x.fillRect(0,0,256,256);return new THREE.CanvasTexture(cv);})();
+const shadow=new THREE.Mesh(new THREE.PlaneGeometry(1,1),new THREE.MeshBasicMaterial({map:shadowTex,transparent:true,depthWrite:false}));
+shadow.rotation.x=-PI/2;scene.add(shadow);
+
+const root=new THREE.Group();scene.add(root);
+const obj=new THREE.Group();root.add(obj);
+
+const COL={body:0xa78bfa,bodyDeep:0x7c3aed,r:0xdb2777,h:0x0d9488,l:0x7c3aed,sector:0x7c3aed,section:0x1a1722};
+const bodyMat=new THREE.MeshStandardMaterial({color:COL.body,roughness:0.32,metalness:0.05,transparent:true,opacity:0.52,side:THREE.DoubleSide,depthWrite:false});
+
+let bodyMesh=null,ringGroup=null,dimGroup=null,unrollGroup=null,sectionGroup=null;
+const handles=[];
+
+function cyl(from,to,rr,mat){
+  const dir=new THREE.Vector3().subVectors(to,from),len=dir.length();
+  const m=new THREE.Mesh(new THREE.CylinderGeometry(rr,rr,len,16),mat);
+  m.position.addVectors(from,to).multiplyScalar(0.5);
+  if(len>1e-6)m.quaternion.setFromUnitVectors(V(0,1,0),dir.normalize());return m;
+}
+function cone3(at,dir,rr,hh,mat){const m=new THREE.Mesh(new THREE.ConeGeometry(rr,hh,16),mat);m.position.copy(at);m.quaternion.setFromUnitVectors(V(0,1,0),dir.clone().normalize());return m;}
+function torus(radius,tube,seg,mat){return new THREE.Mesh(new THREE.TorusGeometry(radius,tube,12,seg),mat);}
+function disposeGroup(g){if(!g)return;g.traverse(o=>{if(o.geometry)o.geometry.dispose();});obj.remove(g);}
+
+function buildScene(){
+  const {r,h}=window.A,hy=h/2,l=slant();
+  const S=Math.max(r,h);
+  const er=S*0.009,tR=S*0.0045,aR=S*0.018,aH=S*0.05,hR=S*0.024,g=r*0.36;
+  disposeGroup(bodyMesh);disposeGroup(ringGroup);disposeGroup(dimGroup);disposeGroup(unrollGroup);disposeGroup(sectionGroup);
+  handles.length=0;
+
+  // body: cone (apex up at +hy, base at -hy)
+  bodyMesh=new THREE.Mesh(new THREE.ConeGeometry(r,h,72,1,false),bodyMat);
+  obj.add(bodyMesh);
+
+  // base ring + 2 slant edges + apex dot
+  ringGroup=new THREE.Group();
+  const ringMat=new THREE.MeshStandardMaterial({color:COL.bodyDeep,roughness:0.34,metalness:0.15});
+  const base=torus(r,er,96,ringMat);base.rotation.x=PI/2;base.position.y=-hy;ringGroup.add(base);
+  const slMat=new THREE.MeshStandardMaterial({color:COL.bodyDeep,roughness:0.4,metalness:0.1,transparent:true,opacity:0.6});
+  [0,PI/2,PI,3*PI/2].forEach(a=>ringGroup.add(cyl(V(r*Math.cos(a),-hy,r*Math.sin(a)),V(0,hy,0),er*0.55,slMat)));
+  const apex=new THREE.Mesh(new THREE.SphereGeometry(er*1.6,16,12),ringMat);apex.position.set(0,hy,0);ringGroup.add(apex);
+  obj.add(ringGroup);
+
+  // dimension lines + handles
+  dimGroup=new THREE.Group();
+  const rMat=new THREE.MeshStandardMaterial({color:COL.r,roughness:0.34,metalness:0.18});
+  const hMat=new THREE.MeshStandardMaterial({color:COL.h,roughness:0.34,metalness:0.18});
+  const lMat=new THREE.MeshStandardMaterial({color:COL.l,roughness:0.34,metalness:0.18});
+  // radius on the base from centre to rim
+  dimGroup.add(cyl(V(0,-hy,0),V(r*0.86,-hy,0),tR,rMat));
+  dimGroup.add(cone3(V(r*0.86,-hy,0),V(1,0,0),aR*0.6,aH*0.6,rMat));
+  // height along the axis (centre of base to apex)
+  dimGroup.add(cyl(V(0,-hy,0),V(0,hy,0),tR*0.85,hMat));
+  // slant edge highlight (front rim to apex) in violet
+  dimGroup.add(cyl(V(0,hy,0),V(0,-hy,r),tR*0.85,lMat));   // note: rim point at z=r (front)
+  // height side dimension line at x=r+g
+  dimGroup.add(cyl(V(r+g,-hy,0),V(r+g,hy,0),tR,hMat));
+  dimGroup.add(cone3(V(r+g,hy,0),V(0,1,0),aR*0.6,aH*0.6,hMat));
+  dimGroup.add(cone3(V(r+g,-hy,0),V(0,-1,0),aR*0.6,aH*0.6,hMat));
+  // handles: radius at base rim (+x), height at apex
+  const hMatR=new THREE.MeshStandardMaterial({color:COL.r,roughness:0.2,metalness:0.3,emissive:COL.r,emissiveIntensity:0.2});
+  const hMatH=new THREE.MeshStandardMaterial({color:COL.h,roughness:0.2,metalness:0.3,emissive:COL.h,emissiveIntensity:0.2});
+  const hr=new THREE.Mesh(new THREE.SphereGeometry(hR,22,18),hMatR);hr.position.set(r,-hy,0);hr.userData.handle='r';dimGroup.add(hr);
+  const hh=new THREE.Mesh(new THREE.SphereGeometry(hR,22,18),hMatH);hh.position.set(0,hy,0);hh.userData.handle='h';dimGroup.add(hh);
+  handles.push({mesh:hr,key:'r',dir:V(1,0,0),factor:1});
+  handles.push({mesh:hh,key:'h',dir:V(0,1,0),factor:2});
+  obj.add(dimGroup);
+
+  // unrolled lateral surface = sector of radius l, arc length 2πr → angle θ=2πr/l
+  // (apex at origin, opening upward; drawn with 4 meshes total)
+  unrollGroup=new THREE.Group();
+  {
+    const theta=2*PI*r/l;
+    const segs=Math.max(10,Math.min(180,Math.round(theta*40)));
+    const a0=PI/2-theta/2, a1=PI/2+theta/2;
+    const shape=new THREE.Shape();
+    shape.moveTo(0,0);
+    for(let i=0;i<=segs;i++){const a=a0+(a1-a0)*i/segs;shape.lineTo(l*Math.cos(a),l*Math.sin(a));}
+    shape.lineTo(0,0);
+    const secMat=new THREE.MeshStandardMaterial({color:COL.sector,roughness:0.45,transparent:true,opacity:0.40,side:THREE.DoubleSide});
+    const fill=new THREE.Mesh(new THREE.ShapeGeometry(shape,segs),secMat);
+    const bMat=new THREE.MeshStandardMaterial({color:COL.bodyDeep,roughness:0.4});
+    const arc=new THREE.Mesh(new THREE.TorusGeometry(l,tR*0.9,6,segs,theta),bMat);
+    arc.rotation.z=a0;     // torus arc starts at +x → shift to a0
+    const p0=V(l*Math.cos(a0),l*Math.sin(a0),0), p1=V(l*Math.cos(a1),l*Math.sin(a1),0);
+    const sec2d=new THREE.Group();
+    sec2d.add(fill);sec2d.add(arc);
+    sec2d.add(cyl(V(0,0,0),p0,tR*0.9,bMat));
+    sec2d.add(cyl(V(0,0,0),p1,tR*0.9,bMat));
+    sec2d.position.set(0,-l*0.4,-(r+r*0.5));
+    unrollGroup.add(sec2d);
+  }
+  unrollGroup.visible=showUnroll;obj.add(unrollGroup);
+
+  // axial section: isosceles triangle, base 2r at bottom, apex on top (z=0 plane)
+  sectionGroup=new THREE.Group();
+  const triShape=new THREE.Shape();
+  triShape.moveTo(-r,-hy);triShape.lineTo(r,-hy);triShape.lineTo(0,hy);triShape.lineTo(-r,-hy);
+  const triMat=new THREE.MeshStandardMaterial({color:COL.section,transparent:true,opacity:0.30,side:THREE.DoubleSide,depthWrite:false});
+  const tri=new THREE.Mesh(new THREE.ShapeGeometry(triShape),triMat);
+  sectionGroup.add(tri);
+  const tbMat=new THREE.MeshStandardMaterial({color:COL.section,roughness:0.4});
+  [[V(-r,-hy,0),V(r,-hy,0)],[V(r,-hy,0),V(0,hy,0)],[V(0,hy,0),V(-r,-hy,0)]].forEach(([p,q])=>sectionGroup.add(cyl(p,q,tR*0.8,tbMat)));
+  sectionGroup.visible=showSection;obj.add(sectionGroup);
+
+  shadow.scale.setScalar(r*2.6+r);
+  shadow.position.y=-hy-r*0.05;
+  updateLabelAnchors();
+}
+
+/* ── LABELS ── */
+const layer=document.getElementById('labels-layer');
+function mkLabel(cls){const d=document.createElement('div');d.className='dim-label '+cls;layer.appendChild(d);return d;}
+const L_r=mkLabel('lr'),L_h=mkLabel('lh'),L_l=mkLabel('ll'),L_uS=mkLabel('ll'),L_sec=mkLabel('sec');
+const anc={r:V(),h:V(),l:V(),uS:V(),sec:V()};
+function updateLabelAnchors(){
+  const {r,h}=window.A,hy=h/2,g=r*0.36,l=slant();
+  anc.r.set(r*0.45,-hy,0);
+  anc.h.set(r+g+r*0.12,0,0);
+  anc.l.set(r*0.30,0,r*0.55);                       // mid of the front slant edge
+  anc.uS.set(0,l*0.05,-(r+r*0.5));
+  anc.sec.set(0,-hy*0.2,0);
+  L_r.textContent='r = '+f1(r);
+  L_h.textContent='h = '+f1(h);
+  L_l.textContent='l = '+f1(l);
+  L_uS.textContent='S = '+f1(PI*r*l);
+  L_sec.textContent='△ '+f1(r*h);
+}
+function project(localVec){const w=localVec.clone().applyMatrix4(obj.matrixWorld).project(camera);return {x:(w.x*0.5+0.5)*innerWidth,y:(-w.y*0.5+0.5)*innerHeight,behind:w.z>1};}
+function place(el,v,vis){if(!vis){el.classList.add('hidden');return;}const s=project(v);if(s.behind){el.classList.add('hidden');return;}el.classList.remove('hidden');el.style.left=s.x+'px';el.style.top=s.y+'px';}
+function updateLabels(){
+  place(L_r,anc.r,true);place(L_h,anc.h,true);place(L_l,anc.l,true);
+  place(L_uS,anc.uS,showUnroll);
+  place(L_sec,anc.sec,showSection);
+}
+
+/* ── DETAIL ── */
+const DETAIL_ALL={
+ru:{
+  r:{tag:'Радиус',p:'Радиус основания — расстояние от оси конуса до края круга-основания. Основание конуса — это круг радиуса r.'},
+  h:{tag:'Высота',p:'Высота — расстояние от центра основания до вершины (по перпендикуляру). Вместе с радиусом высота однозначно задаёт прямой круговой конус.'},
+  l:{tag:'Образующая',p:'Образующая l — отрезок от вершины до любой точки края основания (длина наклонной стенки). Радиус, высота и образующая образуют прямоугольный треугольник, поэтому по теореме Пифагора l = √(r² + h²).'},
+  base:{tag:'Основание',p:'Основание — круг площадью S = π·r². У конуса всего одно основание (в отличие от цилиндра с двумя).'},
+  lat:{tag:'Боковая поверхность',p:'Если разрезать боковую стенку вдоль образующей и развернуть, получится сектор круга радиуса l, дуга которого равна длине окружности основания 2πr. Площадь сектора S = π·r·l. Включите «Развёртку в сектор».'},
+  surf:{tag:'Полная поверхность',p:'Полная поверхность = боковая стенка + круг-основание: S = π·r·l + π·r² = π·r·(r + l).'},
+  vol:{tag:'Объём',p:'Объём конуса ровно в 3 раза меньше объёма цилиндра с теми же основанием и высотой: V = ⅓·π·r²·h. Три таких конуса полностью заполняют один цилиндр.'},
+},
+kz:{
+  r:{tag:'Радиус',p:'Табан радиусы — конус білігінен табан-дөңгелектің шетіне дейінгі қашықтық. Конус табаны — r радиусты дөңгелек.'},
+  h:{tag:'Биіктік',p:'Биіктік — табан центрінен төбеге дейінгі қашықтық (перпендикуляр бойынша). Радиус пен биіктік тік дөңгелек конусты толық анықтайды.'},
+  l:{tag:'Жасаушы',p:'Жасаушы l — төбеден табан шетінің кез келген нүктесіне дейінгі кесінді. Радиус, биіктік және жасаушы тікбұрышты үшбұрыш құрайды, сондықтан Пифагор бойынша l = √(r² + h²).'},
+  base:{tag:'Табан',p:'Табан — ауданы S = π·r² дөңгелек. Конуста бір ғана табан бар (цилиндрде екеу).'},
+  lat:{tag:'Бүйір беті',p:'Бүйір қабырғаны жасаушы бойымен кесіп жайсақ, радиусы l, доғасы 2πr-ге тең сектор шығады. Сектор ауданы S = π·r·l. «Секторға жаюды» қосыңыз.'},
+  surf:{tag:'Толық бет',p:'Толық бет = бүйір қабырға + табан-дөңгелек: S = π·r·l + π·r² = π·r·(r + l).'},
+  vol:{tag:'Көлем',p:'Конус көлемі дәл сондай табаны мен биіктігі бар цилиндрден 3 есе кіші: V = ⅓·π·r²·h. Үш конус бір цилиндрді толық толтырады.'},
+},
+en:{
+  r:{tag:'Radius',p:'The base radius is the distance from the cone\'s axis to the rim of the base circle. The base of a cone is a circle of radius r.'},
+  h:{tag:'Height',p:'The height is the perpendicular distance from the centre of the base to the apex. Together with the radius it fully defines a right circular cone.'},
+  l:{tag:'Slant height',p:'The slant height l is the segment from the apex to any point on the rim of the base. Radius, height and slant height form a right triangle, so by Pythagoras l = √(r² + h²).'},
+  base:{tag:'Base',p:'The base is a circle of area S = π·r². A cone has only one base (unlike a cylinder with two).'},
+  lat:{tag:'Lateral surface',p:'Cut the wall along a slant line and unroll it: you get a circular sector of radius l whose arc equals the base circumference 2πr. The sector area is S = π·r·l. Turn on "Unroll to a sector".'},
+  surf:{tag:'Total surface',p:'Total surface = the wall + the base circle: S = π·r·l + π·r² = π·r·(r + l).'},
+  vol:{tag:'Volume',p:'A cone\'s volume is exactly one third of the cylinder with the same base and height: V = ⅓·π·r²·h. Three such cones fill one cylinder completely.'},
+}
+};
+const DETAIL=DETAIL_ALL[LANG]||DETAIL_ALL.ru;
+
+let savedUnroll=false,savedSection=false;
+function openDetail(key){
+  const d=DETAIL[key];if(!d)return;
+  const {r,h}=window.A,l=slant();
+  const m=METRICS.find(x=>x.key===key);
+  // remember overlay state when first entering detail, so we can restore on close
+  if(!document.getElementById('panel-left').classList.contains('detail')){savedUnroll=showUnroll;savedSection=showSection;}
+  document.querySelectorAll('.metric').forEach(el=>el.classList.toggle('active',el.dataset.key===key));
+  if(key==='lat'&&!showUnroll) window.toggleUnroll();
+  if(key==='l'&&!showSection) window.toggleSection();
+  const calc={
+    r:`r = ${f1(r)}`,
+    h:`h = ${f1(h)}`,
+    l:`l = √(r² + h²)\n  = √(${f1(r)}² + ${f1(h)}²) = ${f2(l)}`,
+    base:`S = π · r² = π · ${f1(r)}² = ${f2(PI*r*r)}`,
+    lat:`S = π · r · l\n  = π · ${f1(r)} · ${f1(l)} = ${f2(PI*r*l)}`,
+    surf:`S = π·r·(r + l)\n  = π·${f1(r)}·(${f1(r)}+${f1(l)}) = ${f2(PI*r*(r+l))}`,
+    vol:`V = ⅓ · π · r² · h\n  = ⅓ · π · ${f1(r)}² · ${f1(h)} = ${f2((1/3)*PI*r*r*h)}`,
+  }[key];
+  document.getElementById('detail-content').innerHTML=`
+    <div class="d-tag">${d.tag}</div>
+    <div class="d-title">${tr(m.i)}</div>
+    <div class="d-bigval"><b>${f1(m.val())}</b><span>${tr(m.unit)}</span></div>
+    <div class="d-formula">${calc}</div>
+    <div class="d-para">${d.p}</div>`;
+  document.getElementById('panel-left').classList.add('detail');
+  currentDetail=key;markInteract();
+}
+let currentDetail=null;
+window.openDetail=openDetail;
+window.showList=function(){
+  document.getElementById('panel-left').classList.remove('detail');currentDetail=null;
+  document.querySelectorAll('.metric').forEach(m=>m.classList.remove('active'));
+  if(showUnroll!==savedUnroll) window.toggleUnroll();
+  if(showSection!==savedSection) window.toggleSection();
+};
+
+/* ── CONTROLS ── */
+window.setDim=function(k,val){
+  window.A[k]=val;buildScene();updateMetricValues();
+  if(currentDetail) openDetail(currentDetail);
+  markInteract();
+};
+window.toggleUnroll=function(){showUnroll=!showUnroll;document.getElementById('chip-unroll').classList.toggle('on',showUnroll);if(unrollGroup)unrollGroup.visible=showUnroll;markInteract();};
+window.toggleSection=function(){showSection=!showSection;document.getElementById('chip-section').classList.toggle('on',showSection);if(sectionGroup)sectionGroup.visible=showSection;markInteract();};
+
+/* ── RAYCAST ── */
+const ray=new THREE.Raycaster(),m2=new THREE.Vector2();
+function pick(e,objs){m2.x=(e.clientX/innerWidth)*2-1;m2.y=-(e.clientY/innerHeight)*2+1;ray.setFromCamera(m2,camera);return ray.intersectObjects(objs,false);}
+
+let mode=null,dragKey=null,dragFactor=1,pxVec=null,startVal=0,startMouse=null;
+let last={x:0,y:0},dd=0,isDragging=false,rotX=0.24;
+let lastInteract=performance.now()-11000,autoSpeed=0;const AUTO_TARGET=0.0015,IDLE_MS=15000;
+function markInteract(){lastInteract=performance.now();}
+function screenPxPerUnit(dirLocal){const o=project(V(0,0,0)),p=project(dirLocal);return {x:p.x-o.x,y:p.y-o.y};}
+
+canvas.addEventListener('mousedown',e=>{
+  markInteract();
+  const hHit=pick(e,handles.map(h=>h.mesh));
+  if(hHit.length>0){
+    const key=hHit[0].object.userData.handle,hd=handles.find(h=>h.key===key);
+    mode='handle';dragKey=key;dragFactor=hd.factor;startVal=window.A[key];startMouse={x:e.clientX,y:e.clientY};
+    pxVec=screenPxPerUnit(hd.dir);canvas.style.cursor='grabbing';return;
+  }
+  mode='rotate';last={x:e.clientX,y:e.clientY};isDragging=false;dd=0;
+});
+canvas.addEventListener('mousemove',e=>{
+  if(mode==='handle'){
+    const mdx=e.clientX-startMouse.x,mdy=e.clientY-startMouse.y,denom=pxVec.x*pxVec.x+pxVec.y*pxVec.y;
+    if(denom>1){
+      const units=(mdx*pxVec.x+mdy*pxVec.y)/denom;
+      const nv=Math.max(1,Math.min(100,startVal+dragFactor*units));
+      window.A[dragKey]=Math.round(nv*2)/2;
+      buildScene();updateMetricValues();
+      document.getElementById('slider-'+dragKey).value=window.A[dragKey];
+      if(currentDetail)openDetail(currentDetail);
+    }
+    markInteract();return;
+  }
+  if(mode==='rotate'){
+    dd=Math.hypot(e.clientX-last.x,e.clientY-last.y);if(dd>4)isDragging=true;
+    if(isDragging){root.rotation.y+=(e.clientX-last.x)*0.010;rotX=Math.max(-1.1,Math.min(1.1,rotX+(e.clientY-last.y)*0.008));root.rotation.x=rotX;markInteract();}
+    last={x:e.clientX,y:e.clientY};return;
+  }
+  const hHit=pick(e,handles.map(h=>h.mesh));canvas.style.cursor=hHit.length>0?'grab':'default';
+});
+window.addEventListener('mouseup',()=>{if(mode==='handle')canvas.style.cursor='default';mode=null;dragKey=null;});
+
+canvas.addEventListener('click',e=>{
+  if(isDragging||mode==='handle')return;
+  if(!bodyMesh)return;
+  const hit=pick(e,[bodyMesh]);
+  if(hit.length>0){
+    const p=hit[0].point.clone();obj.updateWorldMatrix(true,false);
+    p.applyMatrix4(new THREE.Matrix4().copy(obj.matrixWorld).invert());
+    const hy=window.A.h/2;
+    if(p.y<=-hy+Math.max(0.001,hy*0.04)) openDetail('base'); else openDetail('lat');
+  }
+  markInteract();
+});
+canvas.addEventListener('wheel',e=>{e.preventDefault();userZoom=Math.max(0.6,Math.min(1.7,userZoom+e.deltaY*0.0015));markInteract();},{passive:false});
+window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+
+/* ── LOOP ── */
+let t=0;
+function animate(){
+  requestAnimationFrame(animate);t+=0.016;
+  const idle=performance.now()-lastInteract;
+  if(idle>IDLE_MS)autoSpeed+=(AUTO_TARGET-autoSpeed)*0.025;else autoSpeed+=(0-autoSpeed)*0.18;
+  root.rotation.y+=autoSpeed;root.rotation.x=rotX;
+  if(mode!=='handle'){camDistTarget=computeCamTarget();}
+  camDist+=(camDistTarget-camDist)*0.18;applyCamera();
+  const pulse=idle>IDLE_MS?(1+Math.sin(t*2.2)*0.11):1;
+  handles.forEach(h=>h.mesh.scale.setScalar(pulse));
+  renderer.render(scene,camera);
+  obj.updateWorldMatrix(true,false);
+  updateLabels();
+}
+
+root.rotation.x=rotX;
+buildScene();updateMetricValues();
+camDistTarget=computeCamTarget();camDist=camDistTarget;applyCamera();
+animate();
+</script>
+</body>
+</html>

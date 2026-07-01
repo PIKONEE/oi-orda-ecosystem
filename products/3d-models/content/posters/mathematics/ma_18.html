@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="page_title">Симметрия</title>
+<style>
+
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#f3f2f6;--surface:rgba(255,255,255,0.94);--border:rgba(30,20,55,0.08);
+  --text:#1b1525;--muted:#6b6377;--faint:#a59cb2;
+  --fig:#7c3aed;--img:#e11d48;--h:#ea580c;
+  --accent:#7c3aed;--accent-dim:rgba(124,58,237,0.10);
+  --shadow:0 2px 22px rgba(40,25,80,0.07);--shadow-lg:0 18px 56px rgba(45,28,90,0.15);
+}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);overflow:hidden;height:100vh;}
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(1200px 760px at 70% 30%, rgba(167,139,250,0.12), transparent 60%),radial-gradient(820px 560px at 16% 84%, rgba(225,29,72,0.05), transparent 55%);}
+#canvas-container{position:fixed;inset:0;z-index:1;}
+#labels-layer{position:fixed;inset:0;z-index:40;pointer-events:none;overflow:hidden;}
+.dim-label{position:absolute;transform:translate(-50%,-50%);font-family:'Roboto Mono',monospace;font-size:14px;font-weight:700;padding:2px 8px;border-radius:8px;white-space:nowrap;letter-spacing:-0.3px;background:rgba(255,255,255,0.97);box-shadow:0 3px 12px rgba(40,25,80,0.13);transition:opacity 0.18s;}
+.dim-label.hidden{opacity:0;}
+.dim-label.la{background:var(--fig);color:#fff;border:none;box-shadow:0 3px 12px rgba(124,58,237,0.4);}
+.dim-label.li{background:var(--img);color:#fff;border:none;box-shadow:0 3px 12px rgba(225,29,72,0.4);}
+.dim-label.lo{background:var(--h);color:#fff;border:none;box-shadow:0 3px 12px rgba(234,88,12,0.4);}
+.header{position:fixed;top:0;left:0;right:0;z-index:200;background:var(--surface);border-bottom:1px solid var(--border);padding:0 38px;height:84px;display:flex;align-items:center;gap:15px;box-shadow:var(--shadow);}
+.h-badge{width:46px;height:46px;border-radius:14px;flex-shrink:0;background:linear-gradient(135deg,#7c3aed,#a78bfa);display:flex;align-items:center;justify-content:center;box-shadow:0 7px 20px rgba(124,58,237,0.36);}
+.h-badge svg{width:25px;height:25px;}
+.header-title{font-size:24px;font-weight:800;letter-spacing:-0.5px;}
+.header-tag{font-family:'Roboto Mono',monospace;font-size:13px;color:var(--accent);background:var(--accent-dim);padding:4px 11px;border-radius:8px;}
+.header-sub{font-size:14px;color:var(--muted);margin-left:auto;text-align:right;line-height:1.45;}
+.eq-banner{position:fixed;top:96px;left:50%;transform:translateX(-50%);z-index:150;background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-lg);padding:10px 24px;font-family:'Roboto Mono',monospace;font-size:16px;font-weight:700;color:var(--text);pointer-events:none;}
+.eq-banner b{color:var(--img);}
+.panel{position:fixed;z-index:100;background:var(--surface);border:1px solid var(--border);border-radius:22px;box-shadow:var(--shadow-lg);}
+.panel h3{font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;color:var(--faint);}
+.panel-left{left:22px;top:98px;width:330px;padding:18px 18px;overflow:hidden;min-height:280px;}
+.ld-list,.ld-detail{transition:transform 0.4s cubic-bezier(0.4,0,0.2,1),opacity 0.28s;}
+.ld-list h3{margin-bottom:12px;padding-left:4px;}
+.ld-detail{position:absolute;inset:18px 18px;transform:translateX(26px);opacity:0;pointer-events:none;overflow-y:auto;}
+.panel-left.detail .ld-list{transform:translateX(-26px);opacity:0;pointer-events:none;}
+.panel-left.detail .ld-detail{transform:translateX(0);opacity:1;pointer-events:auto;}
+.metric{display:flex;align-items:center;gap:12px;padding:13px 12px;border-radius:14px;cursor:pointer;border:1px solid transparent;transition:all 0.15s;margin-bottom:2px;}
+.metric:hover{background:rgba(40,25,80,0.04);}
+.metric.active{background:var(--accent-dim);border-color:rgba(124,58,237,0.22);}
+.metric-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0;}
+.metric-main{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;}
+.metric-name{font-size:15px;font-weight:700;line-height:1.15;}
+.metric-sub{font-family:'Roboto Mono',monospace;font-size:13px;color:var(--muted);}
+.metric-val{font-family:'Roboto Mono',monospace;font-size:21px;font-weight:500;color:var(--accent);letter-spacing:-1px;flex-shrink:0;}
+.ld-back{display:inline-flex;align-items:center;gap:5px;cursor:pointer;border:none;background:none;font-family:'Inter',sans-serif;font-size:14px;font-weight:700;color:var(--accent);padding:4px 6px 4px 0;margin-bottom:12px;}
+.d-tag{display:inline-block;padding:4px 12px;border-radius:99px;font-size:13px;font-weight:700;margin-bottom:10px;background:var(--accent-dim);color:var(--accent);}
+.d-title{font-size:22px;font-weight:800;letter-spacing:-0.4px;line-height:1.15;margin-bottom:14px;}
+.d-bigval{display:flex;align-items:baseline;gap:9px;margin-bottom:4px;}
+.d-bigval b{font-family:'Roboto Mono',monospace;font-size:35px;font-weight:500;color:var(--accent);letter-spacing:-1px;line-height:1;}
+.d-bigval span{font-size:14px;color:var(--muted);font-weight:600;}
+.d-formula{margin:13px 0 4px;padding:13px 15px;border-radius:13px;background:linear-gradient(135deg,rgba(167,139,250,0.12),rgba(124,58,237,0.05));border:1px solid rgba(124,58,237,0.16);font-family:'Roboto Mono',monospace;font-size:14px;color:#5b21b6;font-weight:500;line-height:1.95;white-space:pre-line;}
+.d-para{font-size:15px;line-height:1.62;color:#2c2735;margin-top:13px;}
+.panel-right{right:22px;top:98px;width:300px;padding:18px;}
+.seg-title{font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;color:var(--faint);margin:2px 2px 9px;}
+.mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;}
+.mode-grid.three{grid-template-columns:1fr 1fr 1fr;}
+.mode-btn{padding:11px 6px;border-radius:13px;border:1.5px solid var(--border);background:rgba(255,255,255,0.7);font-family:'Inter',sans-serif;font-size:13.5px;font-weight:700;color:var(--text);cursor:pointer;transition:all 0.15s;display:flex;flex-direction:column;align-items:center;gap:4px;}
+.mode-btn svg{width:26px;height:20px;}
+.mode-btn:hover{border-color:var(--accent);}
+.mode-btn.sel{border-color:var(--accent);background:var(--accent-dim);color:var(--accent);}
+.sliders{margin-bottom:6px;}
+.sl-row{margin-bottom:11px;}
+.sl-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;}
+.sl-name{font-size:14px;font-weight:700;}.sl-name b{font-family:'Roboto Mono',monospace;font-style:italic;color:var(--accent);}
+.sl-val{font-family:'Roboto Mono',monospace;font-size:16px;font-weight:600;color:var(--accent);background:var(--accent-dim);padding:2px 9px;border-radius:8px;}
+.sliders input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:3px;background:linear-gradient(90deg,var(--accent) var(--fill,50%),rgba(124,58,237,0.16) var(--fill,50%));outline:none;cursor:pointer;}
+.sliders input::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:19px;height:19px;border-radius:50%;background:#fff;border:3px solid var(--accent);box-shadow:0 3px 10px rgba(124,58,237,0.4);cursor:pointer;transition:transform 0.12s;}
+.sliders input::-webkit-slider-thumb:hover{transform:scale(1.16);}
+.show-chip{display:flex;align-items:center;gap:11px;width:100%;padding:10px 14px;margin-top:6px;border-radius:14px;cursor:pointer;background:rgba(40,25,80,0.035);border:1.5px solid transparent;transition:all 0.16s;}
+.show-chip:hover{background:rgba(40,25,80,0.06);}
+.show-chip.on{background:var(--accent-dim);border-color:rgba(124,58,237,0.30);}
+.chip-ico{width:32px;height:32px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:16px;background:rgba(124,58,237,0.10);transition:all 0.16s;}
+.show-chip.on .chip-ico{background:var(--accent);}
+.chip-text{flex:1;min-width:0;}.chip-name{font-size:14.5px;font-weight:700;}.chip-sub{font-size:12.5px;color:var(--muted);font-family:'Roboto Mono',monospace;}
+.chip-state{width:21px;height:21px;border-radius:50%;flex-shrink:0;border:2px solid rgba(40,25,80,0.16);display:flex;align-items:center;justify-content:center;transition:all 0.16s;}
+.show-chip.on .chip-state{background:var(--accent);border-color:var(--accent);}
+.show-chip.on .chip-state::after{content:'✓';color:#fff;font-size:13px;font-weight:700;}
+.hint-bar{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:100;background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:9px 22px;font-size:13.5px;color:var(--muted);box-shadow:var(--shadow);white-space:nowrap;display:flex;align-items:center;gap:9px;}
+.hint-grab{color:var(--accent);font-weight:700;}.hint-dot{color:var(--faint);}
+@media (max-width:1180px){.panel-left{width:296px;}.panel-right{width:272px;}}
+</style>
+</head>
+<body>
+<div id="canvas-container"><canvas id="c"></canvas></div>
+<div id="labels-layer"></div>
+<header class="header">
+  <div class="h-badge"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.7" stroke-linejoin="round"><path d="M12 3 L12 21"/><path d="M5 7 L9 12 L5 17 Z"/><path d="M19 7 L15 12 L19 17 Z"/></svg></div>
+  <div class="header-title" data-i18n="header_title">Симметрия</div>
+  <div class="header-tag" data-i18n="tag">симметрия — это движение</div>
+  <div class="header-sub" data-i18n-html="header_sub">Выберите тип симметрии и стройте образ<br>симметрия сохраняет расстояния и форму</div>
+</header>
+<div class="eq-banner" id="eq-banner"></div>
+<div class="panel panel-left" id="panel-left">
+  <div class="ld-list"><h3 data-i18n="props_title">Характеристики</h3><div id="metrics"></div></div>
+  <div class="ld-detail"><button class="ld-back" onclick="window.showList()"><span>‹</span> <span data-i18n="back">Назад</span></button><div id="detail-content"></div></div>
+</div>
+<div class="panel panel-right">
+  <div class="seg-title" data-i18n="type_title">Тип симметрии</div>
+  <div class="mode-grid" id="type-grid"></div>
+  <div class="seg-title" data-i18n="shape_title">Фигура</div>
+  <div class="mode-grid three" id="shape-grid"></div>
+  <div class="sliders" id="sliders"></div>
+  <div class="show-chip" id="chip-links" onclick="window.toggleLinks()"><div class="chip-ico">⇄</div><div class="chip-text"><span class="chip-name" data-i18n="ch_links">Связи точек</span><span class="chip-sub" data-i18n="ch_links_sub">отрезки A→A′</span></div><div class="chip-state"></div></div>
+  <div class="show-chip on" id="chip-grid" onclick="window.toggleGrid()"><div class="chip-ico">▦</div><div class="chip-text"><span class="chip-name" data-i18n="ch_grid">Сетка</span><span class="chip-sub" data-i18n="ch_grid_sub">координатная плоскость</span></div><div class="chip-state"></div></div>
+</div>
+<div class="hint-bar" data-i18n-html="hint"><span class="hint-grab">Двигайте ось / центр</span><span class="hint-dot">·</span><span>фон — поворот</span><span class="hint-dot">·</span><span>клик по строке — пояснение</span></div>
+
+<script>
+const TYPES=['axial','central'];
+const SHAPES_LIST=['flag','arrow','tri'];
+const SHAPES={
+  flag:[[-2,5],[-2,1],[-5,1],[-5,-5],[-7,-5],[-7,5]],
+  arrow:[[-1,1.5],[-1,-1.5],[-4,-1.5],[-4,-3.5],[-8,0],[-4,3.5],[-4,1.5]],
+  tri:[[-3,5],[-2,-4],[-7,-4]]
+};
+const MARK_A=0,MARK_B=1;
+const ICONS={
+  axial:'<svg viewBox="0 0 28 20" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="14" y1="2" x2="14" y2="18" stroke-dasharray="2 2"/><path d="M3 6 L9 10 L3 14 Z"/><path d="M25 6 L19 10 L25 14 Z"/></svg>',
+  central:'<svg viewBox="0 0 28 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="14" cy="10" r="1.6" fill="currentColor"/><path d="M4 5 L9 9 L4 13 Z"/><path d="M24 15 L19 11 L24 7 Z"/></svg>',
+  flag:'<svg viewBox="0 0 28 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 3 L7 17 M7 3 L18 3 L18 9 L7 9"/></svg>',
+  arrow:'<svg viewBox="0 0 28 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 10 L11 4 L11 7 L24 7 L24 13 L11 13 L11 16 Z"/></svg>',
+  tri:'<svg viewBox="0 0 28 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 16 L20 16 L11 4 Z"/></svg>'};
+const I18N={
+ru:{page_title:'Симметрия',header_title:'Симметрия',tag:'симметрия — это движение',
+  header_sub:'Выберите тип симметрии и стройте образ<br>симметрия сохраняет расстояния и форму',
+  props_title:'Характеристики',back:'Назад',type_title:'Тип симметрии',shape_title:'Фигура',
+  ch_links:'Связи точек',ch_links_sub:'отрезки A→A′',ch_grid:'Сетка',ch_grid_sub:'координатная плоскость',
+  hint:'<span class="hint-grab">Двигайте ось / центр</span><span class="hint-dot">·</span><span>фон — поворот</span><span class="hint-dot">·</span><span>клик по строке — пояснение</span>',
+  type_axial:'Осевая',type_central:'Центральная',shape_flag:'Флаг',shape_arrow:'Стрелка',shape_tri:'Треуг.',
+  m_dist:'Расстояние d',m_side:'Сторона |AB|',m_perim:'Периметр P',
+  sub_dist_ax:'от A до оси',sub_dist_ce:'от A до центра O',sub_side:'= у образа |A′B′|',sub_perim:'= у образа',
+  s_angle:'угол оси',s_shift:'сдвиг оси',s_cx:'центр X',s_cy:'центр Y',
+  about_dist_ax:'При осевой симметрии точка A и её образ A′ равноудалены от оси, а отрезок AA′ перпендикулярен оси. Ось симметрии — это серединный перпендикуляр к отрезку AA′.',
+  about_dist_ce:'При центральной симметрии центр O является серединой отрезка AA′. Точка A и образ A′ лежат на одной прямой, проходящей через O, на равных расстояниях: |AO| = |A′O|.',
+  about_side:'Симметрия — это движение (изометрия): расстояния между точками сохраняются, поэтому сторона образа |A′B′| равна |AB|.',
+  about_perim:'Образ полностью равен исходной фигуре, поэтому её периметр и площадь не меняются — изменяется только положение в плоскости.',
+},
+kz:{page_title:'Симметрия',header_title:'Симметрия',tag:'симметрия — бұл қозғалыс',
+  header_sub:'Симметрия түрін таңдап, бейнені тұрғызыңыз<br>симметрия қашықтық пен форманы сақтайды',
+  props_title:'Сипаттамалар',back:'Артқа',type_title:'Симметрия түрі',shape_title:'Фигура',
+  ch_links:'Нүкте байланысы',ch_links_sub:'A→A′ кесінділері',ch_grid:'Тор',ch_grid_sub:'координаталық жазықтық',
+  hint:'<span class="hint-grab">Ось / центрді жылжытыңыз</span><span class="hint-dot">·</span><span>фон — бұру</span><span class="hint-dot">·</span><span>жолды басу — түсіндірме</span>',
+  type_axial:'Осьтік',type_central:'Орталық',shape_flag:'Жалауша',shape_arrow:'Бағыттауыш',shape_tri:'Үшбұр.',
+  m_dist:'Қашықтық d',m_side:'Қабырға |AB|',m_perim:'Периметр P',
+  sub_dist_ax:'A-дан оське дейін',sub_dist_ce:'A-дан O центріне дейін',sub_side:'= бейнеде |A′B′|',sub_perim:'= бейнеде',
+  s_angle:'ось бұрышы',s_shift:'ось ығысуы',s_cx:'центр X',s_cy:'центр Y',
+  about_dist_ax:'Осьтік симметрияда A нүктесі мен оның A′ бейнесі оське бірдей қашықтықта, ал AA′ кесіндісі оське перпендикуляр. Симметрия осі — AA′ кесіндісінің орта перпендикуляры.',
+  about_dist_ce:'Орталық симметрияда O центрі AA′ кесіндісінің ортасы болады. A нүктесі мен A′ бейнесі O арқылы өтетін бір түзуде бірдей қашықтықта жатады: |AO| = |A′O|.',
+  about_side:'Симметрия — бұл қозғалыс (изометрия): нүктелер арасындағы қашықтық сақталады, сондықтан бейненің |A′B′| қабырғасы |AB|-ге тең.',
+  about_perim:'Бейне бастапқы фигураға толық тең, сондықтан оның периметрі мен ауданы өзгермейді — тек жазықтықтағы орны өзгереді.',
+},
+en:{page_title:'Symmetry',header_title:'Symmetry',tag:'symmetry is a rigid motion',
+  header_sub:'Choose a type of symmetry and build the image<br>symmetry preserves distances and shape',
+  props_title:'Properties',back:'Back',type_title:'Type of symmetry',shape_title:'Figure',
+  ch_links:'Point links',ch_links_sub:'segments A→A′',ch_grid:'Grid',ch_grid_sub:'coordinate plane',
+  hint:'<span class="hint-grab">Move the axis / centre</span><span class="hint-dot">·</span><span>background — rotate</span><span class="hint-dot">·</span><span>click a row — explanation</span>',
+  type_axial:'Reflection',type_central:'Point',shape_flag:'Flag',shape_arrow:'Arrow',shape_tri:'Triangle',
+  m_dist:'Distance d',m_side:'Side |AB|',m_perim:'Perimeter P',
+  sub_dist_ax:'from A to the axis',sub_dist_ce:'from A to centre O',sub_side:'= image |A′B′|',sub_perim:'= of the image',
+  s_angle:'axis angle',s_shift:'axis shift',s_cx:'centre X',s_cy:'centre Y',
+  about_dist_ax:'In a reflection (axial symmetry) the point A and its image A′ are equidistant from the axis, and the segment AA′ is perpendicular to the axis. The axis of symmetry is the perpendicular bisector of AA′.',
+  about_dist_ce:'In a point (central) symmetry the centre O is the midpoint of the segment AA′. The point A and its image A′ lie on one line through O at equal distances: |AO| = |A′O|.',
+  about_side:'Symmetry is a rigid motion (isometry): distances between points are preserved, so the image side |A′B′| equals |AB|.',
+  about_perim:'The image is fully congruent to the original figure, so its perimeter and area do not change — only its position in the plane changes.',
+}
+};
+const LANG=(()=>{const q=new URLSearchParams(location.search).get('lang');return(q&&I18N[q])?q:'ru';})();
+const tr=key=>(I18N[LANG]&&I18N[LANG][key])!==undefined?I18N[LANG][key]:I18N.ru[key];
+function applyStaticI18N(){document.documentElement.lang=LANG;const tv=tr('page_title');if(tv)document.title=tv;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{const v=tr(el.getAttribute('data-i18n'));if(v!==undefined)el.textContent=v;});
+  document.querySelectorAll('[data-i18n-html]').forEach(el=>{const v=tr(el.getAttribute('data-i18n-html'));if(v!==undefined)el.innerHTML=v;});}
+applyStaticI18N();
+const f1=x=>x.toFixed(1);
+window.A={type:'axial',shape:'flag',angle:90,shift:0,cx:0,cy:0};
+const SL={axial:[['angle','s_angle',30,150,1],['shift','s_shift',-8,8,0.5]],
+  central:[['cx','s_cx',-8,8,0.5],['cy','s_cy',-6,6,0.5]]};
+function shapeV(){return SHAPES[window.A.shape];}
+function axisData(){const a=window.A.angle*Math.PI/180;const u=[Math.cos(a),Math.sin(a)];const nrm=[Math.sin(a),-Math.cos(a)];const A0=[nrm[0]*window.A.shift,nrm[1]*window.A.shift];return {u,nrm,A0};}
+function reflect(p){if(window.A.type==='central')return [2*window.A.cx-p[0],2*window.A.cy-p[1]];
+  const {u,A0}=axisData();const v=[p[0]-A0[0],p[1]-A0[1]];const d=v[0]*u[0]+v[1]*u[1];const pr=[d*u[0],d*u[1]];return [A0[0]+2*pr[0]-v[0],A0[1]+2*pr[1]-v[1]];}
+function distA(){const A=shapeV()[MARK_A];if(window.A.type==='central')return Math.hypot(A[0]-window.A.cx,A[1]-window.A.cy);
+  const {nrm,A0}=axisData();return Math.abs((A[0]-A0[0])*nrm[0]+(A[1]-A0[1])*nrm[1]);}
+function sideAB(){const v=shapeV();return Math.hypot(v[MARK_A][0]-v[MARK_B][0],v[MARK_A][1]-v[MARK_B][1]);}
+function perim(){const v=shapeV();let p=0;for(let i=0;i<v.length;i++){const j=(i+1)%v.length;p+=Math.hypot(v[i][0]-v[j][0],v[i][1]-v[j][1]);}return p;}
+function bannerStr(){const d=f1(distA());return window.A.type==='central'
+  ?`|AO| = |A′O| = <b>${d}</b>`:`d(A, ось) = d(A′, ось) = <b>${d}</b>`;}
+const METRICS=[
+  {key:'dist',dot:'var(--h)',i:'m_dist',fmt:()=>f1(distA()),sub:()=>tr(window.A.type==='central'?'sub_dist_ce':'sub_dist_ax'),u:'ед.'},
+  {key:'side',dot:'var(--fig)',i:'m_side',fmt:()=>f1(sideAB()),sub:()=>tr('sub_side'),u:'ед.'},
+  {key:'perim',dot:'#64748b',i:'m_perim',fmt:()=>f1(perim()),sub:()=>tr('sub_perim'),u:'ед.'},
+];
+function renderMetrics(){document.getElementById('metrics').innerHTML=METRICS.map(m=>`
+  <div class="metric" data-key="${m.key}" onclick="window.openDetail('${m.key}')"><div class="metric-dot" style="background:${m.dot}"></div>
+  <div class="metric-main"><span class="metric-name">${tr(m.i)}</span><span class="metric-sub" id="ms-${m.key}"></span></div>
+  <span class="metric-val" id="mv-${m.key}">—</span></div>`).join('');}
+function renderTypes(){document.getElementById('type-grid').innerHTML=TYPES.map(m=>`
+  <button class="mode-btn${m===window.A.type?' sel':''}" onclick="window.setType('${m}')">${ICONS[m]}<span>${tr('type_'+m)}</span></button>`).join('');}
+function renderShapes(){document.getElementById('shape-grid').innerHTML=SHAPES_LIST.map(m=>`
+  <button class="mode-btn${m===window.A.shape?' sel':''}" onclick="window.setShape('${m}')">${ICONS[m]}<span>${tr('shape_'+m)}</span></button>`).join('');}
+function renderSliders(){const m=window.A.type;document.getElementById('sliders').innerHTML=SL[m].map(([key,lab,min,max,step])=>`
+  <div class="sl-row"><div class="sl-top"><span class="sl-name">${tr(lab)}</span><span class="sl-val" id="sv-${key}">${f1(window.A[key])}</span></div>
+  <input type="range" min="${min}" max="${max}" step="${step}" value="${window.A[key]}" id="slm-${key}" oninput="window.setDim('${key}',+this.value)"></div>`).join('');
+  SL[m].forEach(([key,,min,max])=>{document.getElementById('slm-'+key).style.setProperty('--fill',((window.A[key]-min)/(max-min)*100)+'%');});}
+function updateMetricValues(){METRICS.forEach(m=>{const v=document.getElementById('mv-'+m.key);if(v)v.textContent=m.fmt();const s=document.getElementById('ms-'+m.key);if(s)s.textContent=m.sub();});
+  SL[window.A.type].forEach(([key,,min,max])=>{const sv=document.getElementById('sv-'+key);if(sv)sv.textContent=f1(window.A[key]);const sl=document.getElementById('slm-'+key);if(sl)sl.style.setProperty('--fill',((window.A[key]-min)/(max-min)*100)+'%');});
+  document.getElementById('eq-banner').innerHTML=bannerStr();}
+renderMetrics();renderTypes();renderShapes();renderSliders();updateMetricValues();
+</script>
+<script type="importmap">{"imports":{"three":"../../libs/vendor/three-0.160.0/three.module.js"}}</script>
+<script type="module">
+import * as THREE from 'three';
+const canvas=document.getElementById('c');
+const renderer=new THREE.WebGLRenderer({canvas,antialias: true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);renderer.outputColorSpace=THREE.SRGBColorSpace;
+const scene=new THREE.Scene();scene.background=null;
+const camera=new THREE.PerspectiveCamera(42,innerWidth/innerHeight,0.1,8000);
+const CAM_DIR=new THREE.Vector3(0.10,0.10,1).normalize();
+let camDist=44,camDistTarget=44,userZoom=1.0;let showGrid=true,showLinks=false;
+const PI=Math.PI;const f1=x=>x.toFixed(1);
+let contentR=18;
+function computeCamTarget(){const R0=contentR*1.16;const fovy=camera.fov*PI/180;const dV=R0/Math.sin(fovy/2);const usableW=Math.max(420,innerWidth-660);const fovx=2*Math.atan(Math.tan(fovy/2)*usableW/innerHeight);const dH=R0/Math.sin(fovx/2);return Math.max(dV,dH)*userZoom;}
+function applyCamera(){camera.position.copy(CAM_DIR).multiplyScalar(camDist);camera.lookAt(0,0,0);}
+scene.add(new THREE.AmbientLight(0xffffff,0.86));
+const kL=new THREE.DirectionalLight(0xffffff,0.74);kL.position.set(4,8,12);scene.add(kL);
+const fL=new THREE.DirectionalLight(0xc4b5fd,0.28);fL.position.set(-8,-3,4);scene.add(fL);
+const V=(x,y,z)=>new THREE.Vector3(x,y,z||0);
+const root=new THREE.Group();scene.add(root);const obj=new THREE.Group();root.add(obj);
+const COL={fig:0x7c3aed,fige:0x5b21b6,img:0xe11d48,imge:0x9f1239,axis:0x7c3aed,h:0xea580c,grid:0xd8d3e4};
+const tR=0.085;
+function cyl(from,to,rr,mat){const dir=new THREE.Vector3().subVectors(to,from),len=dir.length();const m=new THREE.Mesh(new THREE.CylinderGeometry(rr,rr,len,10),mat);m.position.addVectors(from,to).multiplyScalar(0.5);if(len>1e-6)m.quaternion.setFromUnitVectors(V(0,1,0),dir.normalize());return m;}
+function sphere(r,mat){return new THREE.Mesh(new THREE.SphereGeometry(r,16,12),mat);}
+function dashed(from,to,rr,col,seg){const g=new THREE.Group();const n=seg||16;for(let i=0;i<n;i+=2){const a=from.clone().lerp(to,i/n),b=from.clone().lerp(to,(i+1)/n);g.add(cyl(a,b,rr,new THREE.MeshBasicMaterial({color:col})));}return g;}
+function polyFill(pts2,mat){const sh=new THREE.Shape();sh.moveTo(pts2[0][0],pts2[0][1]);for(let i=1;i<pts2.length;i++)sh.lineTo(pts2[i][0],pts2[i][1]);sh.closePath();const g=new THREE.ShapeGeometry(sh);return new THREE.Mesh(g,mat);}
+const gridGroup=new THREE.Group();obj.add(gridGroup);
+(function(){const gMat=new THREE.MeshBasicMaterial({color:COL.grid,transparent:true,opacity:0.7});const GW=18;
+  for(let i=-GW;i<=GW;i+=2){gridGroup.add(cyl(V(i,-GW,-0.06),V(i,GW,-0.06),tR*0.26,gMat));gridGroup.add(cyl(V(-GW,i,-0.06),V(GW,i,-0.06),tR*0.26,gMat));}
+  gridGroup.visible=showGrid;})();
+const dynG=new THREE.Group();obj.add(dynG);
+function disposeDyn(){while(dynG.children.length){const o=dynG.children[0];o.traverse(x=>{if(x.geometry)x.geometry.dispose();});dynG.remove(o);}}
+let hiKey=null;
+let CX=0,CY=0;
+function P(x,y,z){return V(x-CX,y-CY,z||0);}
+function buildDyn(){
+  disposeDyn();
+  const orig=window.__shapeV();
+  const img=orig.map(window.__reflect);
+  const {u,A0}=window.__axisData();
+  // combined bbox centre
+  const all=orig.concat(img);if(window.A.type==='axial'){all.push([A0[0]+u[0]*9,A0[1]+u[1]*9],[A0[0]-u[0]*9,A0[1]-u[1]*9]);}else{all.push([window.A.cx,window.A.cy]);}
+  let xmin=1e9,xmax=-1e9,ymin=1e9,ymax=-1e9;all.forEach(p=>{xmin=Math.min(xmin,p[0]);xmax=Math.max(xmax,p[0]);ymin=Math.min(ymin,p[1]);ymax=Math.max(ymax,p[1]);});
+  CX=(xmin+xmax)/2;CY=(ymin+ymax)/2;
+  contentR=0.5*Math.hypot(xmax-xmin,ymax-ymin)+1.5;
+  // axis line (axial) or centre point (central)
+  if(window.A.type==='axial'){
+    const big=Math.max(contentR*1.3,12);
+    const e1=[A0[0]+u[0]*big,A0[1]+u[1]*big],e2=[A0[0]-u[0]*big,A0[1]-u[1]*big];
+    dynG.add(dashed(P(e1[0],e1[1],0.02),P(e2[0],e2[1],0.02),tR*0.8,COL.axis,40));
+  }else{
+    dynG.add(sphere(tR*4.2,new THREE.MeshStandardMaterial({color:COL.h,roughness:0.4})).translateX(window.A.cx-CX).translateY(window.A.cy-CY).translateZ(0.1));
+  }
+  // original figure
+  dynG.add(polyFill(orig.map(p=>[p[0]-CX,p[1]-CY]),new THREE.MeshStandardMaterial({color:COL.fig,roughness:0.5,transparent:true,opacity:0.26,side:THREE.DoubleSide})));
+  const oeMat=new THREE.MeshStandardMaterial({color:COL.fige,roughness:0.35,emissive:hiKey==='perim'?COL.fige:0,emissiveIntensity:hiKey==='perim'?0.4:0});
+  for(let i=0;i<orig.length;i++){const j=(i+1)%orig.length;const hl=(hiKey==='side'&&((i===MARK_A&&j===MARK_B)||(i===MARK_B&&j===MARK_A)));dynG.add(cyl(P(orig[i][0],orig[i][1],0.05),P(orig[j][0],orig[j][1],0.05),tR*(hiKey==='perim'||hl?1.5:1),hl?new THREE.MeshStandardMaterial({color:COL.fige,emissive:COL.fige,emissiveIntensity:0.5}):oeMat));}
+  // image figure
+  dynG.add(polyFill(img.map(p=>[p[0]-CX,p[1]-CY]),new THREE.MeshStandardMaterial({color:COL.img,roughness:0.5,transparent:true,opacity:0.24,side:THREE.DoubleSide})));
+  const ieMat=new THREE.MeshStandardMaterial({color:COL.imge,roughness:0.35,emissive:hiKey==='perim'?COL.imge:0,emissiveIntensity:hiKey==='perim'?0.4:0});
+  for(let i=0;i<img.length;i++){const j=(i+1)%img.length;const hl=(hiKey==='side'&&((i===MARK_A&&j===MARK_B)||(i===MARK_B&&j===MARK_A)));dynG.add(cyl(P(img[i][0],img[i][1],0.05),P(img[j][0],img[j][1],0.05),tR*(hiKey==='perim'||hl?1.5:1),hl?new THREE.MeshStandardMaterial({color:COL.imge,emissive:COL.imge,emissiveIntensity:0.5}):ieMat));}
+  // links A->A'
+  if(showLinks){for(let i=0;i<orig.length;i++)dynG.add(dashed(P(orig[i][0],orig[i][1],0.07),P(img[i][0],img[i][1],0.07),tR*0.5,0x94a3b8,18));}
+  // marked A, A' + main connector
+  const A=orig[MARK_A],Ai=img[MARK_A];
+  dynG.add(dashed(P(A[0],A[1],0.12),P(Ai[0],Ai[1],0.12),tR*0.85,COL.h,22));
+  dynG.add(sphere(tR*3,new THREE.MeshStandardMaterial({color:COL.fig,roughness:0.3})).translateX(A[0]-CX).translateY(A[1]-CY).translateZ(0.14));
+  dynG.add(sphere(tR*3,new THREE.MeshStandardMaterial({color:COL.img,roughness:0.3})).translateX(Ai[0]-CX).translateY(Ai[1]-CY).translateZ(0.14));
+  // right-angle marker at foot (axial only)
+  if(window.A.type==='axial'){const F=[(A[0]+Ai[0])/2,(A[1]+Ai[1])/2];const cdir=[(A[0]-F[0]),(A[1]-F[1])];const cl=Math.hypot(cdir[0],cdir[1])||1;const cu=[cdir[0]/cl,cdir[1]/cl];const s=0.8;
+    const p1=[F[0]+u[0]*s,F[1]+u[1]*s],p2=[F[0]+u[0]*s+cu[0]*s,F[1]+u[1]*s+cu[1]*s],p3=[F[0]+cu[0]*s,F[1]+cu[1]*s];
+    const rm=new THREE.MeshBasicMaterial({color:COL.h});
+    dynG.add(cyl(P(p1[0],p1[1],0.1),P(p2[0],p2[1],0.1),tR*0.5,rm));dynG.add(cyl(P(p2[0],p2[1],0.1),P(p3[0],p3[1],0.1),tR*0.5,rm));}
+  updateAnchors(orig,img);
+}
+const layer=document.getElementById('labels-layer');
+function mkLabel(cls,txt){const d=document.createElement('div');d.className='dim-label '+cls;d.textContent=txt;layer.appendChild(d);return d;}
+const L_A=mkLabel('la','A'),L_Ai=mkLabel('li','A′'),L_O=mkLabel('lo','O');
+const anc={A:V(),Ai:V(),O:V()};let showO=false;
+function updateAnchors(orig,img){const A=orig[MARK_A],Ai=img[MARK_A];
+  anc.A.copy(P(A[0],A[1],0.16)).add(V(0,0.0,0));anc.Ai.copy(P(Ai[0],Ai[1],0.16));
+  showO=window.A.type==='central';anc.O.copy(P(window.A.cx,window.A.cy,0.16));}
+function project(localVec){const w=localVec.clone().applyMatrix4(obj.matrixWorld).project(camera);return {x:(w.x*0.5+0.5)*innerWidth,y:(-w.y*0.5+0.5)*innerHeight,behind:w.z>1};}
+function place(el,v,vis,dx,dy){if(!vis){el.classList.add('hidden');return;}const s=project(v);if(s.behind){el.classList.add('hidden');return;}el.classList.remove('hidden');el.style.left=(s.x+(dx||0))+'px';el.style.top=(s.y+(dy||0))+'px';}
+function updateLabels(){place(L_A,anc.A,true,0,-16);place(L_Ai,anc.Ai,true,0,-16);place(L_O,anc.O,showO,14,-12);}
+function openDetail(key){const mm=window.__metrics.find(x=>x.key===key);
+  document.querySelectorAll('.metric').forEach(el=>el.classList.toggle('active',el.dataset.key===key));
+  hiKey=key;buildDyn();
+  let about,calc;const t=window.A.type;
+  if(key==='dist'){about=tr(t==='central'?'about_dist_ce':'about_dist_ax');calc=t==='central'?`|AO| = |A′O| = ${mm.fmt()}`:`d(A, ось) = d(A′, ось) = ${mm.fmt()}`;}
+  else if(key==='side'){about=tr('about_side');calc=`|AB| = |A′B′| = ${mm.fmt()}`;}
+  else{about=tr('about_perim');calc=`P = P′ = ${mm.fmt()}`;}
+  document.getElementById('detail-content').innerHTML=`<div class="d-tag">${tr('type_'+t)}</div><div class="d-title">${tr(mm.i)}</div>
+    <div class="d-bigval"><b>${mm.fmt()}</b><span>${mm.u}</span></div><div class="d-formula">${calc}</div><div class="d-para">${about}</div>`;
+  document.getElementById('panel-left').classList.add('detail');currentDetail=key;markInteract();}
+let currentDetail=null;window.openDetail=openDetail;
+window.showList=function(){document.getElementById('panel-left').classList.remove('detail');currentDetail=null;document.querySelectorAll('.metric').forEach(m=>m.classList.remove('active'));hiKey=null;buildDyn();};
+window.setType=function(t){window.A.type=t;window.__renderTypes();window.__renderSliders();buildDyn();window.__updateMetricValues();if(currentDetail)openDetail(currentDetail);markInteract();};
+window.setShape=function(s){window.A.shape=s;window.__renderShapes();buildDyn();window.__updateMetricValues();if(currentDetail)openDetail(currentDetail);markInteract();};
+window.setDim=function(k,val){window.A[k]=val;buildDyn();window.__updateMetricValues();if(currentDetail)openDetail(currentDetail);markInteract();};
+window.toggleLinks=function(){showLinks=!showLinks;document.getElementById('chip-links').classList.toggle('on',showLinks);buildDyn();markInteract();};
+window.toggleGrid=function(){showGrid=!showGrid;document.getElementById('chip-grid').classList.toggle('on',showGrid);gridGroup.visible=showGrid;markInteract();};
+let mode=null,last={x:0,y:0},dd=0,isDragging=false,rotX=0.0;
+let lastInteract=performance.now()-16000,autoSpeed=0;const AUTO_TARGET=0.0010,IDLE_MS=15000;
+function markInteract(){lastInteract=performance.now();}
+canvas.addEventListener('mousedown',e=>{markInteract();mode='rotate';last={x:e.clientX,y:e.clientY};isDragging=false;dd=0;});
+canvas.addEventListener('mousemove',e=>{if(mode==='rotate'){dd=Math.hypot(e.clientX-last.x,e.clientY-last.y);if(dd>4)isDragging=true;
+  if(isDragging){root.rotation.y+=(e.clientX-last.x)*0.008;rotX=Math.max(-1.0,Math.min(1.0,rotX+(e.clientY-last.y)*0.006));root.rotation.x=rotX;markInteract();}last={x:e.clientX,y:e.clientY};}});
+window.addEventListener('mouseup',()=>{mode=null;});
+canvas.addEventListener('wheel',e=>{e.preventDefault();userZoom=Math.max(0.6,Math.min(1.7,userZoom+e.deltaY*0.0015));markInteract();},{passive:false});
+window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+function animate(){requestAnimationFrame(animate);const idle=performance.now()-lastInteract;
+  if(idle>IDLE_MS)autoSpeed+=(AUTO_TARGET-autoSpeed)*0.025;else autoSpeed+=(0-autoSpeed)*0.18;
+  root.rotation.y+=autoSpeed;root.rotation.x=rotX;camDistTarget=computeCamTarget();camDist+=(camDistTarget-camDist)*0.18;applyCamera();
+  renderer.render(scene,camera);obj.updateWorldMatrix(true,false);updateLabels();}
+buildDyn();camDistTarget=computeCamTarget();camDist=camDistTarget;applyCamera();animate();
+</script>
+<script>
+window.__shapeV=shapeV;window.__reflect=reflect;window.__axisData=axisData;window.__metrics=METRICS;
+window.__renderTypes=renderTypes;window.__renderShapes=renderShapes;window.__renderSliders=renderSliders;window.__updateMetricValues=updateMetricValues;
+</script>
+</body>
+</html>

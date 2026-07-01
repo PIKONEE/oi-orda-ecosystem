@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="page_title">Строение ферментов — Активный центр</title>
+<style>
+
+
+*{margin:0;padding:0;box-sizing:border-box;}
+
+:root{
+  --bg:#f5f4f0;
+  --surface:rgba(255,255,255,0.90);
+  --border:rgba(0,0,0,0.08);
+  --text:#1c1917;
+  --muted:#78716c;
+  --enzyme:#8b5cf6;
+  --substrate:#f97316;
+  --active-site:#22c55e;
+  --product:#3b82f6;
+  --bond:#ef4444;
+  --shadow:0 2px 20px rgba(0,0,0,0.07);
+  --shadow-lg:0 8px 44px rgba(0,0,0,0.11);
+}
+
+body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);overflow:hidden;height:100vh;}
+
+body::before{
+  content:'';position:fixed;inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='%23f5f4f0'/%3E%3Ccircle cx='1' cy='1' r='0.6' fill='rgba(0,0,0,0.025)'/%3E%3C/svg%3E");
+  pointer-events:none;z-index:0;
+}
+
+#canvas-container{position:fixed;inset:0;z-index:1;}
+
+.header{
+  position:fixed;top:0;left:0;right:0;z-index:200;
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  padding:0 48px;height:92px;
+  display:flex;align-items:center;gap:14px;
+  box-shadow:var(--shadow);
+}
+.h-icon{font-size:32px;}
+.header-title{font-size:26px;font-weight:700;}
+.header-sub{font-size:15px;color:var(--muted);margin-left:auto;text-align:right;line-height:1.4;}
+
+.panel-left{
+  position:fixed;left:24px;top:108px;z-index:100;
+  width:320px;
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:24px;
+  padding:20px 22px;
+  box-shadow:var(--shadow-lg);
+}
+.panel-left h3{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:14px;}
+
+.props-table{width:100%;border-collapse:collapse;font-size:14px;}
+.props-table td{padding:7px 8px;border-bottom:1px solid rgba(0,0,0,0.05);font-size:13.5px;line-height:1.35;}
+.props-table td:first-child{color:var(--muted);font-size:12.5px;width:42%;}
+.props-table td:last-child{font-weight:500;}
+
+.panel-right{
+  position:fixed;right:24px;top:108px;z-index:100;
+  width:285px;
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:24px;
+  padding:20px 22px;
+  box-shadow:var(--shadow-lg);
+}
+.panel-right h3{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:14px;}
+
+.ctrl-btn{
+  width:100%;padding:11px 16px;margin-bottom:10px;
+  background:rgba(0,0,0,0.04);border:1.5px solid var(--border);border-radius:14px;
+  font-family:'Syne',sans-serif;font-size:14px;font-weight:600;
+  color:var(--text);cursor:pointer;text-align:left;
+  transition:all 0.2s;display:flex;align-items:center;gap:8px;
+}
+.ctrl-btn:hover{background:rgba(0,0,0,0.07);transform:translateY(-1px);}
+.ctrl-btn.active{background:rgba(99,102,241,0.10);border-color:rgba(99,102,241,0.4);color:#4f46e5;}
+.ctrl-btn.active-green{background:rgba(34,197,94,0.12);border-color:rgba(34,197,94,0.5);color:#15803d;}
+
+.stage-indicator{
+  margin-top:14px;padding:12px 14px;border-radius:14px;
+  background:rgba(139,92,246,0.08);border:1.5px solid rgba(139,92,246,0.2);
+  font-size:13px;font-weight:600;color:var(--enzyme);text-align:center;
+}
+
+.panel-legend{
+  position:fixed;left:24px;bottom:64px;z-index:100;
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:20px;
+  padding:14px 18px;box-shadow:var(--shadow);
+  display:flex;flex-direction:column;gap:8px;
+}
+.leg-item{display:flex;align-items:center;gap:9px;font-size:13px;padding:3px 6px;border-radius:8px;cursor:pointer;transition:background 0.15s;}
+.leg-item:hover{background:rgba(0,0,0,0.05);}
+.leg-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0;}
+
+.hint-bar{
+  position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:100;
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:99px;
+  padding:9px 24px;font-size:13px;color:var(--muted);
+  box-shadow:var(--shadow);white-space:nowrap;
+}
+
+#info-panel{
+  position:fixed;right:-460px;top:0;bottom:0;z-index:300;
+  width:420px;
+  background:rgba(255,255,255,0.97);
+  border-left:1px solid var(--border);
+  padding:32px 28px;overflow-y:auto;
+  box-shadow:-4px 0 40px rgba(0,0,0,0.10);
+  transition:right 0.38s cubic-bezier(0.4,0,0.2,1);
+}
+#info-panel.open{right:0;}
+#info-close{
+  position:absolute;top:20px;right:20px;
+  width:36px;height:36px;border-radius:50%;
+  background:rgba(0,0,0,0.07);border:none;cursor:pointer;
+  font-size:18px;display:flex;align-items:center;justify-content:center;
+}
+#info-close:hover{background:rgba(0,0,0,0.13);}
+.info-tag{display:inline-block;padding:4px 10px;border-radius:99px;font-size:12px;font-weight:600;letter-spacing:0.5px;margin-bottom:16px;}
+.info-title{font-size:22px;font-weight:800;margin-bottom:6px;line-height:1.2;}
+.info-section{margin-top:18px;}
+.info-section h4{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:6px;}
+.info-section p{font-size:14.5px;line-height:1.65;color:#292524;}
+</style>
+</head>
+<body>
+
+<div id="canvas-container"><canvas id="c"></canvas></div>
+
+<header class="header">
+  <div class="h-icon">🔬</div>
+  <div class="header-title" data-i18n="header_title">Строение ферментов</div>
+  <div class="header-sub" data-i18n-html="header_sub">Модель «ключ-замок» · активный центр<br>кликните на компонент</div>
+</header>
+
+<div class="panel-left">
+  <h3 data-i18n="props_title">Свойства фермента</h3>
+  <table class="props-table">
+    <tbody>
+      <tr><td data-i18n="k_enzyme">Фермент</td><td data-i18n="v_enzyme">Лизоцим</td></tr>
+      <tr><td data-i18n="k_class">Класс</td><td data-i18n="v_class">Гидролаза</td></tr>
+      <tr><td data-i18n="k_substrate">Субстрат</td><td data-i18n="v_substrate">Пептидогликан</td></tr>
+      <tr><td data-i18n="k_activesite">Активный центр</td><td data-i18n="v_activesite">Щель (Glu35, Asp52)</td></tr>
+      <tr><td data-i18n="k_mechanism">Механизм</td><td data-i18n="v_mechanism">Кислотно-основной катализ</td></tr>
+      <tr><td data-i18n="k_specificity">Специфичность</td><td data-i18n="v_specificity">Абсолютная</td></tr>
+      <tr><td data-i18n="k_speed">Ускорение</td><td>10⁷ — 10¹⁴ раз</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="panel-right">
+  <h3 data-i18n="ctrl_title">Управление</h3>
+  <button class="ctrl-btn active-green" id="btn-bind" onclick="startBinding()"><span data-i18n="btn_bind">🔑 Связать субстрат</span></button>
+  <button class="ctrl-btn" id="btn-release" onclick="releaseSubstrate()"><span data-i18n="btn_release">↩️ Высвободить</span></button>
+  <button class="ctrl-btn" id="btn-pause" onclick="togglePause()"><span data-i18n="btn_pause">⏸ Пауза</span></button>
+  <button class="ctrl-btn" id="btn-labels" onclick="toggleLabels()"><span data-i18n="btn_labels">🏷️ Подписи</span></button>
+  <button class="ctrl-btn" id="btn-cross" onclick="toggleCrossSection()"><span data-i18n="btn_cross">🔪 Сечение</span></button>
+  <div class="stage-indicator" id="stage-text" data-i18n="stage_free">Фермент свободен — ожидает субстрат</div>
+</div>
+
+<div class="panel-legend">
+  <div class="leg-item" onclick="openInfo('enzyme')"><div class="leg-dot" style="background:#8b5cf6;"></div><span data-i18n="leg_enzyme">Фермент (белок)</span></div>
+  <div class="leg-item" onclick="openInfo('activesite')"><div class="leg-dot" style="background:#22c55e;"></div><span data-i18n="leg_active">Активный центр</span></div>
+  <div class="leg-item" onclick="openInfo('substrate')"><div class="leg-dot" style="background:#f97316;"></div><span data-i18n="leg_substrate">Субстрат</span></div>
+  <div class="leg-item" onclick="openInfo('product')"><div class="leg-dot" style="background:#3b82f6;"></div><span data-i18n="leg_product">Продукт</span></div>
+</div>
+
+<div class="hint-bar" data-i18n="hint">Перетащите — вращение · Колесо — масштаб · Клик — информация</div>
+
+<div id="info-panel">
+  <button id="info-close" onclick="closeInfo()">✕</button>
+  <div class="info-tag" id="info-tag"></div>
+  <div class="info-title" id="info-title"></div>
+  <div id="info-body"></div>
+</div>
+
+<script>
+const I18N={
+ru:{
+page_title:'Строение ферментов — Активный центр',header_title:'Строение ферментов',header_sub:'Модель «ключ-замок» · активный центр<br>кликните на компонент',
+props_title:'Свойства фермента',ctrl_title:'Управление',
+k_enzyme:'Фермент',v_enzyme:'Лизоцим',k_class:'Класс',v_class:'Гидролаза',
+k_substrate:'Субстрат',v_substrate:'Пептидогликан',k_activesite:'Активный центр',v_activesite:'Щель (Glu35, Asp52)',
+k_mechanism:'Механизм',v_mechanism:'Кислотно-основной катализ',k_specificity:'Специфичность',v_specificity:'Абсолютная',k_speed:'Ускорение',
+btn_bind:'🔑 Связать субстрат',btn_release:'↩️ Высвободить',btn_pause:'⏸ Пауза',btn_resume:'▶ Продолжить',
+btn_labels:'🏷️ Подписи',btn_cross:'🔪 Сечение',
+leg_enzyme:'Фермент (белок)',leg_active:'Активный центр',leg_substrate:'Субстрат',leg_product:'Продукт',
+hint:'Перетащите — вращение · Колесо — масштаб · Клик — информация',
+stage_free:'Фермент свободен — ожидает субстрат',stage_binding:'Субстрат входит в активный центр...',stage_bound:'Фермент-субстратный комплекс (ES)',stage_catalysis:'Катализ — разрыв связей субстрата'
+},
+kz:{
+page_title:'Ферменттердің құрылысы — Белсенді орталық',header_title:'Ферменттердің құрылысы',header_sub:'«Кілт-құлып» моделі · белсенді орталық<br>компонентті басыңыз',
+props_title:'Фермент қасиеттері',ctrl_title:'Басқару',
+k_enzyme:'Фермент',v_enzyme:'Лизоцим',k_class:'Класс',v_class:'Гидролаза',
+k_substrate:'Субстрат',v_substrate:'Пептидогликан',k_activesite:'Белсенді орталық',v_activesite:'Саңылау (Glu35, Asp52)',
+k_mechanism:'Механизм',v_mechanism:'Қышқылдық-негіздік катализ',k_specificity:'Ерекшелік',v_specificity:'Абсолютті',k_speed:'Жылдамдату',
+btn_bind:'🔑 Субстратты байланыстыру',btn_release:'↩️ Босату',btn_pause:'⏸ Кідірту',btn_resume:'▶ Жалғастыру',
+btn_labels:'🏷️ Белгілер',btn_cross:'🔪 Қима',
+leg_enzyme:'Фермент (ақуыз)',leg_active:'Белсенді орталық',leg_substrate:'Субстрат',leg_product:'Өнім',
+hint:'Сүйреңіз — айналдыру · Дөңгелек — масштаб · Басу — ақпарат',
+stage_free:'Фермент бос — субстратты күтуде',stage_binding:'Субстрат белсенді орталыққа кіруде...',stage_bound:'Фермент-субстрат кешені (ES)',stage_catalysis:'Катализ — субстрат байланыстарының үзілуі'
+},
+en:{
+page_title:'Enzyme Structure — Active Site',header_title:'Enzyme Structure',header_sub:'Lock-and-key model · active site<br>click on a component',
+props_title:'Enzyme properties',ctrl_title:'Controls',
+k_enzyme:'Enzyme',v_enzyme:'Lysozyme',k_class:'Class',v_class:'Hydrolase',
+k_substrate:'Substrate',v_substrate:'Peptidoglycan',k_activesite:'Active site',v_activesite:'Cleft (Glu35, Asp52)',
+k_mechanism:'Mechanism',v_mechanism:'Acid-base catalysis',k_specificity:'Specificity',v_specificity:'Absolute',k_speed:'Acceleration',
+btn_bind:'🔑 Bind substrate',btn_release:'↩️ Release',btn_pause:'⏸ Pause',btn_resume:'▶ Resume',
+btn_labels:'🏷️ Labels',btn_cross:'🔪 Cross-section',
+leg_enzyme:'Enzyme (protein)',leg_active:'Active site',leg_substrate:'Substrate',leg_product:'Product',
+hint:'Drag — rotate · Scroll — zoom · Click — info',
+stage_free:'Enzyme free — awaiting substrate',stage_binding:'Substrate entering active site...',stage_bound:'Enzyme-substrate complex (ES)',stage_catalysis:'Catalysis — breaking substrate bonds'
+}
+};
+const LANG=(()=>{const q=new URLSearchParams(location.search).get('lang');return(q&&I18N[q])?q:'ru';})();
+const tr=(key)=>(I18N[LANG]&&I18N[LANG][key])??(I18N.ru[key]);
+function applyStaticI18N(){
+  document.documentElement.lang=LANG;
+  const tv=tr('page_title');if(tv)document.title=tv;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{const v=tr(el.getAttribute('data-i18n'));if(v)el.textContent=v;});
+  document.querySelectorAll('[data-i18n-html]').forEach(el=>{const v=tr(el.getAttribute('data-i18n-html'));if(v)el.innerHTML=v;});
+}
+applyStaticI18N();
+</script>
+
+<script type="importmap">
+{"imports":{"three":"../../libs/vendor/three-0.160.0/three.module.js","three/addons/":"../../libs/vendor/three-0.160.0/addons/"}}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({canvas, antialias: true, alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth, innerHeight);
+
+const scene = new THREE.Scene();
+scene.background = null;
+
+const camera = new THREE.PerspectiveCamera(45, innerWidth/innerHeight, 0.1, 200);
+camera.position.set(0, 4, 28);
+camera.lookAt(0, 0, 0);
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.65));
+const dL = new THREE.DirectionalLight(0xffffff, 1.1);
+dL.position.set(10, 14, 10); scene.add(dL);
+const dL2 = new THREE.DirectionalLight(0xc4b5fd, 0.25);
+dL2.position.set(-8, -6, -8); scene.add(dL2);
+
+const V = (x,y,z)=>new THREE.Vector3(x,y,z);
+const mainGroup = new THREE.Group();
+scene.add(mainGroup);
+
+const clickables = [];
+const labelSprites = [];
+
+/* ── HELPERS ── */
+function makeSphere(r, color, opts={}){
+  const m = new THREE.MeshPhongMaterial({color, shininess:opts.shin||80, specular:opts.spec||0x444444,
+    opacity:opts.opacity||1, transparent:(opts.opacity||1)<1,
+    emissive:opts.emissive||0x000000, emissiveIntensity:opts.emissiveI||0});
+  return new THREE.Mesh(new THREE.SphereGeometry(r,24,18), m);
+}
+
+function makeCyl(from, to, radius, color, opacity=1){
+  const dir = new THREE.Vector3().subVectors(to, from);
+  const len = dir.length();
+  const m = new THREE.MeshPhongMaterial({color, opacity, transparent:opacity<1, shininess:50});
+  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(radius,radius,len,10), m);
+  mesh.position.addVectors(from, to).multiplyScalar(0.5);
+  if(len>0.001) mesh.quaternion.setFromUnitVectors(V(0,1,0), dir.normalize());
+  return mesh;
+}
+
+function makeLabel(text, pos, color){
+  const c = document.createElement('canvas');
+  c.width=200; c.height=48;
+  const ctx = c.getContext('2d');
+  ctx.font='bold 22px DM Mono, monospace';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillStyle='rgba(255,255,255,0.92)';
+  ctx.beginPath(); ctx.roundRect(2,2,196,44,8); ctx.fill();
+  ctx.fillStyle=color;
+  ctx.fillText(text, 100, 26);
+  const tex = new THREE.CanvasTexture(c);
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({map:tex, depthTest:false}));
+  sp.position.copy(pos);
+  sp.scale.set(2.4, 0.6, 1);
+  sp.visible = false;
+  return sp;
+}
+
+/* ════════════════════════════════════════════════════════════
+   ENZYME — polypeptide backbone as a horseshoe-shaped chain
+   ════════════════════════════════════════════════════════════ */
+const enzymeGroup = new THREE.Group();
+mainGroup.add(enzymeGroup);
+
+// Generate backbone path: horseshoe/U shape with loops
+// The opening faces +X (where the substrate enters)
+function generateBackbone(){
+  const pts = [];
+  const N = 80; // amino acids
+  for(let i=0; i<N; i++){
+    const t = i / (N-1); // 0→1
+    // Horseshoe: go along bottom, curve up right, loop around top, curve up left
+    // parameterized as a C-shaped path
+    const angle = Math.PI * 0.15 + t * Math.PI * 1.7; // ~15° to ~320°
+    const R = 5.0; // main radius
+    // Add some z-wobble for 3D depth
+    const x = R * Math.cos(angle);
+    const y = R * Math.sin(angle);
+    // Add helix-like wobble for secondary structure feel
+    const wobble = Math.sin(i * 0.8) * 0.4;
+    const z = Math.sin(i * 0.35) * 1.8 + wobble;
+    pts.push(V(x, y, z));
+  }
+  return pts;
+}
+
+const backbone = generateBackbone();
+
+// Secondary structure assignment: helix=purple, sheet=blue, loop=gray, active-site=green
+const ssType = []; // 'helix', 'sheet', 'loop', 'active'
+backbone.forEach((p, i) => {
+  if(i >= 0 && i < 12) ssType.push('helix');       // α-helix 1
+  else if(i >= 12 && i < 18) ssType.push('loop');   // loop
+  else if(i >= 18 && i < 28) ssType.push('sheet');  // β-sheet 1
+  else if(i >= 28 && i < 34) ssType.push('loop');   // loop
+  else if(i >= 34 && i < 46) ssType.push('active'); // ACTIVE SITE region
+  else if(i >= 46 && i < 52) ssType.push('loop');   // loop
+  else if(i >= 52 && i < 62) ssType.push('sheet');  // β-sheet 2
+  else if(i >= 62 && i < 68) ssType.push('loop');   // loop
+  else ssType.push('helix');                         // α-helix 2
+});
+
+const ssColors = {
+  helix: 0xa78bfa,  // violet
+  sheet: 0x60a5fa,  // blue
+  loop:  0xd6d3d1,  // stone-300
+  active:0x4ade80   // green
+};
+
+const ssRadii = {
+  helix: 0.45,
+  sheet: 0.40,
+  loop:  0.25,
+  active:0.38
+};
+
+// Build backbone spheres and bonds
+const backboneMeshes = [];
+backbone.forEach((p, i) => {
+  const ss = ssType[i];
+  const r = ssRadii[ss];
+  const color = ssColors[ss];
+  const sphere = makeSphere(r, color, {shin:60});
+  sphere.position.copy(p);
+  sphere.userData = {type: ss === 'active' ? 'activesite' : 'enzyme'};
+  enzymeGroup.add(sphere);
+  clickables.push(sphere);
+  backboneMeshes.push(sphere);
+
+  // Bond to previous
+  if(i > 0){
+    const bond = makeCyl(backbone[i-1], p, 0.12, ssColors[ssType[i-1]] === ssColors[ss] ? color : 0xd6d3d1);
+    enzymeGroup.add(bond);
+  }
+});
+
+// α-helix ribbons — thicker cylinders along helix segments to show coiled structure
+function addHelixRibbon(startIdx, endIdx, color){
+  for(let i=startIdx; i<endIdx-1; i+=2){
+    const mid = backbone[i].clone().add(backbone[i+1]).multiplyScalar(0.5);
+    // Offset perpendicular to backbone direction for ribbon look
+    const dir = V().subVectors(backbone[i+1], backbone[i]);
+    const perp = V(-dir.y, dir.x, 0).normalize().multiplyScalar(0.3);
+    const ribbonSphere = makeSphere(0.55, color, {shin:40, opacity:0.6});
+    ribbonSphere.position.copy(mid).add(perp);
+    ribbonSphere.userData = {type:'enzyme'};
+    enzymeGroup.add(ribbonSphere);
+  }
+}
+addHelixRibbon(0, 12, 0xc4b5fd);
+addHelixRibbon(68, 80, 0xc4b5fd);
+
+// β-sheet arrows — flat boxes along sheet segments
+function addSheetArrow(startIdx, endIdx, color){
+  for(let i=startIdx; i<endIdx-1; i++){
+    const from = backbone[i], to = backbone[i+1];
+    const dir = V().subVectors(to, from);
+    const len = dir.length();
+    const box = new THREE.Mesh(
+      new THREE.BoxGeometry(0.8, len*0.9, 0.15),
+      new THREE.MeshPhongMaterial({color, shininess:50, opacity:0.7, transparent:true})
+    );
+    box.position.addVectors(from, to).multiplyScalar(0.5);
+    if(len>0.001) box.quaternion.setFromUnitVectors(V(0,1,0), dir.normalize());
+    box.userData = {type:'enzyme'};
+    enzymeGroup.add(box);
+  }
+}
+addSheetArrow(18, 28, 0x93c5fd);
+addSheetArrow(52, 62, 0x93c5fd);
+
+// Active site key residues — larger highlighted spheres
+const activeResidues = [
+  {idx:36, label:'Glu35', color:0xef4444, r:0.55},
+  {idx:40, label:'Asp52', color:0xef4444, r:0.55},
+  {idx:38, label:'Trp62', color:0xeab308, r:0.45},
+  {idx:42, label:'Trp63', color:0xeab308, r:0.45}
+];
+
+activeResidues.forEach(res => {
+  const p = backbone[res.idx];
+  // Residue side-chain sphere (offset inward toward cleft center)
+  const center = V(5, 0, 0); // approximate cleft center
+  const inward = V().subVectors(center, p).normalize().multiplyScalar(0.8);
+  const sidePos = p.clone().add(inward);
+  const mesh = makeSphere(res.r, res.color, {shin:90, emissive:res.color, emissiveI:0.15});
+  mesh.position.copy(sidePos);
+  mesh.userData = {type:'activesite'};
+  enzymeGroup.add(mesh);
+  clickables.push(mesh);
+  // Label
+  const lb = makeLabel(res.label, sidePos.clone().add(V(0,0.8,0)), res.color===0xef4444?'#dc2626':'#ca8a04');
+  enzymeGroup.add(lb); labelSprites.push(lb);
+});
+
+/* ════════════════════════════════════════
+   SUBSTRATE — small molecule with atoms
+   ════════════════════════════════════════ */
+const substrateGroup = new THREE.Group();
+mainGroup.add(substrateGroup);
+
+// Build a small saccharide-like molecule (2 sugar rings connected)
+const subAtoms = [
+  // Ring 1
+  {pos:V(0, 0, 0), el:'C', color:0xf97316, r:0.3},
+  {pos:V(1.0, 0.6, 0), el:'O', color:0xdc2626, r:0.28},
+  {pos:V(2.0, 0, 0.2), el:'C', color:0xf97316, r:0.3},
+  {pos:V(1.8,-1.0, 0.4), el:'C', color:0xf97316, r:0.3},
+  {pos:V(0.6,-1.1, 0.1), el:'C', color:0xf97316, r:0.3},
+  {pos:V(0.3,-0.2,-0.8), el:'C', color:0xf97316, r:0.3},
+  // Bridge bond position
+  {pos:V(3.2, 0.3, 0.3), el:'O', color:0xdc2626, r:0.25},
+  // Ring 2
+  {pos:V(4.2, 0, 0.1), el:'C', color:0xfb923c, r:0.3},
+  {pos:V(5.2, 0.6,-0.1), el:'O', color:0xdc2626, r:0.28},
+  {pos:V(6.1, 0, 0.2), el:'C', color:0xfb923c, r:0.3},
+  {pos:V(5.8,-1.0, 0.5), el:'C', color:0xfb923c, r:0.3},
+  {pos:V(4.6,-1.0, 0.3), el:'C', color:0xfb923c, r:0.3},
+  // OH groups
+  {pos:V(-0.5, 0.5,-1.2), el:'OH', color:0x3b82f6, r:0.22},
+  {pos:V(2.5,-1.6, 0.8), el:'OH', color:0x3b82f6, r:0.22},
+  {pos:V(6.7,-0.5, 0.8), el:'OH', color:0x3b82f6, r:0.22},
+];
+const subBonds = [
+  [0,1],[1,2],[2,3],[3,4],[4,0],[0,5],  // ring 1
+  [2,6],[6,7],                            // glycosidic bridge
+  [7,8],[8,9],[9,10],[10,11],[11,7],      // ring 2
+  [5,12],[3,13],[9,14]                    // OH groups
+];
+
+// Center substrate
+const subCenter = V(3, 0, 0);
+subAtoms.forEach(a => a.pos.sub(subCenter));
+
+subAtoms.forEach(a => {
+  const mesh = makeSphere(a.r, a.color, {shin:80});
+  mesh.position.copy(a.pos);
+  mesh.userData = {type:'substrate'};
+  substrateGroup.add(mesh);
+  clickables.push(mesh);
+});
+subBonds.forEach(([i,j]) => {
+  substrateGroup.add(makeCyl(subAtoms[i].pos, subAtoms[j].pos, 0.08, 0xfed7aa));
+});
+
+// Position substrate to the right (start position)
+const subStartPos = V(10, 0.5, 0);
+const subBoundPos = V(4.8, 0, 0.5);
+substrateGroup.position.copy(subStartPos);
+
+/* ── LABELS ── */
+const lang = I18N[LANG] || I18N.ru;
+const lbEnzyme = makeLabel(lang.leg_enzyme||'Фермент', V(-4, 5.5, 0), '#7c3aed');
+const lbActive = makeLabel(lang.leg_active||'Активный центр', V(5.5, 3.5, 0), '#16a34a');
+const lbSubstrate = makeLabel(lang.leg_substrate||'Субстрат', V(10, 2.5, 0), '#ea580c');
+mainGroup.add(lbEnzyme, lbActive, lbSubstrate);
+labelSprites.push(lbEnzyme, lbActive, lbSubstrate);
+
+/* ── ANIMATION STATE ── */
+let paused = false;
+let animT = 0;
+let bindState = 'free';
+let bindProgress = 0;
+let showCross = false;
+let rotX = 0.1, isDragging = false, dragStart = null, lastMouse = {x:0,y:0}, dragDelta = 0;
+let activePulseMeshes = activeResidues.map(r => {
+  const idx = clickables.length - activeResidues.length + activeResidues.indexOf(r);
+  return null; // we'll pulse the backbone active-site spheres instead
+});
+
+function setStage(stage) {
+  const lang = I18N[LANG] || I18N.ru;
+  document.getElementById('stage-text').textContent = lang['stage_'+stage] || stage;
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  if(!paused) {
+    animT += 0.016;
+    mainGroup.rotation.y += 0.0006;
+    mainGroup.rotation.x = rotX;
+
+    // Pulse active site residues
+    backboneMeshes.forEach((m,i) => {
+      if(ssType[i]==='active'){
+        m.material.emissive.setHex(0x22c55e);
+        m.material.emissiveIntensity = 0.15 + 0.1*Math.sin(animT*2 + i*0.3);
+      }
+    });
+
+    // Binding animation
+    if(bindState === 'binding') {
+      bindProgress = Math.min(1, bindProgress + 0.006);
+      substrateGroup.position.lerpVectors(subStartPos, subBoundPos, easeInOut(bindProgress));
+      substrateGroup.rotation.y = Math.sin(bindProgress*Math.PI*2)*0.15;
+      if(bindProgress >= 1) {
+        bindState = 'bound';
+        setStage('bound');
+      }
+    }
+
+    // Substrate wobble when free
+    if(bindState === 'free') {
+      substrateGroup.position.x = subStartPos.x + Math.sin(animT*0.7)*0.4;
+      substrateGroup.position.y = subStartPos.y + Math.cos(animT*0.5)*0.25;
+      substrateGroup.rotation.y += 0.003;
+    }
+
+    // Bound state
+    if(bindState === 'bound') {
+      substrateGroup.position.x = subBoundPos.x + Math.sin(animT*1.5)*0.04;
+      substrateGroup.position.y = subBoundPos.y + Math.cos(animT*1.2)*0.03;
+    }
+
+    // Update substrate label position
+    lbSubstrate.position.copy(substrateGroup.position).add(V(0, 2.5, 0));
+  }
+  renderer.render(scene, camera);
+}
+
+function easeInOut(t){ return t<0.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2; }
+
+/* ── CONTROLS ── */
+window.startBinding = function() {
+  if(bindState === 'free') {
+    bindState = 'binding';
+    bindProgress = 0;
+    setStage('binding');
+    document.getElementById('btn-bind').classList.remove('active-green');
+  }
+};
+
+window.releaseSubstrate = function() {
+  bindState = 'free';
+  bindProgress = 0;
+  substrateGroup.position.copy(subStartPos);
+  substrateGroup.rotation.set(0,0,0);
+  setStage('free');
+  document.getElementById('btn-bind').classList.add('active-green');
+};
+
+window.togglePause = function() {
+  paused = !paused;
+  const btn = document.getElementById('btn-pause');
+  const lang = I18N[LANG] || I18N.ru;
+  btn.querySelector('span').textContent = paused ? (lang.btn_resume||'▶') : (lang.btn_pause||'⏸');
+  btn.classList.toggle('active', paused);
+};
+
+window.toggleLabels = function() {
+  const btn = document.getElementById('btn-labels');
+  const show = !btn.classList.contains('active');
+  btn.classList.toggle('active', show);
+  labelSprites.forEach(lb => lb.visible = show);
+};
+
+window.toggleCrossSection = function() {
+  showCross = !showCross;
+  document.getElementById('btn-cross').classList.toggle('active', showCross);
+  // Toggle backbone opacity to reveal internal structure
+  backboneMeshes.forEach((m,i) => {
+    if(ssType[i]!=='active') m.material.opacity = showCross ? 0.35 : 1;
+    m.material.transparent = showCross;
+  });
+};
+
+/* ── INFO ── */
+const infoDB_ALL = {
+  ru: {
+    enzyme:{tag:'Белок-катализатор · 3D-структура',title:'Фермент (энзим)',sections:[
+      {h:'Что такое фермент',p:'Биологический катализатор белковой природы. Ускоряет реакции в 10⁷–10¹⁴ раз, не расходуясь. Каждый фермент специфичен — катализирует только одну реакцию (или тип реакций).'},
+      {h:'Уровни структуры',p:'Первичная: последовательность аминокислот. Вторичная: α-спирали и β-листы. Третичная: 3D-укладка (глобула). Четвертичная: объединение субъединиц. Именно 3D-форма определяет функцию.'},
+      {h:'Лизоцим — пример',p:'129 аминокислот, масса 14.3 кДа. Разрушает клеточные стенки бактерий, разрывая β-1,4-гликозидные связи в пептидогликане. Найден в слюне, слезах, молоке.'}
+    ]},
+    activesite:{tag:'Каталитический центр · комплементарность',title:'Активный центр',sections:[
+      {h:'Структура',p:'Небольшая область фермента (3–12 аминокислотных остатков), куда входит субстрат. Форма точно соответствует субстрату — «ключ-замок» (Э. Фишер, 1894) или «индуцированное соответствие» (Кошланд, 1958).'},
+      {h:'Каталитические остатки',p:'В лизоциме: Glu35 (донор протона) и Asp52 (стабилизация карбокатиона). Trp62, Trp63 — связывание субстрата через Van der Waals. Точное расположение критично — мутация даже одного остатка убивает активность.'},
+      {h:'Индуцированное соответствие',p:'Современная модель: активный центр слегка меняет форму при связывании субстрата, «обхватывая» его. Это объясняет, почему ферменты работают только с определённым субстратом.'}
+    ]},
+    substrate:{tag:'Реагент · специфичность',title:'Субстрат',sections:[
+      {h:'Что такое субстрат',p:'Молекула, которая связывается с активным центром фермента и превращается в продукт. Фермент не изменяется — он многократно используется (оборот 10²–10⁶ молекул/сек).'},
+      {h:'Комплементарность',p:'Субстрат подходит к активному центру как ключ к замку: по форме, заряду, гидрофобности. Даже небольшое изменение структуры субстрата (изомер) — и фермент не работает.'},
+      {h:'Фермент-субстратный комплекс',p:'E + S ⇌ ES → E + P. Стадия ES — промежуточный комплекс, в котором происходит катализ. Энергия активации снижается за счёт: сближения реагентов, деформации связей, создания микросреды.'}
+    ]},
+    product:{tag:'Результат катализа',title:'Продукт реакции',sections:[
+      {h:'Образование продукта',p:'После катализа субстрат превращается в продукт(ы), который покидает активный центр. Фермент возвращается в исходное состояние и готов к новому циклу.'},
+      {h:'Пример: лизоцим',p:'Субстрат (пептидогликан) → два фрагмента олигосахарида. Гликозидная связь разрывается через кислотно-основной механизм с участием Glu35 и Asp52.'},
+      {h:'Регуляция',p:'Активность фермента регулируется: температура, pH, ингибиторы (конкурентные и неконкурентные), аллостерическая регуляция. Оптимальные условия: 37°C, pH 7.4 для большинства ферментов человека.'}
+    ]}
+  },
+  kz: {
+    enzyme:{tag:'Ақуыз-катализатор · 3D-құрылым',title:'Фермент (энзим)',sections:[
+      {h:'Фермент дегеніміз',p:'Ақуыз табиғатты биологиялық катализатор. Реакцияларды 10⁷–10¹⁴ есе жылдамдатады, шығындалмайды. Әр фермент ерекше — тек бір реакцияны (немесе реакция түрін) катализдейді.'},
+      {h:'Құрылым деңгейлері',p:'Біріншілік: аминқышқылдар тізбегі. Екіншілік: α-спиральдар және β-парақтар. Үшіншілік: 3D-орналасу (глобула). Төртіншілік: субъедиництердің бірігуі. 3D-пішін функцияны анықтайды.'},
+      {h:'Лизоцим — мысал',p:'129 аминқышқыл, массасы 14.3 кДа. Бактерия жасуша қабырғаларын бұзады, пептидогликандағы β-1,4-гликозидтік байланыстарды үзеді. Сілекейде, жаста, сүтте кездеседі.'}
+    ]},
+    activesite:{tag:'Каталитикалық орталық · комплементарлық',title:'Белсенді орталық',sections:[
+      {h:'Құрылымы',p:'Ферменттің шағын аймағы (3–12 аминқышқыл қалдығы), оған субстрат кіреді. Пішіні субстратқа дәл сәйкес — «кілт-құлып» (Э. Фишер, 1894) немесе «индукцияланған сәйкестік» (Кошланд, 1958).'},
+      {h:'Каталитикалық қалдықтар',p:'Лизоцимде: Glu35 (протон доноры) және Asp52 (карбокатионды тұрақтандыру). Trp62, Trp63 — Ван-дер-Ваальс арқылы субстратты байланыстыру.'},
+      {h:'Индукцияланған сәйкестік',p:'Заманауи модель: белсенді орталық субстратты байланыстыру кезінде пішінін сәл өзгертіп, оны «қамтиды». Бұл ферменттердің тек белгілі субстратпен жұмыс істеуін түсіндіреді.'}
+    ]},
+    substrate:{tag:'Реагент · ерекшелік',title:'Субстрат',sections:[
+      {h:'Субстрат дегеніміз',p:'Фермент белсенді орталығымен байланысатын және өнімге айналатын молекула. Фермент өзгермейді — бірнеше рет қолданылады (айналым 10²–10⁶ молекула/сек).'},
+      {h:'Комплементарлық',p:'Субстрат белсенді орталыққа кілт құлыпқа сияқты сәйкес келеді: пішін, заряд, гидрофобтылық бойынша. Субстрат құрылымының кішкене өзгерісі де — фермент жұмыс істемейді.'},
+      {h:'Фермент-субстрат кешені',p:'E + S ⇌ ES → E + P. ES сатысы — катализ жүретін аралық кешен. Белсендіру энергиясы төмендейді: реагенттерді жақындату, байланыстарды деформациялау, микроорта құру арқылы.'}
+    ]},
+    product:{tag:'Катализ нәтижесі',title:'Реакция өнімі',sections:[
+      {h:'Өнімнің түзілуі',p:'Катализден кейін субстрат өнімге(дерге) айналады, ол белсенді орталықтан шығады. Фермент бастапқы күйіне оралады және жаңа циклге дайын.'},
+      {h:'Мысал: лизоцим',p:'Субстрат (пептидогликан) → екі олигосахарид фрагменті. Гликозидтік байланыс Glu35 және Asp52 қатысуымен қышқылдық-негіздік механизм арқылы үзіледі.'},
+      {h:'Реттеу',p:'Фермент белсенділігі реттеледі: температура, pH, ингибиторлар (бәсекелес және бәсекелес емес), аллостериялық реттеу. Оңтайлы жағдайлар: адам ферменттерінің көпшілігі үшін 37°C, pH 7.4.'}
+    ]}
+  },
+  en: {
+    enzyme:{tag:'Protein catalyst · 3D structure',title:'Enzyme',sections:[
+      {h:'What is an enzyme',p:'A biological catalyst of protein nature. Accelerates reactions 10⁷–10¹⁴ times without being consumed. Each enzyme is specific — catalyzes only one reaction (or type of reaction).'},
+      {h:'Structure levels',p:'Primary: amino acid sequence. Secondary: α-helices and β-sheets. Tertiary: 3D folding (globule). Quaternary: subunit assembly. The 3D shape determines function.'},
+      {h:'Lysozyme — example',p:'129 amino acids, mass 14.3 kDa. Destroys bacterial cell walls by cleaving β-1,4-glycosidic bonds in peptidoglycan. Found in saliva, tears, milk.'}
+    ]},
+    activesite:{tag:'Catalytic center · complementarity',title:'Active Site',sections:[
+      {h:'Structure',p:'A small region of the enzyme (3–12 amino acid residues) where the substrate enters. Shape precisely matches the substrate — "lock-and-key" (E. Fischer, 1894) or "induced fit" (Koshland, 1958).'},
+      {h:'Catalytic residues',p:'In lysozyme: Glu35 (proton donor) and Asp52 (carbocation stabilization). Trp62, Trp63 — substrate binding via Van der Waals. Precise positioning is critical — mutating even one residue kills activity.'},
+      {h:'Induced fit',p:'Modern model: the active site slightly changes shape upon substrate binding, "embracing" it. This explains why enzymes work only with specific substrates.'}
+    ]},
+    substrate:{tag:'Reactant · specificity',title:'Substrate',sections:[
+      {h:'What is a substrate',p:'A molecule that binds to the enzyme\'s active site and is converted into product. The enzyme is unchanged — reused many times (turnover 10²–10⁶ molecules/sec).'},
+      {h:'Complementarity',p:'The substrate fits the active site like a key in a lock: by shape, charge, hydrophobicity. Even a small change in substrate structure (isomer) — and the enzyme won\'t work.'},
+      {h:'Enzyme-substrate complex',p:'E + S ⇌ ES → E + P. The ES stage is the intermediate complex where catalysis occurs. Activation energy is lowered by: bringing reactants together, straining bonds, creating a microenvironment.'}
+    ]},
+    product:{tag:'Catalysis result',title:'Reaction Product',sections:[
+      {h:'Product formation',p:'After catalysis, the substrate is converted to product(s), which leaves the active site. The enzyme returns to its original state, ready for a new cycle.'},
+      {h:'Example: lysozyme',p:'Substrate (peptidoglycan) → two oligosaccharide fragments. The glycosidic bond is cleaved via acid-base mechanism involving Glu35 and Asp52.'},
+      {h:'Regulation',p:'Enzyme activity is regulated by: temperature, pH, inhibitors (competitive and non-competitive), allosteric regulation. Optimal conditions: 37°C, pH 7.4 for most human enzymes.'}
+    ]}
+  }
+};
+const infoDB = infoDB_ALL[LANG] || infoDB_ALL.ru;
+
+window.openInfo = function(type){
+  const data = infoDB[type]; if(!data) return;
+  const tagEl = document.getElementById('info-tag');
+  tagEl.textContent = data.tag;
+  const tc = {enzyme:{bg:'rgba(139,92,246,0.15)',color:'#6d28d9'},activesite:{bg:'rgba(34,197,94,0.15)',color:'#15803d'},substrate:{bg:'rgba(249,115,22,0.15)',color:'#c2410c'},product:{bg:'rgba(59,130,246,0.15)',color:'#1d4ed8'}};
+  const c = tc[type]||tc.enzyme;
+  tagEl.style.background=c.bg; tagEl.style.color=c.color;
+  document.getElementById('info-title').textContent = data.title;
+  document.getElementById('info-body').innerHTML = data.sections.map(s=>`<div class="info-section"><h4>${s.h}</h4><p>${s.p}</p></div>`).join('');
+  document.getElementById('info-panel').classList.add('open');
+};
+window.closeInfo = function(){ document.getElementById('info-panel').classList.remove('open'); };
+
+/* ── RAYCASTER ── */
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+canvas.addEventListener('click', e=>{
+  if(isDragging) return;
+  mouse.x=(e.clientX/innerWidth)*2-1; mouse.y=-(e.clientY/innerHeight)*2+1;
+  raycaster.setFromCamera(mouse, camera);
+  const hits = raycaster.intersectObjects(clickables, true);
+  if(hits.length>0){
+    let obj=hits[0].object;
+    while(obj && !obj.userData.type) obj=obj.parent;
+    if(obj && obj.userData.type) openInfo(obj.userData.type);
+  }
+});
+
+/* ── DRAG + ZOOM ── */
+canvas.addEventListener('mousedown', e=>{dragStart={x:e.clientX,y:e.clientY};lastMouse={x:e.clientX,y:e.clientY};isDragging=false;dragDelta=0;});
+canvas.addEventListener('mousemove', e=>{
+  if(!dragStart) return;
+  dragDelta=Math.sqrt((e.clientX-dragStart.x)**2+(e.clientY-dragStart.y)**2);
+  if(dragDelta>4) isDragging=true;
+  if(isDragging){
+    mainGroup.rotation.y+=(e.clientX-lastMouse.x)*0.012;
+    rotX=Math.max(-0.8,Math.min(0.8,rotX+(e.clientY-lastMouse.y)*0.010));
+    mainGroup.rotation.x=rotX;
+  }
+  lastMouse={x:e.clientX,y:e.clientY};
+});
+canvas.addEventListener('mouseup',()=>{dragStart=null;});
+canvas.addEventListener('mouseleave',()=>{dragStart=null;isDragging=false;});
+canvas.addEventListener('wheel',e=>{e.preventDefault();camera.position.z=Math.max(10,Math.min(35,camera.position.z+e.deltaY*0.03));},{passive:false});
+
+window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+
+animate();
+</script>
+</body>
+</html>

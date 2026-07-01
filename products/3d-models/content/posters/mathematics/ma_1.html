@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="page_title">Куб</title>
+<style>
+
+
+*{margin:0;padding:0;box-sizing:border-box;}
+
+:root{
+  --bg:#f3f2ee;
+  --surface:rgba(255,255,255,0.94);
+  --border:rgba(28,20,55,0.07);
+  --text:#1a1722;
+  --muted:#7a7587;
+  --faint:#aaa5b6;
+  --accent:#6d28d9;
+  --accent-2:#8b5cf6;
+  --accent-dim:rgba(109,40,217,0.08);
+  --amber:#e0820a;
+  --red:#e0463a;
+  --cyan:#0e9bb8;
+  --green:#16a34a;
+  --shadow:0 2px 22px rgba(40,25,80,0.07);
+  --shadow-lg:0 18px 56px rgba(45,28,90,0.15);
+}
+
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);overflow:hidden;height:100vh;}
+
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(1200px 760px at 70% 34%, rgba(139,92,246,0.12), transparent 60%),
+    radial-gradient(820px 560px at 16% 82%, rgba(109,40,217,0.06), transparent 55%);
+}
+
+#canvas-container{position:fixed;inset:0;z-index:1;}
+#labels-layer{position:fixed;inset:0;z-index:40;pointer-events:none;overflow:hidden;}
+
+.dim-label{
+  position:absolute;transform:translate(-50%,-50%);
+  font-family:'Roboto Mono',monospace;font-size:13.5px;font-weight:500;
+  padding:3px 9px;border-radius:9px;white-space:nowrap;
+  background:rgba(255,255,255,0.97);color:var(--accent);
+  border:1px solid rgba(109,40,217,0.20);
+  box-shadow:0 3px 12px rgba(40,25,80,0.13);
+  transition:opacity 0.18s;letter-spacing:-0.2px;
+}
+.dim-label.hidden{opacity:0;}
+.dim-label.face{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600;font-size:14.5px;box-shadow:0 5px 18px rgba(109,40,217,0.42);}
+.dim-label.amber{color:var(--amber);border-color:rgba(224,130,10,0.32);}
+.dim-label.red{color:var(--red);border-color:rgba(224,70,58,0.32);}
+
+/* ── HEADER ── */
+.header{
+  position:fixed;top:0;left:0;right:0;z-index:200;
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  padding:0 38px;height:84px;
+  display:flex;align-items:center;gap:15px;
+  box-shadow:var(--shadow);
+}
+.h-badge{
+  width:46px;height:46px;border-radius:14px;flex-shrink:0;
+  background:linear-gradient(135deg,#7c3aed,#a78bfa);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 7px 20px rgba(124,58,237,0.36);
+}
+.h-badge svg{width:25px;height:25px;}
+.header-title{font-size:25px;font-weight:800;letter-spacing:-0.5px;}
+.header-tag{font-family:'Roboto Mono',monospace;font-size:13px;color:var(--accent);background:var(--accent-dim);padding:4px 11px;border-radius:8px;}
+.header-sub{font-size:14px;color:var(--muted);margin-left:auto;text-align:right;line-height:1.45;}
+
+/* ── PANEL base ── */
+.panel{
+  position:fixed;z-index:100;
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:22px;
+  box-shadow:var(--shadow-lg);
+}
+.panel h3{font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;color:var(--faint);}
+
+/* ── LEFT (master-detail) ── */
+.panel-left{left:22px;top:98px;width:338px;padding:18px 18px;overflow:hidden;min-height:430px;}
+.ld-list,.ld-detail{transition:transform 0.4s cubic-bezier(0.4,0,0.2,1),opacity 0.28s;}
+.ld-list h3{margin-bottom:12px;padding-left:4px;}
+.ld-detail{position:absolute;inset:18px 18px;transform:translateX(26px);opacity:0;pointer-events:none;overflow-y:auto;}
+.ld-detail::-webkit-scrollbar{width:4px;}
+.ld-detail::-webkit-scrollbar-thumb{background:rgba(40,25,80,0.16);border-radius:4px;}
+.panel-left.detail .ld-list{transform:translateX(-26px);opacity:0;pointer-events:none;}
+.panel-left.detail .ld-detail{transform:translateX(0);opacity:1;pointer-events:auto;}
+
+.metric{
+  display:flex;align-items:center;gap:13px;
+  padding:11px 12px;border-radius:14px;cursor:pointer;
+  border:1px solid transparent;transition:all 0.15s;margin-bottom:2px;
+}
+.metric:hover{background:var(--accent-dim);}
+.metric.active{background:var(--accent-dim);border-color:rgba(109,40,217,0.22);}
+.metric-ico{
+  width:34px;height:34px;border-radius:10px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:17px;
+  background:rgba(109,40,217,0.10);
+}
+.metric-main{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;}
+.metric-name{font-size:15.5px;font-weight:700;color:var(--text);line-height:1.15;}
+.metric-sub{font-family:'Roboto Mono',monospace;font-size:13px;color:var(--muted);}
+.metric-val{font-family:'Roboto Mono',monospace;font-size:23px;font-weight:500;color:var(--accent);letter-spacing:-1px;flex-shrink:0;}
+
+/* detail page */
+.ld-back{
+  display:inline-flex;align-items:center;gap:5px;cursor:pointer;border:none;background:none;
+  font-family:'Inter',sans-serif;font-size:14px;font-weight:700;color:var(--accent);
+  padding:4px 6px 4px 0;margin-bottom:12px;
+}
+.ld-back:hover{opacity:0.7;}
+.d-tag{display:inline-block;padding:4px 12px;border-radius:99px;font-size:13px;font-weight:700;margin-bottom:10px;background:var(--accent-dim);color:var(--accent);}
+.d-title{font-size:22px;font-weight:800;letter-spacing:-0.4px;line-height:1.15;margin-bottom:14px;}
+.d-bigval{
+  display:flex;align-items:baseline;gap:9px;margin-bottom:4px;
+}
+.d-bigval b{font-family:'Roboto Mono',monospace;font-size:41px;font-weight:500;color:var(--accent);letter-spacing:-1.5px;line-height:1;}
+.d-bigval span{font-size:14px;color:var(--muted);font-weight:600;}
+.d-formula{
+  margin:13px 0 4px;padding:13px 15px;border-radius:13px;
+  background:linear-gradient(135deg,rgba(124,58,237,0.08),rgba(167,139,250,0.05));
+  border:1px solid rgba(109,40,217,0.15);
+  font-family:'Roboto Mono',monospace;font-size:14.5px;color:#5b21b6;font-weight:500;line-height:1.9;white-space:pre-line;
+}
+.d-para{font-size:15px;line-height:1.62;color:#3a3545;margin-top:13px;}
+
+/* ── RIGHT (controls) ── */
+.panel-right{right:22px;top:98px;width:296px;padding:18px;}
+.slider-card{
+  background:linear-gradient(135deg,rgba(124,58,237,0.08),rgba(167,139,250,0.05));
+  border:1px solid rgba(109,40,217,0.16);border-radius:16px;padding:15px 16px;margin-bottom:18px;
+}
+.slider-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:13px;}
+.slider-name{font-size:16px;font-weight:700;}
+.slider-name b{color:var(--accent);font-style:italic;}
+.slider-pill{
+  font-family:'Roboto Mono',monospace;font-size:23px;font-weight:500;color:#fff;
+  background:linear-gradient(135deg,#7c3aed,#9333ea);padding:3px 15px;border-radius:11px;
+  letter-spacing:-0.5px;box-shadow:0 5px 14px rgba(124,58,237,0.38);
+}
+input[type=range]{
+  -webkit-appearance:none;appearance:none;width:100%;height:7px;border-radius:4px;
+  background:linear-gradient(90deg,var(--accent) 0%,var(--accent) var(--fill,33%),rgba(109,40,217,0.15) var(--fill,33%));
+  outline:none;cursor:pointer;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;appearance:none;width:24px;height:24px;border-radius:50%;
+  background:#fff;border:3px solid var(--accent);cursor:pointer;
+  box-shadow:0 4px 12px rgba(124,58,237,0.45);transition:transform 0.13s;
+}
+input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.16);}
+.slider-scale{display:flex;justify-content:space-between;font-family:'Roboto Mono',monospace;font-size:12px;color:var(--faint);margin-top:8px;}
+
+.show-label{font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;color:var(--faint);margin:0 0 11px 2px;}
+.show-chip{
+  display:flex;align-items:center;gap:12px;width:100%;
+  padding:13px 15px;margin-bottom:9px;border-radius:14px;cursor:pointer;
+  background:rgba(28,20,55,0.035);border:1.5px solid transparent;
+  transition:all 0.16s;
+}
+.show-chip:hover{background:rgba(28,20,55,0.06);}
+.show-chip.on{background:var(--accent-dim);border-color:rgba(109,40,217,0.30);}
+.chip-ico{
+  width:36px;height:36px;border-radius:11px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:19px;
+  background:rgba(109,40,217,0.10);transition:all 0.16s;
+}
+.show-chip.on .chip-ico{background:var(--accent);}
+.chip-text{display:flex;flex-direction:column;gap:1px;flex:1;min-width:0;}
+.chip-name{font-size:15px;font-weight:700;}
+.chip-sub{font-size:13px;color:var(--muted);font-family:'Roboto Mono',monospace;}
+.chip-state{
+  width:22px;height:22px;border-radius:50%;flex-shrink:0;border:2px solid rgba(28,20,55,0.16);
+  display:flex;align-items:center;justify-content:center;transition:all 0.16s;
+}
+.show-chip.on .chip-state{background:var(--accent);border-color:var(--accent);}
+.show-chip.on .chip-state::after{content:'✓';color:#fff;font-size:14px;font-weight:700;}
+
+/* ── HINT ── */
+.hint-bar{
+  position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:100;
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:99px;
+  padding:9px 22px;font-size:13.5px;color:var(--muted);
+  box-shadow:var(--shadow);white-space:nowrap;display:flex;align-items:center;gap:9px;
+}
+.hint-bar kbd{background:rgba(28,20,55,0.07);border-radius:5px;padding:2px 7px;font-family:'Roboto Mono',monospace;font-size:12.5px;}
+.hint-dot{color:var(--faint);}
+
+@media (max-width:1180px){.panel-left{width:300px;}.panel-right{width:264px;}}
+</style>
+</head>
+<body>
+
+<div id="canvas-container"><canvas id="c"></canvas></div>
+<div id="labels-layer"></div>
+
+<header class="header">
+  <div class="h-badge">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linejoin="round">
+      <path d="M12 2 L21 7 V17 L12 22 L3 17 V7 Z"/><path d="M12 2 V12 M12 12 L21 7 M12 12 L3 7"/>
+    </svg>
+  </div>
+  <div class="header-title" data-i18n="header_title">Куб</div>
+  <div class="header-tag">a = b = c</div>
+  <div class="header-sub" data-i18n-html="header_sub">Все 6 граней — равные квадраты<br>тяните, чтобы повернуть · кликните грань</div>
+</header>
+
+<!-- LEFT -->
+<div class="panel panel-left" id="panel-left">
+  <div class="ld-list">
+    <h3 data-i18n="props_title">Размеры куба</h3>
+    <div id="metrics"></div>
+  </div>
+  <div class="ld-detail">
+    <button class="ld-back" onclick="window.showList()"><span>‹</span> <span data-i18n="back">Назад</span></button>
+    <div id="detail-content"></div>
+  </div>
+</div>
+
+<!-- RIGHT -->
+<div class="panel panel-right">
+  <div class="slider-card">
+    <div class="slider-top">
+      <span class="slider-name" data-i18n-html="slider_label">Длина ребра <b>a</b></span>
+      <span class="slider-pill" id="val-a">4.0</span>
+    </div>
+    <input type="range" min="1" max="100" step="0.5" value="4" id="slider-a" oninput="window.setA(+this.value)">
+    <div class="slider-scale"><span>1</span><span>100</span></div>
+  </div>
+
+  <div class="show-label" data-i18n="show_title">Показать на кубе</div>
+  <div class="show-chip" id="chip-diag" onclick="window.toggleDiag()">
+    <div class="chip-ico">📐</div>
+    <div class="chip-text"><span class="chip-name" data-i18n="ch_diag">Диагонали</span><span class="chip-sub">a√2 · a√3</span></div>
+    <div class="chip-state"></div>
+  </div>
+  <div class="show-chip" id="chip-sphere" onclick="window.toggleSphere()">
+    <div class="chip-ico">⚪</div>
+    <div class="chip-text"><span class="chip-name" data-i18n="ch_sphere">Сферы</span><span class="chip-sub" data-i18n="ch_sphere_sub">вписанная и описанная</span></div>
+    <div class="chip-state"></div>
+  </div>
+</div>
+
+<div class="hint-bar" data-i18n-html="hint">
+  <span>Тяните — поворот</span><span class="hint-dot">·</span>
+  <kbd>Колесо</kbd><span>масштаб</span><span class="hint-dot">·</span>
+  <span>Клик по грани — её площадь</span>
+</div>
+
+<script>
+const I18N={
+ru:{
+  page_title:'Куб',header_title:'Куб',
+  header_sub:'Все 6 граней — равные квадраты<br>тяните, чтобы повернуть · кликните грань',
+  props_title:'Размеры куба',show_title:'Показать на кубе',back:'Назад',
+  slider_label:'Длина ребра <b>a</b>',
+  ch_diag:'Диагонали',ch_sphere:'Сферы',ch_sphere_sub:'вписанная и описанная',
+  hint:'<span>Тяните — поворот</span><span class="hint-dot">·</span><kbd>Колесо</kbd><span>масштаб</span><span class="hint-dot">·</span><span>Клик по грани — её площадь</span>',
+  m_edge:'Ребро',m_farea:'Площадь грани',m_fper:'Периметр грани',m_surf:'Площадь поверхности',
+  m_vol:'Объём',m_fdiag:'Диагональ грани',m_sdiag:'Диагональ куба',
+  sub_edge:'длина одной стороны',sub_side:'сторона',
+  unit_len:'ед.',unit_area:'ед²',unit_vol:'ед³',
+  cube:'Куб',
+},
+kz:{
+  page_title:'Куб',header_title:'Куб',
+  header_sub:'6 қыр да — тең шаршылар<br>бұру үшін сүйреңіз · қырды басыңыз',
+  props_title:'Куб өлшемдері',show_title:'Кубта көрсету',back:'Артқа',
+  slider_label:'Қабырға ұзындығы <b>a</b>',
+  ch_diag:'Диагональдар',ch_sphere:'Сфералар',ch_sphere_sub:'іштей және сырттай',
+  hint:'<span>Сүйреңіз — бұру</span><span class="hint-dot">·</span><kbd>Дөңгелек</kbd><span>масштаб</span><span class="hint-dot">·</span><span>Қырды басу — ауданы</span>',
+  m_edge:'Қабырға',m_farea:'Қыр ауданы',m_fper:'Қыр периметрі',m_surf:'Бет ауданы',
+  m_vol:'Көлем',m_fdiag:'Қыр диагоналі',m_sdiag:'Куб диагоналі',
+  sub_edge:'бір қабырға ұзындығы',sub_side:'қабырға',
+  unit_len:'бір.',unit_area:'бір²',unit_vol:'бір³',
+  cube:'Куб',
+},
+en:{
+  page_title:'Cube',header_title:'Cube',
+  header_sub:'All 6 faces are equal squares<br>drag to rotate · click a face',
+  props_title:'Cube dimensions',show_title:'Show on the cube',back:'Back',
+  slider_label:'Edge length <b>a</b>',
+  ch_diag:'Diagonals',ch_sphere:'Spheres',ch_sphere_sub:'inscribed & circumscribed',
+  hint:'<span>Drag — rotate</span><span class="hint-dot">·</span><kbd>Scroll</kbd><span>zoom</span><span class="hint-dot">·</span><span>Click a face — its area</span>',
+  m_edge:'Edge',m_farea:'Face area',m_fper:'Face perimeter',m_surf:'Surface area',
+  m_vol:'Volume',m_fdiag:'Face diagonal',m_sdiag:'Space diagonal',
+  sub_edge:'length of one side',sub_side:'side',
+  unit_len:'u',unit_area:'u²',unit_vol:'u³',
+  cube:'Cube',
+}
+};
+const LANG=(()=>{const q=new URLSearchParams(location.search).get('lang');return(q&&I18N[q])?q:'ru';})();
+const tr=key=>(I18N[LANG]&&I18N[LANG][key])!==undefined?I18N[LANG][key]:I18N.ru[key];
+function applyStaticI18N(){
+  document.documentElement.lang=LANG;
+  const tv=tr('page_title');if(tv)document.title=tv;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{const v=tr(el.getAttribute('data-i18n'));if(v!==undefined)el.textContent=v;});
+  document.querySelectorAll('[data-i18n-html]').forEach(el=>{const v=tr(el.getAttribute('data-i18n-html'));if(v!==undefined)el.innerHTML=v;});
+}
+applyStaticI18N();
+
+const f1=x=>x.toFixed(1);
+const f2=x=>x.toFixed(2);
+
+/* metric definitions — sublabel uses REAL numbers (readable) */
+const METRICS=[
+  {key:'edge', i:'m_edge', ico:'📏', val:a=>a,            sub:a=>tr('sub_edge'),                  unit:'unit_len'},
+  {key:'farea',i:'m_farea',ico:'⬜', val:a=>a*a,          sub:a=>`${f1(a)} × ${f1(a)}`,           unit:'unit_area'},
+  {key:'fper', i:'m_fper', ico:'⭕', val:a=>4*a,          sub:a=>`4 × ${f1(a)}`,                   unit:'unit_len'},
+  {key:'surf', i:'m_surf', ico:'🧊', val:a=>6*a*a,        sub:a=>`6 × ${f1(a*a)}`,                 unit:'unit_area'},
+  {key:'vol',  i:'m_vol',  ico:'📦', val:a=>a*a*a,        sub:a=>`${f1(a)} × ${f1(a)} × ${f1(a)}`, unit:'unit_vol'},
+  {key:'fdiag',i:'m_fdiag',ico:'📐', val:a=>a*Math.SQRT2, sub:a=>`√2 × ${f1(a)}`,                  unit:'unit_len'},
+  {key:'sdiag',i:'m_sdiag',ico:'🟥', val:a=>a*Math.sqrt(3),sub:a=>`√3 × ${f1(a)}`,                 unit:'unit_len'},
+];
+function renderMetrics(){
+  document.getElementById('metrics').innerHTML=METRICS.map(m=>`
+    <div class="metric" data-key="${m.key}" onclick="window.openDetail('${m.key}')">
+      <div class="metric-ico">${m.ico}</div>
+      <div class="metric-main">
+        <span class="metric-name">${tr(m.i)}</span>
+        <span class="metric-sub" id="ms-${m.key}"></span>
+      </div>
+      <span class="metric-val" id="mv-${m.key}">—</span>
+    </div>`).join('');
+}
+function updateMetricValues(){
+  const a=window.A;
+  METRICS.forEach(m=>{
+    const v=document.getElementById('mv-'+m.key); if(v)v.textContent=f1(m.val(a));
+    const s=document.getElementById('ms-'+m.key); if(s)s.textContent=m.sub(a);
+  });
+  document.getElementById('val-a').textContent=f1(a);
+  document.getElementById('slider-a').style.setProperty('--fill',((a-1)/99*100)+'%');
+}
+renderMetrics();
+</script>
+
+<script type="importmap">
+{"imports":{"three":"../../libs/vendor/three-0.160.0/three.module.js"}}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+const canvas=document.getElementById('c');
+const renderer=new THREE.WebGLRenderer({canvas,antialias: true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+
+const scene=new THREE.Scene(); scene.background=null;
+const camera=new THREE.PerspectiveCamera(40,innerWidth/innerHeight,0.1,4000);
+const CAM_DIR=new THREE.Vector3(3.4,2.7,13).normalize();
+let camDist=13, camDistTarget=13, userZoom=1.0;
+function computeCamTarget(){
+  const a=window.A;
+  const R=a*Math.sqrt(3)/2 * 1.55;     // padded bounding-sphere radius (with sphere/diag)
+  const fovy=camera.fov*Math.PI/180;
+  const dV=R/Math.sin(fovy/2);
+  const usableW=Math.max(420,innerWidth-660);
+  const fovx=2*Math.atan(Math.tan(fovy/2)*usableW/innerHeight);
+  const dH=R/Math.sin(fovx/2);
+  return Math.max(dV,dH)*userZoom;
+}
+function applyCamera(){camera.position.copy(CAM_DIR).multiplyScalar(camDist);camera.lookAt(0,0,0);}
+camera.position.set(3.4,2.7,13); camera.lookAt(0,0,0);
+
+scene.add(new THREE.AmbientLight(0xffffff,0.66));
+const key=new THREE.DirectionalLight(0xffffff,1.15); key.position.set(6,11,9); scene.add(key);
+const fillL=new THREE.DirectionalLight(0xc4b5fd,0.42); fillL.position.set(-8,-3,-5); scene.add(fillL);
+const rim=new THREE.DirectionalLight(0xffffff,0.5); rim.position.set(-4,8,-9); scene.add(rim);
+
+const V=(x,y,z)=>new THREE.Vector3(x,y,z);
+
+// soft contact shadow (fixed to scene, horizontal)
+const shadowTex=(()=>{
+  const cv=document.createElement('canvas');cv.width=cv.height=256;
+  const ctx=cv.getContext('2d');const g=ctx.createRadialGradient(128,128,10,128,128,124);
+  g.addColorStop(0,'rgba(50,30,90,0.30)');g.addColorStop(1,'rgba(50,30,90,0)');
+  ctx.fillStyle=g;ctx.fillRect(0,0,256,256);return new THREE.CanvasTexture(cv);
+})();
+const shadow=new THREE.Mesh(new THREE.PlaneGeometry(1,1),
+  new THREE.MeshBasicMaterial({map:shadowTex,transparent:true,depthWrite:false}));
+shadow.rotation.x=-Math.PI/2; scene.add(shadow);
+
+const root=new THREE.Group(); scene.add(root);
+const cube=new THREE.Group(); root.add(cube);
+
+const C={face:0x8b5cf6,faceSel:0xc4b5fd,edge:0x5b21b6,vertex:0x6d28d9,amber:0xe0820a,red:0xe0463a,cyan:0x0e9bb8};
+const FACE_NORMALS=[V(1,0,0),V(-1,0,0),V(0,1,0),V(0,-1,0),V(0,0,1),V(0,0,-1)];
+
+const faceMats=FACE_NORMALS.map(()=>new THREE.MeshStandardMaterial({
+  color:C.face,roughness:0.32,metalness:0.0,transparent:true,opacity:0.84,
+  side:THREE.DoubleSide,emissive:0x000000,emissiveIntensity:0,
+}));
+let selectedFace=-1;
+function applyFaceMats(){
+  faceMats.forEach((m,i)=>{
+    const sel=(i===selectedFace);
+    m.opacity=sel?0.97:0.84;
+    m.depthWrite=!sel;
+    m.color.setHex(sel?C.faceSel:C.face);
+    m.emissive.setHex(sel?C.faceSel:0x000000);
+    m.emissiveIntensity=sel?0.42:0;
+    m.needsUpdate=true;
+  });
+}
+
+let facesMesh=null,edgeGroup=null,vertGroup=null,diagGroup=null,sphereGroup=null;
+let showDiag=false,showSphere=false;
+
+function cubeVerts(s){const h=s/2,out=[];for(const x of[-h,h])for(const y of[-h,h])for(const z of[-h,h])out.push(V(x,y,z));return out;}
+function cyl(from,to,r,mat){
+  const dir=new THREE.Vector3().subVectors(to,from),len=dir.length();
+  const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,len,16),mat);
+  m.position.addVectors(from,to).multiplyScalar(0.5);
+  m.quaternion.setFromUnitVectors(V(0,1,0),dir.normalize());return m;
+}
+function disposeGroup(g){if(!g)return;g.traverse(o=>{if(o.geometry)o.geometry.dispose();});cube.remove(g);}
+
+function buildCube(){
+  const a=window.A,h=a/2;
+  disposeGroup(facesMesh);disposeGroup(edgeGroup);disposeGroup(vertGroup);disposeGroup(diagGroup);disposeGroup(sphereGroup);
+
+  facesMesh=new THREE.Mesh(new THREE.BoxGeometry(a,a,a),faceMats);
+  cube.add(facesMesh);
+
+  const verts=cubeVerts(a);
+  const eMat=new THREE.MeshStandardMaterial({color:C.edge,roughness:0.4,metalness:0.12});
+  const vMat=new THREE.MeshStandardMaterial({color:C.vertex,roughness:0.34,metalness:0.16});
+  const er=a*0.0080, vr=a*0.0125;
+  edgeGroup=new THREE.Group();vertGroup=new THREE.Group();
+  for(let i=0;i<8;i++)for(let j=i+1;j<8;j++){
+    let d=0;if(Math.abs(verts[i].x-verts[j].x)>1e-6)d++;if(Math.abs(verts[i].y-verts[j].y)>1e-6)d++;if(Math.abs(verts[i].z-verts[j].z)>1e-6)d++;
+    if(d===1)edgeGroup.add(cyl(verts[i],verts[j],er,eMat));
+  }
+  verts.forEach(v=>{const s=new THREE.Mesh(new THREE.SphereGeometry(vr,20,16),vMat);s.position.copy(v);vertGroup.add(s);});
+  cube.add(edgeGroup);cube.add(vertGroup);
+
+  // diagonals
+  diagGroup=new THREE.Group();
+  diagGroup.add(cyl(V(-h,-h,h),V(h,h,h),er*0.9,new THREE.MeshStandardMaterial({color:C.amber,roughness:0.4})));
+  diagGroup.add(cyl(V(-h,-h,-h),V(h,h,h),er*0.9,new THREE.MeshStandardMaterial({color:C.red,roughness:0.4})));
+  diagGroup.visible=showDiag;cube.add(diagGroup);
+
+  // inscribed (r=a/2) + circumscribed (R=a√3/2) spheres
+  sphereGroup=new THREE.Group();
+  const ins=new THREE.Mesh(new THREE.SphereGeometry(a/2,40,28),
+    new THREE.MeshStandardMaterial({color:C.cyan,roughness:0.2,metalness:0,transparent:true,opacity:0.16,depthWrite:false}));
+  const cir=new THREE.Mesh(new THREE.SphereGeometry(a*Math.sqrt(3)/2,24,18),
+    new THREE.MeshBasicMaterial({color:C.cyan,wireframe:true,transparent:true,opacity:0.20}));
+  sphereGroup.add(ins);sphereGroup.add(cir);
+  sphereGroup.visible=showSphere;cube.add(sphereGroup);
+
+  applyFaceMats();
+  // shadow scale & position
+  shadow.scale.setScalar(a*2.4);
+  shadow.position.y=-(a*Math.sqrt(3)/2)-a*0.025;
+  updateLabelAnchors();
+}
+
+/* ── PROJECTED LABELS ── */
+const layer=document.getElementById('labels-layer');
+function mkLabel(cls){const d=document.createElement('div');d.className='dim-label '+cls;layer.appendChild(d);return d;}
+const L_edge=[mkLabel(''),mkLabel(''),mkLabel('')];
+const L_face=mkLabel('face');
+const L_fdiag=mkLabel('amber'),L_sdiag=mkLabel('red');
+const anc={edge:[V(),V(),V()],face:V(),fdiag:V(),sdiag:V()};
+
+function updateLabelAnchors(){
+  const a=window.A,h=a/2,off=a*0.12;
+  anc.edge[0].set(0,-h-off,h);
+  anc.edge[1].set(h,-h-off,0);
+  anc.edge[2].set(h+off,0,h);
+  if(selectedFace>=0) anc.face.copy(FACE_NORMALS[selectedFace]).multiplyScalar(h+a*0.015);
+  anc.fdiag.set(0,0,h);
+  anc.sdiag.set(0,0,0);
+  const v=f1(a);
+  L_edge.forEach(el=>el.textContent='a = '+v);
+  L_fdiag.textContent='a√2 = '+f2(a*Math.SQRT2);
+  L_sdiag.textContent='a√3 = '+f2(a*Math.sqrt(3));
+  if(selectedFace>=0) L_face.textContent='S = '+f1(a*a);
+}
+function project(localVec){
+  const w=localVec.clone().applyMatrix4(cube.matrixWorld).project(camera);
+  return {x:(w.x*0.5+0.5)*innerWidth,y:(-w.y*0.5+0.5)*innerHeight,behind:w.z>1};
+}
+function place(el,localVec,visible){
+  if(!visible){el.classList.add('hidden');return;}
+  const s=project(localVec);
+  if(s.behind){el.classList.add('hidden');return;}
+  el.classList.remove('hidden');el.style.left=s.x+'px';el.style.top=s.y+'px';
+}
+function updateLabels(){
+  L_edge.forEach((el,i)=>place(el,anc.edge[i],true));
+  place(L_face,anc.face,selectedFace>=0);
+  place(L_fdiag,anc.fdiag,showDiag);
+  place(L_sdiag,anc.sdiag,showDiag);
+}
+
+/* ── SELECTION + DETAIL ── */
+function setSelectedFace(idx){
+  selectedFace=(selectedFace===idx)?-1:idx;
+  applyFaceMats();updateLabelAnchors();
+}
+
+const DETAIL_ALL={
+ru:{
+  edge:{tag:'Ребро',title:'Ребро куба',calc:a=>`a = ${f1(a)}`,unit:'unit_len',
+    p:'Ребро — это сторона куба, отрезок, где встречаются две грани. У куба 12 рёбер, и все они одинаковой длины a — именно поэтому куб «правильный». В каждой вершине сходятся ровно 3 ребра.'},
+  farea:{tag:'Грань',title:'Площадь грани',calc:a=>`S = a × a = ${f1(a)} × ${f1(a)} = ${f1(a*a)}`,unit:'unit_area',
+    p:'Каждая грань куба — это квадрат со стороной a. Чтобы найти его площадь, умножаем сторону на сторону: S = a². Кликая на грань в модели, вы видите её площадь прямо на фигуре.'},
+  fper:{tag:'Грань',title:'Периметр грани',calc:a=>`P = 4 × a = 4 × ${f1(a)} = ${f1(4*a)}`,unit:'unit_len',
+    p:'Периметр — это длина границы грани. У квадрата 4 одинаковые стороны, поэтому периметр равен 4 × a. Это, например, длина рамки, которой можно обвести одну грань.'},
+  surf:{tag:'Поверхность',title:'Площадь поверхности',calc:a=>`S = 6 × a² = 6 × ${f1(a*a)} = ${f1(6*a*a)}`,unit:'unit_area',
+    p:'У куба 6 одинаковых граней. Чтобы покрасить весь куб снаружи, нужно покрасить площадь всех шести: S = 6 × a². Это и есть полная площадь поверхности.'},
+  vol:{tag:'Объём',title:'Объём куба',calc:a=>`V = a × a × a = ${f1(a)}³ = ${f1(a*a*a)}`,unit:'unit_vol',
+    p:'Объём показывает, сколько места занимает куб внутри. Его находят, перемножая три измерения: длину, ширину и высоту. У куба они равны, поэтому V = a³. Отсюда название «куб числа».'},
+  fdiag:{tag:'Диагональ',title:'Диагональ грани',calc:a=>`d = a × √2 = ${f1(a)} × 1.41 = ${f2(a*Math.SQRT2)}`,unit:'unit_len',
+    p:'Это диагональ одной квадратной грани — она соединяет два противоположных угла квадрата. По теореме Пифагора d² = a² + a², поэтому d = a√2. Она лежит на самой грани.'},
+  sdiag:{tag:'Диагональ',title:'Диагональ куба',calc:a=>`d = a × √3 = ${f1(a)} × 1.73 = ${f2(a*Math.sqrt(3))}`,unit:'unit_len',
+    p:'Это самый длинный отрезок внутри куба — он соединяет две противоположные вершины, проходя через центр. Дважды применив теорему Пифагора, получаем d = a√3. Включите «Диагонали», чтобы увидеть её.'},
+},
+kz:{
+  edge:{tag:'Қабырға',title:'Куб қабырғасы',calc:a=>`a = ${f1(a)}`,unit:'unit_len',
+    p:'Қабырға — кубтың қыры, екі қыр бітісетін кесінді. Кубта 12 қабырға бар, бәрі a ұзындығында бірдей — сондықтан куб «дұрыс». Әр төбеде дәл 3 қабырға жиналады.'},
+  farea:{tag:'Қыр',title:'Қыр ауданы',calc:a=>`S = a × a = ${f1(a)} × ${f1(a)} = ${f1(a*a)}`,unit:'unit_area',
+    p:'Кубтың әр қыры — a қабырғалы шаршы. Ауданын табу үшін қабырғаны қабырғаға көбейтеміз: S = a². Модельде қырды бассаң, ауданы фигурада көрінеді.'},
+  fper:{tag:'Қыр',title:'Қыр периметрі',calc:a=>`P = 4 × a = 4 × ${f1(a)} = ${f1(4*a)}`,unit:'unit_len',
+    p:'Периметр — қыр шекарасының ұзындығы. Шаршының 4 бірдей қабырғасы бар, сондықтан периметр 4 × a-ға тең.'},
+  surf:{tag:'Бет',title:'Бет ауданы',calc:a=>`S = 6 × a² = 6 × ${f1(a*a)} = ${f1(6*a*a)}`,unit:'unit_area',
+    p:'Кубтың 6 бірдей қыры бар. Кубты сырттай түгел бояу үшін алты қырдың ауданын бояу керек: S = 6 × a². Бұл — толық бет ауданы.'},
+  vol:{tag:'Көлем',title:'Куб көлемі',calc:a=>`V = a × a × a = ${f1(a)}³ = ${f1(a*a*a)}`,unit:'unit_vol',
+    p:'Көлем кубтың ішінде қанша орын алатынын көрсетеді. Оны үш өлшемді көбейтіп табады. Кубта олар тең, сондықтан V = a³.'},
+  fdiag:{tag:'Диагональ',title:'Қыр диагоналі',calc:a=>`d = a × √2 = ${f1(a)} × 1.41 = ${f2(a*Math.SQRT2)}`,unit:'unit_len',
+    p:'Бұл бір шаршы қырдың диагоналі — шаршының екі қарама-қарсы бұрышын жалғайды. Пифагор теоремасы бойынша d² = a² + a², сондықтан d = a√2.'},
+  sdiag:{tag:'Диагональ',title:'Куб диагоналі',calc:a=>`d = a × √3 = ${f1(a)} × 1.73 = ${f2(a*Math.sqrt(3))}`,unit:'unit_len',
+    p:'Бұл куб ішіндегі ең ұзын кесінді — ортасы арқылы өтіп, екі қарама-қарсы төбені жалғайды. Пифагорды екі рет қолданып d = a√3 аламыз. «Диагональдарды» қосып көріңіз.'},
+},
+en:{
+  edge:{tag:'Edge',title:'Cube edge',calc:a=>`a = ${f1(a)}`,unit:'unit_len',
+    p:'An edge is a side of the cube — the segment where two faces meet. A cube has 12 edges, all the same length a, which is exactly what makes it "regular". Three edges meet at every vertex.'},
+  farea:{tag:'Face',title:'Face area',calc:a=>`S = a × a = ${f1(a)} × ${f1(a)} = ${f1(a*a)}`,unit:'unit_area',
+    p:'Each face of the cube is a square with side a. To find its area, multiply side by side: S = a². Click a face in the model to see its area right on the figure.'},
+  fper:{tag:'Face',title:'Face perimeter',calc:a=>`P = 4 × a = 4 × ${f1(a)} = ${f1(4*a)}`,unit:'unit_len',
+    p:'The perimeter is the length around a face. A square has 4 equal sides, so the perimeter is 4 × a — for example, the length of a frame around one face.'},
+  surf:{tag:'Surface',title:'Surface area',calc:a=>`S = 6 × a² = 6 × ${f1(a*a)} = ${f1(6*a*a)}`,unit:'unit_area',
+    p:'A cube has 6 identical faces. To paint the whole cube outside, you paint all six: S = 6 × a². That is the total surface area.'},
+  vol:{tag:'Volume',title:'Cube volume',calc:a=>`V = a × a × a = ${f1(a)}³ = ${f1(a*a*a)}`,unit:'unit_vol',
+    p:'Volume shows how much space the cube holds inside. You find it by multiplying the three dimensions. For a cube they are equal, so V = a³ — hence "cubing" a number.'},
+  fdiag:{tag:'Diagonal',title:'Face diagonal',calc:a=>`d = a × √2 = ${f1(a)} × 1.41 = ${f2(a*Math.SQRT2)}`,unit:'unit_len',
+    p:'This is the diagonal of one square face, joining two opposite corners. By the Pythagorean theorem d² = a² + a², so d = a√2. It lies on the face itself.'},
+  sdiag:{tag:'Diagonal',title:'Space diagonal',calc:a=>`d = a × √3 = ${f1(a)} × 1.73 = ${f2(a*Math.sqrt(3))}`,unit:'unit_len',
+    p:'This is the longest segment inside the cube — it joins two opposite vertices through the centre. Applying Pythagoras twice gives d = a√3. Turn on "Diagonals" to see it.'},
+}
+};
+const DETAIL=DETAIL_ALL[LANG]||DETAIL_ALL.ru;
+
+function openDetail(keyMetric){
+  const d=DETAIL[keyMetric];if(!d)return;
+  const a=window.A;
+  document.querySelectorAll('.metric').forEach(m=>m.classList.toggle('active',m.dataset.key===keyMetric));
+  // contextual 3D highlight
+  if(keyMetric==='farea'||keyMetric==='fper'||keyMetric==='surf'){ if(selectedFace<0){selectedFace=4;applyFaceMats();updateLabelAnchors();} }
+  if((keyMetric==='fdiag'||keyMetric==='sdiag')&&!showDiag){window.toggleDiag();}
+  document.getElementById('detail-content').innerHTML=`
+    <div class="d-tag">${d.tag}</div>
+    <div class="d-title">${d.title}</div>
+    <div class="d-bigval"><b>${f1(METRICS.find(m=>m.key===keyMetric).val(a))}</b><span>${tr(d.unit)}</span></div>
+    <div class="d-formula">${d.calc(a)}</div>
+    <div class="d-para">${d.p}</div>`;
+  document.getElementById('panel-left').classList.add('detail');
+  currentDetail=keyMetric;
+  markInteract();
+}
+let currentDetail=null;
+window.openDetail=openDetail;
+window.showList=function(){
+  document.getElementById('panel-left').classList.remove('detail');
+  currentDetail=null;
+  document.querySelectorAll('.metric').forEach(m=>m.classList.remove('active'));
+  if(selectedFace>=0){selectedFace=-1;applyFaceMats();updateLabelAnchors();}
+};
+
+/* ── CONTROLS ── */
+window.A=4.0;
+window.setA=function(val){
+  window.A=val;buildCube();updateMetricValues();
+  if(currentDetail) openDetail(currentDetail);
+};
+window.toggleDiag=function(){
+  showDiag=!showDiag;
+  document.getElementById('chip-diag').classList.toggle('on',showDiag);
+  if(diagGroup)diagGroup.visible=showDiag;
+  markInteract();
+};
+window.toggleSphere=function(){
+  showSphere=!showSphere;
+  document.getElementById('chip-sphere').classList.toggle('on',showSphere);
+  if(sphereGroup)sphereGroup.visible=showSphere;
+  markInteract();
+};
+
+/* ── RAYCAST ── */
+const ray=new THREE.Raycaster(),m2=new THREE.Vector2();
+canvas.addEventListener('click',e=>{
+  if(isDragging)return;
+  m2.x=(e.clientX/innerWidth)*2-1;m2.y=-(e.clientY/innerHeight)*2+1;
+  ray.setFromCamera(m2,camera);
+  const hit=ray.intersectObject(facesMesh,false);
+  if(hit.length>0){
+    setSelectedFace(hit[0].face.materialIndex);
+    if(selectedFace>=0) openDetail('farea'); else window.showList();
+  }
+  markInteract();
+});
+
+/* ── DRAG + ZOOM + idle rotation ── */
+let isDragging=false,dragStart=null,last={x:0,y:0},dd=0,rotX=0.30;
+let lastInteract=performance.now()-11000;      // start rotating shortly after load
+let autoSpeed=0; const AUTO_TARGET=0.0016, IDLE_MS=15000;
+function markInteract(){lastInteract=performance.now();}
+window.__mark=markInteract;
+
+canvas.addEventListener('mousedown',e=>{dragStart={x:e.clientX,y:e.clientY};last={x:e.clientX,y:e.clientY};isDragging=false;dd=0;markInteract();});
+canvas.addEventListener('mousemove',e=>{
+  if(!dragStart)return;
+  dd=Math.hypot(e.clientX-dragStart.x,e.clientY-dragStart.y);
+  if(dd>4)isDragging=true;
+  if(isDragging){
+    root.rotation.y+=(e.clientX-last.x)*0.010;
+    rotX=Math.max(-1.1,Math.min(1.1,rotX+(e.clientY-last.y)*0.008));
+    root.rotation.x=rotX;markInteract();
+  }
+  last={x:e.clientX,y:e.clientY};
+});
+canvas.addEventListener('mouseup',()=>{dragStart=null;});
+canvas.addEventListener('mouseleave',()=>{dragStart=null;isDragging=false;});
+canvas.addEventListener('wheel',e=>{e.preventDefault();userZoom=Math.max(0.6,Math.min(1.7,userZoom+e.deltaY*0.0015));markInteract();},{passive:false});
+window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+
+/* ── LOOP ── */
+function animate(){
+  requestAnimationFrame(animate);
+  const idle=performance.now()-lastInteract;
+  if(idle>IDLE_MS) autoSpeed += (AUTO_TARGET-autoSpeed)*0.025;   // smooth resume
+  else            autoSpeed += (0-autoSpeed)*0.18;              // quick, gentle stop
+  root.rotation.y+=autoSpeed;
+  root.rotation.x=rotX;
+  camDistTarget=computeCamTarget();
+  camDist+=(camDistTarget-camDist)*0.18;
+  applyCamera();
+  renderer.render(scene,camera);
+  cube.updateWorldMatrix(true,false);
+  updateLabels();
+}
+
+// init
+root.rotation.x=rotX;
+buildCube();
+updateMetricValues();
+camDistTarget=computeCamTarget();camDist=camDistTarget;applyCamera();
+animate();
+</script>
+</body>
+</html>

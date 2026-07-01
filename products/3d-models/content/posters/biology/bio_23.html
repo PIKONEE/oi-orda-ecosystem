@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="page_title">Ракушка — анатомическая модель</title>
+    <link rel="stylesheet" href="_poster.css">
+</head>
+<body>
+<div id="canvas-container"></div>
+<div id="header">
+    <h1 data-i18n="header_title">Морская ракушка</h1>
+    <p data-i18n="header_subtitle">Интерактивная модель — 5 анатомических зон</p>
+</div>
+<div id="hint" data-i18n="hint">Кликните по любой части раковины, чтобы узнать больше</div>
+<button id="reset-btn" data-i18n="reset_btn" data-i18n-title="reset_btn_title" title="Сбросить вид">↺ Сбросить вид</button>
+<div id="info-panel" aria-hidden="true"></div>
+<div id="legend"></div>
+<div id="hover-label"></div>
+<div id="loading"><div class="spinner"></div><div id="loading-text" data-i18n="loading">Загрузка модели…</div></div>
+
+<script type="importmap">
+    { "imports": { "three": "../../libs/vendor/three-0.160.0/three.module.js", "three/addons/": "../../libs/vendor/three-0.160.0/addons/" } }
+</script>
+
+<script type="module">
+    import { initPoster } from './_poster_lib.js';
+
+    const I18N = {
+        ru: {
+            page_title: 'Ракушка — анатомическая модель',
+            header_title: 'Морская ракушка',
+            header_subtitle: 'Интерактивная модель — 5 анатомических зон',
+            hint: 'Кликните по любой части раковины, чтобы узнать больше',
+            reset_btn: '↺ Сбросить вид', reset_btn_title: 'Сбросить вид', close_btn_label: 'Закрыть',
+            loading: 'Загрузка модели…', error_load: 'Не удалось загрузить seashell.glb', error_no_mesh: 'В модели нет меша',
+            facts_label: 'Интересный факт',
+            zones: {
+                apex: { title: 'Вершина (апекс)', desc: 'Самая верхняя точка раковины, с которой моллюск начал свою жизнь. Это самая старая часть раковины, образовавшаяся ещё на стадии личинки. Витки спирали закручиваются вокруг апекса, нарастая снизу.', facts: 'У многих раковин апекс с возрастом стирается о песок и камни — поэтому возраст моллюска иногда определяют по числу видимых витков спирали.' },
+                whorls: { title: 'Витки (обороты)', desc: 'Витки раковины — это последовательные обороты спирали. Каждый новый виток крупнее предыдущего. Линия, по которой соприкасаются соседние витки, называется швом. По числу витков можно приблизительно оценить возраст моллюска.', facts: 'Спираль раковины часто следует золотому сечению — той же математической пропорции, что встречается в подсолнухах, шишках и галактиках.' },
+                aperture: { title: 'Устье', desc: 'Отверстие, через которое моллюск высовывает наружу ногу, голову и щупальца. По форме устье бывает округлым, овальным или щелевидным. Край устья называется губой; у молодых раковин он тонкий, у взрослых — утолщённый.', facts: 'У многих хищных морских улиток (например, конусов) внутри устья прячется отравленный гарпун, которым они стреляют в добычу.' },
+                lip: { title: 'Губа устья', desc: 'Утолщённый край устья. Различают наружную (правую) и внутреннюю (левую) губы. У зрелого моллюска губа становится толстой и часто имеет зубцы — это защитный механизм, мешающий хищникам проникнуть внутрь.', facts: 'По состоянию губы устья определяют, достиг ли моллюск половой зрелости: тонкая губа — молодая особь, толстая с зубцами — взрослая.' },
+                columella: { title: 'Колумелла (столбик)', desc: 'Внутренний центральный столбик раковины, вокруг которого закручиваются витки. Является основной опорой раковины. К колумелле прикрепляется мощная мышца-ретрактор, которая втягивает моллюска внутрь при опасности.', facts: 'Мышца-ретрактор колумеллы у некоторых улиток развивает силу, в 5 000 раз превышающую вес самого животного — это позволяет ей мгновенно скрыться в раковине.' }
+            }
+        },
+        kz: {
+            page_title: 'Ракушка — анатомиялық модель',
+            header_title: 'Теңіз ракушкасы',
+            header_subtitle: 'Интерактивті модель — 5 анатомиялық аймақ',
+            hint: 'Толығырақ білу үшін қабыршақтың кез келген бөлігіне басыңыз',
+            reset_btn: '↺ Көріністі қалпына келтіру', reset_btn_title: 'Көріністі қалпына келтіру', close_btn_label: 'Жабу',
+            loading: 'Модель жүктелуде…', error_load: 'seashell.glb файлын жүктеу мүмкін болмады', error_no_mesh: 'Модельде меш табылмады',
+            facts_label: 'Қызықты факт',
+            zones: {
+                apex: { title: 'Төбе (апекс)', desc: 'Қабыршақтың моллюск өмірін бастаған ең жоғары нүктесі. Бұл — қабыршақтың ең көне бөлігі. Спираль орамдары апекстің айналасында өсіп, төменнен қосылып отырады.', facts: 'Көптеген ракушкалардың апексі жасы ұлғайған сайын құм мен тасқа тозып кетеді — сондықтан кейде моллюскінің жасын көрінетін орамдар санымен анықтайды.' },
+                whorls: { title: 'Орамдар', desc: 'Қабыршақтың орамдары — спиральдың кезекті айналымдары. Әр жаңа орам алдыңғыдан үлкенірек. Көрші орамдардың түйіскен сызығы — жік.', facts: 'Қабыршақтың спиралі көбіне алтын қимаға сәйкес келеді — күнбағыс, шырша және галактикаларда кездесетін бір математикалық пропорция.' },
+                aperture: { title: 'Ауыз', desc: 'Моллюск аяғын, басын және мұртшаларын сыртқа шығаратын тесік. Дөңгелек, сопақ немесе саңылау тәрізді болуы мүмкін. Ауыздың шеті ерін деп аталады.', facts: 'Көптеген жыртқыш теңіз үлулерінде ауыз ішінде у себілген гарпуны болады, олар олжаға атады.' },
+                lip: { title: 'Ауыз ерні', desc: 'Ауыздың қалыңдатылған шеті. Сыртқы (оң) және ішкі (сол) еріндер ажыратылады. Жасы үлкен моллюскіде ерін қалың және жиі тістері болады — бұл жыртқыштардан қорғаныс механизмі.', facts: 'Ерін күйі бойынша моллюскінің жыныстық жасына жеткен-жетпегенін анықтайды.' },
+                columella: { title: 'Колумелла (бағана)', desc: 'Орамдар оралатын қабыршақтың ішкі орталық бағанасы. Қабыршақтың негізгі тірегі. Колумеллаға қауіп төнгенде моллюскіні ішке тартатын қуатты ретрактор бұлшықеті бекіді.', facts: 'Кейбір үлулердегі колумелла ретрактор бұлшықеті жануардың салмағынан 5 000 есе көп күш дамыта алады.' }
+            }
+        },
+        en: {
+            page_title: 'Seashell — Anatomical Model',
+            header_title: 'Seashell',
+            header_subtitle: 'Interactive model — 5 anatomical zones',
+            hint: 'Click any part of the shell to learn more',
+            reset_btn: '↺ Reset view', reset_btn_title: 'Reset view', close_btn_label: 'Close',
+            loading: 'Loading model…', error_load: 'Failed to load seashell.glb', error_no_mesh: 'No mesh found in the model',
+            facts_label: 'Did you know?',
+            zones: {
+                apex: { title: 'Apex', desc: 'The topmost point of the shell, where the mollusk began life. The oldest part of the shell, formed at the larval stage. Spiral whorls wind around the apex, growing downward.', facts: 'In many shells the apex wears down with age against sand and rocks — so age is sometimes estimated by counting visible whorls.' },
+                whorls: { title: 'Whorls', desc: 'The successive coils of the spiral. Each new whorl is larger than the previous. The line where adjacent whorls meet is called the suture. The number of whorls gives a rough estimate of age.', facts: 'A shell\'s spiral often follows the golden ratio — the same mathematical proportion found in sunflowers, pinecones, and galaxies.' },
+                aperture: { title: 'Aperture', desc: 'The opening through which the mollusk extends its foot, head, and tentacles. Aperture shape can be round, oval, or slit-like. Its edge is called the lip; thin in young shells, thickened in adults.', facts: 'Many predatory marine snails (e.g., cone snails) hide a venomous harpoon inside their aperture, which they shoot into prey.' },
+                lip: { title: 'Lip (of Aperture)', desc: 'The thickened edge of the aperture. Outer (right) and inner (left) lips are distinguished. In mature mollusks the lip becomes thick and often has teeth — a defense against predators.', facts: 'The state of the lip tells whether a mollusk is sexually mature: a thin lip indicates a juvenile; a thick toothed lip — an adult.' },
+                columella: { title: 'Columella', desc: 'The inner central pillar around which the whorls coil. The main structural support of the shell. The powerful columellar (retractor) muscle attaches here, pulling the mollusk inside when threatened.', facts: 'In some snails the columellar muscle can develop force 5,000 times the animal\'s body weight — letting it instantly hide inside.' }
+            }
+        }
+    };
+
+    const ZONES = [
+        { id: 'apex',      subtitle: 'Apex',           color: 0xff6b6b },
+        { id: 'whorls',    subtitle: 'Anfractus',      color: 0x4d96ff },
+        { id: 'aperture',  subtitle: 'Apertura',       color: 0xffd93d },
+        { id: 'lip',       subtitle: 'Labrum',         color: 0xff9f45 },
+        { id: 'columella', subtitle: 'Columella',      color: 0xc77dff }
+    ];
+    const SEEDS = {
+    "apex": [
+        [-0.737, 0.591, 0.583],
+        [-0.292, 0.637, 0.835],
+        [-0.327, 0.715, 0.247],
+        [-0.241, 0.635, -0.302],
+        [0.214, 0.623, 0.864],
+        [0.167, 0.74, 0.164],
+        [0.488, 0.632, -0.182],
+        [0.634, 0.603, 0.659]
+    ],
+    "whorls": [
+        [-0.83, 0.13, 0.038],
+        [-0.658, 0.405, 0.658],
+        [-0.56, 0.061, -0.464],
+        [-0.078, -0.132, -0.811],
+        [0.145, -0.263, 0.678],
+        [0.48, 0.058, -0.599],
+        [0.827, 0.137, -0.087],
+        [0.825, 0.384, 0.515]
+    ],
+    "aperture": [
+        [-0.901, -0.507, -0.265],
+        [-0.773, -0.498, 0.575],
+        [-0.319, -0.522, -0.931],
+        [-0.256, -0.491, 0.989],
+        [-0.018, -0.809, 0.048],
+        [0.378, -0.496, 0.82],
+        [0.611, -0.511, -0.738],
+        [0.946, -0.504, 0.089]
+    ],
+    "lip": [
+        [-0.337, -0.306, -0.762],
+        [0.34, -0.304, -0.765],
+        [-0.531, -0.3, 0.075],
+        [0.301, -0.301, 0.154],
+        [0.714, -0.33, 0.028],
+        [0.684, -0.304, 0.533],
+        [0.35, -0.315, 0.785],
+        [-0.399, -0.278, 0.793]
+    ],
+    "columella": [
+        [0.008, -0.221, -0.919],
+        [-0.001, -0.316, -0.775],
+        [0.006, -0.291, -0.326],
+        [-0.011, -0.199, 0.083],
+        [0.023, -0.281, 0.365],
+        [0.016, -0.354, 0.485],
+        [-0.001, -0.307, 0.726],
+        [0.009, -0.288, 1.029]
+    ]
+};
+
+    initPoster({ modelFile: 'seashell.glb', zones: ZONES, seeds: SEEDS, i18n: I18N });
+</script>
+</body>
+</html>

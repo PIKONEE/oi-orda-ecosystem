@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Стоячие волны</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { width: 100%; height: 100%; overflow: hidden; }
+        body {
+            font-family: 'Segoe UI', 'Inter', system-ui, sans-serif;
+            background: linear-gradient(135deg, #eef3fb 0%, #e6edf8 100%);
+            color: #16233f;
+        }
+        #canvas-container { position: absolute; inset: 0; }
+        #labels { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+        .label3d {
+            position: absolute; transform: translate(-50%, -50%);
+            font-size: 12px; font-weight: 800; padding: 2px 7px; border-radius: 6px;
+            background: rgba(255,255,255,0.92); border: 1px solid rgba(150,170,205,0.6);
+            box-shadow: 0 2px 8px rgba(40,60,110,0.16); white-space: nowrap;
+        }
+        .label3d.node { color: #dc2626; } .label3d.anti { color: #15803d; } .label3d.end { color: #475569; }
+
+        .header {
+            position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+            text-align: center; z-index: 6; pointer-events: none; width: 92%;
+        }
+        .header h1 { font-size: 26px; font-weight: 800; color: #1b2a4a; text-shadow: 0 1px 0 rgba(255,255,255,0.7); }
+        .header p { font-size: 14px; color: #5a6b8c; margin-top: 4px; font-weight: 600; }
+
+        .panel {
+            position: absolute; z-index: 7; background: rgba(255,255,255,0.82);
+             
+            border: 1px solid rgba(150,170,205,0.5); border-radius: 16px;
+            box-shadow: 0 10px 34px rgba(40,60,110,0.14);
+        }
+        .control-panel { top: 92px; left: 22px; width: 320px; padding: 15px 18px; }
+        .info-panel { top: 92px; right: 22px; width: 300px; padding: 15px 18px; }
+
+        .mode-label { font-size: 12px; font-weight: 800; color: #5a6b8c; margin: 2px 0 7px; }
+        .select-row { display: flex; gap: 7px; margin-bottom: 13px; }
+        .mbtn {
+            flex: 1; padding: 9px 4px; border-radius: 9px; border: 1.5px solid rgba(150,170,205,0.6);
+            background: rgba(255,255,255,0.55); color: #44537a; font-size: 12px; font-weight: 700; cursor: pointer; transition: all .16s; text-align: center;
+        }
+        .mbtn.active { background: rgba(37,99,235,0.12); border-color: #2563eb; color: #1b2a4a; }
+
+        .param-group { margin-bottom: 12px; }
+        .param-label { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+        .param-name { font-size: 13px; font-weight: 700; color: #33405e; display: flex; align-items: center; gap: 6px; }
+        .param-icon { font-size: 15px; }
+        .param-value { font-size: 15px; font-weight: 800; color: #2563eb; font-variant-numeric: tabular-nums; }
+
+        input[type=range] {
+            -webkit-appearance: none; appearance: none; width: 100%; height: 6px;
+            border-radius: 6px; outline: none; cursor: pointer;
+            background: linear-gradient(90deg, #c4d2ec, #aebfe0);
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none; width: 18px; height: 18px;
+            border-radius: 50%; background: #fff; border: 3px solid #2563eb;
+            box-shadow: 0 2px 7px rgba(37,99,235,0.4); cursor: pointer;
+        }
+
+        .toggle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
+        .toggle-btn {
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+            padding: 9px 6px; border-radius: 10px; border: 1.5px solid rgba(150,170,205,0.6);
+            background: rgba(255,255,255,0.55); color: #44537a; font-size: 12px; font-weight: 700;
+            cursor: pointer; transition: all 0.16s;
+        }
+        .toggle-btn .dot { width: 9px; height: 9px; border-radius: 50%; background: #b7c2d8; transition: all 0.16s; }
+        .toggle-btn.active { background: rgba(37,99,235,0.12); border-color: #2563eb; color: #1b2a4a; }
+        .toggle-btn.active .dot { background: #2563eb; box-shadow: 0 0 7px rgba(37,99,235,0.8); }
+
+        .action-row { display: flex; gap: 8px; margin-top: 11px; }
+        .btn { flex: 1; padding: 9px; border: none; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.16s; color: #fff; }
+        .btn-play { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
+        .btn-reset { background: linear-gradient(135deg, #64748b, #475569); }
+        .btn:hover { filter: brightness(1.07); transform: translateY(-1px); }
+
+        .info-title { font-size: 15px; font-weight: 800; color: #1b2a4a; margin: 4px 0 9px; display: flex; align-items: center; gap: 7px; }
+        .readout { display: flex; justify-content: space-between; align-items: center; padding: 5.5px 0; border-bottom: 1px dashed rgba(150,170,205,0.45); font-size: 13px; }
+        .ro-name { color: #5a6b8c; font-weight: 600; }
+        .ro-val { font-weight: 800; color: #1b2a4a; font-variant-numeric: tabular-nums; }
+        .ro-val.node { color: #dc2626; } .ro-val.anti { color: #15803d; } .ro-val.f { color: #2563eb; }
+
+        .formula-panel {
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 7;
+            background: rgba(27,42,74,0.93); color: #eaf0fb; padding: 11px 22px; border-radius: 14px;
+            box-shadow: 0 10px 30px rgba(20,35,70,0.34); text-align: center; max-width: 72%;
+        }
+        .formula { font-family: 'Cambria Math','Times New Roman', serif; font-size: 18px; font-weight: 600; }
+        .formula .sep { color: #6b7da6; margin: 0 12px; }
+        .formula-note { font-size: 12.5px; color: #9fb2d8; margin-top: 5px; }
+
+        .hint {
+            position: absolute; bottom: 18px; left: 22px; z-index: 7; font-size: 12px; color: #5a6b8c;
+            background: rgba(255,255,255,0.72); padding: 7px 13px; border-radius: 9px;
+            border: 1px solid rgba(150,170,205,0.45);
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div id="labels"></div>
+
+    <div class="header">
+        <h1>🎻 Стоячие волны</h1>
+        <p><span>Узлы и пучности • гармоники • fₙ = n·v/2L</span></p>
+    </div>
+
+    <div class="panel control-panel">
+        <div class="mode-label" data-i18n="modeLabel">СИСТЕМА</div>
+        <div class="select-row">
+            <button class="mbtn active" data-mode="string" data-i18n="mString">Струна (2 узла)</button>
+            <button class="mbtn" data-mode="open" data-i18n="mOpen">Открытая труба</button>
+            <button class="mbtn" data-mode="closed" data-i18n="mClosed">Закрытая труба</button>
+        </div>
+
+        <div class="param-group">
+            <div class="param-label">
+                <span class="param-name"><span class="param-icon">🎵</span><span data-i18n="harmLabel">Номер гармоники n</span></span>
+                <span class="param-value" id="harm-value">3</span>
+            </div>
+            <input type="range" id="harm" min="1" max="6" step="1" value="3">
+        </div>
+        <div class="param-group">
+            <div class="param-label">
+                <span class="param-name"><span class="param-icon">📏</span><span data-i18n="lenLabel">Длина L (м)</span></span>
+                <span class="param-value" id="len-value">1.0 м</span>
+            </div>
+            <input type="range" id="len" min="0.5" max="2" step="0.1" value="1">
+        </div>
+        <div class="param-group">
+            <div class="param-label">
+                <span class="param-name"><span class="param-icon">💨</span><span data-i18n="vLabel">Скорость волны v (м/с)</span></span>
+                <span class="param-value" id="v-value">340 м/с</span>
+            </div>
+            <input type="range" id="vel" min="100" max="500" step="10" value="340">
+        </div>
+
+        <div class="toggle-grid">
+            <button class="toggle-btn active" id="t-travel"><span class="dot"></span><span data-i18n="tTravel">Бегущие волны</span></button>
+            <button class="toggle-btn active" id="t-nodes"><span class="dot"></span><span data-i18n="tNodes">Узлы/пучности</span></button>
+            <button class="toggle-btn active" id="t-env"><span class="dot"></span><span data-i18n="tEnv">Огибающая</span></button>
+            <button class="toggle-btn active" id="t-lbl"><span class="dot"></span><span data-i18n="tLbl">Подписи</span></button>
+        </div>
+
+        <div class="action-row">
+            <button class="btn btn-play" id="btn-play" data-i18n="pause">⏸ Пауза</button>
+            <button class="btn btn-reset" id="btn-reset" data-i18n="reset">↺ Сброс</button>
+        </div>
+    </div>
+
+    <div class="panel info-panel">
+        <div class="info-title">📊 <span data-i18n="infoTitle">Параметры</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roMode">Система</span><span class="ro-val" id="ro-mode">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roWl">Длина волны λ</span><span class="ro-val" id="ro-wl">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roFreq">Частота fₙ</span><span class="ro-val f" id="ro-freq">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roNodes">Узлов</span><span class="ro-val node" id="ro-nodes">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roAnti">Пучностей</span><span class="ro-val anti" id="ro-anti">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roFund">Основная частота f₁</span><span class="ro-val" id="ro-fund">—</span></div>
+    </div>
+
+    <div class="formula-panel">
+        <div class="formula" id="formula-main">
+            λₙ = 2L ∕ n
+            <span class="sep">|</span>
+            fₙ = n·v ∕ 2L
+        </div>
+        <div class="formula-note" data-i18n="note">Стоячая волна — сумма двух волн, бегущих навстречу. Узлы неподвижны (нулевая амплитуда), пучности колеблются максимально.</div>
+    </div>
+
+    <div class="hint"><span data-i18n="hint">ЛКМ — вращение • ПКМ — перемещение • Колесо — зум</span></div>
+
+    <script src="../../libs/vendor/three-r128/three.min.js"></script>
+    <script>
+    const LANG = (new URLSearchParams(window.location.search).get('lang')) || 'ru';
+    const I18N = {
+        ru: { headH:'🎻 Стоячие волны', headS:'Узлы и пучности • гармоники • fₙ = n·v/2L',
+              modeLabel:'СИСТЕМА', mString:'Струна (2 узла)', mOpen:'Открытая труба', mClosed:'Закрытая труба',
+              harmLabel:'Номер гармоники n', lenLabel:'Длина L (м)', vLabel:'Скорость волны v (м/с)',
+              tTravel:'Бегущие волны', tNodes:'Узлы/пучности', tEnv:'Огибающая', tLbl:'Подписи',
+              play:'▶ Пуск', pause:'⏸ Пауза', reset:'↺ Сброс', infoTitle:'Параметры',
+              roMode:'Система', roWl:'Длина волны λ', roFreq:'Частота fₙ', roNodes:'Узлов', roAnti:'Пучностей', roFund:'Основная частота f₁',
+              note:'Стоячая волна — сумма двух волн, бегущих навстречу. Узлы неподвижны (нулевая амплитуда), пучности колеблются максимально.',
+              hint:'ЛКМ — вращение • ПКМ — перемещение • Колесо — зум',
+              lNode:'узел', lAnti:'пучность', lFixed:'закреплён', lOpenEnd:'открытый', lClosedEnd:'закрытый',
+              cString:'Струна', cOpen:'Открытая труба', cClosed:'Закрытая труба', uHz:'Гц', uM:'м', uMs:'м/с',
+              fOpen:'fₙ = n·v/2L  (n=1,2,3…)', fClosed:'fₙ = n·v/4L  (n=1,3,5…)', fString:'fₙ = n·v/2L  (n=1,2,3…)' },
+        kz: { headH:'🎻 Тұрғын толқындар', headS:'Түйіндер мен шоғырлар • гармоникалар • fₙ = n·v/2L',
+              modeLabel:'ЖҮЙЕ', mString:'Ішек (2 түйін)', mOpen:'Ашық түтік', mClosed:'Жабық түтік',
+              harmLabel:'Гармоника нөмірі n', lenLabel:'Ұзындық L (м)', vLabel:'Толқын жылдамдығы v (м/с)',
+              tTravel:'Жүгіретін толқындар', tNodes:'Түйін/шоғыр', tEnv:'Орама', tLbl:'Жазулар',
+              play:'▶ Қосу', pause:'⏸ Тоқтату', reset:'↺ Қайтару', infoTitle:'Параметрлер',
+              roMode:'Жүйе', roWl:'Толқын ұзындығы λ', roFreq:'Жиілік fₙ', roNodes:'Түйіндер', roAnti:'Шоғырлар', roFund:'Негізгі жиілік f₁',
+              note:'Тұрғын толқын — қарама-қарсы жүгіретін екі толқынның қосындысы. Түйіндер қозғалмайды (нөлдік амплитуда), шоғырлар максималды тербеледі.',
+              hint:'СБ — айналдыру • ОБ — жылжыту • Дөңгелек — масштаб',
+              lNode:'түйін', lAnti:'шоғыр', lFixed:'бекітілген', lOpenEnd:'ашық', lClosedEnd:'жабық',
+              cString:'Ішек', cOpen:'Ашық түтік', cClosed:'Жабық түтік', uHz:'Гц', uM:'м', uMs:'м/с',
+              fOpen:'fₙ = n·v/2L  (n=1,2,3…)', fClosed:'fₙ = n·v/4L  (n=1,3,5…)', fString:'fₙ = n·v/2L  (n=1,2,3…)' },
+        en: { headH:'🎻 Standing Waves', headS:'Nodes and antinodes • harmonics • fₙ = n·v/2L',
+              modeLabel:'SYSTEM', mString:'String (2 nodes)', mOpen:'Open pipe', mClosed:'Closed pipe',
+              harmLabel:'Harmonic number n', lenLabel:'Length L (m)', vLabel:'Wave speed v (m/s)',
+              tTravel:'Traveling waves', tNodes:'Nodes/antinodes', tEnv:'Envelope', tLbl:'Labels',
+              play:'▶ Play', pause:'⏸ Pause', reset:'↺ Reset', infoTitle:'Parameters',
+              roMode:'System', roWl:'Wavelength λ', roFreq:'Frequency fₙ', roNodes:'Nodes', roAnti:'Antinodes', roFund:'Fundamental f₁',
+              note:'A standing wave is the sum of two waves traveling in opposite directions. Nodes stay still (zero amplitude); antinodes oscillate maximally.',
+              hint:'LMB — rotate • RMB — pan • Wheel — zoom',
+              lNode:'node', lAnti:'antinode', lFixed:'fixed', lOpenEnd:'open', lClosedEnd:'closed',
+              cString:'String', cOpen:'Open pipe', cClosed:'Closed pipe', uHz:'Hz', uM:'m', uMs:'m/s',
+              fOpen:'fₙ = n·v/2L  (n=1,2,3…)', fClosed:'fₙ = n·v/4L  (n=1,3,5…)', fString:'fₙ = n·v/2L  (n=1,2,3…)' }
+    };
+    const L = I18N[LANG] || I18N.ru;
+
+    // ---- physics ----
+    // string / open pipe: both ends same BC -> f_n = n v / 2L, n=1,2,3...
+    // closed pipe: one node one antinode -> f_n = n v / 4L, n=1,3,5...
+    let mode = 'string';
+    let n = 3;          // harmonic index (user selects 1..6)
+    let Lm = 1.0;       // length (m)
+    let vWave = 340;    // wave speed (m/s)
+    let showTravel = true, showNodes = true, showEnv = true, showLbl = true;
+    let playing = true, simT = 0;
+
+    // effective harmonic order used in formulas (closed pipe only odd)
+    function effN() { return mode === 'closed' ? (2 * n - 1) : n; }
+    function wavelength() {
+        if (mode === 'closed') return 4 * Lm / effN();
+        return 2 * Lm / effN();
+    }
+    function freq() { return vWave / wavelength(); }
+    function fundamental() { return mode === 'closed' ? vWave / (4 * Lm) : vWave / (2 * Lm); }
+    // number of half-wavelengths along the length
+    function nodeCount() {
+        if (mode === 'closed') return n;            // closed: nodes = n (1,2,3 for harmonics 1,3,5)
+        return effN() + 1;                          // string/open both-ends: nodes = n+1
+    }
+    function antiCount() {
+        if (mode === 'closed') return n;            // closed: antinodes = n
+        return effN();                              // string/open: antinodes = n
+    }
+
+    // displacement shape y(x), x in [0,1] along length
+    // string: sin(nπx) ; open pipe (display as displacement antinodes at ends): cos(nπx) ; closed: sin((2k-1)πx/2)
+    function shape(xNorm) {
+        if (mode === 'string') return Math.sin(effN() * Math.PI * xNorm);
+        if (mode === 'open') return Math.cos(effN() * Math.PI * xNorm);   // displacement antinodes at both ends
+        // closed: node at x=0 (closed end), antinode at x=1 (open end)
+        return Math.sin(effN() * Math.PI * xNorm / 2);
+    }
+
+    // ---- three.js ----
+    let scene, camera, renderer, root, stringLine, envTop, envBot, travelA, travelB, pipeMesh;
+    let nodeMarks = [], antiMarks = [];
+    const SEG = 200, SPAN = 10;     // visual length along x
+    const AMP = 1.6;
+    const clock = new THREE.Clock();
+    const container = document.getElementById('canvas-container');
+    const labelLayer = document.getElementById('labels');
+
+    let camTheta = 0.2, camPhi = 1.25, camRadius = 15;
+    const camTarget = new THREE.Vector3(0, 0, 0);
+    let dragMode = 0, lastX = 0, lastY = 0;
+
+    function init() {
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xeef3fb);
+        scene.fog = new THREE.Fog(0xeef3fb, 26, 60);
+
+        camera = new THREE.PerspectiveCamera(47, window.innerWidth / window.innerHeight, 0.1, 200);
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        container.appendChild(renderer.domElement);
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.95));
+        const key = new THREE.DirectionalLight(0xffffff, 0.45); key.position.set(3, 8, 9); scene.add(key);
+
+        root = new THREE.Group(); scene.add(root);
+        const grid = new THREE.GridHelper(24, 12, 0xc2cee4, 0xdde5f1); grid.position.y = -3.2; root.add(grid);
+
+        buildLines();
+        buildPipe();
+        buildEndSupports();
+
+        makeLabels();
+        applyI18N();
+        setupControls();
+        rebuild();
+        updateCamera();
+        animate();
+    }
+
+    function emptyGeo(color, opacity, width) {
+        const g = new THREE.BufferGeometry();
+        g.setAttribute('position', new THREE.BufferAttribute(new Float32Array((SEG + 1) * 3), 3));
+        return new THREE.Line(g, new THREE.LineBasicMaterial({ color, transparent: opacity < 1, opacity, linewidth: width || 1 }));
+    }
+
+    function buildLines() {
+        stringLine = emptyGeo(0x2563eb, 1, 3); root.add(stringLine);
+        // make string thicker via tube? keep line but add glow tube
+        envTop = emptyGeo(0x94a3b8, 0.4); root.add(envTop);
+        envBot = emptyGeo(0x94a3b8, 0.4); root.add(envBot);
+        travelA = emptyGeo(0xf59e0b, 0.5); root.add(travelA);   // right-moving
+        travelB = emptyGeo(0x10b981, 0.5); root.add(travelB);   // left-moving
+    }
+
+    function buildPipe() {
+        pipeMesh = new THREE.Group(); root.add(pipeMesh);
+    }
+    function rebuildPipe() {
+        while (pipeMesh.children.length) { const c = pipeMesh.children[0]; c.geometry && c.geometry.dispose(); pipeMesh.remove(c); }
+        if (mode === 'string') { pipeMesh.visible = false; return; }
+        pipeMesh.visible = true;
+        // translucent cylindrical pipe around the wave
+        const geo = new THREE.CylinderGeometry(2.0, 2.0, SPAN, 30, 1, true);
+        geo.rotateZ(Math.PI / 2);
+        const mat = new THREE.MeshStandardMaterial({ color: 0x9db4d8, transparent: true, opacity: 0.16, side: THREE.DoubleSide, metalness: 0.2, roughness: 0.6 });
+        pipeMesh.add(new THREE.Mesh(geo, mat));
+        // end caps: closed pipe has a wall on the left (x=-SPAN/2)
+        const capMat = new THREE.MeshStandardMaterial({ color: 0x52617d, metalness: 0.3, roughness: 0.6, side: THREE.DoubleSide });
+        if (mode === 'closed') {
+            const cap = new THREE.Mesh(new THREE.CircleGeometry(2.0, 30), capMat);
+            cap.rotation.y = Math.PI / 2; cap.position.x = -SPAN / 2; pipeMesh.add(cap);
+        }
+    }
+
+    function buildEndSupports() {
+        // posts for string ends
+    }
+
+    function makeLabels() { /* dynamic node/anti labels created in rebuild */ }
+    let endLabels = [];
+    function buildMarkers() {
+        nodeMarks.forEach(m => { m.geometry.dispose(); root.remove(m); }); nodeMarks = [];
+        antiMarks.forEach(m => { m.geometry.dispose(); root.remove(m); }); antiMarks = [];
+        // find node positions: where shape==0 ; antinodes where |shape| max
+        const N = 400;
+        let prev = shape(0);
+        for (let i = 1; i <= N; i++) {
+            const x = i / N; const s = shape(x);
+            if (prev === 0 || (prev < 0) !== (s < 0)) {
+                // zero crossing -> node
+                const xpos = (x - 0.5) * SPAN;
+                const m = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 10), new THREE.MeshBasicMaterial({ color: 0xdc2626 }));
+                m.position.set(xpos, 0, 0); root.add(m); nodeMarks.push(m);
+            }
+            prev = s;
+        }
+        // node at x=0 explicitly for string/closed
+        if (mode === 'string' || mode === 'closed') {
+            const m = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 10), new THREE.MeshBasicMaterial({ color: 0xdc2626 }));
+            m.position.set(-SPAN / 2, 0, 0); root.add(m); nodeMarks.push(m);
+        }
+        // antinodes: sample local maxima of |shape|
+        const antiX = [];
+        for (let i = 1; i < N; i++) {
+            const xm = (i - 1) / N, x0 = i / N, xp = (i + 1) / N;
+            const a = Math.abs(shape(xm)), b = Math.abs(shape(x0)), c = Math.abs(shape(xp));
+            if (b > a && b >= c && b > 0.85) antiX.push(x0);
+        }
+        // include endpoints for open pipe (antinodes at both ends)
+        if (mode === 'open') { antiX.unshift(0); antiX.push(1); }
+        if (mode === 'closed') antiX.push(1);   // open end is antinode
+        antiX.forEach(x => {
+            const m = new THREE.Mesh(new THREE.SphereGeometry(0.14, 12, 10), new THREE.MeshBasicMaterial({ color: 0x15803d }));
+            m.userData.x = x; root.add(m); antiMarks.push(m);
+        });
+        nodeMarks.forEach(m => m.visible = showNodes);
+        antiMarks.forEach(m => m.visible = showNodes);
+    }
+
+    function rebuild() {
+        rebuildPipe();
+        buildMarkers();
+        envTop.visible = showEnv; envBot.visible = showEnv;
+        travelA.visible = showTravel; travelB.visible = showTravel;
+        recalc();
+    }
+
+    function recalc() {
+        const names = { string: L.cString, open: L.cOpen, closed: L.cClosed };
+        setTxt('ro-mode', names[mode]);
+        setTxt('ro-wl', wavelength().toFixed(2) + ' ' + L.uM);
+        setTxt('ro-freq', freq().toFixed(1) + ' ' + L.uHz);
+        setTxt('ro-nodes', nodeCount());
+        setTxt('ro-anti', antiCount());
+        setTxt('ro-fund', fundamental().toFixed(1) + ' ' + L.uHz);
+        document.getElementById('formula-main').innerHTML = mode === 'closed'
+            ? 'λₙ = 4L ∕ n  <span class="sep">|</span>  fₙ = n·v ∕ 4L'
+            : 'λₙ = 2L ∕ n  <span class="sep">|</span>  fₙ = n·v ∕ 2L';
+        // harmonic slider max: closed pipe shows odd harmonics, still 1..6 selections
+    }
+
+    function setTxt(id, v) { const el = document.getElementById(id); if (el) el.textContent = v; }
+
+    // ---- labels (node/antinode + ends) ----
+    let lblNode, lblAnti, lblEndL, lblEndR;
+    (function ensureLabels() {
+        const mk = (cls) => { const d = document.createElement('div'); d.className = 'label3d ' + cls; labelLayer.appendChild(d); return d; };
+        lblNode = mk('node'); lblAnti = mk('anti'); lblEndL = mk('end'); lblEndR = mk('end');
+    })();
+    function proj(el, p, show, text) {
+        if (!show) { el.style.display = 'none'; return; }
+        const v = p.clone().project(camera);
+        if (v.z > 1) { el.style.display = 'none'; return; }
+        el.style.display = 'block'; if (text != null) el.textContent = text;
+        el.style.left = (v.x * 0.5 + 0.5) * window.innerWidth + 'px';
+        el.style.top = (-v.y * 0.5 + 0.5) * window.innerHeight + 'px';
+    }
+    function updateLabels() {
+        const showNL = showLbl && showNodes;
+        proj(lblNode, nodeMarks.length ? nodeMarks[Math.min(1, nodeMarks.length - 1)].position.clone().add(new THREE.Vector3(0, -0.5, 0)) : new THREE.Vector3(), showNL && nodeMarks.length > 0, L.lNode);
+        proj(lblAnti, antiMarks.length ? antiMarks[0].position.clone().add(new THREE.Vector3(0, antiMarks[0].position.y >= 0 ? 0.6 : -0.6, 0)) : new THREE.Vector3(), showNL && antiMarks.length > 0, L.lAnti);
+        // end labels
+        const leftEnd = mode === 'open' ? L.lOpenEnd : (mode === 'closed' ? L.lClosedEnd : L.lFixed);
+        const rightEnd = mode === 'closed' ? L.lOpenEnd : (mode === 'open' ? L.lOpenEnd : L.lFixed);
+        proj(lblEndL, new THREE.Vector3(-SPAN / 2, -1.0, 0), showLbl, leftEnd);
+        proj(lblEndR, new THREE.Vector3(SPAN / 2, -1.0, 0), showLbl, rightEnd);
+    }
+
+    function updateCamera() {
+        const sp = Math.sin(camPhi), cp = Math.cos(camPhi), st = Math.sin(camTheta), ct = Math.cos(camTheta);
+        camera.position.set(camTarget.x + camRadius * sp * ct, camTarget.y + camRadius * cp, camTarget.z + camRadius * sp * st);
+        camera.lookAt(camTarget);
+    }
+
+    function setupControls() {
+        document.querySelectorAll('.mbtn').forEach(b => b.addEventListener('click', () => {
+            document.querySelectorAll('.mbtn').forEach(x => x.classList.remove('active'));
+            b.classList.add('active'); mode = b.getAttribute('data-mode'); rebuild();
+        }));
+        document.getElementById('harm').addEventListener('input', e => { n = +e.target.value; setTxt('harm-value', mode === 'closed' ? (2 * n - 1) : n); rebuild(); });
+        document.getElementById('len').addEventListener('input', e => { Lm = +e.target.value; setTxt('len-value', Lm.toFixed(1) + ' ' + L.uM); recalc(); });
+        document.getElementById('vel').addEventListener('input', e => { vWave = +e.target.value; setTxt('v-value', vWave + ' ' + L.uMs); recalc(); });
+
+        const tog = (id, fn) => { const el = document.getElementById(id); el.addEventListener('click', () => { el.classList.toggle('active'); fn(el.classList.contains('active')); }); };
+        tog('t-travel', v => { showTravel = v; travelA.visible = v; travelB.visible = v; });
+        tog('t-nodes', v => { showNodes = v; nodeMarks.forEach(m => m.visible = v); antiMarks.forEach(m => m.visible = v); });
+        tog('t-env', v => { showEnv = v; envTop.visible = v; envBot.visible = v; });
+        tog('t-lbl', v => showLbl = v);
+
+        document.getElementById('btn-play').addEventListener('click', () => {
+            playing = !playing; document.getElementById('btn-play').textContent = playing ? L.pause : L.play;
+        });
+        document.getElementById('btn-reset').addEventListener('click', () => {
+            mode = 'string'; n = 3; Lm = 1.0; vWave = 340; playing = true; simT = 0;
+            showTravel = showNodes = showEnv = showLbl = true;
+            document.querySelectorAll('.mbtn').forEach(x => x.classList.toggle('active', x.getAttribute('data-mode') === 'string'));
+            document.getElementById('harm').value = 3; document.getElementById('len').value = 1; document.getElementById('vel').value = 340;
+            setTxt('harm-value', '3'); setTxt('len-value', '1.0 ' + L.uM); setTxt('v-value', '340 ' + L.uMs);
+            ['t-travel', 't-nodes', 't-env', 't-lbl'].forEach(id => document.getElementById(id).classList.add('active'));
+            document.getElementById('btn-play').textContent = L.pause;
+            camTheta = 0.2; camPhi = 1.25; camRadius = 15; camTarget.set(0, 0, 0);
+            rebuild(); updateCamera();
+        });
+
+        const el = renderer.domElement;
+        el.addEventListener('contextmenu', e => e.preventDefault());
+        el.addEventListener('mousedown', e => { dragMode = (e.button === 2 || e.shiftKey) ? 2 : 1; lastX = e.clientX; lastY = e.clientY; });
+        window.addEventListener('mousemove', e => {
+            if (!dragMode) return;
+            const dx = e.clientX - lastX, dy = e.clientY - lastY; lastX = e.clientX; lastY = e.clientY;
+            if (dragMode === 1) { camTheta -= dx * 0.005; camPhi = Math.max(0.18, Math.min(Math.PI - 0.18, camPhi - dy * 0.005)); }
+            else { const ps = camRadius * 0.0016; const right = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0); const up = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 1); camTarget.addScaledVector(right, -dx * ps); camTarget.addScaledVector(up, dy * ps); }
+            updateCamera();
+        });
+        window.addEventListener('mouseup', () => dragMode = 0);
+        el.addEventListener('wheel', e => { e.preventDefault(); camRadius = Math.max(9, Math.min(34, camRadius + e.deltaY * 0.014)); updateCamera(); }, { passive: false });
+        el.addEventListener('touchstart', e => { const t = e.touches[0]; dragMode = 1; lastX = t.clientX; lastY = t.clientY; }, { passive: true });
+        el.addEventListener('touchmove', e => { if (!dragMode) return; const t = e.touches[0]; const dx = t.clientX - lastX, dy = t.clientY - lastY; lastX = t.clientX; lastY = t.clientY; camTheta -= dx * 0.006; camPhi = Math.max(0.18, Math.min(Math.PI - 0.18, camPhi - dy * 0.006)); updateCamera(); e.preventDefault(); }, { passive: false });
+        window.addEventListener('touchend', () => dragMode = 0);
+        window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+    }
+
+    function applyI18N() {
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const k = el.getAttribute('data-i18n');
+            if (L[k] != null) { if (k === 'note') el.innerHTML = L[k]; else el.textContent = L[k]; }
+        });
+        document.querySelector('.header h1').textContent = L.headH;
+        document.querySelector('.header p span').textContent = L.headS;
+        setTxt('len-value', Lm.toFixed(1) + ' ' + L.uM); setTxt('v-value', vWave + ' ' + L.uMs);
+        document.title = L.headH.replace(/^[^\wА-Яа-яЁё]+/, '');
+        document.documentElement.lang = LANG;
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+        const dt = Math.min(clock.getDelta(), 0.05);
+        if (playing) simT += dt;
+
+        const omega = 2 * Math.PI * 1.0;     // visual temporal frequency
+        const tphase = Math.cos(omega * simT);
+        const k = effN() * Math.PI;          // spatial wavenumber over normalized x (×π scaling inside shape)
+
+        // standing wave line
+        const posS = stringLine.geometry.attributes.position.array;
+        const posET = envTop.geometry.attributes.position.array;
+        const posEB = envBot.geometry.attributes.position.array;
+        const posTA = travelA.geometry.attributes.position.array;
+        const posTB = travelB.geometry.attributes.position.array;
+        for (let i = 0; i <= SEG; i++) {
+            const xn = i / SEG; const x = (xn - 0.5) * SPAN;
+            const env = AMP * shape(xn);
+            const y = env * tphase;
+            posS[i * 3] = x; posS[i * 3 + 1] = y; posS[i * 3 + 2] = 0;
+            posET[i * 3] = x; posET[i * 3 + 1] = Math.abs(env); posET[i * 3 + 2] = 0;
+            posEB[i * 3] = x; posEB[i * 3 + 1] = -Math.abs(env); posEB[i * 3 + 2] = 0;
+            // two traveling component waves (½ amplitude each) whose sum gives the standing wave
+            // y = A sin(kx) cos(wt) = ½A[ sin(kx-wt) + sin(kx+wt) ] (for string sin form)
+            const arg = effN() * Math.PI * xn;
+            let a, b;
+            if (mode === 'open') { a = 0.5 * AMP * Math.cos(arg - omega * simT); b = 0.5 * AMP * Math.cos(arg + omega * simT); }
+            else if (mode === 'closed') { a = 0.5 * AMP * Math.sin(effN() * Math.PI * xn / 2 - omega * simT); b = 0.5 * AMP * Math.sin(effN() * Math.PI * xn / 2 + omega * simT); }
+            else { a = 0.5 * AMP * Math.sin(arg - omega * simT); b = 0.5 * AMP * Math.sin(arg + omega * simT); }
+            posTA[i * 3] = x; posTA[i * 3 + 1] = a + 2.4; posTA[i * 3 + 2] = 0;
+            posTB[i * 3] = x; posTB[i * 3 + 1] = b - 2.4; posTB[i * 3 + 2] = 0;
+        }
+        stringLine.geometry.attributes.position.needsUpdate = true;
+        envTop.geometry.attributes.position.needsUpdate = true;
+        envBot.geometry.attributes.position.needsUpdate = true;
+        travelA.geometry.attributes.position.needsUpdate = true;
+        travelB.geometry.attributes.position.needsUpdate = true;
+
+        // animate antinode markers (they bob with the wave)
+        antiMarks.forEach(m => { const env = AMP * shape(m.userData.x); m.position.set((m.userData.x - 0.5) * SPAN, env * tphase, 0); });
+
+        updateLabels();
+        renderer.render(scene, camera);
+    }
+
+    init();
+    </script>
+</body>
+</html>

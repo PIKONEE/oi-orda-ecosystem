@@ -1,0 +1,1309 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Кинетическая теория газов — 3D Модель</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        /* Header */
+        .header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 20px 30px;
+            background: linear-gradient(180deg, rgba(0, 0, 0, 0.8) 0%, transparent 100%);
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .header h1 {
+            color: white;
+            font-size: 26px;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .header p {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        /* Control Panel */
+        .control-panel {
+            position: absolute;
+            top: 100px;
+            left: 20px;
+            width: 300px;
+            background: rgba(0, 0, 0, 0.9);
+            
+            border-radius: 16px;
+            padding: 20px;
+            z-index: 10;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            max-height: calc(100vh - 140px);
+            overflow-y: auto;
+        }
+
+        .section-title {
+            color: #3498db;
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Sliders */
+        .slider-group {
+            margin-bottom: 18px;
+        }
+
+        .slider-group label {
+            color: white;
+            font-size: 13px;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .slider-group label span {
+            font-weight: 600;
+        }
+
+        .slider-group label span.value {
+            color: #f39c12;
+        }
+
+        .slider-group input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+            height: 8px;
+            border-radius: 4px;
+            -webkit-appearance: none;
+            background: linear-gradient(90deg, #3498db, #e74c3c);
+        }
+
+        .slider-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: white;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .slider-group.volume input[type="range"] {
+            background: linear-gradient(90deg, #2ecc71, #9b59b6);
+        }
+
+        .slider-group.time input[type="range"] {
+            background: linear-gradient(90deg, #95a5a6, #f39c12);
+        }
+
+        /* Buttons */
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px 10px;
+            border: none;
+            border-radius: 10px;
+            color: white;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            transition: all 0.3s;
+        }
+
+        .btn-add {
+            background: linear-gradient(135deg, #2ecc71, #27ae60);
+        }
+
+        .btn-remove {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+        }
+
+        .btn-reset {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            width: 100%;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        /* Checkboxes */
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .checkbox-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .checkbox-item input {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+
+        .checkbox-item label {
+            color: white;
+            font-size: 13px;
+            cursor: pointer;
+            flex: 1;
+        }
+
+        /* Info Panel */
+        .info-panel {
+            position: absolute;
+            top: 100px;
+            right: 20px;
+            width: 260px;
+            background: rgba(0, 0, 0, 0.9);
+            
+            border-radius: 16px;
+            padding: 20px;
+            z-index: 10;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .info-panel h3 {
+            color: white;
+            font-size: 16px;
+            margin: 0 0 15px;
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .stat-item {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 12px;
+            text-align: center;
+        }
+
+        .stat-item.wide {
+            grid-column: span 2;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: white;
+            font-family: 'Consolas', monospace;
+        }
+
+        .stat-value.temp {
+            color: #e74c3c;
+        }
+
+        .stat-value.pressure {
+            color: #9b59b6;
+        }
+
+        .stat-value.molecules {
+            color: #2ecc71;
+        }
+
+        .stat-value.speed {
+            color: #f39c12;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.6);
+            margin-top: 5px;
+            text-transform: uppercase;
+        }
+
+        /* Temperature bar */
+        .temp-bar {
+            height: 8px;
+            background: linear-gradient(90deg, #3498db, #f39c12, #e74c3c);
+            border-radius: 4px;
+            margin-top: 10px;
+            position: relative;
+        }
+
+        .temp-indicator {
+            position: absolute;
+            top: -3px;
+            width: 14px;
+            height: 14px;
+            background: white;
+            border-radius: 50%;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+            transform: translateX(-50%);
+            transition: left 0.3s;
+        }
+
+        /* Speed distribution */
+        .distribution {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .distribution h4 {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 12px;
+            margin-bottom: 10px;
+        }
+
+        .distribution-bar {
+            height: 40px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 6px;
+            display: flex;
+            align-items: flex-end;
+            padding: 4px;
+            gap: 2px;
+        }
+
+        .bar-segment {
+            flex: 1;
+            background: #3498db;
+            border-radius: 2px;
+            transition: height 0.3s;
+        }
+
+        /* Formula Panel */
+        .formula-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.85);
+            
+            border-radius: 12px;
+            padding: 15px 30px;
+            z-index: 10;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+        }
+
+        .formula {
+            color: white;
+            font-size: 18px;
+            font-family: 'Times New Roman', serif;
+        }
+
+        .formula .var-p {
+            color: #9b59b6;
+        }
+
+        .formula .var-v {
+            color: #2ecc71;
+        }
+
+        .formula .var-n {
+            color: #3498db;
+        }
+
+        .formula .var-t {
+            color: #e74c3c;
+        }
+
+        .formula-desc {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 12px;
+            margin-top: 8px;
+        }
+
+        /* Collision counter */
+        .collision-counter {
+            position: absolute;
+            bottom: 90px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 10px;
+            padding: 12px 20px;
+            z-index: 10;
+        }
+
+        .collision-counter .count {
+            color: #f39c12;
+            font-size: 20px;
+            font-weight: 700;
+            font-family: 'Consolas', monospace;
+        }
+
+        .collision-counter .label {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 11px;
+            margin-top: 3px;
+        }
+
+        /* Hint */
+        .hint {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 12px;
+            z-index: 5;
+        }
+
+        /* Time indicator */
+        .time-indicator {
+            position: absolute;
+            top: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(243, 156, 18, 0.9);
+            color: white;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 14px;
+            z-index: 15;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .time-indicator.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+
+<div id="canvas-container"></div>
+
+<!-- Header -->
+<div class="header">
+    <h1>🔬 Кинетическая теория газов</h1>
+    <p><span>Молекулярное движение • Броуновское движение • Распределение Максвелла</span></p>
+</div>
+
+<!-- Time indicator -->
+<div class="time-indicator" id="time-indicator">⏱️ Замедление: 1.0×</div>
+
+<!-- Control Panel -->
+<div class="control-panel">
+    <div class="section-title">🌡️ Температура</div>
+    <div class="slider-group">
+        <label>
+            <span>Температура:</span>
+            <span class="value" id="temp-value">300 K</span>
+        </label>
+        <input type="range" id="temperature" min="100" max="800" value="300">
+    </div>
+
+    <div class="section-title">📦 Объём сосуда</div>
+    <div class="slider-group volume">
+        <label>
+            <span>Размер:</span>
+            <span class="value" id="volume-value">100%</span>
+        </label>
+        <input type="range" id="volume" min="50" max="150" value="100">
+    </div>
+
+    <div class="section-title">⏱️ Скорость времени</div>
+    <div class="slider-group time">
+        <label>
+            <span>Замедление:</span>
+            <span class="value" id="time-value">1.0×</span>
+        </label>
+        <input type="range" id="time-scale" min="0.1" max="2" step="0.1" value="1">
+    </div>
+
+    <div class="section-title">🔵 Молекулы</div>
+    <div class="btn-group">
+        <button class="btn btn-add" id="btn-add">+ Добавить 10</button>
+        <button class="btn btn-remove" id="btn-remove">− Убрать 10</button>
+    </div>
+
+    <div class="section-title">👁️ Отображение</div>
+    <div class="checkbox-item">
+        <input type="checkbox" id="show-trails" checked>
+        <label for="show-trails">Следы молекул</label>
+    </div>
+    <div class="checkbox-item">
+        <input type="checkbox" id="show-collisions" checked>
+        <label for="show-collisions">Вспышки столкновений</label>
+    </div>
+    <div class="checkbox-item">
+        <input type="checkbox" id="show-pressure" checked>
+        <label for="show-pressure">Визуализация давления</label>
+    </div>
+    <div class="checkbox-item">
+        <input type="checkbox" id="color-by-speed" checked>
+        <label for="color-by-speed">Цвет по скорости</label>
+    </div>
+
+    <button class="btn btn-reset" id="btn-reset" style="margin-top: 15px;">🔄 Сбросить всё</button>
+</div>
+
+<!-- Info Panel -->
+<div class="info-panel">
+    <h3>📊 Параметры системы</h3>
+
+    <div class="stat-grid">
+        <div class="stat-item">
+            <div class="stat-value temp" id="stat-temp">300</div>
+            <div class="stat-label">Температура (K)</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value pressure" id="stat-pressure">1.0</div>
+            <div class="stat-label">Давление (атм)</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value molecules" id="stat-molecules">50</div>
+            <div class="stat-label">Молекул</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value speed" id="stat-speed">450</div>
+            <div class="stat-label">Ср. скорость (м/с)</div>
+        </div>
+    </div>
+
+    <div class="temp-bar">
+        <div class="temp-indicator" id="temp-indicator" style="left: 33%;"></div>
+    </div>
+
+    <div class="distribution">
+        <h4>Распределение скоростей (Максвелла)</h4>
+        <div class="distribution-bar" id="distribution-bar">
+            <!-- Bars will be generated by JS -->
+        </div>
+    </div>
+</div>
+
+<!-- Collision Counter -->
+<div class="collision-counter">
+    <div class="count" id="collision-count">0</div>
+    <div class="label">Столкновений со стенкой</div>
+</div>
+
+<!-- Formula -->
+<div class="formula-panel">
+    <div class="formula">
+        <span class="var-p">P</span><span class="var-v">V</span> =
+        <span class="var-n">N</span>k<span class="var-t">T</span>
+        &nbsp;&nbsp;|&nbsp;&nbsp;
+        E<sub>кин</sub> = <sup>3</sup>/<sub>2</sub>k<span class="var-t">T</span>
+    </div>
+    <div class="formula-desc">Уравнение состояния идеального газа • Средняя кинетическая энергия молекулы</div>
+</div>
+
+<!-- Hint -->
+<div class="hint">Вращайте сцену мышью • Колёсико для зума</div>
+
+<script src="../../libs/vendor/three-r128/three.min.js"></script>
+<script>
+    // Parameters
+    let temperature = 300; // Kelvin
+    let volumeScale = 1.0;
+    let timeScale = 1.0;
+    let moleculeCount = 50;
+
+    // Physics constants
+    const k_B = 1.38e-23; // Boltzmann constant
+    const moleculeMass = 4.65e-26; // ~N2 molecule mass in kg
+
+    // Container size (base)
+    const baseSize = 3;
+    let containerSize = baseSize;
+
+    // Three.js
+    let scene, camera, renderer, mainGroup;
+    let container3D, containerEdges;
+    let molecules = [];
+    let trails = [];
+    let collisionEffects = [];
+    let wallPressure = [0, 0, 0, 0, 0, 0]; // 6 walls
+
+    // Stats
+    let collisionCount = 0;
+    let lastCollisionTime = 0;
+
+    // Controls
+    let isDragging = false;
+    let lastMouse = {x: 0, y: 0};
+    let rotation = {x: 0.3, y: -0.4};
+
+    const canvasContainer = document.getElementById('canvas-container');
+
+    function init() {
+        // Scene
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color('#1a1a2e');
+
+        // Camera
+        camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 4, 10);
+        camera.lookAt(0, 0, 0);
+
+        // Renderer
+        renderer = new THREE.WebGLRenderer({antialias: true});
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = false;
+        canvasContainer.appendChild(renderer.domElement);
+
+        // Lights
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
+
+        const topLight = new THREE.DirectionalLight(0xffffff, 0.6);
+        topLight.position.set(5, 10, 5);
+        topLight.castShadow = true;
+        scene.add(topLight);
+
+        const pointLight = new THREE.PointLight(0x4a90d9, 0.3);
+        pointLight.position.set(0, 0, 0);
+        scene.add(pointLight);
+
+        // Main group
+        mainGroup = new THREE.Group();
+        scene.add(mainGroup);
+
+        createScene();
+        createMolecules(moleculeCount);
+        createDistributionBars();
+        setupControls();
+        animate();
+    }
+
+    function createScene() {
+        // Floor grid
+        const gridHelper = new THREE.GridHelper(15, 30, '#2a3a4a', '#1a2a3a');
+        gridHelper.position.y = -3;
+        mainGroup.add(gridHelper);
+
+        // Platform
+        const platformGeometry = new THREE.CylinderGeometry(4, 4.2, 0.3, 32);
+        const platformMaterial = new THREE.MeshStandardMaterial({
+            color: 0x2c3e50,
+            roughness: 0.8,
+            metalness: 0.2
+        });
+        const platform = new THREE.Mesh(platformGeometry, platformMaterial);
+        platform.position.y = -2.85;
+        platform.receiveShadow = true;
+        mainGroup.add(platform);
+
+        // Create container
+        createContainer();
+    }
+
+    function createContainer() {
+        // Remove old container if exists
+        if (container3D) {
+            mainGroup.remove(container3D);
+            mainGroup.remove(containerEdges);
+        }
+
+        containerSize = baseSize * volumeScale;
+        const halfSize = containerSize / 2;
+
+        // Glass container (transparent box)
+        const containerGeometry = new THREE.BoxGeometry(containerSize, containerSize, containerSize);
+        const containerMaterial = new THREE.MeshPhysicalMaterial({
+            color: 0x88ccff,
+            transparent: true,
+            opacity: 0.15,
+            roughness: 0.05,
+            metalness: 0,
+            clearcoat: 1,
+            clearcoatRoughness: 0.1,
+            side: THREE.DoubleSide
+        });
+        container3D = new THREE.Mesh(containerGeometry, containerMaterial);
+        container3D.position.y = 0;
+        mainGroup.add(container3D);
+
+        // Container edges (thick lines)
+        const edgesGeometry = new THREE.EdgesGeometry(containerGeometry);
+        const edgesMaterial = new THREE.LineBasicMaterial({
+            color: 0x4a90d9,
+            linewidth: 2
+        });
+        containerEdges = new THREE.LineSegments(edgesGeometry, edgesMaterial);
+        containerEdges.position.y = 0;
+        mainGroup.add(containerEdges);
+
+        // Corner spheres for rounded look
+        const cornerRadius = 0.08;
+        const cornerGeometry = new THREE.SphereGeometry(cornerRadius, 16, 16);
+        const cornerMaterial = new THREE.MeshStandardMaterial({
+            color: 0x4a90d9,
+            roughness: 0.3,
+            metalness: 0.7
+        });
+
+        const corners = [
+            [-1, -1, -1], [-1, -1, 1], [-1, 1, -1], [-1, 1, 1],
+            [1, -1, -1], [1, -1, 1], [1, 1, -1], [1, 1, 1]
+        ];
+
+        corners.forEach(([x, y, z]) => {
+            const corner = new THREE.Mesh(cornerGeometry, cornerMaterial);
+            corner.position.set(x * halfSize, y * halfSize, z * halfSize);
+            mainGroup.add(corner);
+        });
+    }
+
+    function createMolecules(count) {
+        const geometry = new THREE.SphereGeometry(0.08, 16, 16);
+        const halfSize = containerSize / 2 - 0.15;
+
+        for (let i = 0; i < count; i++) {
+            const material = new THREE.MeshStandardMaterial({
+                color: 0x3498db,
+                roughness: 0.3,
+                metalness: 0.6,
+                emissive: 0x1a4a6a,
+                emissiveIntensity: 0.3
+            });
+
+            const molecule = new THREE.Mesh(geometry, material);
+
+            // Random position
+            molecule.position.set(
+                    (Math.random() - 0.5) * containerSize * 0.8,
+                    (Math.random() - 0.5) * containerSize * 0.8,
+                    (Math.random() - 0.5) * containerSize * 0.8
+            );
+
+            // Random velocity (Maxwell-Boltzmann distribution)
+            const speed = maxwellBoltzmannSpeed();
+            const theta = Math.random() * Math.PI * 2;
+            const phi = Math.acos(2 * Math.random() - 1);
+
+            molecule.userData = {
+                velocity: new THREE.Vector3(
+                        speed * Math.sin(phi) * Math.cos(theta),
+                        speed * Math.sin(phi) * Math.sin(theta),
+                        speed * Math.cos(phi)
+                ),
+                trail: []
+            };
+
+            molecules.push(molecule);
+            mainGroup.add(molecule);
+
+            // Create trail line
+            const trailGeometry = new THREE.BufferGeometry();
+            const trailMaterial = new THREE.LineBasicMaterial({
+                color: 0xffff00,
+                transparent: true,
+                opacity: 0.5
+            });
+            const trail = new THREE.Line(trailGeometry, trailMaterial);
+            trails.push(trail);
+            mainGroup.add(trail);
+        }
+    }
+
+    function maxwellBoltzmannSpeed() {
+        // Approximation of Maxwell-Boltzmann distribution
+        const avgSpeed = Math.sqrt(8 * k_B * temperature / (Math.PI * moleculeMass));
+        // Box-Muller transform for normal distribution
+        const u1 = Math.random();
+        const u2 = Math.random();
+        const normal = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+        // Scale to realistic speed (normalized for visualization)
+        return (avgSpeed / 500) * (1 + normal * 0.3) * 0.05;
+    }
+
+    function removeMolecules(count) {
+        for (let i = 0; i < count && molecules.length > 5; i++) {
+            const molecule = molecules.pop();
+            mainGroup.remove(molecule);
+            const trail = trails.pop();
+            mainGroup.remove(trail);
+        }
+        moleculeCount = molecules.length;
+        document.getElementById('stat-molecules').textContent = moleculeCount;
+    }
+
+    function addMolecules(count) {
+        createMolecules(count);
+        moleculeCount = molecules.length;
+        document.getElementById('stat-molecules').textContent = moleculeCount;
+    }
+
+    function updateMolecules(deltaTime) {
+        const halfSize = containerSize / 2 - 0.1;
+        const scaledDelta = deltaTime * timeScale;
+        const showTrails = document.getElementById('show-trails').checked;
+        const showCollisions = document.getElementById('show-collisions').checked;
+        const colorBySpeed = document.getElementById('color-by-speed').checked;
+
+        let totalSpeed = 0;
+        const speedDistribution = new Array(10).fill(0);
+
+        molecules.forEach((molecule, index) => {
+            const vel = molecule.userData.velocity;
+            const speed = vel.length();
+            totalSpeed += speed;
+
+            // Update position
+            molecule.position.x += vel.x * scaledDelta * 60;
+            molecule.position.y += vel.y * scaledDelta * 60;
+            molecule.position.z += vel.z * scaledDelta * 60;
+
+            // Update trail
+            if (showTrails && speed > 0.02) {
+                molecule.userData.trail.push(molecule.position.clone());
+                if (molecule.userData.trail.length > 10) {
+                    molecule.userData.trail.shift();
+                }
+                updateTrail(index);
+            } else {
+                molecule.userData.trail = [];
+                trails[index].geometry.setFromPoints([]);
+            }
+
+            // Wall collisions
+            ['x', 'y', 'z'].forEach((axis, axisIndex) => {
+                if (molecule.position[axis] > halfSize) {
+                    molecule.position[axis] = halfSize;
+                    vel[axis] *= -1;
+                    wallCollision(molecule.position.clone(), axisIndex * 2 + 1, showCollisions);
+                } else if (molecule.position[axis] < -halfSize) {
+                    molecule.position[axis] = -halfSize;
+                    vel[axis] *= -1;
+                    wallCollision(molecule.position.clone(), axisIndex * 2, showCollisions);
+                }
+            });
+
+            // Color by speed
+            if (colorBySpeed) {
+                const normalizedSpeed = Math.min(speed / 0.08, 1);
+                const color = new THREE.Color();
+                color.setHSL(0.6 - normalizedSpeed * 0.6, 0.8, 0.5);
+                molecule.material.color = color;
+                molecule.material.emissive = color.clone().multiplyScalar(0.3);
+            }
+
+            // Speed distribution
+            const binIndex = Math.min(Math.floor(speed / 0.01), 9);
+            speedDistribution[binIndex]++;
+        });
+
+        // Update average speed display
+        const avgSpeed = totalSpeed / molecules.length;
+        const displaySpeed = Math.round(avgSpeed * 10000);
+        document.getElementById('stat-speed').textContent = displaySpeed;
+
+        // Update distribution bars
+        updateDistribution(speedDistribution);
+
+        // Molecule-molecule collisions (simplified)
+        checkMoleculeCollisions();
+    }
+
+    function updateTrail(index) {
+        const points = molecules[index].userData.trail;
+        if (points.length > 1) {
+            trails[index].geometry.setFromPoints(points);
+        }
+    }
+
+    function wallCollision(position, wallIndex, showEffect) {
+        collisionCount++;
+        document.getElementById('collision-count').textContent = collisionCount;
+
+        wallPressure[wallIndex] += 1;
+
+        if (showEffect) {
+            createCollisionEffect(position);
+        }
+    }
+
+    function createCollisionEffect(position) {
+        const geometry = new THREE.SphereGeometry(0.1, 8, 8);
+        const material = new THREE.MeshBasicMaterial({
+            color: 0xffff00,
+            transparent: true,
+            opacity: 0.8
+        });
+        const effect = new THREE.Mesh(geometry, material);
+        effect.position.copy(position);
+        effect.userData = {life: 1.0};
+        collisionEffects.push(effect);
+        mainGroup.add(effect);
+    }
+
+    function updateCollisionEffects(deltaTime) {
+        for (let i = collisionEffects.length - 1; i >= 0; i--) {
+            const effect = collisionEffects[i];
+            effect.userData.life -= deltaTime * 5;
+            effect.material.opacity = effect.userData.life;
+            effect.scale.setScalar(1 + (1 - effect.userData.life) * 2);
+
+            if (effect.userData.life <= 0) {
+                mainGroup.remove(effect);
+                collisionEffects.splice(i, 1);
+            }
+        }
+    }
+
+    function checkMoleculeCollisions() {
+        const collisionDist = 0.18;
+
+        for (let i = 0; i < molecules.length; i++) {
+            for (let j = i + 1; j < molecules.length; j++) {
+                const m1 = molecules[i];
+                const m2 = molecules[j];
+                const dist = m1.position.distanceTo(m2.position);
+
+                if (dist < collisionDist) {
+                    // Elastic collision
+                    const normal = new THREE.Vector3()
+                            .subVectors(m2.position, m1.position)
+                            .normalize();
+
+                    const relVel = new THREE.Vector3()
+                            .subVectors(m1.userData.velocity, m2.userData.velocity);
+
+                    const velAlongNormal = relVel.dot(normal);
+
+                    if (velAlongNormal > 0) continue;
+
+                    // Update velocities
+                    const impulse = normal.clone().multiplyScalar(velAlongNormal);
+                    m1.userData.velocity.sub(impulse);
+                    m2.userData.velocity.add(impulse);
+
+                    // Separate molecules
+                    const overlap = collisionDist - dist;
+                    const separation = normal.clone().multiplyScalar(overlap / 2);
+                    m1.position.sub(separation);
+                    m2.position.add(separation);
+                }
+            }
+        }
+    }
+
+    function updateTemperature(newTemp) {
+        const ratio = Math.sqrt(newTemp / temperature);
+        temperature = newTemp;
+
+        molecules.forEach(m => {
+            m.userData.velocity.multiplyScalar(ratio);
+        });
+
+        // Update displays
+        document.getElementById('stat-temp').textContent = temperature;
+        document.getElementById('temp-value').textContent = temperature + ' K';
+
+        // Update temperature indicator
+        const percent = ((temperature - 100) / 700) * 100;
+        document.getElementById('temp-indicator').style.left = percent + '%';
+
+        updatePressure();
+    }
+
+    function updateVolume(scale) {
+        volumeScale = scale;
+        createContainer();
+
+        // Constrain molecules to new size
+        const halfSize = containerSize / 2 - 0.15;
+        molecules.forEach(m => {
+            m.position.x = Math.max(-halfSize, Math.min(halfSize, m.position.x));
+            m.position.y = Math.max(-halfSize, Math.min(halfSize, m.position.y));
+            m.position.z = Math.max(-halfSize, Math.min(halfSize, m.position.z));
+        });
+
+        updatePressure();
+    }
+
+    function updatePressure() {
+        // P ∝ nT/V
+        const volume = Math.pow(containerSize, 3);
+        const pressure = (moleculeCount * temperature) / (volume * 300);
+        document.getElementById('stat-pressure').textContent = pressure.toFixed(2);
+    }
+
+    function createDistributionBars() {
+        const container = document.getElementById('distribution-bar');
+        container.innerHTML = '';
+        for (let i = 0; i < 10; i++) {
+            const bar = document.createElement('div');
+            bar.className = 'bar-segment';
+            bar.style.height = '10%';
+            bar.style.background = `hsl(${200 - i * 15}, 70%, 50%)`;
+            container.appendChild(bar);
+        }
+    }
+
+    function updateDistribution(data) {
+        const bars = document.querySelectorAll('.bar-segment');
+        const max = Math.max(...data, 1);
+        bars.forEach((bar, i) => {
+            const height = (data[i] / max) * 100;
+            bar.style.height = Math.max(height, 5) + '%';
+        });
+    }
+
+    function setupControls() {
+        // Temperature slider
+        document.getElementById('temperature').addEventListener('input', (e) => {
+            updateTemperature(parseInt(e.target.value));
+        });
+
+        // Volume slider
+        document.getElementById('volume').addEventListener('input', (e) => {
+            const scale = parseInt(e.target.value) / 100;
+            document.getElementById('volume-value').textContent = e.target.value + '%';
+            updateVolume(scale);
+        });
+
+        // Time scale slider
+        document.getElementById('time-scale').addEventListener('input', (e) => {
+            timeScale = parseFloat(e.target.value);
+            document.getElementById('time-value').textContent = timeScale.toFixed(1) + '×';
+
+            const indicator = document.getElementById('time-indicator');
+            indicator.textContent = '⏱️ Замедление: ' + timeScale.toFixed(1) + '×';
+            indicator.classList.add('show');
+            setTimeout(() => indicator.classList.remove('show'), 1500);
+        });
+
+        // Add/Remove molecules
+        document.getElementById('btn-add').addEventListener('click', () => {
+            addMolecules(10);
+            updatePressure();
+        });
+
+        document.getElementById('btn-remove').addEventListener('click', () => {
+            removeMolecules(10);
+            updatePressure();
+        });
+
+        // Reset button
+        document.getElementById('btn-reset').addEventListener('click', () => {
+            // Remove all molecules
+            while (molecules.length > 0) {
+                const m = molecules.pop();
+                mainGroup.remove(m);
+                const t = trails.pop();
+                mainGroup.remove(t);
+            }
+
+            // Reset parameters
+            temperature = 300;
+            volumeScale = 1.0;
+            timeScale = 1.0;
+            moleculeCount = 50;
+            collisionCount = 0;
+
+            // Reset UI
+            document.getElementById('temperature').value = 300;
+            document.getElementById('volume').value = 100;
+            document.getElementById('time-scale').value = 1;
+            document.getElementById('temp-value').textContent = '300 K';
+            document.getElementById('volume-value').textContent = '100%';
+            document.getElementById('time-value').textContent = '1.0×';
+            document.getElementById('collision-count').textContent = '0';
+
+            // Recreate
+            createContainer();
+            createMolecules(50);
+            updatePressure();
+
+            rotation = {x: 0.3, y: -0.4};
+        });
+
+        // Mouse controls
+        renderer.domElement.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            lastMouse = {x: e.clientX, y: e.clientY};
+        });
+
+        renderer.domElement.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                const deltaX = e.clientX - lastMouse.x;
+                const deltaY = e.clientY - lastMouse.y;
+                rotation.y += deltaX * 0.008;
+                rotation.x += deltaY * 0.008;
+                rotation.x = Math.max(-1, Math.min(1, rotation.x));
+                lastMouse = {x: e.clientX, y: e.clientY};
+            }
+        });
+
+        renderer.domElement.addEventListener('mouseup', () => isDragging = false);
+        renderer.domElement.addEventListener('mouseleave', () => isDragging = false);
+
+        renderer.domElement.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            camera.position.z = Math.max(5, Math.min(20, camera.position.z + e.deltaY * 0.01));
+        }, {passive: false});
+
+        // Resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    }
+
+    let lastTime = performance.now();
+
+    function animate(currentTime) {
+        requestAnimationFrame(animate);
+
+        const deltaTime = Math.min((currentTime - lastTime) / 1000, 0.05);
+        lastTime = currentTime;
+
+        // Update physics
+        updateMolecules(deltaTime);
+        updateCollisionEffects(deltaTime);
+
+        // Apply rotation
+        mainGroup.rotation.x = rotation.x;
+        mainGroup.rotation.y = rotation.y;
+
+        renderer.render(scene, camera);
+    }
+
+    // Initialize
+    init();
+</script>
+<script>
+(function() {
+    const TEXT_MAP = {
+    "Кинетическая теория газов — 3D Модель": {
+        "kz": "Газдардың кинетикалық теориясы — 3D модель",
+        "en": "Kinetic Theory of Gases — 3D Model"
+    },
+    "🔬 Кинетическая теория газов": {
+        "kz": "🔬 Газдардың кинетикалық теориясы",
+        "en": "🔬 Kinetic Theory of Gases"
+    },
+    "Молекулярное движение • Броуновское движение • Распределение Максвелла": {
+        "kz": "Молекулалық қозғалыс • Броундық қозғалыс • Максвелл үлестірімі",
+        "en": "Molecular motion • Brownian motion • Maxwell distribution"
+    },
+    "🌡️ Температура": {
+        "kz": "🌡️ Температура",
+        "en": "🌡️ Temperature"
+    },
+    "Температура:": {
+        "kz": "Температура:",
+        "en": "Temperature:"
+    },
+    "📦 Объём сосуда": {
+        "kz": "📦 Ыдыс көлемі",
+        "en": "📦 Container Volume"
+    },
+    "Размер:": {
+        "kz": "Өлшем:",
+        "en": "Size:"
+    },
+    "⏱️ Время": {
+        "kz": "⏱️ Уақыт",
+        "en": "⏱️ Time"
+    },
+    "Замедление:": {
+        "kz": "Баяулату:",
+        "en": "Slow motion:"
+    },
+    "👁️ Отображение": {
+        "kz": "👁️ Көрсету",
+        "en": "👁️ Display"
+    },
+    "Следы молекул": {
+        "kz": "Молекула іздері",
+        "en": "Molecule trails"
+    },
+    "Вспышки столкновений": {
+        "kz": "Соқтығыс жарқылдары",
+        "en": "Collision flashes"
+    },
+    "Визуализация давления": {
+        "kz": "Қысым визуализациясы",
+        "en": "Pressure visualization"
+    },
+    "Цвет по скорости": {
+        "kz": "Жылдамдық бойынша түс",
+        "en": "Color by speed"
+    },
+    "📊 Параметры газа": {
+        "kz": "📊 Газ параметрлері",
+        "en": "📊 Gas Parameters"
+    },
+    "Температура (K)": {
+        "kz": "Температура (K)",
+        "en": "Temperature (K)"
+    },
+    "Давление (атм)": {
+        "kz": "Қысым (атм)",
+        "en": "Pressure (atm)"
+    },
+    "Молекул": {
+        "kz": "Молекулалар",
+        "en": "Molecules"
+    },
+    "Ср. скорость (м/с)": {
+        "kz": "Орт. жылдамдық (м/с)",
+        "en": "Avg. speed (m/s)"
+    },
+    "Распределение скоростей (Максвелла)": {
+        "kz": "Жылдамдықтар үлестірімі (Максвелл)",
+        "en": "Speed Distribution (Maxwell)"
+    },
+    "Столкновений со стенкой": {
+        "kz": "Қабырғаға соқтығыс",
+        "en": "Wall collisions"
+    }
+,
+    "⏱️ Скорость времени": {
+        "kz": "⏱️ Уақыт жылдамдығы",
+        "en": "⏱️ Time speed"
+    },
+    "🔵 Молекулы": {
+        "kz": "🔵 Молекулалар",
+        "en": "🔵 Molecules"
+    },
+    "+ Добавить 10": {
+        "kz": "+ 10 қосу",
+        "en": "+ Add 10"
+    },
+    "− Убрать 10": {
+        "kz": "− 10 алып тастау",
+        "en": "− Remove 10"
+    },
+    "🔄 Сбросить всё": {
+        "kz": "🔄 Барлығын қалпына келтіру",
+        "en": "🔄 Reset all"
+    },
+    "📊 Параметры системы": {
+        "kz": "📊 Жүйе параметрлері",
+        "en": "📊 System parameters"
+    },
+    "Уравнение состояния идеального газа • Средняя кинетическая энергия молекулы": {
+        "kz": "Идеал газ күй теңдеуі • Молекуланың орташа кинетикалық энергиясы",
+        "en": "Ideal gas equation of state • Average kinetic energy of a molecule"
+    },
+    "Вращайте сцену мышью • Колёсико для зума": {
+        "kz": "Тінтуірмен сахнаны айналдырыңыз • Масштабтау үшін дөңгелек",
+        "en": "Rotate scene with mouse • Scroll to zoom"
+    },
+    "⏱️ Замедление: 1.0×": {
+        "kz": "⏱️ Баяулату: 1.0×",
+        "en": "⏱️ Slow motion: 1.0×"
+    }
+};
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentLang = urlParams.get('lang') || 'ru';
+
+    if (currentLang === 'ru') return; // No translation needed
+
+    function translateTextNodes(root) {
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
+        const nodes = [];
+        while (walker.nextNode()) nodes.push(walker.currentNode);
+        
+        nodes.forEach(node => {
+            let text = node.textContent;
+            if (!text || !text.trim()) return;
+            
+            const trimmed = text.trim();
+            if (TEXT_MAP[trimmed] && TEXT_MAP[trimmed][currentLang]) {
+                node.textContent = text.replace(trimmed, TEXT_MAP[trimmed][currentLang]);
+            }
+        });
+    }
+
+    function translateAttributes(root) {
+        root.querySelectorAll('[title]').forEach(el => {
+            const t = el.getAttribute('title');
+            if (TEXT_MAP[t] && TEXT_MAP[t][currentLang]) {
+                el.setAttribute('title', TEXT_MAP[t][currentLang]);
+            }
+        });
+        root.querySelectorAll('[placeholder]').forEach(el => {
+            const t = el.getAttribute('placeholder');
+            if (TEXT_MAP[t] && TEXT_MAP[t][currentLang]) {
+                el.setAttribute('placeholder', TEXT_MAP[t][currentLang]);
+            }
+        });
+        // Translate page title
+        const titleText = document.title.trim();
+        if (TEXT_MAP[titleText] && TEXT_MAP[titleText][currentLang]) {
+            document.title = TEXT_MAP[titleText][currentLang];
+        }
+    }
+
+    
+
+    function applyTranslations() {
+        translateTextNodes(document.body);
+        translateAttributes(document);
+        if (typeof translateData === 'function') translateData(currentLang);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', applyTranslations);
+    } else {
+        applyTranslations();
+    }
+
+    // Re-translate after dynamic content changes
+    window.currentLang = currentLang;
+    window._currentLang = currentLang;
+    window._TEXT_MAP = TEXT_MAP;
+
+    // One-time delayed re-translate for dynamic content
+    let _tc=0;const _ti=setInterval(()=>{translateTextNodes(document.body);translateAttributes(document);if(++_tc>=20)clearInterval(_ti);},500);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1558 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Электрическая цепь — Интерактивная модель</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #0a0a1a;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        /* Header */
+        .header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 20px 30px;
+            background: linear-gradient(180deg, rgba(0, 0, 0, 0.85) 0%, transparent 100%);
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .header h1 {
+            color: white;
+            font-size: 26px;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .header p {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        /* Control Panel */
+        .control-panel {
+            position: absolute;
+            top: 100px;
+            left: 20px;
+            width: 280px;
+            background: rgba(0, 0, 0, 0.9);
+            
+            border-radius: 16px;
+            padding: 20px;
+            z-index: 10;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .section-title {
+            color: #f39c12;
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Switch Button */
+        .switch-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .switch-container:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .switch-label {
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 70px;
+            height: 36px;
+            background: #333;
+            border-radius: 18px;
+            transition: all 0.3s;
+            border: 2px solid #444;
+        }
+
+        .toggle-switch.on {
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+            border-color: #f39c12;
+            box-shadow: 0 0 20px rgba(243, 156, 18, 0.5);
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            width: 28px;
+            height: 28px;
+            background: white;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: all 0.3s;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+        }
+
+        .toggle-switch.on::after {
+            left: 36px;
+        }
+
+        .switch-status {
+            text-align: center;
+            padding: 12px;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 14px;
+            margin-bottom: 20px;
+            transition: all 0.3s;
+        }
+
+        .switch-status.off {
+            background: rgba(231, 76, 60, 0.15);
+            color: #e74c3c;
+            border: 1px solid rgba(231, 76, 60, 0.3);
+        }
+
+        .switch-status.on {
+            background: rgba(46, 204, 113, 0.15);
+            color: #2ecc71;
+            border: 1px solid rgba(46, 204, 113, 0.3);
+            animation: glow 1.5s ease-in-out infinite alternate;
+        }
+
+        @keyframes glow {
+            from {
+                box-shadow: 0 0 5px rgba(46, 204, 113, 0.3);
+            }
+            to {
+                box-shadow: 0 0 15px rgba(46, 204, 113, 0.5);
+            }
+        }
+
+        /* Sliders */
+        .slider-group {
+            margin-bottom: 18px;
+        }
+
+        .slider-group label {
+            color: white;
+            font-size: 13px;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .slider-group label span {
+            color: #f39c12;
+            font-weight: 600;
+        }
+
+        .slider-group input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+            height: 6px;
+            border-radius: 3px;
+            -webkit-appearance: none;
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .slider-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #f39c12;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(243, 156, 18, 0.5);
+        }
+
+        /* Checkboxes */
+        .checkbox-group {
+            margin-bottom: 15px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .checkbox-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .checkbox-item input {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+
+        .checkbox-item label {
+            color: white;
+            font-size: 13px;
+            cursor: pointer;
+            flex: 1;
+        }
+
+        /* Buttons */
+        .btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            color: white;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s;
+            margin-bottom: 10px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        /* Info Panel */
+        .info-panel {
+            position: absolute;
+            top: 100px;
+            right: 20px;
+            width: 260px;
+            background: rgba(0, 0, 0, 0.9);
+            
+            border-radius: 16px;
+            padding: 20px;
+            z-index: 10;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .info-panel h3 {
+            color: white;
+            font-size: 16px;
+            margin: 0 0 15px;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .info-item:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 13px;
+        }
+
+        .info-value {
+            color: white;
+            font-size: 15px;
+            font-weight: 600;
+            font-family: 'Consolas', monospace;
+        }
+
+        .info-value.voltage {
+            color: #e74c3c;
+        }
+
+        .info-value.current {
+            color: #3498db;
+        }
+
+        .info-value.power {
+            color: #f39c12;
+        }
+
+        .info-value.resistance {
+            color: #9b59b6;
+        }
+
+        /* Component info tooltip */
+        .tooltip {
+            position: fixed;
+            background: rgba(0, 0, 0, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            padding: 12px 16px;
+            color: white;
+            font-size: 13px;
+            z-index: 100;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            max-width: 220px;
+        }
+
+        .tooltip.visible {
+            opacity: 1;
+        }
+
+        .tooltip h4 {
+            margin: 0 0 8px;
+            color: #f39c12;
+            font-size: 14px;
+        }
+
+        .tooltip p {
+            margin: 0;
+            line-height: 1.5;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        /* Formula Panel */
+        .formula-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.85);
+            
+            border-radius: 12px;
+            padding: 15px 30px;
+            z-index: 10;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+        }
+
+        .formula {
+            color: white;
+            font-size: 20px;
+            font-family: 'Times New Roman', serif;
+        }
+
+        .formula .var-v {
+            color: #e74c3c;
+        }
+
+        .formula .var-i {
+            color: #3498db;
+        }
+
+        .formula .var-r {
+            color: #9b59b6;
+        }
+
+        .formula-desc {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 12px;
+            margin-top: 8px;
+        }
+
+        /* Legend */
+        .legend {
+            position: absolute;
+            bottom: 90px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 10px;
+            padding: 12px 16px;
+            z-index: 10;
+        }
+
+        .legend-title {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 11px;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 12px;
+            margin-bottom: 5px;
+        }
+
+        .legend-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        /* Hint */
+        .hint {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 12px;
+            z-index: 5;
+        }
+    </style>
+</head>
+<body>
+<script>var currentLang=new URLSearchParams(window.location.search).get("lang")||"ru";</script>
+
+<div id="canvas-container"></div>
+
+<!-- Header -->
+<div class="header">
+    <h1>⚡ Простая электрическая цепь</h1>
+    <p><span>Батарея • Выключатель • Лампочка • Визуализация тока</span></p>
+</div>
+
+<!-- Control Panel -->
+<div class="control-panel">
+    <div class="section-title">🔌 Управление цепью</div>
+
+    <div class="switch-container" id="switch-area">
+        <span class="switch-label">Выключатель</span>
+        <div class="toggle-switch" id="power-switch"></div>
+    </div>
+
+    <div class="switch-status off" id="circuit-status">
+        <span>🔴 ЦЕПЬ РАЗОМКНУТА</span>
+    </div>
+
+    <div class="section-title" style="margin-top: 10px;">⚙️ Параметры</div>
+
+    <div class="slider-group">
+        <label><span>Напряжение батареи:</span> <span id="voltage-value">1.5</span> <span>В</span></label>
+        <input type="range" id="voltage-slider" min="0.5" max="9" step="0.5" value="1.5">
+    </div>
+
+    <div class="slider-group">
+        <label><span>Сопротивление лампы:</span> <span id="resistance-value">10</span> <span>Ом</span></label>
+        <input type="range" id="resistance-slider" min="5" max="50" step="1" value="10">
+    </div>
+
+    <div class="slider-group">
+        <label><span>Скорость частиц:</span> <span id="particle-speed-value">1.0</span>×</label>
+        <input type="range" id="particle-speed" min="0.2" max="3" step="0.1" value="1">
+    </div>
+
+    <div class="section-title" style="margin-top: 10px;">👁️ Отображение</div>
+
+    <div class="checkbox-group">
+        <div class="checkbox-item">
+            <input type="checkbox" id="show-particles" checked>
+            <label for="show-particles">Показать движение тока</label>
+        </div>
+        <div class="checkbox-item">
+            <input type="checkbox" id="show-labels" checked>
+            <label for="show-labels">Показать подписи</label>
+        </div>
+        <div class="checkbox-item">
+            <input type="checkbox" id="show-glow" checked>
+            <label for="show-glow">Свечение лампы</label>
+        </div>
+    </div>
+
+    <button class="btn btn-primary" id="btn-reset">🔄 Сбросить настройки</button>
+</div>
+
+<!-- Info Panel -->
+<div class="info-panel">
+    <h3>📊 Электрические параметры</h3>
+
+    <div class="info-item">
+        <span class="info-label">Напряжение (U)</span>
+        <span class="info-value voltage" id="display-voltage">1.5 В</span>
+    </div>
+
+    <div class="info-item">
+        <span class="info-label">Сила тока (I)</span>
+        <span class="info-value current" id="display-current">0 А</span>
+    </div>
+
+    <div class="info-item">
+        <span class="info-label">Сопротивление (R)</span>
+        <span class="info-value resistance" id="display-resistance">10 Ом</span>
+    </div>
+
+    <div class="info-item">
+        <span class="info-label">Мощность (P)</span>
+        <span class="info-value power" id="display-power">0 Вт</span>
+    </div>
+</div>
+
+<!-- Legend -->
+<div class="legend">
+    <div class="legend-title">Обозначения</div>
+    <div class="legend-item">
+        <div class="legend-dot" style="background: #e74c3c;"></div>
+        <span>+ положительный полюс</span>
+    </div>
+    <div class="legend-item">
+        <div class="legend-dot" style="background: #2c3e50;"></div>
+        <span>− отрицательный полюс</span>
+    </div>
+    <div class="legend-item">
+        <div class="legend-dot" style="background: #f1c40f;"></div>
+        <span>Направление тока</span>
+    </div>
+</div>
+
+<!-- Formula -->
+<div class="formula-panel">
+    <div class="formula">
+        <span class="var-v">U</span> = <span class="var-i">I</span> × <span class="var-r">R</span>
+        &nbsp;&nbsp;|&nbsp;&nbsp;
+        <span class="var-i">I</span> = <span class="var-v">U</span> / <span class="var-r">R</span>
+    </div>
+    <div class="formula-desc"><span>Закон Ома: напряжение равно произведению силы тока на сопротивление</span></div>
+</div>
+
+<!-- Tooltip -->
+<div class="tooltip" id="tooltip">
+    <h4 id="tooltip-title">Компонент</h4>
+    <p id="tooltip-text">Описание</p>
+</div>
+
+<!-- Hint -->
+<div class="hint">Вращайте сцену мышью • Колёсико для зума • Наведите на компонент</div>
+
+<script src="../../libs/vendor/three-r128/three.min.js"></script>
+<script>
+    // Circuit state
+    let isCircuitOn = false;
+    let voltage = 1.5;
+    let resistance = 10;
+    let particleSpeed = 1.0;
+
+    // Three.js variables
+    let scene, camera, renderer, mainGroup;
+    let battery, switchObj, bulb;
+    let particles = [];
+    let wirePaths = [];
+    let bulbLight;
+    let filament;
+    let labels = [];
+
+    // Interaction
+    let isDragging = false;
+    let lastMouse = {x: 0, y: 0};
+    let rotation = {x: 0.3, y: -0.4};
+
+    // Raycasting
+    let raycaster, mouse;
+    let interactiveObjects = [];
+
+    // Component info (i18n)
+    const componentInfoI18N = {
+        ru: {
+            battery: { name: 'Батарея (источник тока)', description: 'Создаёт разность потенциалов (напряжение). Химическая энергия преобразуется в электрическую.' },
+            switch: { name: 'Выключатель', description: 'Размыкает или замыкает цепь. Контролирует протекание тока.' },
+            bulb: { name: 'Лампа накаливания', description: 'Преобразует электрическую энергию в свет и тепло. Нить накала нагревается до ~2700°C.' },
+            wire: { name: 'Проводник (провод)', description: 'Медный провод с низким сопротивлением. Обеспечивает путь для движения электронов.' }
+        },
+        kz: {
+            battery: { name: 'Батарея (ток көзі)', description: 'Потенциалдар айырмасын (кернеуді) жасайды. Химиялық энергия электр энергиясына айналады.' },
+            switch: { name: 'Ажыратқыш', description: 'Тізбекті ажыратады немесе тұйықтайды. Ток ағынын басқарады.' },
+            bulb: { name: 'Қыздыру шамы', description: 'Электр энергиясын жарық пен жылуға айналдырады. Қыздыру жібі ~2700°C-қа дейін қызады.' },
+            wire: { name: 'Өткізгіш (сым)', description: 'Кедергісі аз мыс сым. Электрондардың қозғалуына жол қамтамасыз етеді.' }
+        },
+        en: {
+            battery: { name: 'Battery (power source)', description: 'Creates a potential difference (voltage). Chemical energy is converted into electrical energy.' },
+            switch: { name: 'Switch', description: 'Opens or closes the circuit. Controls the flow of current.' },
+            bulb: { name: 'Incandescent lamp', description: 'Converts electrical energy into light and heat. The filament heats up to ~2700°C.' },
+            wire: { name: 'Conductor (wire)', description: 'Copper wire with low resistance. Provides a path for electron movement.' }
+        }
+    };
+    function getComponentInfo() { return componentInfoI18N[currentLang] || componentInfoI18N.ru; }
+    let componentInfo = getComponentInfo();
+
+    const container = document.getElementById('canvas-container');
+    const tooltip = document.getElementById('tooltip');
+
+    function init() {
+        // Scene
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color('#0a0a1a');
+
+        // Camera
+        camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 5, 10);
+        camera.lookAt(0, 0, 0);
+
+        // Renderer
+        renderer = new THREE.WebGLRenderer({antialias: true});
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = false;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        container.appendChild(renderer.domElement);
+
+        // Raycaster
+        raycaster = new THREE.Raycaster();
+        mouse = new THREE.Vector2();
+
+        // Lights
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+        scene.add(ambientLight);
+
+        const topLight = new THREE.DirectionalLight(0xffffff, 0.6);
+        topLight.position.set(5, 10, 5);
+        topLight.castShadow = true;
+        topLight.shadow.mapSize.width = 2048;
+        topLight.shadow.mapSize.height = 2048;
+        scene.add(topLight);
+
+        // Bulb light (initially off)
+        bulbLight = new THREE.PointLight(0xffcc44, 0, 6);
+        bulbLight.castShadow = true;
+        scene.add(bulbLight);
+
+        // Main group
+        mainGroup = new THREE.Group();
+        scene.add(mainGroup);
+
+        createScene();
+        setupControls();
+        animate();
+    }
+
+    function createScene() {
+        // Wooden board base
+        createBoard();
+
+        // Battery
+        createBattery();
+
+        // Switch
+        createSwitch();
+
+        // Light bulb
+        createBulb();
+
+        // Wires
+        createWires();
+
+        // Labels
+        createLabels();
+
+        // Particles
+        createParticles();
+    }
+
+    function createBoard() {
+        const boardGeometry = new THREE.BoxGeometry(7, 0.25, 5);
+        const boardMaterial = new THREE.MeshStandardMaterial({
+            color: 0x8B7355,
+            roughness: 0.8,
+            metalness: 0.1
+        });
+        const board = new THREE.Mesh(boardGeometry, boardMaterial);
+        board.position.y = -0.6;
+        board.receiveShadow = true;
+        mainGroup.add(board);
+
+        // Board edge bevel
+        const edgeGeometry = new THREE.BoxGeometry(7.15, 0.3, 5.15);
+        const edgeMaterial = new THREE.MeshStandardMaterial({
+            color: 0x6B5344,
+            roughness: 0.9
+        });
+        const edge = new THREE.Mesh(edgeGeometry, edgeMaterial);
+        edge.position.y = -0.62;
+        mainGroup.add(edge);
+    }
+
+    function createBattery() {
+        battery = new THREE.Group();
+        battery.userData = {type: 'battery'};
+
+        // Battery body
+        const bodyGeometry = new THREE.CylinderGeometry(0.3, 0.3, 1, 32);
+        const bodyMaterial = new THREE.MeshStandardMaterial({
+            color: 0x2980b9,
+            roughness: 0.4,
+            metalness: 0.2
+        });
+        const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+        body.castShadow = true;
+        battery.add(body);
+
+        // Battery label stripe
+        const stripeGeometry = new THREE.CylinderGeometry(0.305, 0.305, 0.5, 32);
+        const stripeMaterial = new THREE.MeshStandardMaterial({
+            color: 0x1a5276,
+            roughness: 0.5
+        });
+        const stripe = new THREE.Mesh(stripeGeometry, stripeMaterial);
+        stripe.position.y = 0.1;
+        battery.add(stripe);
+
+        // Positive terminal (+) - Red cap
+        const posCapGeometry = new THREE.CylinderGeometry(0.28, 0.3, 0.1, 32);
+        const posCapMaterial = new THREE.MeshStandardMaterial({
+            color: 0xe74c3c,
+            roughness: 0.4,
+            metalness: 0.5
+        });
+        const posCap = new THREE.Mesh(posCapGeometry, posCapMaterial);
+        posCap.position.y = 0.55;
+        battery.add(posCap);
+
+        // Positive nub
+        const posNubGeometry = new THREE.CylinderGeometry(0.1, 0.08, 0.12, 16);
+        const posNubMaterial = new THREE.MeshStandardMaterial({
+            color: 0xcccccc,
+            roughness: 0.2,
+            metalness: 0.9
+        });
+        const posNub = new THREE.Mesh(posNubGeometry, posNubMaterial);
+        posNub.position.y = 0.66;
+        battery.add(posNub);
+
+        // Negative terminal (-) - Black cap
+        const negCapGeometry = new THREE.CylinderGeometry(0.3, 0.3, 0.08, 32);
+        const negCapMaterial = new THREE.MeshStandardMaterial({
+            color: 0x2c3e50,
+            roughness: 0.4,
+            metalness: 0.6
+        });
+        const negCap = new THREE.Mesh(negCapGeometry, negCapMaterial);
+        negCap.position.y = -0.54;
+        battery.add(negCap);
+
+        battery.position.set(-2.5, 0.2, 1.5);
+        interactiveObjects.push(battery);
+        mainGroup.add(battery);
+    }
+
+    function createSwitch() {
+        switchObj = new THREE.Group();
+        switchObj.userData = {type: 'switch'};
+
+        // Switch base (plastic)
+        const baseGeometry = new THREE.BoxGeometry(0.6, 0.15, 0.4);
+        const baseMaterial = new THREE.MeshStandardMaterial({
+            color: 0x444444,
+            roughness: 0.7
+        });
+        const base = new THREE.Mesh(baseGeometry, baseMaterial);
+        base.castShadow = true;
+        switchObj.add(base);
+
+        // Metal body
+        const metalBodyGeometry = new THREE.BoxGeometry(0.4, 0.2, 0.25);
+        const metalMaterial = new THREE.MeshStandardMaterial({
+            color: 0x888888,
+            roughness: 0.3,
+            metalness: 0.8
+        });
+        const metalBody = new THREE.Mesh(metalBodyGeometry, metalMaterial);
+        metalBody.position.y = 0.15;
+        switchObj.add(metalBody);
+
+        // Connection terminals
+        const terminalGeometry = new THREE.CylinderGeometry(0.04, 0.04, 0.15, 12);
+        const terminalMaterial = new THREE.MeshStandardMaterial({
+            color: 0xb87333,
+            roughness: 0.3,
+            metalness: 0.9
+        });
+
+        const leftTerminal = new THREE.Mesh(terminalGeometry, terminalMaterial);
+        leftTerminal.position.set(-0.2, 0.05, 0.15);
+        leftTerminal.rotation.x = Math.PI / 2;
+        switchObj.add(leftTerminal);
+
+        const rightTerminal = new THREE.Mesh(terminalGeometry, terminalMaterial);
+        rightTerminal.position.set(0.2, 0.05, 0.15);
+        rightTerminal.rotation.x = Math.PI / 2;
+        switchObj.add(rightTerminal);
+
+        // Switch lever
+        const leverGeometry = new THREE.BoxGeometry(0.3, 0.06, 0.06);
+        const leverMaterial = new THREE.MeshStandardMaterial({
+            color: 0xaaaaaa,
+            roughness: 0.2,
+            metalness: 0.9
+        });
+        const lever = new THREE.Mesh(leverGeometry, leverMaterial);
+        lever.position.set(0, 0.3, 0);
+        switchObj.lever = lever;
+        switchObj.add(lever);
+
+        // Lever pivot point
+        lever.geometry.translate(0.12, 0, 0);
+        lever.position.x = -0.12;
+        lever.rotation.z = 0.4; // OFF position (tilted right)
+
+        // Lever handle
+        const handleGeometry = new THREE.SphereGeometry(0.05, 12, 12);
+        const handleMaterial = new THREE.MeshStandardMaterial({
+            color: 0xcc3333,
+            roughness: 0.4
+        });
+        const handle = new THREE.Mesh(handleGeometry, handleMaterial);
+        handle.position.set(0.24, 0, 0);
+        lever.add(handle);
+
+        switchObj.position.set(0, -0.25, -1.5);
+        switchObj.rotation.y = Math.PI / 2;
+        interactiveObjects.push(switchObj);
+        mainGroup.add(switchObj);
+    }
+
+    function createBulb() {
+        bulb = new THREE.Group();
+        bulb.userData = {type: 'bulb'};
+
+        // Metal screw base
+        const baseGeometry = new THREE.CylinderGeometry(0.18, 0.18, 0.35, 24);
+        const baseMaterial = new THREE.MeshStandardMaterial({
+            color: 0x777777,
+            roughness: 0.3,
+            metalness: 0.9
+        });
+        const base = new THREE.Mesh(baseGeometry, baseMaterial);
+        base.position.y = -0.1;
+        base.castShadow = true;
+        bulb.add(base);
+
+        // Screw threads
+        for (let i = 0; i < 5; i++) {
+            const threadGeometry = new THREE.TorusGeometry(0.19, 0.012, 8, 24);
+            const thread = new THREE.Mesh(threadGeometry, baseMaterial);
+            thread.position.y = i * 0.055 - 0.2;
+            thread.rotation.x = Math.PI / 2;
+            bulb.add(thread);
+        }
+
+        // Glass bulb envelope
+        const glassGeometry = new THREE.SphereGeometry(0.35, 32, 32);
+        const glassMaterial = new THREE.MeshPhysicalMaterial({
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0.2,
+            roughness: 0.05,
+            metalness: 0,
+            clearcoat: 1,
+            clearcoatRoughness: 0.1
+        });
+        const glass = new THREE.Mesh(glassGeometry, glassMaterial);
+        glass.position.y = 0.35;
+        glass.scale.y = 1.2;
+        bulb.add(glass);
+
+        // Bulb neck (glass)
+        const neckGeometry = new THREE.CylinderGeometry(0.1, 0.18, 0.2, 16);
+        const neck = new THREE.Mesh(neckGeometry, glassMaterial);
+        neck.position.y = 0.05;
+        bulb.add(neck);
+
+        // Support wires
+        const supportMaterial = new THREE.MeshStandardMaterial({
+            color: 0x555555,
+            metalness: 0.8
+        });
+        [-0.04, 0.04].forEach(x => {
+            const supportGeometry = new THREE.CylinderGeometry(0.008, 0.008, 0.4, 8);
+            const support = new THREE.Mesh(supportGeometry, supportMaterial);
+            support.position.set(x, 0.25, 0);
+            bulb.add(support);
+        });
+
+        // Filament (coiled tungsten wire)
+        const filamentPoints = [];
+        for (let i = 0; i < 40; i++) {
+            const t = i / 39;
+            const x = Math.sin(t * Math.PI * 8) * 0.035;
+            const y = t * 0.2 + 0.2;
+            const z = Math.cos(t * Math.PI * 8) * 0.035;
+            filamentPoints.push(new THREE.Vector3(x, y, z));
+        }
+
+        const filamentCurve = new THREE.CatmullRomCurve3(filamentPoints);
+        const filamentGeometry = new THREE.TubeGeometry(filamentCurve, 80, 0.006, 8, false);
+        const filamentMaterial = new THREE.MeshBasicMaterial({
+            color: 0x333333
+        });
+        filament = new THREE.Mesh(filamentGeometry, filamentMaterial);
+        bulb.filament = filament;
+        bulb.add(filament);
+
+        // Glow mesh (hidden initially)
+        const glowGeometry = new THREE.SphereGeometry(0.4, 32, 32);
+        const glowMaterial = new THREE.MeshBasicMaterial({
+            color: 0xffcc44,
+            transparent: true,
+            opacity: 0
+        });
+        const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+        glow.position.y = 0.35;
+        bulb.glow = glow;
+        bulb.add(glow);
+
+        bulb.position.set(2.5, 0.3, 1.5);
+        bulbLight.position.set(2.5, 0.65, 1.5);
+        interactiveObjects.push(bulb);
+        mainGroup.add(bulb);
+    }
+
+    function createWires() {
+        const copperMaterial = new THREE.MeshStandardMaterial({
+            color: 0xb87333,
+            roughness: 0.35,
+            metalness: 0.85
+        });
+
+        // Define wire paths
+        // Path 1: Battery (+) up and to switch
+        const path1 = [
+            new THREE.Vector3(-2.5, 0.9, 1.5),   // Battery +
+            new THREE.Vector3(-2.5, 1.3, 1.5),   // Up
+            new THREE.Vector3(-2.5, 1.3, 0),     // Forward
+            new THREE.Vector3(-2.5, 1.3, -1.5),  // To switch area
+            new THREE.Vector3(-0.2, 0.3, -1.5)   // Down to switch
+        ];
+
+        // Path 2: Switch to Bulb
+        const path2 = [
+            new THREE.Vector3(0.2, 0.3, -1.5),   // Switch right
+            new THREE.Vector3(2.5, 1.3, -1.5),   // Across top
+            new THREE.Vector3(2.5, 1.3, 1.5),    // To bulb area
+            new THREE.Vector3(2.5, 0.5, 1.5)     // Down to bulb
+        ];
+
+        // Path 3: Bulb (-) back to Battery (-)
+        const path3 = [
+            new THREE.Vector3(2.5, -0.1, 1.5),   // Bulb base
+            new THREE.Vector3(2.5, -0.35, 1.5),  // Down
+            new THREE.Vector3(2.5, -0.35, 2),    // Back
+            new THREE.Vector3(-2.5, -0.35, 2),   // Across
+            new THREE.Vector3(-2.5, -0.35, 1.5), // To battery
+            new THREE.Vector3(-2.5, -0.3, 1.5)   // Battery -
+        ];
+
+        [path1, path2, path3].forEach((points, index) => {
+            const curve = new THREE.CatmullRomCurve3(points);
+            const geometry = new THREE.TubeGeometry(curve, 64, 0.03, 12, false);
+            const wire = new THREE.Mesh(geometry, copperMaterial.clone());
+            wire.castShadow = true;
+            wire.userData = {type: 'wire'};
+            mainGroup.add(wire);
+            wirePaths.push({curve: curve, mesh: wire});
+            interactiveObjects.push(wire);
+        });
+    }
+
+    const labelDataI18N = {
+        ru: [{text: 'Батарея 1.5В', pos: [-2.5, 1.5, 1.5]}, {text: 'Выключатель', pos: [0, 0.7, -1.5]}, {text: 'Лампа', pos: [2.5, 1.2, 1.5]}],
+        kz: [{text: 'Батарея 1.5В', pos: [-2.5, 1.5, 1.5]}, {text: 'Ажыратқыш', pos: [0, 0.7, -1.5]}, {text: 'Шам', pos: [2.5, 1.2, 1.5]}],
+        en: [{text: 'Battery 1.5V', pos: [-2.5, 1.5, 1.5]}, {text: 'Switch', pos: [0, 0.7, -1.5]}, {text: 'Lamp', pos: [2.5, 1.2, 1.5]}]
+    };
+    function createLabels() {
+        const labelData = labelDataI18N[currentLang] || labelDataI18N.ru;
+
+        labelData.forEach(data => {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = 'rgba(0,0,0,0.7)';
+            ctx.beginPath();
+            ctx.roundRect(10, 10, 236, 44, 8);
+            ctx.fill();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 24px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(data.text, 128, 42);
+
+            const texture = new THREE.CanvasTexture(canvas);
+            const material = new THREE.SpriteMaterial({map: texture, transparent: true});
+            const sprite = new THREE.Sprite(material);
+            sprite.scale.set(1.2, 0.3, 1);
+            sprite.position.set(...data.pos);
+            labels.push(sprite);
+            mainGroup.add(sprite);
+        });
+    }
+
+    function createParticles() {
+        const particleGeometry = new THREE.SphereGeometry(0.04, 8, 8);
+
+        wirePaths.forEach((pathData, pathIndex) => {
+            for (let i = 0; i < 10; i++) {
+                const particleMaterial = new THREE.MeshBasicMaterial({
+                    color: 0xffff00,
+                    transparent: true,
+                    opacity: 0
+                });
+
+                const particle = new THREE.Mesh(particleGeometry.clone(), particleMaterial);
+                particle.userData = {
+                    pathIndex: pathIndex,
+                    t: i / 10,
+                    path: pathData.curve
+                };
+
+                // Glow effect
+                const glowGeometry = new THREE.SphereGeometry(0.08, 8, 8);
+                const glowMaterial = new THREE.MeshBasicMaterial({
+                    color: 0xffaa00,
+                    transparent: true,
+                    opacity: 0
+                });
+                const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+                particle.glow = glow;
+                particle.add(glow);
+
+                particles.push(particle);
+                mainGroup.add(particle);
+            }
+        });
+    }
+
+    function updateLabels() {
+        const showLabels = document.getElementById('show-labels').checked;
+        labels.forEach(label => {
+            label.visible = showLabels;
+        });
+    }
+
+    function toggleCircuit(on) {
+        isCircuitOn = on;
+
+        // Update switch lever
+        if (switchObj.lever) {
+            switchObj.lever.rotation.z = on ? -0.4 : 0.4;
+        }
+
+        // Calculate current for brightness
+        const current = on ? calculateCurrent() : 0;
+        const brightness = Math.min(current * 1.5, 1);
+
+        // Update filament
+        if (filament) {
+            const filColor = on ? 0xff6600 : 0x333333;
+            filament.material.color.setHex(filColor);
+        }
+
+        // Bulb glow
+        if (bulb.glow && document.getElementById('show-glow').checked) {
+            bulb.glow.material.opacity = on ? brightness * 0.5 : 0;
+        }
+
+        // Bulb light
+        bulbLight.intensity = on ? brightness * 2 : 0;
+
+        // Particles
+        const showParticles = document.getElementById('show-particles').checked;
+        particles.forEach(p => {
+            p.material.opacity = (on && showParticles) ? 0.9 : 0;
+            if (p.glow) {
+                p.glow.material.opacity = (on && showParticles) ? 0.4 : 0;
+            }
+        });
+
+        // Update UI
+        const statusEl = document.getElementById('circuit-status');
+        const switchEl = document.getElementById('power-switch');
+
+        if (on) {
+            statusEl.textContent = I18N[currentLang].status_on;
+            statusEl.className = 'switch-status on';
+            switchEl.classList.add('on');
+        } else {
+            statusEl.textContent = '<span>🔴 ЦЕПЬ РАЗОМКНУТА</span>';
+            statusEl.className = 'switch-status off';
+            switchEl.classList.remove('on');
+        }
+
+        updateDisplays();
+    }
+
+    function calculateCurrent() {
+        return voltage / resistance;
+    }
+
+    function calculatePower() {
+        const current = calculateCurrent();
+        return voltage * current;
+    }
+
+    function updateDisplays() {
+        const current = isCircuitOn ? calculateCurrent() : 0;
+        const power = isCircuitOn ? calculatePower() : 0;
+
+        document.getElementById('display-voltage').textContent = voltage.toFixed(1) + ' ' + (I18N[currentLang].unit_v || 'В');
+        document.getElementById('display-current').textContent = current.toFixed(3) + ' ' + (I18N[currentLang].unit_a || 'А');
+        document.getElementById('display-resistance').textContent = resistance + ' ' + (I18N[currentLang].unit_ohm || 'Ом');
+        document.getElementById('display-power').textContent = power.toFixed(2) + ' ' + (I18N[currentLang].unit_w || 'Вт');
+    }
+
+    function updateParticles() {
+        if (!isCircuitOn) return;
+
+        const current = calculateCurrent();
+        const speed = current * particleSpeed * 0.004;
+
+        particles.forEach(p => {
+            p.userData.t += speed;
+            if (p.userData.t > 1) p.userData.t -= 1;
+
+            const pos = p.userData.path.getPointAt(p.userData.t);
+            p.position.copy(pos);
+
+            // Pulsing glow
+            const pulse = 0.8 + Math.sin(Date.now() * 0.01 + p.userData.t * 20) * 0.2;
+            p.scale.setScalar(pulse);
+        });
+    }
+
+    function checkHover() {
+        raycaster.setFromCamera(mouse, camera);
+
+        // Check all interactive objects and their children
+        let found = false;
+        for (let obj of interactiveObjects) {
+            const intersects = raycaster.intersectObject(obj, true);
+            if (intersects.length > 0) {
+                const type = obj.userData.type;
+                if (type && componentInfo[type]) {
+                    document.getElementById('tooltip-title').textContent = componentInfo[type].name;
+                    document.getElementById('tooltip-text').textContent = componentInfo[type].description;
+                    tooltip.classList.add('visible');
+                    found = true;
+                    container.style.cursor = 'pointer';
+                    break;
+                }
+            }
+        }
+
+        if (!found) {
+            tooltip.classList.remove('visible');
+            container.style.cursor = isDragging ? 'grabbing' : 'grab';
+        }
+    }
+
+    function setupControls() {
+        // Power switch click
+        document.getElementById('switch-area').addEventListener('click', () => {
+            toggleCircuit(!isCircuitOn);
+        });
+
+        // Voltage slider
+        document.getElementById('voltage-slider').addEventListener('input', (e) => {
+            voltage = parseFloat(e.target.value);
+            document.getElementById('voltage-value').textContent = voltage.toFixed(1);
+            updateDisplays();
+            if (isCircuitOn) toggleCircuit(true);
+        });
+
+        // Resistance slider
+        document.getElementById('resistance-slider').addEventListener('input', (e) => {
+            resistance = parseFloat(e.target.value);
+            document.getElementById('resistance-value').textContent = resistance;
+            updateDisplays();
+            if (isCircuitOn) toggleCircuit(true);
+        });
+
+        // Particle speed
+        document.getElementById('particle-speed').addEventListener('input', (e) => {
+            particleSpeed = parseFloat(e.target.value);
+            document.getElementById('particle-speed-value').textContent = particleSpeed.toFixed(1);
+        });
+
+        // Checkboxes
+        document.getElementById('show-particles').addEventListener('change', () => {
+            if (isCircuitOn) toggleCircuit(true);
+        });
+        document.getElementById('show-labels').addEventListener('change', updateLabels);
+        document.getElementById('show-glow').addEventListener('change', () => {
+            if (isCircuitOn) toggleCircuit(true);
+        });
+
+        // Reset button
+        document.getElementById('btn-reset').addEventListener('click', () => {
+            voltage = 1.5;
+            resistance = 10;
+            particleSpeed = 1.0;
+
+            document.getElementById('voltage-slider').value = 1.5;
+            document.getElementById('resistance-slider').value = 10;
+            document.getElementById('particle-speed').value = 1;
+            document.getElementById('voltage-value').textContent = '1.5';
+            document.getElementById('resistance-value').textContent = '10';
+            document.getElementById('particle-speed-value').textContent = '1.0';
+
+            document.getElementById('show-particles').checked = true;
+            document.getElementById('show-labels').checked = true;
+            document.getElementById('show-glow').checked = true;
+
+            toggleCircuit(false);
+            updateLabels();
+
+            rotation = {x: 0.3, y: -0.4};
+            camera.position.z = 10;
+        });
+
+        // Mouse controls for rotation
+        renderer.domElement.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            lastMouse = {x: e.clientX, y: e.clientY};
+            container.style.cursor = 'grabbing';
+        });
+
+        renderer.domElement.addEventListener('mousemove', (e) => {
+            mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+            // Update tooltip position
+            tooltip.style.left = (e.clientX + 15) + 'px';
+            tooltip.style.top = (e.clientY + 15) + 'px';
+
+            if (isDragging) {
+                const deltaX = e.clientX - lastMouse.x;
+                const deltaY = e.clientY - lastMouse.y;
+                rotation.y += deltaX * 0.008;
+                rotation.x += deltaY * 0.008;
+                rotation.x = Math.max(-0.8, Math.min(0.8, rotation.x));
+                lastMouse = {x: e.clientX, y: e.clientY};
+            }
+        });
+
+        renderer.domElement.addEventListener('mouseup', () => {
+            isDragging = false;
+            container.style.cursor = 'grab';
+        });
+
+        renderer.domElement.addEventListener('mouseleave', () => {
+            isDragging = false;
+            tooltip.classList.remove('visible');
+        });
+
+        renderer.domElement.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            camera.position.z = Math.max(5, Math.min(18, camera.position.z + e.deltaY * 0.01));
+        }, {passive: false});
+
+        // Resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+
+        // Update particles
+        updateParticles();
+
+        // Filament flicker when on
+        if (isCircuitOn && document.getElementById('show-glow').checked && filament) {
+            const flicker = 0xee5500 + Math.floor(Math.random() * 0x112200);
+            filament.material.color.setHex(flicker);
+        }
+
+        // Check hover
+        if (!isDragging) {
+            checkHover();
+        }
+
+        // Apply rotation
+        mainGroup.rotation.x = rotation.x;
+        mainGroup.rotation.y = rotation.y;
+
+        renderer.render(scene, camera);
+    }
+
+    // Initialize
+    init();
+</script>
+<script>
+(function() {
+    const TEXT_MAP = {
+    "Электрическая цепь — Интерактивная модель": {
+        "kz": "Электр тізбегі — Интерактивті модель",
+        "en": "Electric Circuit — Interactive Model"
+    },
+    "⚡ Простая электрическая цепь": {
+        "kz": "⚡ Қарапайым электр тізбегі",
+        "en": "⚡ Simple Electric Circuit"
+    },
+    "Батарея • Выключатель • Лампочка • Визуализация тока": {
+        "kz": "Батарея • Ажыратқыш • Шам • Ток визуализациясы",
+        "en": "Battery • Switch • Light bulb • Current visualization"
+    },
+    "🔌 Управление цепью": {
+        "kz": "🔌 Тізбекті басқару",
+        "en": "🔌 Circuit Control"
+    },
+    "Выключатель": {
+        "kz": "Ажыратқыш",
+        "en": "Switch"
+    },
+    "🔴 ЦЕПЬ РАЗОМКНУТА": {
+        "kz": "🔴 ТІЗБЕК АЖЫРАТЫЛҒАН",
+        "en": "🔴 CIRCUIT OPEN"
+    },
+    "🟢 ЦЕПЬ ЗАМКНУТА — ТОК ИДЁТ!": {
+        "kz": "🟢 ТІЗБЕК ТҰЙЫҚТАЛҒАН — ТОК ЖҮРІП ЖАТЫР!",
+        "en": "🟢 CIRCUIT CLOSED — CURRENT FLOWING!"
+    },
+    "⚙️ Параметры": {
+        "kz": "⚙️ Параметрлер",
+        "en": "⚙️ Parameters"
+    },
+    "Напряжение батареи:": {
+        "kz": "Батарея кернеуі:",
+        "en": "Battery voltage:"
+    },
+    "Сопротивление лампы:": {
+        "kz": "Шам кедергісі:",
+        "en": "Lamp resistance:"
+    },
+    "Скорость частиц:": {
+        "kz": "Бөлшектер жылдамдығы:",
+        "en": "Particle speed:"
+    },
+    "👁️ Отображение": {
+        "kz": "👁️ Көрсету",
+        "en": "👁️ Display"
+    },
+    "Показать движение тока": {
+        "kz": "Ток қозғалысын көрсету",
+        "en": "Show current flow"
+    },
+    "Показать подписи": {
+        "kz": "Жазуларды көрсету",
+        "en": "Show labels"
+    },
+    "Свечение лампы": {
+        "kz": "Шам жарығы",
+        "en": "Lamp glow"
+    },
+    "🔄 Сбросить настройки": {
+        "kz": "🔄 Параметрлерді қалпына келтіру",
+        "en": "🔄 Reset settings"
+    },
+    "📊 Электрические параметры": {
+        "kz": "📊 Электрлік параметрлер",
+        "en": "📊 Electrical Parameters"
+    },
+    "Напряжение (U)": {
+        "kz": "Кернеу (U)",
+        "en": "Voltage (U)"
+    },
+    "Сила тока (I)": {
+        "kz": "Ток күші (I)",
+        "en": "Current (I)"
+    },
+    "Сопротивление (R)": {
+        "kz": "Кедергі (R)",
+        "en": "Resistance (R)"
+    },
+    "Мощность (P)": {
+        "kz": "Қуат (P)",
+        "en": "Power (P)"
+    },
+    "Обозначения": {
+        "kz": "Белгілеулер",
+        "en": "Legend"
+    },
+    "+ положительный полюс": {
+        "kz": "+ оң полюс",
+        "en": "+ positive terminal"
+    },
+    "− отрицательный полюс": {
+        "kz": "− теріс полюс",
+        "en": "− negative terminal"
+    },
+    "Направление тока": {
+        "kz": "Ток бағыты",
+        "en": "Current direction"
+    },
+    "Закон Ома: напряжение равно произведению силы тока на сопротивление": {
+        "kz": "Ом заңы: кернеу ток күші мен кедергінің көбейтіндісіне тең",
+        "en": "Ohm's Law: voltage equals the product of current and resistance"
+    },
+    "Вращайте сцену мышью • Колёсико для зума • Наведите на компонент": {
+        "kz": "Тінтуірмен сахнаны айналдырыңыз • Масштабтау — дөңгелек • Компонентке апарыңыз",
+        "en": "Rotate scene with mouse • Scroll to zoom • Hover over component"
+    },
+    "Батарея (источник тока)": {
+        "kz": "Батарея (ток көзі)",
+        "en": "Battery (power source)"
+    },
+    "Создаёт разность потенциалов (напряжение). Химическая энергия преобразуется в электрическую.": {
+        "kz": "Потенциалдар айырмасын (кернеуді) жасайды. Химиялық энергия электр энергиясына айналады.",
+        "en": "Creates a potential difference (voltage). Chemical energy is converted into electrical energy."
+    },
+    "Размыкает или замыкает цепь. Контролирует протекание тока.": {
+        "kz": "Тізбекті ажыратады немесе тұйықтайды. Ток ағынын басқарады.",
+        "en": "Opens or closes the circuit. Controls the flow of current."
+    },
+    "Лампа накаливания": {
+        "kz": "Қыздыру шамы",
+        "en": "Incandescent lamp"
+    },
+    "Преобразует электрическую энергию в свет и тепло. Нить накала нагревается до ~2700°C.": {
+        "kz": "Электр энергиясын жарық пен жылуға айналдырады. Қыздыру жібі ~2700°C-қа дейін қызады.",
+        "en": "Converts electrical energy into light and heat. The filament heats up to ~2700°C."
+    },
+    "Проводник (провод)": {
+        "kz": "Өткізгіш (сым)",
+        "en": "Conductor (wire)"
+    },
+    "Медный провод с низким сопротивлением. Обеспечивает путь для движения электронов.": {
+        "kz": "Кедергісі аз мыс сым. Электрондардың қозғалуына жол қамтамасыз етеді.",
+        "en": "Copper wire with low resistance. Provides a path for electron movement."
+    },
+    "Батарея 1.5В": {
+        "kz": "Батарея 1.5В",
+        "en": "Battery 1.5V"
+    },
+    "Лампа": {
+        "kz": "Шам",
+        "en": "Lamp"
+    },
+    "Компонент": {
+        "kz": "Компонент",
+        "en": "Component"
+    }
+,
+    "0 А": {
+        "kz": "0 А",
+        "en": "0 A"
+    },
+    "0 Вт": {
+        "kz": "0 Вт",
+        "en": "0 W"
+    },
+    "1.5 В": {
+        "kz": "1,5 В",
+        "en": "1.5 V"
+    },
+    "10 Ом": {
+        "kz": "10 Ом",
+        "en": "10 Ohm"
+    },
+    "Описание": {
+        "kz": "Сипаттама",
+        "en": "Description"
+    }
+,
+    "НЕТ ПИТАНИЯ": {"kz": "ҚУАТ ЖОҚ", "en": "NO POWER"}
+};
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentLang = urlParams.get('lang') || 'ru';
+
+    if (currentLang === 'ru') return; // No translation needed
+
+    function translateTextNodes(root) {
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
+        const nodes = [];
+        while (walker.nextNode()) nodes.push(walker.currentNode);
+        
+        nodes.forEach(node => {
+            let text = node.textContent;
+            if (!text || !text.trim()) return;
+            
+            const trimmed = text.trim();
+            if (TEXT_MAP[trimmed] && TEXT_MAP[trimmed][currentLang]) {
+                node.textContent = text.replace(trimmed, TEXT_MAP[trimmed][currentLang]);
+            }
+        });
+    }
+
+    function translateAttributes(root) {
+        root.querySelectorAll('[title]').forEach(el => {
+            const t = el.getAttribute('title');
+            if (TEXT_MAP[t] && TEXT_MAP[t][currentLang]) {
+                el.setAttribute('title', TEXT_MAP[t][currentLang]);
+            }
+        });
+        root.querySelectorAll('[placeholder]').forEach(el => {
+            const t = el.getAttribute('placeholder');
+            if (TEXT_MAP[t] && TEXT_MAP[t][currentLang]) {
+                el.setAttribute('placeholder', TEXT_MAP[t][currentLang]);
+            }
+        });
+        // Translate page title
+        const titleText = document.title.trim();
+        if (TEXT_MAP[titleText] && TEXT_MAP[titleText][currentLang]) {
+            document.title = TEXT_MAP[titleText][currentLang];
+        }
+    }
+
+    
+
+    function applyTranslations() {
+        translateTextNodes(document.body);
+        translateAttributes(document);
+        if (typeof translateData === 'function') translateData(currentLang);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', applyTranslations);
+    } else {
+        applyTranslations();
+    }
+
+    // Re-translate after dynamic content changes
+    window.currentLang = currentLang;
+    window._currentLang = currentLang;
+    window._TEXT_MAP = TEXT_MAP;
+
+    // One-time delayed re-translate for dynamic content
+    let _tc=0;const _ti=setInterval(()=>{translateTextNodes(document.body);translateAttributes(document);if(++_tc>=20)clearInterval(_ti);},500);
+})();
+</script>
+</body>
+</html>

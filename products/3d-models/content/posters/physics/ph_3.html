@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Математический Маятник</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: radial-gradient(circle at center, #1a1c20, #000000);
+        }
+
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+
+        /* Панель информации */
+        #info-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 320px;
+            background: rgba(25, 25, 25, 0.95);
+            
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            transform: translateX(120%);
+            transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+            border-left: 4px solid #00ff88;
+            z-index: 10;
+            color: #d0d0d0;
+        }
+
+        #info-panel.active {
+            transform: translateX(0);
+        }
+
+        #info-title {
+            margin: 0 0 10px 0;
+            color: #ffffff;
+            font-size: 20px;
+            font-weight: 600;
+            border-bottom: 1px solid #444;
+            padding-bottom: 10px;
+        }
+
+        #info-desc {
+            color: #b0b0b0;
+            font-size: 15px;
+            line-height: 1.6;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: transparent;
+            border: none;
+            color: #666;
+            font-size: 24px;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .close-btn:hover {
+            color: #fff;
+        }
+
+        /* Маркер элемента */
+        #zone-label {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.6);
+            color: #00ff88;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Легенда / Энергия */
+        #stats-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 15px;
+            border-radius: 8px;
+            color: #ccc;
+            font-size: 13px;
+            pointer-events: none;
+            border: 1px solid #333;
+            width: 200px;
+        }
+
+        .bar-container {
+            width: 100%;
+            background: #333;
+            height: 6px;
+            border-radius: 3px;
+            margin: 5px 0 15px 0;
+            overflow: hidden;
+        }
+
+        .bar-fill {
+            height: 100%;
+            width: 0%;
+            transition: width 0.1s linear;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        /* Заголовок сверху */
+        #main-title {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #fff;
+            font-family: 'Segoe UI', sans-serif;
+            font-size: 24px;
+            font-weight: 300;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            text-shadow: 0 0 15px rgba(0, 255, 136, 0.4);
+            pointer-events: none;
+            z-index: 5;
+            text-align: center;
+            width: 100%;
+        }
+
+    </style>
+</head>
+<body>
+
+
+<h1 id="main-title">Математический Маятник</h1>
+
+<div id="canvas-container"></div>
+<div id="zone-label">Элемент</div>
+
+<div id="stats-panel">
+    <div style="margin-bottom:5px; color:#00d2ff">Кинетическая энергия (Ek)</div>
+    <div class="bar-container">
+        <div id="bar-ke" class="bar-fill" style="background:#00d2ff"></div>
+    </div>
+
+    <div style="margin-bottom:5px; color:#ff3366">Потенциальная энергия (Ep)</div>
+    <div class="bar-container">
+        <div id="bar-pe" class="bar-fill" style="background:#ff3366"></div>
+    </div>
+
+    <div style="border-top: 1px solid #444; margin: 10px 0; padding-top:10px;">
+        <div class="legend-item">
+            <div class="dot" style="background:#ff3366"></div>
+            <span>Сила тяжести</span>
+        </div>
+    </div>
+    <div style="color: #888; font-size: 11px;">Кликните по грузу, чтобы толкнуть</div>
+</div>
+
+<div id="info-panel">
+    <button class="close-btn" onclick="closePanel()">&times;</button>
+    <h2 id="info-title">Название</h2>
+    <p id="info-desc">Описание</p>
+</div>
+
+<script type="importmap">
+    {
+        "imports": {
+            "three": "../../libs/vendor/three-0.160.0/three.module.js",
+            "three/addons/": "../../libs/vendor/three-0.160.0/addons/"
+        }
+    }
+</script>
+
+<script type="module">
+    import * as THREE from 'three';
+    import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+    const currentLang = new URLSearchParams(location.search).get('lang') || 'ru';
+
+    // --- ДАННЫЕ СИМУЛЯЦИИ (I18N) ---
+    const pendulumDataI18N = {
+        ru: {
+            Bob: { title: "Материальная точка (Груз)", desc: "Массивное тело, размерами которого можно пренебречь. В математическом маятнике вся масса сосредоточена в этой точке. При движении груз совершает гармонические колебания (при малых углах)." },
+            String: { title: "Нить подвеса", desc: "Нерастяжимая, невесомая нить длиной L. Удерживает груз на постоянном расстоянии от точки подвеса. Сила натяжения нити меняется в зависимости от положения груза (максимальна в нижней точке)." },
+            Pivot: { title: "Точка подвеса", desc: "Неподвижная точка, вокруг которой совершаются колебания. Реакция опоры в этой точке уравновешивает вес системы." },
+            Trajectory: { title: "Траектория", desc: "Дуга окружности. При малых отклонениях траектория близка к горизонтальной прямой, а движение описывается законом синуса." }
+        },
+        kz: {
+            Bob: { title: "Материалдық нүкте (Жүк)", desc: "Өлшемдерін ескермеуге болатын массивті дене. Математикалық маятникте бүкіл масса осы нүктеде шоғырланған. Қозғалыс кезінде жүк гармоникалық тербелістер жасайды (кіші бұрыштарда)." },
+            String: { title: "Іліп тұрған жіп", desc: "L ұзындығындағы созылмайтын, салмақсыз жіп. Жүкті ілу нүктесінен тұрақты қашықтықта ұстайды. Жіптің керілу күші жүктің орнына байланысты өзгереді (төменгі нүктеде ең жоғары)." },
+            Pivot: { title: "Ілу нүктесі", desc: "Тербелістер жасалатын қозғалмайтын нүкте. Осы нүктедегі тірек реакциясы жүйенің салмағын теңестіреді." },
+            Trajectory: { title: "Траектория", desc: "Шеңбер доғасы. Кіші ауытқулар кезінде траектория көлденең түзуге жақын, ал қозғалыс синус заңымен сипатталады." }
+        },
+        en: {
+            Bob: { title: "Point Mass (Bob)", desc: "A massive body whose dimensions can be neglected. In a mathematical pendulum, all mass is concentrated at this point. During motion, the bob performs harmonic oscillations (at small angles)." },
+            String: { title: "Suspension String", desc: "An inextensible, weightless string of length L. It keeps the bob at a constant distance from the pivot point. The string tension varies depending on the bob position (maximum at the lowest point)." },
+            Pivot: { title: "Pivot Point", desc: "A fixed point around which oscillations occur. The support reaction at this point balances the weight of the system." },
+            Trajectory: { title: "Trajectory", desc: "An arc of a circle. At small deflections, the trajectory is close to a horizontal line, and the motion is described by the sine law." }
+        }
+    };
+    const pendulumColors = { Bob: 0xffffff, String: 0x888888, Pivot: 0x444444, Trajectory: 0x00d2ff };
+    function getPendulumData() {
+        const d = pendulumDataI18N[currentLang] || pendulumDataI18N.ru;
+        const result = {};
+        for (const key of Object.keys(d)) { result[key] = { title: d[key].title, desc: d[key].desc, color: pendulumColors[key] }; }
+        return result;
+    }
+    let pendulumData = getPendulumData();
+    function onLangChanged(lang) { pendulumData = getPendulumData(); }
+
+    // --- СЦЕНА ---
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x1a1c20, 0.02);
+
+    // Сетка координат для наглядности
+    const gridHelper = new THREE.GridHelper(20, 20, 0x333333, 0x222222);
+    gridHelper.position.y = -10;
+    scene.add(gridHelper);
+
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+    camera.position.set(0, 0, 25);
+
+    const renderer = new THREE.WebGLRenderer({antialias: true, alpha: true});
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    container.appendChild(renderer.domElement);
+
+    // --- ОСВЕЩЕНИЕ ---
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    scene.add(ambientLight);
+    const spotLight = new THREE.SpotLight(0xffffff, 100);
+    spotLight.position.set(5, 15, 10);
+    spotLight.castShadow = true;
+    scene.add(spotLight);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.maxDistance = 60;
+    controls.minDistance = 5;
+
+    // --- ФИЗИЧЕСКИЕ ПАРАМЕТРЫ ---
+    let length = 10;        // Длина нити (L)
+    let gravity = 9.81;     // Гравитация (g)
+    let angle = Math.PI / 9; // Начальный угол (20 градусов)
+    let aVelocity = 0;      // Угловая скорость
+    let aAcceleration = 0;  // Угловое ускорение
+    let damping = 0.995;    // Затухание
+
+    const origin = new THREE.Vector3(0, 8, 0); // Точка подвеса
+
+    // --- СОЗДАНИЕ ОБЪЕКТОВ ---
+    const pendulumGroup = new THREE.Group();
+    scene.add(pendulumGroup);
+
+    // 1. Точка подвеса (Pivot)
+    const pivotGeo = new THREE.BoxGeometry(1, 0.5, 1);
+    const pivotMat = new THREE.MeshStandardMaterial({color: 0x666666, roughness: 0.5});
+    const pivot = new THREE.Mesh(pivotGeo, pivotMat);
+    pivot.position.copy(origin);
+    pivot.name = "Pivot";
+    scene.add(pivot);
+
+    // 2. Нить (String) - используем Line для простоты обновления
+    const stringMat = new THREE.LineBasicMaterial({color: 0x888888, linewidth: 2});
+    const stringGeo = new THREE.BufferGeometry().setFromPoints([origin, new THREE.Vector3(0, 0, 0)]);
+    const stringLine = new THREE.Line(stringGeo, stringMat);
+    stringLine.name = "String";
+    scene.add(stringLine);
+
+    // 3. Груз (Bob)
+    const bobGeo = new THREE.SphereGeometry(1.2, 32, 32);
+    const bobMat = new THREE.MeshPhysicalMaterial({
+        color: 0xeeeeee,
+        metalness: 0.5,
+        roughness: 0.2,
+        clearcoat: 1.0
+    });
+    const bob = new THREE.Mesh(bobGeo, bobMat);
+    bob.name = "Bob";
+    scene.add(bob);
+
+    // 4. Траектория (След)
+    const trailPoints = [];
+    const maxTrailLength = 50;
+    const trailGeo = new THREE.BufferGeometry();
+    const trailMat = new THREE.LineBasicMaterial({color: 0x00d2ff, transparent: true, opacity: 0.5});
+    const trail = new THREE.Line(trailGeo, trailMat);
+    trail.name = "Trajectory";
+    scene.add(trail);
+
+    // 5. Векторы сил (Стрелки)
+    const gravArrow = new THREE.ArrowHelper(
+            new THREE.Vector3(0, -1, 0),
+            new THREE.Vector3(0, 0, 0),
+            3,
+            0xff3366 // Красный - сила
+    );
+    scene.add(gravArrow);
+
+    // --- UI ОБНОВЛЕНИЕ ---
+    const barKE = document.getElementById('bar-ke');
+    const barPE = document.getElementById('bar-pe');
+
+    function updateEnergy() {
+        // h = L - L*cos(theta)
+        const h = length * (1 - Math.cos(angle));
+        const v = aVelocity * length;
+
+        // Ep = mgh (масса условно 1)
+        const Ep = gravity * h;
+        // Ek = mv^2 / 2
+        const Ek = 0.5 * v * v;
+
+        // Нормализация для UI (примерная макс энергия)
+        const maxE = 150;
+
+        barKE.style.width = Math.min((Ek / maxE) * 100, 100) + '%';
+        barPE.style.width = Math.min((Ep / maxE) * 100, 100) + '%';
+    }
+
+    // --- ИНТЕРАКТИВНОСТЬ ---
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+    let highlightedObj = null;
+
+    const panel = document.getElementById('info-panel');
+    const titleEl = document.getElementById('info-title');
+    const descEl = document.getElementById('info-desc');
+    const labelEl = document.getElementById('zone-label');
+
+    function onMouseMove(event) {
+        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObjects(scene.children);
+
+        let found = null;
+        for (let hit of intersects) {
+            if (hit.object.name && pendulumData[hit.object.name]) {
+                found = hit.object;
+                break;
+            }
+        }
+
+        if (found) {
+            labelEl.textContent = pendulumData[found.name].title;
+            labelEl.style.opacity = 1;
+            document.body.style.cursor = 'pointer';
+        } else {
+            labelEl.style.opacity = 0;
+            document.body.style.cursor = 'default';
+        }
+    }
+
+    function onClick(event) {
+        if (event.target.closest('#info-panel') || event.target.closest('.close-btn')) return;
+
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObjects(scene.children);
+
+        let found = null;
+        for (let hit of intersects) {
+            if (hit.object.name && pendulumData[hit.object.name]) {
+                found = hit.object;
+                break;
+            }
+        }
+
+        if (found) {
+            // Если кликнули по грузу - "толкаем" его
+            if (found.name === "Bob") {
+                aVelocity += (Math.random() > 0.5 ? 0.05 : -0.05); // Случайный толчок
+                // Вспышка цвета
+                const originalColor = found.material.color.getHex();
+                found.material.color.setHex(0x00ff88);
+                setTimeout(() => found.material.color.setHex(originalColor), 200);
+            } else {
+                showInfo(found.name);
+            }
+        } else {
+            closePanel();
+        }
+    }
+
+    function showInfo(key) {
+        const data = pendulumData[key];
+        titleEl.textContent = data.title;
+        descEl.textContent = data.desc;
+
+        const hexColor = '#' + data.color.toString(16).padStart(6, '0');
+        panel.style.borderLeftColor = hexColor;
+        panel.classList.add('active');
+    }
+
+    window.closePanel = function () {
+        panel.classList.remove('active');
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('click', onClick);
+
+    // --- АНИМАЦИЯ ---
+    function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+
+        // 1. Физика маятника
+        // Угловое ускорение: a = -(g/L) * sin(angle)
+        aAcceleration = (-1 * gravity / length) * Math.sin(angle);
+
+        // Метод Эйлера (интегрирование)
+        aVelocity += aAcceleration;
+        aVelocity *= damping; // Сопротивление воздуха
+
+        // ЗАМЕДЛЕНИЕ: уменьшили коэффициент с 0.15 до 0.05
+        angle += aVelocity * 0.03;
+
+        // 2. Обновление позиций
+        const x = length * Math.sin(angle);
+        const y = length * Math.cos(angle);
+
+        // В Three.js Y вверх, поэтому вычитаем y из origin
+        const bobPos = new THREE.Vector3(origin.x + x, origin.y - y, origin.z);
+
+        bob.position.copy(bobPos);
+
+        // Обновляем линию нити
+        const positions = stringLine.geometry.attributes.position;
+        positions.setXYZ(0, origin.x, origin.y, origin.z);
+        positions.setXYZ(1, bobPos.x, bobPos.y, bobPos.z); // Только 2 точки нужны
+        stringLine.geometry.setFromPoints([origin, bobPos]);
+
+        // 3. Обновление следа (Trail)
+        trailPoints.push(bobPos.clone());
+        if (trailPoints.length > maxTrailLength) trailPoints.shift();
+        trail.geometry.setFromPoints(trailPoints);
+
+        // 4. Обновление векторов сил
+        gravArrow.position.copy(bobPos);
+        // Гравитация всегда вниз
+        gravArrow.setDirection(new THREE.Vector3(0, -1, 0));
+        // Или показываем тангенциальную составляющую (восстанавливающую силу)?
+        // Покажем полную силу тяжести для наглядности
+        gravArrow.setLength(3);
+
+        // 5. Обновление UI
+        updateEnergy();
+
+        renderer.render(scene, camera);
+    }
+
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    animate();
+</script>
+<script>
+(function() {
+    const TEXT_MAP = {
+    "Математический Маятник": {
+        "kz": "Математикалық маятник",
+        "en": "Mathematical Pendulum"
+    },
+    "Кинетическая энергия (Ek)": {
+        "kz": "Кинетикалық энергия (Ek)",
+        "en": "Kinetic Energy (Ek)"
+    },
+    "Потенциальная энергия (Ep)": {
+        "kz": "Потенциалдық энергия (Ep)",
+        "en": "Potential Energy (Ep)"
+    },
+    "Сила тяжести": {
+        "kz": "Ауырлық күші",
+        "en": "Gravity Force"
+    },
+    "Кликните по грузу, чтобы толкнуть": {
+        "kz": "Итеру үшін жүкке басыңыз",
+        "en": "Click the bob to push"
+    },
+    "Элемент": {
+        "kz": "Элемент",
+        "en": "Element"
+    },
+    "Название": {
+        "kz": "Атауы",
+        "en": "Name"
+    },
+    "Описание": {
+        "kz": "Сипаттама",
+        "en": "Description"
+    }
+};
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentLang = urlParams.get('lang') || 'ru';
+
+    if (currentLang === 'ru') return; // No translation needed
+
+    function translateTextNodes(root) {
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
+        const nodes = [];
+        while (walker.nextNode()) nodes.push(walker.currentNode);
+        
+        nodes.forEach(node => {
+            let text = node.textContent;
+            if (!text || !text.trim()) return;
+            
+            const trimmed = text.trim();
+            if (TEXT_MAP[trimmed] && TEXT_MAP[trimmed][currentLang]) {
+                node.textContent = text.replace(trimmed, TEXT_MAP[trimmed][currentLang]);
+            }
+        });
+    }
+
+    function translateAttributes(root) {
+        root.querySelectorAll('[title]').forEach(el => {
+            const t = el.getAttribute('title');
+            if (TEXT_MAP[t] && TEXT_MAP[t][currentLang]) {
+                el.setAttribute('title', TEXT_MAP[t][currentLang]);
+            }
+        });
+        root.querySelectorAll('[placeholder]').forEach(el => {
+            const t = el.getAttribute('placeholder');
+            if (TEXT_MAP[t] && TEXT_MAP[t][currentLang]) {
+                el.setAttribute('placeholder', TEXT_MAP[t][currentLang]);
+            }
+        });
+        // Translate page title
+        const titleText = document.title.trim();
+        if (TEXT_MAP[titleText] && TEXT_MAP[titleText][currentLang]) {
+            document.title = TEXT_MAP[titleText][currentLang];
+        }
+    }
+
+    
+    function translateData(lang) {
+        if (!window.pendulumDataI18N && typeof pendulumDataI18N !== 'undefined') window.pendulumDataI18N = pendulumDataI18N;
+        if (typeof pendulumDataI18N !== 'undefined' && typeof pendulumData !== 'undefined') {
+            const d = pendulumDataI18N[lang] || pendulumDataI18N.ru;
+            for (const key of Object.keys(d)) {
+                if (pendulumData[key]) { pendulumData[key].title = d[key].title; pendulumData[key].desc = d[key].desc; }
+            }
+        }
+    }
+
+
+    function applyTranslations() {
+        translateTextNodes(document.body);
+        translateAttributes(document);
+        if (typeof translateData === 'function') translateData(currentLang);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', applyTranslations);
+    } else {
+        applyTranslations();
+    }
+
+    // Re-translate after dynamic content changes
+    window.currentLang = currentLang;
+    window._currentLang = currentLang;
+    window._TEXT_MAP = TEXT_MAP;
+
+    // One-time delayed re-translate for dynamic content
+    let _tc=0;const _ti=setInterval(()=>{translateTextNodes(document.body);translateAttributes(document);if(++_tc>=20)clearInterval(_ti);},500);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="page_title">Гидратация ионов — растворение электролита</title>
+<style>
+
+
+*{margin:0;padding:0;box-sizing:border-box;}
+
+:root{
+  --bg:#f5f4f0;
+  --surface:rgba(255,255,255,0.90);
+  --border:rgba(0,0,0,0.08);
+  --text:#1c1917;
+  --muted:#78716c;
+  --cation:#8b5cf6;
+  --anion:#22c55e;
+  --water-o:#dc2626;
+  --dipole:#f59e0b;
+  --shadow:0 2px 20px rgba(0,0,0,0.07);
+  --shadow-lg:0 8px 44px rgba(0,0,0,0.11);
+}
+
+body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);overflow:hidden;height:100vh;}
+
+body::before{
+  content:'';position:fixed;inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='%23f5f4f0'/%3E%3Ccircle cx='1' cy='1' r='0.6' fill='rgba(0,0,0,0.025)'/%3E%3C/svg%3E");
+  pointer-events:none;z-index:0;
+}
+
+#canvas-container{position:fixed;inset:0;z-index:1;}
+
+/* ── HEADER ── */
+.header{
+  position:fixed;top:0;left:0;right:0;z-index:200;
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  padding:0 48px;height:92px;
+  display:flex;align-items:center;gap:14px;
+  box-shadow:var(--shadow);
+}
+.h-icon{font-size:30px;}
+.header-title{font-size:25px;font-weight:700;}
+.header-sub{font-size:14.5px;color:var(--muted);margin-left:auto;text-align:right;line-height:1.4;}
+
+/* ── LEFT PANEL ── */
+.panel-left{
+  position:fixed;left:24px;top:108px;bottom:400px;z-index:100;
+  overflow-y:auto;
+  width:300px;
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:24px;
+  padding:20px 22px;box-shadow:var(--shadow-lg);
+}
+.panel-left h3{font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:14px;}
+.props-table{width:100%;border-collapse:collapse;}
+.props-table td{padding:8px 6px;border-bottom:1px solid rgba(0,0,0,0.05);font-size:14px;line-height:1.35;}
+.props-table tr:last-child td{border-bottom:none;}
+.props-table td:first-child{color:var(--muted);font-size:13px;width:50%;}
+.props-table td:last-child{font-weight:600;font-family:'DM Mono',monospace;font-size:13px;text-align:right;}
+
+/* ── RIGHT PANEL ── */
+.panel-right{
+  position:fixed;right:24px;top:108px;z-index:100;
+  width:288px;
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:24px;
+  padding:20px 22px;box-shadow:var(--shadow-lg);
+}
+.panel-right h3{font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:12px;}
+
+/* mode selector (inside right panel) */
+.mode-selector{display:flex;flex-direction:column;gap:8px;margin-bottom:8px;}
+.mode-btn{
+  width:100%;padding:11px 14px;border-radius:14px;text-align:left;
+  font-family:'Syne',sans-serif;font-weight:700;color:var(--text);cursor:pointer;
+  border:2px solid var(--border);background:rgba(0,0,0,0.02);
+  transition:all 0.2s;display:flex;align-items:center;gap:11px;
+}
+.mode-btn:hover{background:rgba(0,0,0,0.05);transform:translateY(-1px);}
+.mode-btn.sel{border-color:var(--cation);background:rgba(139,92,246,0.10);color:#7c3aed;}
+.mode-dot{width:13px;height:13px;border-radius:50%;flex-shrink:0;}
+.mode-formula{font-family:'DM Mono',monospace;font-size:16px;font-weight:600;}
+.mode-sub{font-size:12.5px;font-weight:500;color:var(--muted);margin-left:auto;}
+.mode-btn.sel .mode-sub{color:#7c3aed;}
+.panel-sep{height:1px;background:var(--border);margin:14px 0;}
+
+.ctrl-btn{
+  width:100%;padding:11px 16px;margin-bottom:10px;
+  background:rgba(0,0,0,0.04);border:1.5px solid var(--border);border-radius:14px;
+  font-family:'Syne',sans-serif;font-size:14px;font-weight:600;
+  color:var(--text);cursor:pointer;text-align:left;
+  transition:all 0.2s;display:flex;align-items:center;gap:8px;
+}
+.ctrl-btn:hover{background:rgba(0,0,0,0.07);transform:translateY(-1px);}
+.ctrl-btn.active{background:rgba(139,92,246,0.10);border-color:rgba(139,92,246,0.4);color:#7c3aed;}
+
+/* ── LEGEND (clickable info chips) ── */
+.panel-legend{
+  position:fixed;left:24px;bottom:64px;z-index:100;
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:20px;
+  padding:14px 16px;box-shadow:var(--shadow);
+  display:flex;flex-direction:column;gap:6px;width:248px;
+}
+.legend-head{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:4px;display:flex;align-items:center;gap:6px;}
+.leg-item{
+  display:flex;align-items:center;gap:9px;font-size:13px;font-weight:600;
+  padding:8px 11px;border-radius:11px;cursor:pointer;
+  border:1px solid var(--border);background:rgba(0,0,0,0.025);
+  transition:all 0.16s;
+}
+.leg-item:hover{background:rgba(139,92,246,0.08);border-color:rgba(139,92,246,0.35);transform:translateX(3px);}
+.leg-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0;}
+.leg-info{
+  margin-left:auto;flex-shrink:0;
+  width:18px;height:18px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:700;font-style:italic;font-family:'DM Mono',monospace;
+  background:rgba(0,0,0,0.06);color:var(--muted);transition:all 0.16s;
+}
+.leg-item:hover .leg-info{background:var(--cation);color:#fff;}
+
+/* ── HINT ── */
+.hint-bar{
+  position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:100;
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:99px;
+  padding:9px 24px;font-size:13px;color:var(--muted);
+  box-shadow:var(--shadow);white-space:nowrap;
+}
+.hint-bar kbd{background:rgba(0,0,0,0.07);border-radius:5px;padding:2px 7px;font-family:'DM Mono',monospace;font-size:12px;}
+
+/* ── OVERLAY NAME ── */
+.overlay-name{
+  position:fixed;bottom:58px;right:28px;z-index:100;
+  font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:2px;
+  color:var(--muted);opacity:0.55;pointer-events:none;
+}
+
+/* ── INFO PANEL ── */
+#info-panel{
+  position:fixed;right:-460px;top:0;bottom:0;z-index:300;
+  width:420px;
+  background:rgba(255,255,255,0.97);
+  border-left:1px solid var(--border);
+  padding:32px 28px;overflow-y:auto;
+  box-shadow:-4px 0 40px rgba(0,0,0,0.10);
+  transition:right 0.38s cubic-bezier(0.4,0,0.2,1);
+}
+#info-panel.open{right:0;}
+#info-close{
+  position:absolute;top:20px;right:20px;
+  width:36px;height:36px;border-radius:50%;
+  background:rgba(0,0,0,0.07);border:none;cursor:pointer;
+  font-size:18px;display:flex;align-items:center;justify-content:center;
+}
+#info-close:hover{background:rgba(0,0,0,0.13);}
+.info-tag{display:inline-block;padding:4px 12px;border-radius:99px;font-size:12px;font-weight:700;letter-spacing:0.5px;margin-bottom:16px;}
+.info-title{font-size:22px;font-weight:800;margin-bottom:6px;line-height:1.2;}
+.info-section{margin-top:18px;}
+.info-section h4{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:6px;}
+.info-section p{font-size:14.5px;line-height:1.65;color:#292524;}
+
+@media (max-width:1100px){
+  .panel-left{width:260px;}
+  .panel-right{width:240px;}
+}
+</style>
+</head>
+<body>
+
+<div id="canvas-container"><canvas id="c"></canvas></div>
+
+<header class="header">
+  <div class="h-icon">💧</div>
+  <div class="header-title" data-i18n="header_title">Гидратация ионов</div>
+  <div class="header-sub" data-i18n-html="header_sub">Растворение электролита в воде<br>кликните на ион или молекулу</div>
+</header>
+
+<div class="panel-left">
+  <h3 data-i18n="props_title">Параметры</h3>
+  <table class="props-table"><tbody id="props-body"></tbody></table>
+</div>
+
+<div class="panel-right">
+  <h3 data-i18n="mode_title">Что показать</h3>
+  <div class="mode-selector">
+    <button class="mode-btn sel" data-id="full" onclick="switchTo('full')">
+      <span class="mode-dot" style="background:#0ea5e9"></span><span class="mode-formula">NaCl</span><span class="mode-sub" data-i18n="m_full">растворение</span>
+    </button>
+    <button class="mode-btn" data-id="cation" onclick="switchTo('cation')">
+      <span class="mode-dot" style="background:#8b5cf6"></span><span class="mode-formula">Na⁺</span><span class="mode-sub" data-i18n="m_cation">гидратация</span>
+    </button>
+    <button class="mode-btn" data-id="anion" onclick="switchTo('anion')">
+      <span class="mode-dot" style="background:#22c55e"></span><span class="mode-formula">Cl⁻</span><span class="mode-sub" data-i18n="m_anion">гидратация</span>
+    </button>
+  </div>
+  <div class="panel-sep"></div>
+  <h3 data-i18n="ctrl_title">Управление</h3>
+  <button class="ctrl-btn active" id="btn-spin" onclick="toggleSpin()"><span data-i18n="btn_pause">⏸ Пауза</span></button>
+  <button class="ctrl-btn" id="btn-dipole" onclick="toggleDipole()"><span data-i18n="btn_dipole">➡️ Диполи воды</span></button>
+  <button class="ctrl-btn" id="btn-labels" onclick="toggleLabels()"><span data-i18n="btn_labels">🏷️ Подписи</span></button>
+</div>
+
+<div class="panel-legend">
+  <div class="legend-head" data-i18n="legend_head">👆 Нажмите для описания</div>
+  <div class="leg-item" onclick="openInfo('crystal')"><div class="leg-dot" style="background:linear-gradient(135deg,#8b5cf6 50%,#22c55e 50%);"></div><span data-i18n="leg_crystal">Кристалл NaCl</span><span class="leg-info">i</span></div>
+  <div class="leg-item" onclick="openInfo('cation')"><div class="leg-dot" style="background:#8b5cf6;"></div><span data-i18n="leg_cation">Катион Na⁺</span><span class="leg-info">i</span></div>
+  <div class="leg-item" onclick="openInfo('anion')"><div class="leg-dot" style="background:#22c55e;"></div><span data-i18n="leg_anion">Анион Cl⁻</span><span class="leg-info">i</span></div>
+  <div class="leg-item" onclick="openInfo('water')"><div class="leg-dot" style="background:#dc2626;"></div><span data-i18n="leg_water">Молекула воды</span><span class="leg-info">i</span></div>
+  <div class="leg-item" onclick="openInfo('dipole')"><div class="leg-dot" style="background:#f59e0b;"></div><span data-i18n="leg_dipole">Диполь воды</span><span class="leg-info">i</span></div>
+  <div class="leg-item" onclick="openInfo('shell')"><div class="leg-dot" style="background:#38bdf8;"></div><span data-i18n="leg_shell">Гидратная оболочка</span><span class="leg-info">i</span></div>
+</div>
+
+<div class="overlay-name" id="overlay-name">NaCl · растворение</div>
+
+<div class="hint-bar" data-i18n-html="hint">Перетащите — вращение · <kbd>Колесо</kbd> — масштаб · Клик — информация</div>
+
+<div id="info-panel">
+  <button id="info-close" onclick="closeInfo()">✕</button>
+  <div class="info-tag" id="info-tag"></div>
+  <div class="info-title" id="info-title"></div>
+  <div id="info-body"></div>
+</div>
+
+<script>
+const I18N={
+ru:{
+page_title:'Гидратация ионов — растворение электролита',header_title:'Гидратация ионов',
+header_sub:'Растворение электролита в воде<br>кликните на ион или молекулу',
+props_title:'Параметры',mode_title:'Что показать',ctrl_title:'Управление',legend_head:'👆 Нажмите для описания',
+m_full:'растворение',m_cation:'гидратация',m_anion:'гидратация',
+btn_pause:'⏸ Пауза',btn_resume:'▶ Вращение',btn_dipole:'➡️ Диполи воды',btn_labels:'🏷️ Подписи',
+leg_crystal:'Кристалл NaCl',leg_cation:'Катион Na⁺',leg_anion:'Анион Cl⁻',leg_water:'Молекула воды',leg_dipole:'Диполь воды',leg_shell:'Гидратная оболочка',
+hint:'Перетащите — вращение · <kbd>Колесо</kbd> — масштаб · Клик — информация',
+modes:{
+  full:{overlay:'NaCl · растворение',props:[['Электролит','NaCl'],['Тип','сильный'],['Диссоциация','100%'],['Ионы','Na⁺ + Cl⁻'],['Координация','6 H₂O'],['Тепловой эффект','экзо']]},
+  cation:{overlay:'Na⁺ · гидратация',props:[['Ион','Na⁺'],['Заряд','+1'],['Радиус','0.102 нм'],['Гидратное число','6'],['Энергия гидрат.','−406 кДж/моль'],['Вода к иону','O →']]},
+  anion:{overlay:'Cl⁻ · гидратация',props:[['Ион','Cl⁻'],['Заряд','−1'],['Радиус','0.181 нм'],['Гидратное число','6'],['Энергия гидрат.','−363 кДж/моль'],['Вода к иону','H →']]}
+}},
+kz:{
+page_title:'Иондардың гидратациясы — электролиттің еруі',header_title:'Иондардың гидратациясы',
+header_sub:'Электролиттің суда еруі<br>ионды немесе молекуланы басыңыз',
+props_title:'Параметрлер',mode_title:'Нені көрсету',ctrl_title:'Басқару',legend_head:'👆 Сипаттама үшін басыңыз',
+m_full:'еру',m_cation:'гидратация',m_anion:'гидратация',
+btn_pause:'⏸ Кідірту',btn_resume:'▶ Айналдыру',btn_dipole:'➡️ Су дипольдері',btn_labels:'🏷️ Белгілер',
+leg_crystal:'NaCl кристалы',leg_cation:'Катион Na⁺',leg_anion:'Анион Cl⁻',leg_water:'Су молекуласы',leg_dipole:'Су диполі',leg_shell:'Гидратты қабық',
+hint:'Сүйреңіз — айналдыру · <kbd>Дөңгелек</kbd> — масштаб · Басу — ақпарат',
+modes:{
+  full:{overlay:'NaCl · еру',props:[['Электролит','NaCl'],['Түрі','күшті'],['Диссоциация','100%'],['Иондар','Na⁺ + Cl⁻'],['Координация','6 H₂O'],['Жылу эффектісі','экзо']]},
+  cation:{overlay:'Na⁺ · гидратация',props:[['Ион','Na⁺'],['Заряд','+1'],['Радиус','0.102 нм'],['Гидрат саны','6'],['Гидрат. энергия','−406 кДж/моль'],['Су ионға','O →']]},
+  anion:{overlay:'Cl⁻ · гидратация',props:[['Ион','Cl⁻'],['Заряд','−1'],['Радиус','0.181 нм'],['Гидрат саны','6'],['Гидрат. энергия','−363 кДж/моль'],['Су ионға','H →']]}
+}},
+en:{
+page_title:'Ion Hydration — dissolving an electrolyte',header_title:'Ion Hydration',
+header_sub:'Dissolving an electrolyte in water<br>click on an ion or molecule',
+props_title:'Parameters',mode_title:'What to show',ctrl_title:'Controls',legend_head:'👆 Click for description',
+m_full:'dissolution',m_cation:'hydration',m_anion:'hydration',
+btn_pause:'⏸ Pause',btn_resume:'▶ Rotate',btn_dipole:'➡️ Water dipoles',btn_labels:'🏷️ Labels',
+leg_crystal:'NaCl crystal',leg_cation:'Cation Na⁺',leg_anion:'Anion Cl⁻',leg_water:'Water molecule',leg_dipole:'Water dipole',leg_shell:'Hydration shell',
+hint:'Drag — rotate · <kbd>Scroll</kbd> — zoom · Click — info',
+modes:{
+  full:{overlay:'NaCl · dissolution',props:[['Electrolyte','NaCl'],['Type','strong'],['Dissociation','100%'],['Ions','Na⁺ + Cl⁻'],['Coordination','6 H₂O'],['Heat effect','exo']]},
+  cation:{overlay:'Na⁺ · hydration',props:[['Ion','Na⁺'],['Charge','+1'],['Radius','0.102 nm'],['Hydration number','6'],['Hydration energy','−406 kJ/mol'],['Water → ion','O →']]},
+  anion:{overlay:'Cl⁻ · hydration',props:[['Ion','Cl⁻'],['Charge','−1'],['Radius','0.181 nm'],['Hydration number','6'],['Hydration energy','−363 kJ/mol'],['Water → ion','H →']]}
+}}
+};
+const LANG=(()=>{const q=new URLSearchParams(location.search).get('lang');return(q&&I18N[q])?q:'ru';})();
+const tr=(key)=>(I18N[LANG]&&I18N[LANG][key])??(I18N.ru[key]);
+function applyStaticI18N(){
+  document.documentElement.lang=LANG;
+  const tv=tr('page_title');if(tv)document.title=tv;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{const v=tr(el.getAttribute('data-i18n'));if(v)el.textContent=v;});
+  document.querySelectorAll('[data-i18n-html]').forEach(el=>{const v=tr(el.getAttribute('data-i18n-html'));if(v)el.innerHTML=v;});
+}
+applyStaticI18N();
+</script>
+
+<script type="importmap">
+{"imports":{"three":"../../libs/vendor/three-0.160.0/three.module.js"}}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+const canvas=document.getElementById('c');
+const renderer=new THREE.WebGLRenderer({canvas,antialias: true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+
+const scene=new THREE.Scene(); scene.background=null;
+const camera=new THREE.PerspectiveCamera(45,innerWidth/innerHeight,0.1,200);
+camera.position.set(0,2.5,16); camera.lookAt(0,0,0);
+
+scene.add(new THREE.AmbientLight(0xffffff,0.68));
+const dL=new THREE.DirectionalLight(0xffffff,1.0); dL.position.set(8,12,10); scene.add(dL);
+const dL2=new THREE.DirectionalLight(0x93c5fd,0.28); dL2.position.set(-8,-4,-8); scene.add(dL2);
+
+const V=(x,y,z)=>new THREE.Vector3(x,y,z);
+const YUP=V(0,1,0);
+
+const root=new THREE.Group(); scene.add(root);
+const modelGroup=new THREE.Group(); root.add(modelGroup);
+
+const COL={cation:0x8b5cf6, anion:0x22c55e, o:0xdc2626, h:0xcbd5e1, bond:0xfca5a5, dipole:0xf59e0b};
+
+let clickables=[], dipoleArrows=[], labelSprites=[], shellWaters=[]; // shellWaters: {grp,base,dir,phase}
+
+/* ── HELPERS ── */
+function makeSphere(r,color,opts={}){
+  const m=new THREE.MeshPhongMaterial({color,shininess:opts.shin||90,specular:0x666666,
+    transparent:(opts.opacity||1)<1,opacity:opts.opacity||1,
+    emissive:opts.emissive||0x000000,emissiveIntensity:opts.emissiveI||0});
+  return new THREE.Mesh(new THREE.SphereGeometry(r,28,20),m);
+}
+function makeCyl(from,to,radius,color,opacity=1){
+  const dir=new THREE.Vector3().subVectors(to,from); const len=dir.length();
+  const m=new THREE.MeshPhongMaterial({color,opacity,transparent:opacity<1,shininess:40});
+  const mesh=new THREE.Mesh(new THREE.CylinderGeometry(radius,radius,len,12),m);
+  mesh.position.addVectors(from,to).multiplyScalar(0.5);
+  if(len>0.001) mesh.quaternion.setFromUnitVectors(YUP,dir.normalize());
+  return mesh;
+}
+function makeLabel(text,pos,color,scale=1){
+  const c=document.createElement('canvas'); c.width=220; c.height=64;
+  const ctx=c.getContext('2d');
+  ctx.font='bold 30px DM Mono, monospace'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillStyle='rgba(255,255,255,0.93)';
+  ctx.beginPath(); ctx.roundRect(3,3,214,58,12); ctx.fill();
+  ctx.lineWidth=2; ctx.strokeStyle=color; ctx.stroke();
+  ctx.fillStyle=color; ctx.fillText(text,110,34);
+  const tex=new THREE.CanvasTexture(c);
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,depthTest:false,transparent:true}));
+  sp.position.copy(pos); sp.scale.set(1.5*scale,0.43*scale,1); sp.visible=false;
+  return sp;
+}
+
+// Build a water molecule group: O at local origin (up), two H below at HOH angle.
+// Dipole points local +Y (toward O, the negative end).
+function buildWaterGroup(){
+  const g=new THREE.Group();
+  const o=makeSphere(0.30,COL.o,{shin:90}); g.add(o);
+  const ang=(104.5/2)*Math.PI/180; const bl=0.78;
+  const h1p=V(Math.sin(ang)*bl,-Math.cos(ang)*bl,0);
+  const h2p=V(-Math.sin(ang)*bl,-Math.cos(ang)*bl,0);
+  const h1=makeSphere(0.17,COL.h,{shin:70}); h1.position.copy(h1p); g.add(h1);
+  const h2=makeSphere(0.17,COL.h,{shin:70}); h2.position.copy(h2p); g.add(h2);
+  g.add(makeCyl(V(0,0,0),h1p,0.055,COL.bond));
+  g.add(makeCyl(V(0,0,0),h2p,0.055,COL.bond));
+  g.userData={type:'water'};
+  return g;
+}
+// dipole arrow for a water (added to molecule's parent group at given world transform)
+function makeDipoleArrow(){
+  // arrow along +Y in local space, from below O upward
+  const a=new THREE.ArrowHelper(YUP,V(0,-0.55,0),1.5,COL.dipole,0.4,0.26);
+  a.visible=false;
+  return a;
+}
+
+// Place a hydrated ion: ion sphere + 6 octahedral waters oriented correctly.
+// faceMode 'O_in' (cation) → water O faces ion; 'H_in' (anion) → water H faces ion.
+const OCTA=[V(1,0,0),V(-1,0,0),V(0,1,0),V(0,-1,0),V(0,0,1),V(0,0,-1)];
+function addHydratedIon(center,ionType,ionR,shellR,faceMode,label){
+  const ion=makeSphere(ionR, ionType==='cation'?COL.cation:COL.anion,{shin:70});
+  ion.position.copy(center); ion.userData={type:ionType};
+  modelGroup.add(ion); clickables.push(ion);
+  const il=makeLabel(label, center.clone().add(V(0,ionR+0.5,0)), ionType==='cation'?'#7c3aed':'#16a34a',1.1);
+  modelGroup.add(il); labelSprites.push(il);
+
+  OCTA.forEach((d,i)=>{
+    const dir=d.clone().normalize();
+    const pos=center.clone().add(dir.clone().multiplyScalar(shellR));
+    const w=buildWaterGroup();
+    w.position.copy(pos);
+    // orient: local +Y (O / negative end) toward -dir for O_in, +dir for H_in
+    const target = faceMode==='O_in' ? dir.clone().negate() : dir.clone();
+    w.quaternion.setFromUnitVectors(YUP, target.normalize());
+    modelGroup.add(w); clickables.push(w);
+    // dipole arrow as child so it follows orientation
+    const arr=makeDipoleArrow(); w.add(arr); dipoleArrows.push(arr);
+    shellWaters.push({grp:w,base:pos.clone(),dir:dir.clone(),phase:i*1.05});
+  });
+}
+
+// small NaCl lattice (alternating ions) centred at pos
+function addCrystal(centerPos,n,spacing,scale){
+  const grp=new THREE.Group(); grp.position.copy(centerPos); grp.scale.setScalar(scale);
+  const off=(n-1)/2;
+  for(let i=0;i<n;i++)for(let j=0;j<n;j++)for(let k=0;k<n;k++){
+    const isNa=(i+j+k)%2===0;
+    const s=makeSphere(isNa?0.34:0.46, isNa?COL.cation:COL.anion,{shin:60});
+    s.position.set((i-off)*spacing,(j-off)*spacing,(k-off)*spacing);
+    s.userData={type:'crystal'};
+    grp.add(s); clickables.push(s);
+  }
+  modelGroup.add(grp);
+  const cl=makeLabel('NaCl', centerPos.clone().add(V(0,n*0.5*spacing*scale+0.6,0)), '#7c3aed',1.0);
+  modelGroup.add(cl); labelSprites.push(cl);
+  return grp;
+}
+
+/* ── MODELS ── */
+function clearModel(){
+  while(modelGroup.children.length) modelGroup.remove(modelGroup.children[0]);
+  clickables=[]; dipoleArrows=[]; labelSprites=[]; shellWaters=[];
+}
+function buildFull(){
+  addCrystal(V(0,3.4,-1.5),3,1.05,0.85);
+  addHydratedIon(V(-3.7,-0.6,0),'cation',0.5,1.85,'O_in','Na⁺');
+  addHydratedIon(V(3.7,-0.6,0),'anion',0.62,2.0,'H_in','Cl⁻');
+}
+function buildCation(){
+  addHydratedIon(V(0,0,0),'cation',0.78,2.3,'O_in','Na⁺');
+}
+function buildAnion(){
+  addHydratedIon(V(0,0,0),'anion',0.95,2.5,'H_in','Cl⁻');
+}
+const BUILDERS={full:buildFull,cation:buildCation,anion:buildAnion};
+
+/* ── PROPS ── */
+function renderProps(mode){
+  const rows=(I18N[LANG]||I18N.ru).modes[mode].props;
+  document.getElementById('props-body').innerHTML=rows.map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join('');
+  document.getElementById('overlay-name').textContent=(I18N[LANG]||I18N.ru).modes[mode].overlay;
+}
+
+/* ── STATE ── */
+let current='full';
+let spinning=true, showDipole=false, showLabels=false;
+
+function applyVisibility(){
+  dipoleArrows.forEach(a=>a.visible=showDipole);
+  labelSprites.forEach(l=>l.visible=showLabels);
+}
+
+window.switchTo=function(mode){
+  current=mode;
+  document.querySelectorAll('.mode-btn').forEach(b=>b.classList.toggle('sel',b.dataset.id===mode));
+  clearModel();
+  BUILDERS[mode]();
+  applyVisibility();
+  renderProps(mode);
+};
+
+window.toggleSpin=function(){
+  spinning=!spinning;
+  const b=document.getElementById('btn-spin');
+  b.classList.toggle('active',spinning);
+  b.querySelector('span').textContent=spinning?tr('btn_pause'):tr('btn_resume');
+};
+window.toggleDipole=function(){
+  showDipole=!showDipole;
+  document.getElementById('btn-dipole').classList.toggle('active',showDipole);
+  applyVisibility();
+};
+window.toggleLabels=function(){
+  showLabels=!showLabels;
+  document.getElementById('btn-labels').classList.toggle('active',showLabels);
+  applyVisibility();
+};
+
+/* ── INFO DB ── */
+const INFO_ALL={
+ru:{
+  crystal:{tag:'Ионная решётка',title:'Кристалл NaCl',sections:[
+    {h:'Строение',p:'В сухом кристалле ионы Na⁺ и Cl⁻ удерживаются электростатическим притяжением в строгой кубической решётке. Каждый ион окружён 6 ионами противоположного знака.'},
+    {h:'Почему он растворяется',p:'Полярные молекулы воды притягиваются к ионам на поверхности кристалла и «вырывают» их из решётки. Энергия гидратации компенсирует энергию решётки.'},
+    {h:'Электролит',p:'NaCl — сильный электролит: в воде он диссоциирует практически на 100% на свободные ионы Na⁺ и Cl⁻, поэтому раствор проводит ток.'}
+  ]},
+  cation:{tag:'Положительный ион',title:'Катион Na⁺',sections:[
+    {h:'Гидратация катиона',p:'Na⁺ заряжен положительно, поэтому к нему молекулы воды поворачиваются отрицательным концом — атомом кислорода (O). Так образуется гидратная оболочка.'},
+    {h:'Гидратное число',p:'Вокруг Na⁺ располагается ~6 молекул воды (октаэдр). Чем меньше ион и больше его заряд, тем прочнее держится оболочка.'},
+    {h:'Энергия гидратации',p:'ΔH(Na⁺) ≈ −406 кДж/моль. Эта энергия выделяется при окружении иона водой и помогает разрушить кристаллическую решётку.'}
+  ]},
+  anion:{tag:'Отрицательный ион',title:'Анион Cl⁻',sections:[
+    {h:'Гидратация аниона',p:'Cl⁻ заряжен отрицательно, поэтому к нему молекулы воды поворачиваются положительным концом — атомами водорода (H). Оболочка ориентирована «наоборот» по сравнению с катионом.'},
+    {h:'Размер и оболочка',p:'Cl⁻ крупнее Na⁺ (0.181 против 0.102 нм), его заряд «размазан» по большей поверхности, поэтому он гидратируется слабее.'},
+    {h:'Энергия гидратации',p:'ΔH(Cl⁻) ≈ −363 кДж/моль. Сумма энергий гидратации Na⁺ и Cl⁻ близка к энергии решётки — поэтому NaCl легко растворяется при комнатной температуре.'}
+  ]},
+  water:{tag:'H₂O · полярная молекула',title:'Молекула воды',sections:[
+    {h:'Почему вода — растворитель',p:'Молекула H₂O угловая и полярная: кислород несёт частичный отрицательный заряд (δ−), водороды — положительный (δ+). Это позволяет ей «облеплять» любые ионы.'},
+    {h:'Ориентация у иона',p:'У катиона вода поворачивается кислородом, у аниона — водородами. Именно ориентация диполей отличает гидратную оболочку «+» и «−» ионов.'},
+    {h:'Гидратация vs сольватация',p:'Окружение иона молекулами растворителя называют сольватацией; если растворитель — вода, процесс называют гидратацией.'}
+  ]},
+  dipole:{tag:'Диполь · μ = 1.85 Д',title:'Диполь молекулы воды',sections:[
+    {h:'Что такое диполь',p:'Из-за разной электроотрицательности O и H центры «+» и «−» зарядов в молекуле не совпадают. Возникает дипольный момент μ ≈ 1.85 Д, направленный к кислороду.'},
+    {h:'Притяжение к ионам',p:'Диполь воды разворачивается в электрическом поле иона: отрицательным концом к «+» и положительным к «−». Стрелка показывает направление диполя (к O).'},
+    {h:'Роль в растворении',p:'Чем сильнее поле иона (меньше радиус, больше заряд), тем плотнее ориентируются диполи и тем больше выделяется энергии гидратации.'}
+  ]},
+  shell:{tag:'Сольватная сфера',title:'Гидратная оболочка',sections:[
+    {h:'Что это',p:'Слой молекул воды, прочно удерживаемых вокруг иона. Ближайший слой (первая сфера) ориентирован строго, дальше ориентация постепенно теряется.'},
+    {h:'Гидратированный ион',p:'В растворе ион движется не один, а вместе со своей водной «шубой». Поэтому подвижность ионов зависит от размера гидратной оболочки, а не только от размера самого иона.'},
+    {h:'Кристаллогидраты',p:'Иногда вода входит в состав кристалла: CuSO₄·5H₂O, Na₂CO₃·10H₂O. При нагревании такая «кристаллизационная» вода удаляется.'}
+  ]}
+},
+kz:{
+  crystal:{tag:'Иондық тор',title:'NaCl кристалы',sections:[
+    {h:'Құрылымы',p:'Құрғақ кристалда Na⁺ және Cl⁻ иондары электростатикалық тартылыспен текше торда ұсталады. Әр ион қарама-қарсы таңбалы 6 ионмен қоршалған.'},
+    {h:'Неге ериді',p:'Полярлы су молекулалары кристалл бетіндегі иондарға тартылып, оларды тордан «жұлып» алады. Гидратация энергиясы тор энергиясын өтейді.'},
+    {h:'Электролит',p:'NaCl — күшті электролит: суда ол іс жүзінде 100% Na⁺ және Cl⁻ иондарына диссоциацияланады, сондықтан ерітінді ток өткізеді.'}
+  ]},
+  cation:{tag:'Оң ион',title:'Катион Na⁺',sections:[
+    {h:'Катион гидратациясы',p:'Na⁺ оң зарядталған, сондықтан су молекулалары оған теріс ұшымен — оттек атомымен (O) бұрылады. Осылай гидратты қабық түзіледі.'},
+    {h:'Гидрат саны',p:'Na⁺ айналасында ~6 су молекуласы орналасады (октаэдр). Ион неғұрлым кіші әрі заряды көп болса, қабық соғұрлым берік ұсталады.'},
+    {h:'Гидратация энергиясы',p:'ΔH(Na⁺) ≈ −406 кДж/моль. Бұл энергия ионды су қоршағанда бөлініп, тор бұзылуына көмектеседі.'}
+  ]},
+  anion:{tag:'Теріс ион',title:'Анион Cl⁻',sections:[
+    {h:'Анион гидратациясы',p:'Cl⁻ теріс зарядталған, сондықтан су молекулалары оған оң ұшымен — сутек атомдарымен (H) бұрылады. Қабық катионмен салыстырғанда «керісінше» бағытталған.'},
+    {h:'Өлшемі мен қабығы',p:'Cl⁻ Na⁺-тен үлкен (0.181 және 0.102 нм), оның заряды үлкен бетке «жайылған», сондықтан ол әлсіздеу гидратталады.'},
+    {h:'Гидратация энергиясы',p:'ΔH(Cl⁻) ≈ −363 кДж/моль. Na⁺ пен Cl⁻ гидратация энергияларының қосындысы тор энергиясына жақын — сондықтан NaCl бөлме температурасында оңай ериді.'}
+  ]},
+  water:{tag:'H₂O · полярлы молекула',title:'Су молекуласы',sections:[
+    {h:'Неге су — еріткіш',p:'H₂O молекуласы бұрыштық әрі полярлы: оттек жартылай теріс заряд (δ−), сутектер оң заряд (δ+) тасиды. Бұл оған кез келген ионды «қаптауға» мүмкіндік береді.'},
+    {h:'Ион маңындағы бағдар',p:'Катионда су оттегімен, анионда сутектермен бұрылады. Дәл осы дипольдер бағдары «+» және «−» иондардың гидратты қабығын ажыратады.'},
+    {h:'Гидратация vs сольватация',p:'Ионды еріткіш молекулаларымен қоршауды сольватация дейді; еріткіш су болса, процесс гидратация деп аталады.'}
+  ]},
+  dipole:{tag:'Диполь · μ = 1.85 Д',title:'Су молекуласының диполі',sections:[
+    {h:'Диполь дегеніміз',p:'O мен H электртерістілігі әртүрлі болғандықтан молекуладағы «+» және «−» зарядтар орталықтары беттеспейді. Оттекке бағытталған дипольдік момент μ ≈ 1.85 Д пайда болады.'},
+    {h:'Ионға тартылу',p:'Су диполі ион өрісінде бұрылады: теріс ұшы «+»-қа, оң ұшы «−»-қа. Көрсеткі диполь бағытын (O-ға) көрсетеді.'},
+    {h:'Ерудегі рөлі',p:'Ион өрісі неғұрлым күшті болса (радиус кіші, заряд көп), дипольдер соғұрлым тығыз бағдарланып, гидратация энергиясы көп бөлінеді.'}
+  ]},
+  shell:{tag:'Сольватты сфера',title:'Гидратты қабық',sections:[
+    {h:'Бұл не',p:'Ион айналасында берік ұсталатын су молекулаларының қабаты. Ең жақын қабат (бірінші сфера) қатаң бағдарланған, ары қарай бағдар біртіндеп жоғалады.'},
+    {h:'Гидратталған ион',p:'Ерітіндіде ион жалғыз емес, өзінің су «тонымен» бірге қозғалады. Сондықтан иондар қозғалғыштығы тек ион өлшеміне емес, гидратты қабық өлшеміне де байланысты.'},
+    {h:'Кристаллогидраттар',p:'Кейде су кристалл құрамына кіреді: CuSO₄·5H₂O, Na₂CO₃·10H₂O. Қыздырғанда мұндай «кристалдану» суы кетеді.'}
+  ]}
+},
+en:{
+  crystal:{tag:'Ionic lattice',title:'NaCl Crystal',sections:[
+    {h:'Structure',p:'In the dry crystal, Na⁺ and Cl⁻ ions are held by electrostatic attraction in a rigid cubic lattice. Each ion is surrounded by 6 ions of opposite charge.'},
+    {h:'Why it dissolves',p:'Polar water molecules attract the surface ions and pull them out of the lattice. The hydration energy compensates for the lattice energy.'},
+    {h:'Electrolyte',p:'NaCl is a strong electrolyte: in water it dissociates almost 100% into free Na⁺ and Cl⁻ ions, so the solution conducts electricity.'}
+  ]},
+  cation:{tag:'Positive ion',title:'Cation Na⁺',sections:[
+    {h:'Cation hydration',p:'Na⁺ is positively charged, so water molecules turn toward it with their negative end — the oxygen atom (O). This forms the hydration shell.'},
+    {h:'Hydration number',p:'About 6 water molecules surround Na⁺ (octahedral). The smaller the ion and the higher its charge, the more tightly the shell is held.'},
+    {h:'Hydration energy',p:'ΔH(Na⁺) ≈ −406 kJ/mol. This energy is released as water surrounds the ion and helps break apart the crystal lattice.'}
+  ]},
+  anion:{tag:'Negative ion',title:'Anion Cl⁻',sections:[
+    {h:'Anion hydration',p:'Cl⁻ is negatively charged, so water molecules turn toward it with their positive end — the hydrogen atoms (H). The shell is oriented the opposite way from a cation.'},
+    {h:'Size and shell',p:'Cl⁻ is larger than Na⁺ (0.181 vs 0.102 nm); its charge is spread over a bigger surface, so it is hydrated more weakly.'},
+    {h:'Hydration energy',p:'ΔH(Cl⁻) ≈ −363 kJ/mol. The sum of the Na⁺ and Cl⁻ hydration energies is close to the lattice energy — which is why NaCl dissolves easily at room temperature.'}
+  ]},
+  water:{tag:'H₂O · polar molecule',title:'Water Molecule',sections:[
+    {h:'Why water dissolves',p:'The H₂O molecule is bent and polar: oxygen carries a partial negative charge (δ−), the hydrogens positive (δ+). This lets it wrap around any ion.'},
+    {h:'Orientation at an ion',p:'At a cation water turns its oxygen inward; at an anion its hydrogens. This dipole orientation is exactly what distinguishes the shells of "+" and "−" ions.'},
+    {h:'Hydration vs solvation',p:'Surrounding an ion with solvent molecules is called solvation; when the solvent is water, the process is called hydration.'}
+  ]},
+  dipole:{tag:'Dipole · μ = 1.85 D',title:'Water Dipole',sections:[
+    {h:'What a dipole is',p:'Because O and H differ in electronegativity, the centres of "+" and "−" charge do not coincide. A dipole moment μ ≈ 1.85 D arises, pointing toward the oxygen.'},
+    {h:'Attraction to ions',p:'The water dipole rotates in the ion\'s electric field: negative end toward "+", positive end toward "−". The arrow shows the dipole direction (toward O).'},
+    {h:'Role in dissolving',p:'The stronger the ion\'s field (smaller radius, larger charge), the more tightly the dipoles align and the more hydration energy is released.'}
+  ]},
+  shell:{tag:'Solvation sphere',title:'Hydration Shell',sections:[
+    {h:'What it is',p:'A layer of water molecules held firmly around an ion. The nearest layer (first sphere) is strictly oriented; further out the orientation is gradually lost.'},
+    {h:'Hydrated ion',p:'In solution an ion moves together with its water "coat", not alone. So ion mobility depends on the size of the hydration shell, not only on the ion itself.'},
+    {h:'Crystal hydrates',p:'Sometimes water is built into the crystal: CuSO₄·5H₂O, Na₂CO₃·10H₂O. Heating drives off this "crystallization" water.'}
+  ]}
+}
+};
+const INFO=INFO_ALL[LANG]||INFO_ALL.ru;
+const TAGC={crystal:{bg:'rgba(99,102,241,0.14)',c:'#4f46e5'},cation:{bg:'rgba(139,92,246,0.14)',c:'#7c3aed'},
+  anion:{bg:'rgba(34,197,94,0.14)',c:'#15803d'},water:{bg:'rgba(220,38,38,0.12)',c:'#b91c1c'},
+  dipole:{bg:'rgba(245,158,11,0.16)',c:'#b45309'},shell:{bg:'rgba(56,189,248,0.16)',c:'#0369a1'}};
+
+window.openInfo=function(type){
+  const d=INFO[type]; if(!d) return;
+  const tagEl=document.getElementById('info-tag');
+  tagEl.textContent=d.tag;
+  const c=TAGC[type]||TAGC.cation;
+  tagEl.style.background=c.bg; tagEl.style.color=c.c;
+  document.getElementById('info-title').textContent=d.title;
+  document.getElementById('info-body').innerHTML=d.sections.map(s=>`<div class="info-section"><h4>${s.h}</h4><p>${s.p}</p></div>`).join('');
+  document.getElementById('info-panel').classList.add('open');
+};
+window.closeInfo=function(){document.getElementById('info-panel').classList.remove('open');};
+
+/* ── RAYCAST ── */
+const raycaster=new THREE.Raycaster();
+const mouse=new THREE.Vector2();
+canvas.addEventListener('click',e=>{
+  if(isDragging) return;
+  mouse.x=(e.clientX/innerWidth)*2-1; mouse.y=-(e.clientY/innerHeight)*2+1;
+  raycaster.setFromCamera(mouse,camera);
+  const hits=raycaster.intersectObjects(clickables,true);
+  if(hits.length>0){
+    let o=hits[0].object;
+    while(o && !o.userData.type) o=o.parent;
+    if(o && o.userData.type) openInfo(o.userData.type);
+  }
+});
+
+/* ── DRAG + ZOOM ── */
+let isDragging=false,dragStart=null,lastMouse={x:0,y:0},dragDelta=0,rotX=0.12;
+canvas.addEventListener('mousedown',e=>{dragStart={x:e.clientX,y:e.clientY};lastMouse={x:e.clientX,y:e.clientY};isDragging=false;dragDelta=0;});
+canvas.addEventListener('mousemove',e=>{
+  if(!dragStart) return;
+  dragDelta=Math.hypot(e.clientX-dragStart.x,e.clientY-dragStart.y);
+  if(dragDelta>4) isDragging=true;
+  if(isDragging){
+    root.rotation.y+=(e.clientX-lastMouse.x)*0.011;
+    rotX=Math.max(-0.9,Math.min(0.9,rotX+(e.clientY-lastMouse.y)*0.009));
+    root.rotation.x=rotX;
+  }
+  lastMouse={x:e.clientX,y:e.clientY};
+});
+canvas.addEventListener('mouseup',()=>{dragStart=null;});
+canvas.addEventListener('mouseleave',()=>{dragStart=null;isDragging=false;});
+canvas.addEventListener('wheel',e=>{e.preventDefault();camera.position.z=Math.max(8,Math.min(26,camera.position.z+e.deltaY*0.02));},{passive:false});
+window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+
+/* ── LOOP ── */
+let t=0;
+function animate(){
+  requestAnimationFrame(animate);
+  if(spinning){ t+=0.016; root.rotation.y+=0.004; }
+  root.rotation.x=rotX;
+  // gentle radial breathing of hydration shell waters
+  if(spinning){
+    shellWaters.forEach(w=>{
+      const off=0.12*Math.sin(t*1.6+w.phase);
+      w.grp.position.copy(w.base).add(w.dir.clone().multiplyScalar(off));
+    });
+  }
+  renderer.render(scene,camera);
+}
+
+// init
+root.rotation.x=rotX;
+switchTo('full');
+animate();
+</script>
+</body>
+</html>

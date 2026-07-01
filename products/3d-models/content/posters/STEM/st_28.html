@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Строение фотоэлемента</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { width: 100%; height: 100%; overflow: hidden; }
+        body { font-family: 'Segoe UI', 'Inter', system-ui, sans-serif; background: linear-gradient(135deg, #eef3fb 0%, #e6edf8 100%); color: #16233f; }
+        #canvas-container { position: absolute; inset: 0; }
+        #labels { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+        .label3d {
+            position: absolute; transform: translate(-50%, -50%);
+            font-size: 12px; font-weight: 800; padding: 2px 9px; border-radius: 7px;
+            background: rgba(255,255,255,0.93); border: 1.5px solid rgba(150,170,205,0.6);
+            box-shadow: 0 2px 8px rgba(40,60,110,0.16); white-space: nowrap;
+        }
+
+        .header { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); text-align: center; z-index: 6; pointer-events: none; width: 92%; }
+        .header h1 { font-size: 25px; font-weight: 800; color: #1b2a4a; text-shadow: 0 1px 0 rgba(255,255,255,0.7); }
+        .header p { font-size: 13.5px; color: #5a6b8c; margin-top: 4px; font-weight: 600; }
+
+        .panel {
+            position: absolute; z-index: 7; background: rgba(255,255,255,0.82);
+             
+            border: 1px solid rgba(150,170,205,0.5); border-radius: 16px; box-shadow: 0 10px 34px rgba(40,60,110,0.14);
+        }
+        .control-panel { top: 88px; left: 22px; width: 320px; padding: 16px 18px; }
+        .info-panel { top: 88px; right: 22px; width: 296px; padding: 16px 18px; }
+
+        .param-group { margin-bottom: 13px; }
+        .param-label { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+        .param-name { font-size: 13px; font-weight: 700; color: #33405e; display: flex; align-items: center; gap: 6px; }
+        .param-value { font-size: 15px; font-weight: 800; color: #2563eb; font-variant-numeric: tabular-nums; }
+
+        input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; border-radius: 6px; outline: none; cursor: pointer; background: linear-gradient(90deg, #c4d2ec, #aebfe0); }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #fff; border: 3px solid #2563eb; box-shadow: 0 2px 7px rgba(37,99,235,0.4); cursor: pointer; }
+        #wl-slider { background: linear-gradient(90deg,#7c3aed,#2563eb,#22c55e,#eab308,#f59e0b,#ef4444,#7f1d1d); }
+        #wl-slider::-webkit-slider-thumb { border-color:#16233f; }
+
+        .toggle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
+        .toggle-btn { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 9px 6px; border-radius: 10px; border: 1.5px solid rgba(150,170,205,0.6); background: rgba(255,255,255,0.55); color: #44537a; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.16s; }
+        .toggle-btn .dot { width: 9px; height: 9px; border-radius: 50%; background: #b7c2d8; transition: all 0.16s; }
+        .toggle-btn.active { background: rgba(37,99,235,0.12); border-color: #2563eb; color: #1b2a4a; }
+        .toggle-btn.active .dot { background: #2563eb; box-shadow: 0 0 7px rgba(37,99,235,0.8); }
+
+        .action-row { display: flex; gap: 8px; margin-top: 11px; }
+        .btn { flex: 1; padding: 9px; border: none; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.16s; color: #fff; }
+        .btn-play { background: linear-gradient(135deg, #16a34a, #15803d); }
+        .btn-reset { background: linear-gradient(135deg, #64748b, #475569); }
+        .btn:hover { filter: brightness(1.07); transform: translateY(-1px); }
+
+        .info-title { font-size: 15px; font-weight: 800; color: #1b2a4a; margin-bottom: 10px; display: flex; align-items: center; gap: 7px; }
+        .verdict { padding: 10px 12px; border-radius: 11px; text-align: center; margin-bottom: 11px; font-weight: 800; font-size: 13.5px; transition: all 0.25s; }
+        .verdict.on { background: rgba(22,163,74,0.14); color: #15803d; }
+        .verdict.off { background: rgba(220,38,38,0.12); color: #b91c1c; }
+        .readout { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px dashed rgba(150,170,205,0.45); font-size: 13px; }
+        .readout:last-child { border-bottom: none; }
+        .ro-name { color: #5a6b8c; font-weight: 600; } .ro-name b { color:#16233f; font-style:italic; font-family:'Times New Roman',serif; }
+        .ro-val { font-weight: 800; color: #1b2a4a; font-variant-numeric: tabular-nums; }
+        .pwr-bar { height: 9px; border-radius: 5px; background: #dde5f1; overflow: hidden; margin-top: 9px; }
+        .pwr-bar > div { height: 100%; width: 0%; background: linear-gradient(90deg, #f59e0b, #facc15); transition: width 0.2s; }
+
+        .formula-panel { position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 7; background: rgba(27,42,74,0.93); color: #eaf0fb; padding: 10px 22px; border-radius: 13px; box-shadow: 0 10px 30px rgba(20,35,70,0.34); text-align: center; max-width: 72%; }
+        .formula { font-size: 15px; font-weight: 600; } .formula b.e { color:#ffd27f; } .formula b.g { color:#7fe0a8; } .formula b.p { color:#ff9a8a; }
+        .formula-note { font-size: 12px; color: #9fb2d8; margin-top: 4px; }
+
+        .hint { position: absolute; bottom: 16px; left: 22px; z-index: 7; font-size: 12px; color: #5a6b8c; background: rgba(255,255,255,0.72); padding: 7px 13px; border-radius: 9px; border: 1px solid rgba(150,170,205,0.45); }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div id="labels"></div>
+
+    <div class="header">
+        <h1>☀️ Строение фотоэлемента</h1>
+        <p><span id="h-sub">Солнечная батарея • p-n переход • фотоны → электроны → ток</span></p>
+    </div>
+
+    <div class="panel control-panel">
+        <div class="param-group">
+            <div class="param-label">
+                <span class="param-name">☀️ <span data-i18n="intLabel">Яркость света</span></span>
+                <span class="param-value" id="int-value">80%</span>
+            </div>
+            <input type="range" id="int-slider" min="0" max="100" value="80">
+        </div>
+        <div class="param-group">
+            <div class="param-label">
+                <span class="param-name">🌈 <span data-i18n="wlLabel">Длина волны λ</span></span>
+                <span class="param-value" id="wl-value">550 нм</span>
+            </div>
+            <input type="range" id="wl-slider" min="300" max="1200" value="550">
+        </div>
+
+        <div class="toggle-grid">
+            <button class="toggle-btn active" id="t-circuit"><span class="dot"></span><span data-i18n="tCircuit">Цепь замкнута</span></button>
+            <button class="toggle-btn active" id="t-field"><span class="dot"></span><span data-i18n="tField">Поле p-n</span></button>
+            <button class="toggle-btn active" id="t-carriers"><span class="dot"></span><span data-i18n="tCarriers">Носители e/h</span></button>
+            <button class="toggle-btn active" id="t-labels"><span class="dot"></span><span data-i18n="tLabels">Подписи</span></button>
+        </div>
+
+        <div class="action-row">
+            <button class="btn btn-play" id="btn-play" data-i18n="pause">⏸ Пауза</button>
+            <button class="btn btn-reset" id="btn-reset" data-i18n="reset">↺ Вид</button>
+        </div>
+    </div>
+
+    <div class="panel info-panel">
+        <div class="info-title">📊 <span data-i18n="infoTitle">Параметры</span></div>
+        <div class="verdict on" id="verdict">—</div>
+        <div class="readout"><span class="ro-name"><span data-i18n="roEph">Энергия фотона</span>, <b>E</b></span><span class="ro-val" id="ro-eph">2.25 эВ</span></div>
+        <div class="readout"><span class="ro-name"><span data-i18n="roEg">Ширина запрещ. зоны</span>, <b>Eg</b></span><span class="ro-val" id="ro-eg">1.1 эВ</span></div>
+        <div class="readout"><span class="ro-name"><span data-i18n="roU">Напряжение</span>, <b>U</b></span><span class="ro-val" id="ro-u">0.50 В</span></div>
+        <div class="readout"><span class="ro-name"><span data-i18n="roI">Ток</span>, <b>I</b></span><span class="ro-val" id="ro-i">28 мА</span></div>
+        <div class="readout"><span class="ro-name"><span data-i18n="roP">Мощность</span>, <b>P</b></span><span class="ro-val" id="ro-p">14 мВт</span></div>
+        <div class="pwr-bar"><div id="pwr-fill"></div></div>
+    </div>
+
+    <div class="formula-panel">
+        <div class="formula"><b class="e">E</b> = 1240 / λ &nbsp;|&nbsp; <b class="e">E</b> ≥ <b class="g">Eg</b> → <span data-i18n="fAbsorb">фотон поглощён</span> &nbsp;|&nbsp; <b class="p">P</b> = U·I</div>
+        <div class="formula-note" data-i18n="note">Только фотоны с энергией выше Eg рождают пару электрон–дырка; поле p-n перехода разделяет заряды</div>
+    </div>
+
+    <div class="hint"><span data-i18n="hint">ЛКМ — вращение • ПКМ — перемещение • Колесо — зум</span></div>
+
+    <script src="../../libs/vendor/three-r128/three.min.js"></script>
+    <script>
+    const LANG = (new URLSearchParams(window.location.search).get('lang')) || 'ru';
+    const I18N = {
+        ru: { headH:'☀️ Строение фотоэлемента', headS:'Солнечная батарея • p-n переход • фотоны → электроны → ток',
+              intLabel:'Яркость света', wlLabel:'Длина волны λ', tCircuit:'Цепь замкнута', tField:'Поле p-n', tCarriers:'Носители e/h', tLabels:'Подписи',
+              pause:'⏸ Пауза', play:'▶ Пуск', reset:'↺ Вид', infoTitle:'Параметры',
+              roEph:'Энергия фотона', roEg:'Ширина запрещ. зоны', roU:'Напряжение', roI:'Ток', roP:'Мощность',
+              fAbsorb:'фотон поглощён', note:'Только фотоны с энергией выше Eg рождают пару электрон–дырка; поле p-n перехода разделяет заряды',
+              hint:'ЛКМ — вращение • ПКМ — перемещение • Колесо — зум',
+              vOn:'⚡ Ток течёт — лампа горит', vOpen:'◌ Цепь разомкнута (U хол. хода)', vWeak:'⚠ λ слишком велика: E < Eg', vDark:'🌙 Нет света',
+              lFront:'Передний контакт (сетка)', lAR:'Антибликовое покрытие', lN:'n-кремний (эмиттер)', lJ:'p-n переход', lP:'p-кремний (база)', lBack:'Задний контакт', lSun:'Солнечный свет', lLamp:'Лампа (нагрузка)', lE:'электрон', lH:'дырка', uEv:' эВ', uV:' В', uMA:' мА', uMW:' мВт', uNM:' нм' },
+        kz: { headH:'☀️ Фотоэлемент құрылысы', headS:'Күн батареясы • p-n ауысуы • фотондар → электрондар → ток',
+              intLabel:'Жарық жарықтығы', wlLabel:'Толқын ұзындығы λ', tCircuit:'Тізбек тұйық', tField:'p-n өрісі', tCarriers:'Тасушылар e/h', tLabels:'Жазулар',
+              pause:'⏸ Кідіріс', play:'▶ Бастау', reset:'↺ Көрініс', infoTitle:'Параметрлер',
+              roEph:'Фотон энергиясы', roEg:'Тыйым салынған аймақ', roU:'Кернеу', roI:'Ток', roP:'Қуат',
+              fAbsorb:'фотон жұтылды', note:'Тек Eg-дан жоғары энергиялы фотондар электрон–кемтік жұбын тудырады; p-n өрісі зарядтарды бөледі',
+              hint:'СБ — айналдыру • ОБ — жылжыту • Дөңгелек — масштаб',
+              vOn:'⚡ Ток жүреді — шам жанады', vOpen:'◌ Тізбек ашық (бос жүріс U)', vWeak:'⚠ λ тым үлкен: E < Eg', vDark:'🌙 Жарық жоқ',
+              lFront:'Алдыңғы контакт (тор)', lAR:'Шағылысуға қарсы қабат', lN:'n-кремний (эмиттер)', lJ:'p-n ауысуы', lP:'p-кремний (база)', lBack:'Артқы контакт', lSun:'Күн сәулесі', lLamp:'Шам (жүктеме)', lE:'электрон', lH:'кемтік', uEv:' эВ', uV:' В', uMA:' мА', uMW:' мВт', uNM:' нм' },
+        en: { headH:'☀️ Photocell Structure', headS:'Solar cell • p-n junction • photons → electrons → current',
+              intLabel:'Light brightness', wlLabel:'Wavelength λ', tCircuit:'Circuit closed', tField:'p-n field', tCarriers:'Carriers e/h', tLabels:'Labels',
+              pause:'⏸ Pause', play:'▶ Play', reset:'↺ View', infoTitle:'Parameters',
+              roEph:'Photon energy', roEg:'Band gap', roU:'Voltage', roI:'Current', roP:'Power',
+              fAbsorb:'photon absorbed', note:'Only photons with energy above Eg create an electron–hole pair; the p-n field separates the charges',
+              hint:'LMB — rotate • RMB — pan • Wheel — zoom',
+              vOn:'⚡ Current flows — lamp lit', vOpen:'◌ Open circuit (open-circuit U)', vWeak:'⚠ λ too long: E < Eg', vDark:'🌙 No light',
+              lFront:'Front contact (grid)', lAR:'Anti-reflective coating', lN:'n-silicon (emitter)', lJ:'p-n junction', lP:'p-silicon (base)', lBack:'Back contact', lSun:'Sunlight', lLamp:'Lamp (load)', lE:'electron', lH:'hole', uEv:' eV', uV:' V', uMA:' mA', uMW:' mW', uNM:' nm' },
+    };
+    const L = I18N[LANG] || I18N.ru;
+
+    const EG = 1.1;                  // silicon band gap (eV)
+    const LAMBDA_CUT = 1240 / EG;    // ~1127 nm
+    // layer Y-levels (bottom at 0)
+    const Y_BACK0 = -0.35, Y_BACK1 = 0.0;
+    const Y_P0 = 0.0, Y_P1 = 2.1;
+    const Y_J0 = 2.1, Y_J1 = 2.32;
+    const Y_N0 = 2.32, Y_N1 = 2.86;
+    const Y_AR0 = 2.86, Y_AR1 = 2.98;
+    const Y_TOP = 3.02;              // front contact level
+    const CELL = 6.4;                // footprint (X and Z)
+    const JUNC_Y = (Y_J0 + Y_J1) / 2;
+
+    let intensity = 80, lambda = 550, playing = true;
+    let circuit = true, showField = true, showCarriers = true, showLabels = true;
+    let curU = 0, curI = 0, curP = 0, ePhoton = 0, absorbed = false;
+
+    let scene, camera, renderer, root;
+    let sun, sunGlow, beamMat, lampBulb, lampLight, fieldArrows = [];
+    let photons = [], cellCarriers = [], wireDots = [];
+    let wirePath = [], wireLen = 0;
+    const labelDefs = [];
+    const clock = new THREE.Clock();
+    const container = document.getElementById('canvas-container');
+    const labelLayer = document.getElementById('labels');
+
+    let camTheta = 0.72, camPhi = 1.05, camRadius = 17;
+    const camTarget = new THREE.Vector3(0, 1.4, 0);
+    let dragMode = 0, lastX = 0, lastY = 0;
+
+    // ---- visible spectrum colour ----
+    function wlColor(wl) {
+        let r=0,g=0,b=0;
+        if (wl < 380) { r=0.4; g=0; b=0.7; }            // UV → violet
+        else if (wl < 440) { r=-(wl-440)/60; g=0; b=1; }
+        else if (wl < 490) { r=0; g=(wl-440)/50; b=1; }
+        else if (wl < 510) { r=0; g=1; b=-(wl-510)/20; }
+        else if (wl < 580) { r=(wl-510)/70; g=1; b=0; }
+        else if (wl < 645) { r=1; g=-(wl-645)/65; b=0; }
+        else if (wl <= 780) { r=1; g=0; b=0; }
+        else { r=0.55; g=0.05; b=0.05; }                 // IR → deep red
+        return new THREE.Color(r, g, b);
+    }
+
+    function init() {
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xeef3fb);
+        scene.fog = new THREE.Fog(0xeef3fb, 26, 60);
+
+        camera = new THREE.PerspectiveCamera(48, window.innerWidth/window.innerHeight, 0.1, 200);
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        container.appendChild(renderer.domElement);
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.85));
+        const key = new THREE.DirectionalLight(0xffffff, 0.6); key.position.set(6, 13, 9); scene.add(key);
+        const fill = new THREE.DirectionalLight(0xbcd4ff, 0.3); fill.position.set(-8, 5, -6); scene.add(fill);
+
+        root = new THREE.Group(); scene.add(root);
+        const grid = new THREE.GridHelper(38, 19, 0xc2cee4, 0xdde5f1); grid.position.y = Y_BACK0 - 1.4; root.add(grid);
+
+        buildCell();
+        buildJunctionField();
+        buildSun();
+        buildCircuit();
+        initPools();
+        makeLabels();
+        applyI18N();
+        setupControls();
+        recompute();
+        updateCamera();
+        animate();
+    }
+
+    function mat(c, m, r, opts) { return new THREE.MeshStandardMaterial(Object.assign({ color:c, metalness:m, roughness:r }, opts||{})); }
+
+    function slab(y0, y1, color, matOpts) {
+        const h = y1 - y0;
+        const m = new THREE.Mesh(new THREE.BoxGeometry(CELL, h, CELL), mat(color, (matOpts&&matOpts.metalness)||0.2, (matOpts&&matOpts.roughness)||0.6, matOpts));
+        m.position.y = (y0 + y1) / 2;
+        root.add(m); return m;
+    }
+
+    function buildCell() {
+        // p-type (thick base)
+        slab(Y_P0, Y_P1, 0x37598a, {roughness:0.55});
+        // n-type (thin emitter)
+        slab(Y_N0, Y_N1, 0x5fb0e6, {roughness:0.5, emissive:0x0a2a44, emissiveIntensity:0.2});
+        // junction highlight
+        const j = slab(Y_J0, Y_J1, 0xffd166, {emissive:0xffaa22, emissiveIntensity:0.5, metalness:0.1, roughness:0.4});
+        j.material.transparent = true; j.material.opacity = 0.92;
+        // anti-reflective coating
+        const ar = slab(Y_AR0, Y_AR1, 0x14306b, {metalness:0.4, roughness:0.25});
+        ar.material.transparent = true; ar.material.opacity = 0.9;
+        // back contact (full metal plate)
+        slab(Y_BACK0, Y_BACK1, 0x9aa3ad, {metalness:0.85, roughness:0.3});
+
+        // front contact grid (busbar + fingers)
+        const metal = mat(0xc8ccd2, 0.9, 0.25);
+        const busbar = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.12, CELL*0.96), metal);
+        busbar.position.set(-CELL*0.42, Y_TOP, 0); root.add(busbar);
+        for (let i = -3; i <= 3; i++) {
+            const f = new THREE.Mesh(new THREE.BoxGeometry(CELL*0.96, 0.07, 0.12), metal);
+            f.position.set(0, Y_TOP, i * (CELL*0.96/7)); root.add(f);
+        }
+
+        // edge wireframe to read layers crisply
+        const edge = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(CELL, Y_AR1 - Y_BACK0, CELL)),
+            new THREE.LineBasicMaterial({ color: 0x2c3e5c, transparent:true, opacity:0.25 }));
+        edge.position.y = (Y_BACK0 + Y_AR1)/2; root.add(edge);
+    }
+
+    function buildJunctionField() {
+        const col = 0x7c3aed;
+        for (let ix = -2; ix <= 2; ix++) {
+            for (let iz = -2; iz <= 2; iz++) {
+                const g = new THREE.Group();
+                const sh = new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,0.5,8), new THREE.MeshBasicMaterial({color:col}));
+                sh.position.y = 0.25; g.add(sh);
+                const hd = new THREE.Mesh(new THREE.ConeGeometry(0.1,0.22,10), new THREE.MeshBasicMaterial({color:col}));
+                hd.position.y = 0.6; g.add(hd);
+                g.position.set(ix*1.3, Y_J0 - 0.1, iz*1.3);
+                g.rotation.x = Math.PI; // field points from n(top) to p(bottom): downward
+                root.add(g); fieldArrows.push(g);
+            }
+        }
+    }
+
+    function buildSun() {
+        sun = new THREE.Group(); sun.position.set(-6.5, 8.5, 3.5); root.add(sun);
+        const core = new THREE.Mesh(new THREE.SphereGeometry(1.3, 32, 24), new THREE.MeshBasicMaterial({ color: 0xffe680 }));
+        sun.add(core);
+        sunGlow = new THREE.Mesh(new THREE.SphereGeometry(1.85, 32, 24), new THREE.MeshBasicMaterial({ color: 0xffd23f, transparent:true, opacity:0.28 }));
+        sun.add(sunGlow);
+        // rays
+        for (let i = 0; i < 12; i++) {
+            const a = i/12*Math.PI*2;
+            const ray = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.9, 0.12), new THREE.MeshBasicMaterial({ color: 0xffd23f }));
+            ray.position.set(Math.cos(a)*2.4, Math.sin(a)*2.4, 0); ray.rotation.z = a; sun.add(ray);
+        }
+        beamMat = new THREE.MeshBasicMaterial({ color: 0xffe680, transparent: true, opacity: 0.0 });
+    }
+
+    function buildCircuit() {
+        // contact nodes on +X edge
+        const ax = CELL/2 + 0.1;
+        const A = new THREE.Vector3(ax, Y_TOP, 0);     // front/top contact (n-side, electrons exit)
+        const B = new THREE.Vector3(ax, Y_BACK0+0.1, 0); // back contact (p-side, electrons return)
+        const lampX = ax + 3.4, lampTop = 2.1, lampBot = 0.8;
+        wirePath = [
+            A,
+            new THREE.Vector3(lampX, Y_TOP, 0),
+            new THREE.Vector3(lampX, lampTop, 0),
+            new THREE.Vector3(lampX, lampBot, 0),
+            new THREE.Vector3(lampX, Y_BACK0+0.1, 0),
+            B
+        ];
+        // wire tube
+        const curve = new THREE.CatmullRomCurve3(wirePath, false, 'catmullrom', 0.0);
+        const tube = new THREE.Mesh(new THREE.TubeGeometry(curve, 80, 0.05, 8, false), mat(0x55606e, 0.7, 0.4));
+        root.add(tube);
+        // contact pads
+        [A, B].forEach(p => { const pad = new THREE.Mesh(new THREE.SphereGeometry(0.13,14,14), mat(0xc8ccd2,0.9,0.25)); pad.position.copy(p); root.add(pad); });
+        // cumulative lengths
+        wireLen = 0; for (let i=1;i<wirePath.length;i++) wireLen += wirePath[i].distanceTo(wirePath[i-1]);
+
+        // lamp: socket + bulb
+        const lampPos = new THREE.Vector3(lampX, (lampTop+lampBot)/2, 0);
+        const socket = new THREE.Mesh(new THREE.CylinderGeometry(0.32,0.32,0.5,18), mat(0x556070,0.6,0.4));
+        socket.position.set(lampX, lampBot+0.05, 0); root.add(socket);
+        lampBulb = new THREE.Mesh(new THREE.SphereGeometry(0.55, 24, 18),
+            new THREE.MeshStandardMaterial({ color: 0xfff4cf, emissive: 0xffcc44, emissiveIntensity: 0, roughness: 0.3, metalness: 0.0, transparent:true, opacity:0.92 }));
+        lampBulb.position.set(lampX, lampTop-0.1, 0); root.add(lampBulb);
+        lampLight = new THREE.PointLight(0xffd24a, 0, 14); lampLight.position.copy(lampBulb.position); root.add(lampLight);
+
+        labelDefs.push({ key:'lLamp', pos: new THREE.Vector3(lampX, lampTop+0.9, 0) });
+    }
+
+    // ---- particle pools ----
+    function initPools() {
+        const phGeo = new THREE.SphereGeometry(0.12, 10, 8);
+        for (let i = 0; i < 60; i++) { const m = new THREE.Mesh(phGeo, new THREE.MeshBasicMaterial({ color: 0xffe680 })); m.visible=false; root.add(m); photons.push({ mesh:m, active:false }); }
+        const cGeo = new THREE.SphereGeometry(0.15, 12, 10);
+        for (let i = 0; i < 40; i++) {
+            const e = new THREE.Mesh(cGeo, new THREE.MeshStandardMaterial({ color:0x2b6cff, emissive:0x1840aa, emissiveIntensity:0.6 })); e.visible=false; root.add(e);
+            cellCarriers.push({ mesh:e, active:false, kind:'e' });
+            const h = new THREE.Mesh(cGeo, new THREE.MeshStandardMaterial({ color:0xff5252, emissive:0xaa1530, emissiveIntensity:0.6 })); h.visible=false; root.add(h);
+            cellCarriers.push({ mesh:h, active:false, kind:'h' });
+        }
+        const wGeo = new THREE.SphereGeometry(0.13, 10, 8);
+        for (let i = 0; i < 36; i++) { const m = new THREE.Mesh(wGeo, new THREE.MeshStandardMaterial({ color:0x2b6cff, emissive:0x1840aa, emissiveIntensity:0.7 })); m.visible=false; root.add(m); wireDots.push({ mesh:m, active:false, s:0 }); }
+    }
+
+    function spawnPhoton() {
+        const p = photons.find(p => !p.active); if (!p) return;
+        const col = wlColor(lambda);
+        p.mesh.material.color.copy(col);
+        const sx = sun.position.x + (Math.random()-0.5)*1.6;
+        const sz = sun.position.z + (Math.random()-0.5)*1.6;
+        p.mesh.position.set(sx, sun.position.y - 1.2, sz);
+        // aim down toward cell surface (random target on cell)
+        const tx = (Math.random()-0.5)*CELL*0.8, tz = (Math.random()-0.5)*CELL*0.8;
+        p.target = new THREE.Vector3(tx, JUNC_Y, tz);
+        p.dir = p.target.clone().sub(p.mesh.position).normalize();
+        p.active = true; p.mesh.visible = true;
+        p.energetic = (lambda <= LAMBDA_CUT);
+    }
+
+    function spawnPair(x, z) {
+        const e = cellCarriers.find(c => !c.active && c.kind==='e');
+        const h = cellCarriers.find(c => !c.active && c.kind==='h');
+        if (!e || !h) return;
+        e.mesh.position.set(x, JUNC_Y, z); e.active = true; e.mesh.visible = showCarriers; e.life = 0;
+        h.mesh.position.set(x, JUNC_Y, z); h.active = true; h.mesh.visible = showCarriers; h.life = 0;
+    }
+
+    function wirePointAt(s) {
+        // s in [0, wireLen]
+        let acc = 0;
+        for (let i = 1; i < wirePath.length; i++) {
+            const seg = wirePath[i].distanceTo(wirePath[i-1]);
+            if (s <= acc + seg) { const f = (s - acc)/seg; return wirePath[i-1].clone().lerp(wirePath[i], f); }
+            acc += seg;
+        }
+        return wirePath[wirePath.length-1].clone();
+    }
+
+    // ---- labels ----
+    function makeLabels() {
+        const keys = [
+            { key:'lSun', pos: new THREE.Vector3(-6.5, 10.6, 3.5) },
+            { key:'lFront', pos: new THREE.Vector3(-CELL*0.42, Y_TOP+0.5, CELL*0.55) },
+            { key:'lAR', pos: new THREE.Vector3(CELL*0.55, (Y_AR0+Y_AR1)/2, CELL*0.4) },
+            { key:'lN', pos: new THREE.Vector3(-CELL*0.6, (Y_N0+Y_N1)/2, -CELL*0.2) },
+            { key:'lJ', pos: new THREE.Vector3(CELL*0.62, JUNC_Y, -CELL*0.1) },
+            { key:'lP', pos: new THREE.Vector3(-CELL*0.62, (Y_P0+Y_P1)/2, CELL*0.2) },
+            { key:'lBack', pos: new THREE.Vector3(CELL*0.4, Y_BACK0-0.1, -CELL*0.5) },
+        ];
+        keys.forEach(k => labelDefs.push(k));
+        labelDefs.forEach(d => { const el = document.createElement('div'); el.className='label3d'; labelLayer.appendChild(el); d.el = el; });
+    }
+    function updateLabels() {
+        labelDefs.forEach(d => {
+            if (!d.el) return;
+            const txt = L[d.key] || d.key;
+            if (d.el.textContent !== txt) d.el.textContent = txt;
+            if (!showLabels) { d.el.style.display='none'; return; }
+            const v = d.pos.clone().project(camera);
+            if (v.z > 1) { d.el.style.display='none'; return; }
+            d.el.style.display='block';
+            d.el.style.left = (v.x*0.5+0.5)*window.innerWidth + 'px';
+            d.el.style.top = (-v.y*0.5+0.5)*window.innerHeight + 'px';
+        });
+    }
+
+    // ---- physics ----
+    function recompute() {
+        ePhoton = 1240 / lambda;
+        absorbed = (lambda <= LAMBDA_CUT) && intensity > 0;
+        const absFactor = absorbed ? 1 : 0;
+        // open-circuit voltage ~0.6 V (log with intensity); load voltage ~0.5 V
+        const Voc = intensity > 0 ? (0.45 + 0.15 * Math.min(1, intensity/100)) : 0;
+        if (!circuit) { curU = absFactor ? Voc : 0; curI = 0; }
+        else { curU = absFactor ? 0.50 : 0; curI = absFactor ? (intensity/100) * 34 : 0; }
+        curP = curU * curI; // mW (V × mA)
+        updateReadouts();
+    }
+
+    function updateReadouts() {
+        const $ = id => document.getElementById(id);
+        $('ro-eph').textContent = ePhoton.toFixed(2) + L.uEv;
+        $('ro-eg').textContent = EG.toFixed(1) + L.uEv;
+        $('ro-u').textContent = curU.toFixed(2) + L.uV;
+        $('ro-i').textContent = curI.toFixed(0) + L.uMA;
+        $('ro-p').textContent = curP.toFixed(1) + L.uMW;
+        $('pwr-fill').style.width = Math.min(100, curP/17*100) + '%';
+        const v = $('verdict');
+        if (intensity <= 0) { v.textContent = L.vDark; v.className='verdict off'; }
+        else if (!absorbed) { v.textContent = L.vWeak; v.className='verdict off'; }
+        else if (!circuit) { v.textContent = L.vOpen; v.className='verdict off'; }
+        else { v.textContent = L.vOn; v.className='verdict on'; }
+        // colour the wavelength readout thumb feedback
+        document.getElementById('wl-value').textContent = Math.round(lambda) + L.uNM;
+        document.getElementById('int-value').textContent = Math.round(intensity) + '%';
+    }
+
+    // ---- controls ----
+    function setupControls() {
+        document.getElementById('int-slider').addEventListener('input', e => { intensity = +e.target.value; recompute(); });
+        document.getElementById('wl-slider').addEventListener('input', e => { lambda = +e.target.value; recompute(); });
+        const tog = (id, fn) => { const el = document.getElementById(id); el.addEventListener('click', () => { el.classList.toggle('active'); fn(el.classList.contains('active')); }); };
+        tog('t-circuit', v => { circuit = v; recompute(); });
+        tog('t-field', v => { showField = v; fieldArrows.forEach(a => a.visible = v); });
+        tog('t-carriers', v => { showCarriers = v; });
+        tog('t-labels', v => { showLabels = v; });
+
+        const play = document.getElementById('btn-play');
+        play.addEventListener('click', () => { playing = !playing; play.textContent = playing ? L.pause : L.play; });
+        document.getElementById('btn-reset').addEventListener('click', () => { camTheta=0.72; camPhi=1.05; camRadius=17; camTarget.set(0,1.4,0); updateCamera(); });
+
+        const el = renderer.domElement;
+        el.addEventListener('contextmenu', e => e.preventDefault());
+        el.addEventListener('mousedown', e => { dragMode = (e.button===2||e.shiftKey)?2:1; lastX=e.clientX; lastY=e.clientY; });
+        window.addEventListener('mousemove', e => {
+            if (!dragMode) return;
+            const dx=e.clientX-lastX, dy=e.clientY-lastY; lastX=e.clientX; lastY=e.clientY;
+            if (dragMode===1) { camTheta -= dx*0.005; camPhi = Math.max(0.16, Math.min(Math.PI-0.16, camPhi - dy*0.005)); }
+            else { const ps=camRadius*0.0016; const right=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,0); const up=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,1); camTarget.addScaledVector(right,-dx*ps); camTarget.addScaledVector(up,dy*ps); }
+            updateCamera();
+        });
+        window.addEventListener('mouseup', () => dragMode=0);
+        el.addEventListener('wheel', e => { e.preventDefault(); camRadius = Math.max(9, Math.min(36, camRadius + e.deltaY*0.013)); updateCamera(); }, { passive:false });
+        el.addEventListener('touchstart', e => { const t=e.touches[0]; dragMode=1; lastX=t.clientX; lastY=t.clientY; }, { passive:true });
+        el.addEventListener('touchmove', e => { if(!dragMode)return; const t=e.touches[0]; const dx=t.clientX-lastX, dy=t.clientY-lastY; lastX=t.clientX; lastY=t.clientY; camTheta -= dx*0.006; camPhi=Math.max(0.16,Math.min(Math.PI-0.16,camPhi-dy*0.006)); updateCamera(); e.preventDefault(); }, { passive:false });
+        window.addEventListener('touchend', () => dragMode=0);
+        window.addEventListener('resize', () => { camera.aspect=window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+    }
+
+    function updateCamera() {
+        const sp=Math.sin(camPhi), cp=Math.cos(camPhi), st=Math.sin(camTheta), ct=Math.cos(camTheta);
+        camera.position.set(camTarget.x+camRadius*sp*ct, camTarget.y+camRadius*cp, camTarget.z+camRadius*sp*st);
+        camera.lookAt(camTarget); camera.updateMatrixWorld(true);
+    }
+
+    function applyI18N() {
+        document.querySelectorAll('[data-i18n]').forEach(el => { const k = el.getAttribute('data-i18n'); if (L[k]!=null) el.textContent = L[k]; });
+        document.querySelector('.header h1').textContent = L.headH;
+        document.getElementById('h-sub').textContent = L.headS;
+        document.title = L.headH.replace(/^[^\wА-Яа-яЁё]+/, '');
+        document.documentElement.lang = LANG;
+    }
+
+    // ---- animation ----
+    let spawnAcc = 0, fieldPhase = 0;
+    function animate() {
+        requestAnimationFrame(animate);
+        const dt = Math.min(clock.getDelta(), 0.05);
+        const time = clock.elapsedTime;
+
+        if (playing) {
+            // spawn photons proportional to intensity
+            spawnAcc += dt * (intensity/100) * 22;
+            while (spawnAcc >= 1) { spawnPhoton(); spawnAcc -= 1; }
+
+            // photons travel down
+            photons.forEach(p => {
+                if (!p.active) return;
+                p.mesh.position.addScaledVector(p.dir, dt * 9);
+                if (p.mesh.position.y <= JUNC_Y + 0.02) {
+                    if (p.energetic) {
+                        spawnPair(p.mesh.position.x, p.mesh.position.z);
+                    }
+                    // energetic → absorbed (disappear). non-energetic → keep going (transmit)
+                    if (p.energetic) { p.active=false; p.mesh.visible=false; }
+                    else if (p.mesh.position.y < Y_BACK0 - 1.0) { p.active=false; p.mesh.visible=false; }
+                }
+                if (p.mesh.position.y < Y_BACK0 - 2.0) { p.active=false; p.mesh.visible=false; }
+            });
+
+            // cell carriers: electron up to top, hole down to bottom
+            cellCarriers.forEach(c => {
+                if (!c.active) return;
+                c.mesh.visible = showCarriers;
+                c.life += dt;
+                if (c.kind === 'e') { c.mesh.position.y += dt * 2.6; if (c.mesh.position.y >= Y_TOP) { c.active=false; c.mesh.visible=false; } }
+                else { c.mesh.position.y -= dt * 2.6; if (c.mesh.position.y <= Y_BACK0) { c.active=false; c.mesh.visible=false; } }
+                if (c.life > 4) { c.active=false; c.mesh.visible=false; }
+            });
+
+            // wire current dots — rate proportional to current
+            if (circuit && curI > 0) {
+                spawnWireAcc += dt * (curI/34) * 9;
+                while (spawnWireAcc >= 1) { const d = wireDots.find(w=>!w.active); if (d){ d.active=true; d.s=0; d.mesh.visible=true; } spawnWireAcc -= 1; }
+            }
+            wireDots.forEach(w => {
+                if (!w.active) return;
+                w.s += dt * 3.0;
+                if (w.s >= wireLen) { w.active=false; w.mesh.visible=false; return; }
+                w.mesh.position.copy(wirePointAt(w.s));
+            });
+        }
+
+        // sun pulse + glow scaled by intensity
+        const lit = intensity/100;
+        sunGlow.scale.setScalar(1 + 0.08*Math.sin(time*2));
+        sunGlow.material.opacity = 0.12 + 0.22*lit;
+
+        // field arrows gently pulse to read as an active built-in field
+        if (showField) fieldArrows.forEach((a,i)=>{ a.position.y = Y_J0 - 0.1 + Math.sin(time*3 + i)*0.03; });
+
+        // lamp glow by power
+        const pn = Math.min(1, curP/16);
+        lampBulb.material.emissiveIntensity = pn * 1.8;
+        lampBulb.material.color.setHSL(0.13, 1, 0.6 + pn*0.25);
+        lampLight.intensity = pn * 3.2;
+
+        recomputeColorThumb();
+        updateLabels();
+        renderer.render(scene, camera);
+    }
+    let spawnWireAcc = 0;
+    function recomputeColorThumb() {
+        // tint wavelength readout text by colour
+        const c = wlColor(lambda);
+        document.getElementById('wl-value').style.color = '#' + c.getHexString();
+    }
+
+    init();
+    </script>
+</body>
+</html>

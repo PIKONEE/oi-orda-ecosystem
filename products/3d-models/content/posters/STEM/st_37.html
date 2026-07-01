@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Гидравлический экскаватор</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { width: 100%; height: 100%; overflow: hidden; }
+        body { font-family: 'Segoe UI','Inter',system-ui,sans-serif; background: linear-gradient(135deg,#eaf2fb 0%,#dfeaf6 100%); color:#16233f; }
+        #canvas-container { position: absolute; inset: 0; }
+        #labels { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+        .label3d { position: absolute; transform: translate(-50%,-50%); font-size: 12px; font-weight: 800; padding: 2px 9px; border-radius: 7px; background: rgba(255,255,255,0.93); border: 1.5px solid rgba(150,170,205,0.6); box-shadow: 0 2px 8px rgba(40,60,110,0.16); white-space: nowrap; }
+        .label3d.hy { color:#d97706; border-color:#f0c89a; }
+
+        .header { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); text-align: center; z-index: 6; pointer-events: none; width: 92%; }
+        .header h1 { font-size: 25px; font-weight: 800; color:#1b2a4a; text-shadow: 0 1px 0 rgba(255,255,255,0.7); }
+        .header p { font-size: 13.5px; color:#5a6b8c; margin-top: 4px; font-weight: 600; }
+
+        .panel { position: absolute; z-index: 7; background: rgba(255,255,255,0.82);   border: 1px solid rgba(150,170,205,0.5); border-radius: 16px; box-shadow: 0 10px 34px rgba(40,60,110,0.14); }
+        .control-panel { top: 88px; left: 22px; width: 314px; padding: 16px 18px; }
+        .info-panel { top: 88px; right: 22px; width: 286px; padding: 16px 18px; }
+
+        .param-group { margin-bottom: 11px; }
+        .param-label { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px; }
+        .param-name { font-size: 13px; font-weight: 700; color:#33405e; display:flex; align-items:center; gap:6px; }
+        .param-value { font-size: 14px; font-weight: 800; color:#d97706; font-variant-numeric: tabular-nums; }
+
+        input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; border-radius: 6px; outline: none; cursor: pointer; background: linear-gradient(90deg,#f0d9bf,#e0bd92); }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 17px; height: 17px; border-radius: 50%; background:#fff; border: 3px solid #d97706; box-shadow: 0 2px 7px rgba(217,119,6,0.4); cursor: pointer; }
+        #press-slider { background: linear-gradient(90deg,#cfe0f5,#5a82b8); } #press-slider::-webkit-slider-thumb { border-color:#2563eb; }
+
+        .toggle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
+        .toggle-btn { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 9px 6px; border-radius: 10px; border: 1.5px solid rgba(150,170,205,0.6); background: rgba(255,255,255,0.55); color:#44537a; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.16s; }
+        .toggle-btn .dot { width: 9px; height: 9px; border-radius: 50%; background:#b7c2d8; transition: all 0.16s; }
+        .toggle-btn.active { background: rgba(217,119,6,0.13); border-color:#d97706; color:#1b2a4a; }
+        .toggle-btn.active .dot { background:#d97706; box-shadow: 0 0 7px rgba(217,119,6,0.8); }
+
+        .action-row { display: flex; gap: 8px; margin-top: 11px; }
+        .btn { flex: 1; padding: 10px; border: none; border-radius: 10px; font-size: 13px; font-weight: 800; cursor: pointer; transition: all 0.16s; color:#fff; }
+        .btn-play { background: linear-gradient(135deg,#d97706,#b45309); } .btn-reset { background: linear-gradient(135deg,#64748b,#475569); }
+        .btn:hover { filter: brightness(1.07); transform: translateY(-1px); }
+
+        .info-title { font-size: 15px; font-weight: 800; color:#1b2a4a; margin-bottom: 10px; }
+        .readout { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px dashed rgba(150,170,205,0.45); font-size: 13px; }
+        .readout:last-child { border-bottom: none; }
+        .ro-name { color:#5a6b8c; font-weight: 600; }
+        .ro-val { font-weight: 800; color:#1b2a4a; font-variant-numeric: tabular-nums; }
+        .force-bar { height: 10px; border-radius: 5px; background:#e3e9f2; overflow:hidden; margin-top:7px; }
+        .force-bar > div { height:100%; width:0%; background: linear-gradient(90deg,#2563eb,#d97706); transition: width 0.15s; }
+
+        .formula-panel { position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 7; background: rgba(27,42,74,0.93); color:#eaf0fb; padding: 10px 22px; border-radius: 13px; box-shadow: 0 10px 30px rgba(20,35,70,0.34); text-align: center; max-width: 76%; }
+        .formula { font-size: 16px; font-weight: 600; } .formula b.f { color:#ffb38a; } .formula b.p { color:#7fb3ff; }
+        .formula-note { font-size: 12px; color:#9fb2d8; margin-top: 4px; }
+        .hint { position: absolute; bottom: 16px; left: 22px; z-index: 7; font-size: 12px; color:#5a6b8c; background: rgba(255,255,255,0.72); padding: 7px 13px; border-radius: 9px; border: 1px solid rgba(150,170,205,0.45); }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div id="labels"></div>
+
+    <div class="header">
+        <h1>🚜 Гидравлический экскаватор</h1>
+        <p><span id="h-sub">Стрела · рукоять · ковш • гидроцилиндры • закон Паскаля F = P·A</span></p>
+    </div>
+
+    <div class="panel control-panel">
+        <div class="param-group"><div class="param-label"><span class="param-name">🔄 <span data-i18n="slewLabel">Поворот платформы</span></span><span class="param-value" id="slew-value">0°</span></div><input type="range" id="slew" min="-180" max="180" value="0"></div>
+        <div class="param-group"><div class="param-label"><span class="param-name">💪 <span data-i18n="boomLabel">Стрела</span></span><span class="param-value" id="boom-value">55%</span></div><input type="range" id="boom" min="0" max="100" value="55"></div>
+        <div class="param-group"><div class="param-label"><span class="param-name">🦾 <span data-i18n="armLabel">Рукоять</span></span><span class="param-value" id="arm-value">45%</span></div><input type="range" id="arm" min="0" max="100" value="45"></div>
+        <div class="param-group"><div class="param-label"><span class="param-name">🪣 <span data-i18n="bucketLabel">Ковш</span></span><span class="param-value" id="bucket-value">30%</span></div><input type="range" id="bucket" min="0" max="100" value="30"></div>
+        <div class="param-group"><div class="param-label"><span class="param-name">🛢️ <span data-i18n="pressLabel">Давление в гидросистеме</span></span><span class="param-value" id="press-value" style="color:#2563eb">250 бар</span></div><input type="range" id="press-slider" min="50" max="350" value="250"></div>
+
+        <div class="toggle-grid">
+            <button class="toggle-btn active" id="t-cyl"><span class="dot"></span><span data-i18n="tCyl">Гидроцилиндры</span></button>
+            <button class="toggle-btn active" id="t-labels"><span class="dot"></span><span data-i18n="tLabels">Подписи</span></button>
+        </div>
+
+        <div class="action-row">
+            <button class="btn btn-play" id="btn-dig" data-i18n="dig">▶ Авто-копание</button>
+            <button class="btn btn-reset" id="btn-reset" data-i18n="reset">↺ Вид</button>
+        </div>
+    </div>
+
+    <div class="panel info-panel">
+        <div class="info-title">📊 <span data-i18n="infoTitle">Параметры</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roReach">Вылет ковша</span><span class="ro-val" id="ro-reach">— м</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roHeight">Высота ковша</span><span class="ro-val" id="ro-height">— м</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roPress">Давление</span><span class="ro-val" id="ro-press" style="color:#2563eb">250 бар</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roForce">Усилие на штоке</span><span class="ro-val" id="ro-force" style="color:#d97706">— кН</span></div>
+        <div class="force-bar"><div id="force-fill"></div></div>
+        <div class="readout" style="margin-top:6px"><span class="ro-name" data-i18n="roPhase">Фаза цикла</span><span class="ro-val" id="ro-phase">—</span></div>
+    </div>
+
+    <div class="formula-panel">
+        <div class="formula"><b class="f">F</b> = <b class="p">P</b> · A &nbsp;|&nbsp; <span data-i18n="fNote">большая площадь поршня → огромное усилие</span></div>
+        <div class="formula-note" data-i18n="note">Гидравлика по закону Паскаля передаёт давление жидкости, создавая большие усилия на цилиндрах</div>
+    </div>
+
+    <div class="hint"><span data-i18n="hint">ЛКМ — вращение • ПКМ — перемещение • Колесо — зум</span></div>
+
+    <script src="../../libs/vendor/three-r128/three.min.js"></script>
+    <script>
+    const LANG = (new URLSearchParams(window.location.search).get('lang')) || 'ru';
+    const I18N = {
+        ru: { headH:'🚜 Гидравлический экскаватор', headS:'Стрела · рукоять · ковш • гидроцилиндры • закон Паскаля F = P·A',
+              slewLabel:'Поворот платформы', boomLabel:'Стрела', armLabel:'Рукоять', bucketLabel:'Ковш', pressLabel:'Давление в гидросистеме',
+              tCyl:'Гидроцилиндры', tLabels:'Подписи', dig:'▶ Авто-копание', stop:'⏸ Стоп', reset:'↺ Вид', infoTitle:'Параметры',
+              roReach:'Вылет ковша', roHeight:'Высота ковша', roPress:'Давление', roForce:'Усилие на штоке', roPhase:'Фаза цикла',
+              fNote:'большая площадь поршня → огромное усилие', note:'Гидравлика по закону Паскаля передаёт давление жидкости, создавая большие усилия на цилиндрах',
+              hint:'ЛКМ — вращение • ПКМ — перемещение • Колесо — зум',
+              lBoom:'Стрела', lArm:'Рукоять', lBucket:'Ковш', lCab:'Кабина (поворотная)', lTrack:'Гусеницы', lCylB:'Гидроцилиндр стрелы',
+              phReach:'Вынос', phDig:'Копание', phLift:'Подъём', phSwing:'Поворот', phDump:'Выгрузка', phReturn:'Возврат', phIdle:'Ручной режим',
+              uM:' м', uBar:' бар', uKN:' кН', uDeg:'°' },
+        kz: { headH:'🚜 Гидравликалық экскаватор', headS:'Стрела · қол · шөміш • гидроцилиндрлер • Паскаль заңы F = P·A',
+              slewLabel:'Платформа бұрылысы', boomLabel:'Стрела', armLabel:'Қол', bucketLabel:'Шөміш', pressLabel:'Гидрожүйе қысымы',
+              tCyl:'Гидроцилиндрлер', tLabels:'Жазулар', dig:'▶ Авто-қазу', stop:'⏸ Тоқта', reset:'↺ Көрініс', infoTitle:'Параметрлер',
+              roReach:'Шөміш ұзындығы', roHeight:'Шөміш биіктігі', roPress:'Қысым', roForce:'Штоктағы күш', roPhase:'Цикл фазасы',
+              fNote:'поршень ауданы үлкен → күш орасан', note:'Гидравлика Паскаль заңы бойынша сұйық қысымын беріп, цилиндрлерде үлкен күш жасайды',
+              hint:'СБ — айналдыру • ОБ — жылжыту • Дөңгелек — масштаб',
+              lBoom:'Стрела', lArm:'Қол', lBucket:'Шөміш', lCab:'Кабина (бұрылмалы)', lTrack:'Шынжыр табан', lCylB:'Стрела гидроцилиндрі',
+              phReach:'Созу', phDig:'Қазу', phLift:'Көтеру', phSwing:'Бұрылу', phDump:'Түсіру', phReturn:'Қайту', phIdle:'Қолмен режим',
+              uM:' м', uBar:' бар', uKN:' кН', uDeg:'°' },
+        en: { headH:'🚜 Hydraulic Excavator', headS:'Boom · stick · bucket • hydraulic rams • Pascal\u2019s law F = P·A',
+              slewLabel:'Platform slew', boomLabel:'Boom', armLabel:'Stick (arm)', bucketLabel:'Bucket', pressLabel:'Hydraulic pressure',
+              tCyl:'Hydraulic rams', tLabels:'Labels', dig:'▶ Auto-dig', stop:'⏸ Stop', reset:'↺ View', infoTitle:'Parameters',
+              roReach:'Bucket reach', roHeight:'Bucket height', roPress:'Pressure', roForce:'Rod force', roPhase:'Cycle phase',
+              fNote:'large piston area → enormous force', note:'Hydraulics transmit fluid pressure by Pascal\u2019s law, creating large forces at the cylinders',
+              hint:'LMB — rotate • RMB — pan • Wheel — zoom',
+              lBoom:'Boom', lArm:'Stick', lBucket:'Bucket', lCab:'Cab (slewing)', lTrack:'Tracks', lCylB:'Boom cylinder',
+              phReach:'Reach out', phDig:'Dig', phLift:'Lift', phSwing:'Swing', phDump:'Dump', phReturn:'Return', phIdle:'Manual mode',
+              uM:' m', uBar:' bar', uKN:' kN', uDeg:'°' },
+    };
+    const L = I18N[LANG] || I18N.ru;
+
+    const BORE_CM2 = 180;     // cylinder piston area (cm^2) for F = P*A
+    let slew=0, boomP=55, armP=45, bucketP=30, pressBar=250;
+    let showCyl=true, showLabels=true, digging=false;
+
+    let scene, camera, renderer, root;
+    let cab, boomGrp, armGrp, bucketGrp, dirt;
+    let anchors={}, cyls={};
+    const labelDefs=[];
+    const clock = new THREE.Clock();
+    const container = document.getElementById('canvas-container');
+    const labelLayer = document.getElementById('labels');
+    const tmpA=new THREE.Vector3(), tmpB=new THREE.Vector3(), tmpTip=new THREE.Vector3();
+
+    let camTheta=0.7, camPhi=1.15, camRadius=20;
+    const camTarget=new THREE.Vector3(0,2.4,0);
+    let dragMode=0,lastX=0,lastY=0;
+
+    const SCALE_M = 0.9;       // metres per world unit (display)
+    const BOOM_L=5.2, ARM_L=3.6, BUCKET_L=1.7;
+
+    // angle maps (percent -> radians)
+    const boomAng = p => THREE.MathUtils.degToRad(-8 + p/100*62);     // raise
+    const armAng  = p => THREE.MathUtils.degToRad(-150 + p/100*120);  // fold relative to boom
+    const bucketAng = p => THREE.MathUtils.degToRad(20 + p/100*150); // curl (opening faces machine)
+
+    function init() {
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xeaf2fb);
+        scene.fog = new THREE.Fog(0xeaf2fb, 34, 72);
+        camera = new THREE.PerspectiveCamera(46, window.innerWidth/window.innerHeight, 0.1, 200);
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+        renderer.shadowMap.enabled = false; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        container.appendChild(renderer.domElement);
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.78));
+        const key = new THREE.DirectionalLight(0xffffff, 0.7); key.position.set(10,18,8); key.castShadow=true; key.shadow.mapSize.set(2048,2048);
+        key.shadow.camera.left=-22;key.shadow.camera.right=22;key.shadow.camera.top=22;key.shadow.camera.bottom=-22; scene.add(key);
+        const fill = new THREE.DirectionalLight(0xbcd4ff, 0.3); fill.position.set(-9,6,-7); scene.add(fill);
+
+        root = new THREE.Group(); scene.add(root);
+        buildGround();
+        buildMachine();
+        buildCylinders();
+        makeLabels();
+        applyI18N();
+        setupControls();
+        updateKinematics(); recompute();
+        updateCamera();
+        animate();
+    }
+    function mat(c,m,r,o){ return new THREE.MeshStandardMaterial(Object.assign({color:c,metalness:m,roughness:r},o||{})); }
+
+    function buildGround() {
+        const ground = new THREE.Mesh(new THREE.CircleGeometry(20,64), mat(0xc9b79b,0.1,0.95));
+        ground.rotation.x=-Math.PI/2; ground.receiveShadow=true; root.add(ground);
+        const grid = new THREE.GridHelper(40,40,0xb0a589,0xc6bda8); grid.position.y=0.01; root.add(grid);
+        // a dug pit to the front
+        const pit = new THREE.Mesh(new THREE.BoxGeometry(5,0.5,4), mat(0x8a7250,0.1,0.95)); pit.position.set(7.5,-0.24,0); root.add(pit);
+    }
+
+    function buildMachine() {
+        // tracks
+        const trackMat = mat(0x2b2f38,0.3,0.7);
+        [-1.6,1.6].forEach(z=>{ const tr=new THREE.Mesh(new THREE.BoxGeometry(7,1.3,1.3), trackMat); tr.position.set(0,0.65,z); tr.castShadow=true; root.add(tr);
+            for(let i=-3;i<=3;i++){ const wheel=new THREE.Mesh(new THREE.CylinderGeometry(0.55,0.55,1.35,16), mat(0x3a3f47,0.4,0.6)); wheel.rotation.x=Math.PI/2; wheel.position.set(i*0.95,0.55,z); root.add(wheel);} });
+        labelDefs.push({ key:'lTrack', pos:new THREE.Vector3(0,0.9,2.6) });
+
+        // slewing cab
+        cab = new THREE.Group(); cab.position.set(0,1.5,0); root.add(cab);
+        const house = new THREE.Mesh(new THREE.BoxGeometry(4.2,1.8,3.4), mat(0xf2b01e,0.3,0.5)); house.position.set(-0.6,0.9,0); house.castShadow=true; cab.add(house);
+        const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.6,1.6,1.6), mat(0x2a3340,0.4,0.4,{emissive:0x0a1018,emissiveIntensity:0.2})); cabin.position.set(1.0,1.0,0.8); cabin.castShadow=true; cab.add(cabin);
+        const counterweight = new THREE.Mesh(new THREE.BoxGeometry(1.2,1.6,3.2), mat(0xd99a1e,0.3,0.55)); counterweight.position.set(-2.4,0.7,0); cab.add(counterweight);
+        const slewRing = new THREE.Mesh(new THREE.CylinderGeometry(1.7,1.7,0.4,28), mat(0x5a6068,0.6,0.4)); slewRing.position.y=-0.2; cab.add(slewRing);
+        labelDefs.push({ key:'lCab', pos:new THREE.Vector3(0,3.4,0), follow:'cab', off:new THREE.Vector3(-0.6,2.0,0) });
+
+        // boom pivot at front of cab
+        boomGrp = new THREE.Group(); boomGrp.position.set(1.6,0.4,0); cab.add(boomGrp);
+        const boom = new THREE.Mesh(new THREE.BoxGeometry(BOOM_L,0.7,0.6), mat(0xf2b01e,0.3,0.5)); boom.position.set(BOOM_L/2,0,0); boom.castShadow=true; boomGrp.add(boom);
+        // slight bend look: a second tapered piece
+        const boom2 = new THREE.Mesh(new THREE.BoxGeometry(1.4,0.6,0.55), mat(0xe0a41c,0.3,0.5)); boom2.position.set(BOOM_L-0.3,0.15,0); boom2.rotation.z=0.25; boomGrp.add(boom2);
+        labelDefs.push({ key:'lBoom', pos:new THREE.Vector3(0,0,0), follow:'boomMid' });
+
+        // arm pivot at boom tip
+        armGrp = new THREE.Group(); armGrp.position.set(BOOM_L,0,0); boomGrp.add(armGrp);
+        const arm = new THREE.Mesh(new THREE.BoxGeometry(ARM_L,0.55,0.5), mat(0xf2b01e,0.3,0.5)); arm.position.set(ARM_L/2,0,0); arm.castShadow=true; armGrp.add(arm);
+        labelDefs.push({ key:'lArm', pos:new THREE.Vector3(0,0,0), follow:'armMid' });
+
+        // bucket pivot at arm tip
+        bucketGrp = new THREE.Group(); bucketGrp.position.set(ARM_L,0,0); armGrp.add(bucketGrp);
+        buildBucket(bucketGrp);
+        labelDefs.push({ key:'lBucket', pos:new THREE.Vector3(0,0,0), follow:'bucketTip' });
+
+        // dirt load (hidden until scoop)
+        dirt = new THREE.Mesh(new THREE.DodecahedronGeometry(0.55,0), mat(0x7a5c38,0.1,0.95));
+        dirt.visible=false; bucketGrp.add(dirt); dirt.position.set(-0.7,-0.5,0);
+
+        // cylinder anchor empties
+        anchors.boomBase = addAnchor(cab, 1.0, 1.2, 0);          // on cab
+        anchors.boomRod  = addAnchor(boomGrp, BOOM_L*0.5, 0.45, 0); // on boom
+        anchors.armBase  = addAnchor(boomGrp, BOOM_L*0.62, 0.55, 0);
+        anchors.armRod   = addAnchor(armGrp, ARM_L*0.35, 0.4, 0);
+        anchors.bucketBase = addAnchor(armGrp, ARM_L*0.7, 0.4, 0);
+        anchors.bucketRod  = addAnchor(bucketGrp, -0.1, 0.7, 0);
+    }
+
+    function buildBucket(parent){
+        const m = mat(0xdf8e1a,0.3,0.55);
+        const back = new THREE.Mesh(new THREE.BoxGeometry(0.5,1.4,1.5), m); back.position.set(-0.2,-0.5,0); back.castShadow=true; parent.add(back);
+        const bottom = new THREE.Mesh(new THREE.BoxGeometry(1.5,0.45,1.5), m); bottom.position.set(-0.9,-1.15,0); bottom.castShadow=true; parent.add(bottom);
+        const lip = new THREE.Mesh(new THREE.BoxGeometry(0.5,0.5,1.5), m); lip.position.set(-1.6,-0.95,0); lip.rotation.z=-0.5; parent.add(lip);
+        // teeth
+        for(let i=-1;i<=1;i++){ const tooth=new THREE.Mesh(new THREE.ConeGeometry(0.12,0.4,8), mat(0x9aa3ad,0.6,0.4)); tooth.rotation.z=Math.PI/2; tooth.position.set(-1.95,-0.95,i*0.45); parent.add(tooth); }
+    }
+
+    function addAnchor(parent,x,y,z){ const o=new THREE.Object3D(); o.position.set(x,y,z); parent.add(o); return o; }
+
+    function makeCyl(barrelCol){
+        const g=new THREE.Group();
+        const barrel=new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.16,1,16), mat(barrelCol||0x4a5160,0.7,0.35)); g.add(barrel);
+        const rod=new THREE.Mesh(new THREE.CylinderGeometry(0.09,0.09,1,14), mat(0xcfd6df,0.9,0.2)); g.add(rod);
+        g.userData={barrel,rod}; root.add(g); return g;
+    }
+    function buildCylinders(){
+        cyls.boom=makeCyl(); cyls.arm=makeCyl(); cyls.bucket=makeCyl();
+        labelDefs.push({ key:'lCylB', cls:'hy', pos:new THREE.Vector3(0,0,0), follow:'cylBoom' });
+    }
+
+    function orientCyl(cyl,A,B){
+        const barrel=cyl.userData.barrel, rod=cyl.userData.rod;
+        const dir=tmpB.copy(B).sub(A); const len=dir.length(); dir.normalize();
+        const q=new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0), dir);
+        const bLen=len*0.55, rLen=len-bLen;
+        barrel.scale.y=bLen; barrel.quaternion.copy(q); barrel.position.copy(A).addScaledVector(dir,bLen/2);
+        rod.scale.y=Math.max(0.05,rLen); rod.quaternion.copy(q); rod.position.copy(A).addScaledVector(dir,bLen+rLen/2);
+    }
+
+    function makeLabels(){ labelDefs.forEach(d=>{ const el=document.createElement('div'); el.className='label3d'+(d.cls?(' '+d.cls):''); labelLayer.appendChild(el); d.el=el; }); }
+    function worldOfFollow(d){
+        if(d.follow==='cab') return cab.localToWorld(d.off.clone());
+        if(d.follow==='boomMid') return boomGrp.localToWorld(new THREE.Vector3(BOOM_L*0.5,0.6,0));
+        if(d.follow==='armMid') return armGrp.localToWorld(new THREE.Vector3(ARM_L*0.5,0.5,0));
+        if(d.follow==='bucketTip') return bucketGrp.localToWorld(new THREE.Vector3(-1.6,-0.6,0));
+        if(d.follow==='cylBoom') return tmpTip.copy(anchors.boomBase.getWorldPosition(new THREE.Vector3())).lerp(anchors.boomRod.getWorldPosition(new THREE.Vector3()),0.5).clone().add(new THREE.Vector3(0,0.5,0));
+        return d.pos.clone();
+    }
+    function updateLabels(){
+        labelDefs.forEach(d=>{ const txt=L[d.key]||d.key; if(d.el.textContent!==txt) d.el.textContent=txt;
+            if(!showLabels){ d.el.style.display='none'; return; }
+            const p = d.follow? worldOfFollow(d) : d.pos.clone();
+            const v=p.project(camera); if(v.z>1){ d.el.style.display='none'; return; }
+            d.el.style.display='block'; d.el.style.left=(v.x*0.5+0.5)*window.innerWidth+'px'; d.el.style.top=(-v.y*0.5+0.5)*window.innerHeight+'px';
+        });
+    }
+
+    function updateKinematics() {
+        cab.rotation.y = THREE.MathUtils.degToRad(slew);
+        boomGrp.rotation.z = boomAng(boomP);
+        armGrp.rotation.z = armAng(armP);
+        bucketGrp.rotation.z = bucketAng(bucketP);
+        root.updateMatrixWorld(true);
+        // cylinders span anchor world positions
+        const wp=o=>o.getWorldPosition(new THREE.Vector3());
+        orientCyl(cyls.boom, wp(anchors.boomBase), wp(anchors.boomRod));
+        orientCyl(cyls.arm, wp(anchors.armBase), wp(anchors.armRod));
+        orientCyl(cyls.bucket, wp(anchors.bucketBase), wp(anchors.bucketRod));
+        // dirt visible when bucket curled enough
+        dirt.visible = bucketP > 60;
+    }
+
+    function recompute() {
+        const tip = bucketGrp.localToWorld(new THREE.Vector3(-1.9,-0.95,0));
+        const reach = Math.hypot(tip.x, tip.z) * SCALE_M;
+        const height = tip.y * SCALE_M;
+        const forceKN = pressBar * BORE_CM2 * 0.01; // 1 bar = 10 N/cm² -> F[kN] = P*A*0.01
+        document.getElementById('slew-value').textContent = slew + L.uDeg;
+        document.getElementById('boom-value').textContent = boomP + '%';
+        document.getElementById('arm-value').textContent = armP + '%';
+        document.getElementById('bucket-value').textContent = bucketP + '%';
+        document.getElementById('press-value').textContent = pressBar + L.uBar;
+        document.getElementById('ro-reach').textContent = reach.toFixed(1) + L.uM;
+        document.getElementById('ro-height').textContent = height.toFixed(1) + L.uM;
+        document.getElementById('ro-press').textContent = pressBar + L.uBar;
+        document.getElementById('ro-force').textContent = Math.round(forceKN) + L.uKN;
+        document.getElementById('force-fill').style.width = Math.min(100, forceKN/630*100) + '%';
+        // cylinder glow by pressure
+        const gi = (pressBar-50)/300;
+        [cyls.boom,cyls.arm,cyls.bucket].forEach(c=>{ c.userData.barrel.material.emissive = new THREE.Color(0xff6a00); c.userData.barrel.material.emissiveIntensity = showCyl? gi*0.5 : 0; c.visible=showCyl; });
+    }
+
+    // ---- auto dig cycle ----
+    const KF = [ // [time, slew, boom, arm, bucket]
+        [0.0,   0,  55, 45, 30],
+        [1.6,   0,  22, 78, 10],   // reach out & lower
+        [3.0,   0,  18, 55, 92],   // dig / curl scoop
+        [4.4,   0,  60, 45, 92],   // lift
+        [6.0,  90,  60, 45, 92],   // swing
+        [7.2,  90,  45, 70, 8],    // dump
+        [8.8,   0,  55, 45, 30],   // return
+    ];
+    let cycT=0;
+    const phaseName=['phReach','phReach','phDig','phLift','phSwing','phDump','phReturn'];
+    function stepCycle(dt){
+        cycT += dt; const T=KF[KF.length-1][0]; if(cycT>T) cycT-=T;
+        let k=0; while(k<KF.length-1 && cycT>KF[k+1][0]) k++;
+        const a=KF[k], b=KF[Math.min(k+1,KF.length-1)];
+        const f = b[0]>a[0]? (cycT-a[0])/(b[0]-a[0]) : 0;
+        const lp=(i)=>a[i]+(b[i]-a[i])*f;
+        // shortest-path slew interpolation not needed (values modest)
+        slew=Math.round(lp(1)); boomP=Math.round(lp(2)); armP=Math.round(lp(3)); bucketP=Math.round(lp(4));
+        ['slew','boom','arm','bucket'].forEach((id,idx)=>{ const v=[slew,boomP,armP,bucketP][idx]; const el=document.getElementById(id); if(el) el.value=v; });
+        document.getElementById('ro-phase').textContent = L[phaseName[k]] || '—';
+    }
+
+    function setupControls() {
+        const bind=(id,fn)=>document.getElementById(id).addEventListener('input', e=>{ fn(+e.target.value); if(!digging){ updateKinematics(); recompute(); } });
+        bind('slew', v=>slew=v); bind('boom', v=>boomP=v); bind('arm', v=>armP=v); bind('bucket', v=>bucketP=v); bind('press-slider', v=>{ pressBar=v; recompute(); });
+        const tog=(id,fn)=>{ const el=document.getElementById(id); el.addEventListener('click',()=>{ el.classList.toggle('active'); fn(el.classList.contains('active')); recompute(); }); };
+        tog('t-cyl', v=>showCyl=v);
+        tog('t-labels', v=>showLabels=v);
+        document.getElementById('btn-dig').addEventListener('click', ()=>{ digging=!digging; document.getElementById('btn-dig').textContent = digging?L.stop:L.dig; if(!digging) document.getElementById('ro-phase').textContent=L.phIdle; });
+        document.getElementById('btn-reset').addEventListener('click', ()=>{ camTheta=0.7; camPhi=1.15; camRadius=20; camTarget.set(0,2.4,0); updateCamera(); });
+
+        const el=renderer.domElement;
+        el.addEventListener('contextmenu', e=>e.preventDefault());
+        el.addEventListener('mousedown', e=>{ dragMode=(e.button===2||e.shiftKey)?2:1; lastX=e.clientX; lastY=e.clientY; });
+        window.addEventListener('mousemove', e=>{ if(!dragMode)return; const dx=e.clientX-lastX,dy=e.clientY-lastY; lastX=e.clientX; lastY=e.clientY; if(dragMode===1){camTheta-=dx*0.005; camPhi=Math.max(0.16,Math.min(Math.PI-0.16,camPhi-dy*0.005));} else {const ps=camRadius*0.0016; const right=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,0); const up=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,1); camTarget.addScaledVector(right,-dx*ps); camTarget.addScaledVector(up,dy*ps);} updateCamera(); });
+        window.addEventListener('mouseup', ()=>dragMode=0);
+        el.addEventListener('wheel', e=>{ e.preventDefault(); camRadius=Math.max(11,Math.min(40,camRadius+e.deltaY*0.016)); updateCamera(); }, {passive:false});
+        el.addEventListener('touchstart', e=>{ const t=e.touches[0]; dragMode=1; lastX=t.clientX; lastY=t.clientY; }, {passive:true});
+        el.addEventListener('touchmove', e=>{ if(!dragMode)return; const t=e.touches[0]; const dx=t.clientX-lastX,dy=t.clientY-lastY; lastX=t.clientX; lastY=t.clientY; camTheta-=dx*0.006; camPhi=Math.max(0.16,Math.min(Math.PI-0.16,camPhi-dy*0.006)); updateCamera(); e.preventDefault(); }, {passive:false});
+        window.addEventListener('touchend', ()=>dragMode=0);
+        window.addEventListener('resize', ()=>{ camera.aspect=window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+    }
+
+    function updateCamera(){ const sp=Math.sin(camPhi),cp=Math.cos(camPhi),st=Math.sin(camTheta),ct=Math.cos(camTheta); camera.position.set(camTarget.x+camRadius*sp*ct, camTarget.y+camRadius*cp, camTarget.z+camRadius*sp*st); camera.lookAt(camTarget); camera.updateMatrixWorld(true); }
+
+    function applyI18N(){
+        document.querySelectorAll('[data-i18n]').forEach(el=>{ const k=el.getAttribute('data-i18n'); if(L[k]!=null) el.textContent=L[k]; });
+        document.querySelector('.header h1').textContent=L.headH;
+        document.getElementById('h-sub').textContent=L.headS;
+        document.getElementById('ro-phase').textContent=L.phIdle;
+        document.title=L.headH.replace(/^[^\wА-Яа-яЁё]+/, ''); document.documentElement.lang=LANG;
+    }
+
+    function animate(){
+        requestAnimationFrame(animate);
+        const dt=Math.min(clock.getDelta(),0.05);
+        if (digging){ stepCycle(dt); recompute(); }
+        updateKinematics();
+        updateLabels();
+        renderer.render(scene, camera);
+    }
+
+    init();
+    </script>
+</body>
+</html>

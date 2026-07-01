@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Принцип Бернулли</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { width: 100%; height: 100%; overflow: hidden; }
+        body {
+            font-family: 'Segoe UI', 'Inter', system-ui, sans-serif;
+            background: linear-gradient(135deg, #eef3fb 0%, #e6edf8 100%);
+            color: #16233f;
+        }
+        #canvas-container { position: absolute; inset: 0; }
+        #labels { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+        .label3d {
+            position: absolute; transform: translate(-50%, -50%);
+            font-size: 12.5px; font-weight: 800; padding: 2px 8px; border-radius: 7px;
+            background: rgba(255,255,255,0.92); border: 1px solid rgba(150,170,205,0.6);
+            box-shadow: 0 2px 8px rgba(40,60,110,0.16); white-space: nowrap;
+        }
+        .label3d.lo { color: #2563eb; } .label3d.hi { color: #dc2626; } .label3d.li { color: #15803d; } .label3d.w { color: #475569; }
+
+        .header {
+            position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+            text-align: center; z-index: 6; pointer-events: none; width: 92%;
+        }
+        .header h1 { font-size: 26px; font-weight: 800; color: #1b2a4a; text-shadow: 0 1px 0 rgba(255,255,255,0.7); }
+        .header p { font-size: 14px; color: #5a6b8c; margin-top: 4px; font-weight: 600; }
+
+        .panel {
+            position: absolute; z-index: 7; background: rgba(255,255,255,0.82);
+             
+            border: 1px solid rgba(150,170,205,0.5); border-radius: 16px;
+            box-shadow: 0 10px 34px rgba(40,60,110,0.14);
+        }
+        .control-panel { top: 92px; left: 22px; width: 320px; padding: 15px 18px; }
+        .info-panel { top: 92px; right: 22px; width: 304px; padding: 15px 18px; }
+
+        .param-group { margin-bottom: 12px; }
+        .param-label { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+        .param-name { font-size: 13px; font-weight: 700; color: #33405e; display: flex; align-items: center; gap: 6px; }
+        .param-icon { font-size: 15px; }
+        .param-value { font-size: 15px; font-weight: 800; color: #2563eb; font-variant-numeric: tabular-nums; }
+
+        input[type=range] {
+            -webkit-appearance: none; appearance: none; width: 100%; height: 6px;
+            border-radius: 6px; outline: none; cursor: pointer;
+            background: linear-gradient(90deg, #c4d2ec, #aebfe0);
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none; width: 18px; height: 18px;
+            border-radius: 50%; background: #fff; border: 3px solid #2563eb;
+            box-shadow: 0 2px 7px rgba(37,99,235,0.4); cursor: pointer;
+        }
+
+        .toggle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
+        .toggle-btn {
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+            padding: 9px 6px; border-radius: 10px; border: 1.5px solid rgba(150,170,205,0.6);
+            background: rgba(255,255,255,0.55); color: #44537a; font-size: 12.5px; font-weight: 700;
+            cursor: pointer; transition: all 0.16s;
+        }
+        .toggle-btn .dot { width: 9px; height: 9px; border-radius: 50%; background: #b7c2d8; transition: all 0.16s; }
+        .toggle-btn.active { background: rgba(37,99,235,0.12); border-color: #2563eb; color: #1b2a4a; }
+        .toggle-btn.active .dot { background: #2563eb; box-shadow: 0 0 7px rgba(37,99,235,0.8); }
+
+        .action-row { display: flex; gap: 8px; margin-top: 11px; }
+        .btn { flex: 1; padding: 9px; border: none; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.16s; color: #fff; }
+        .btn-play { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
+        .btn-reset { background: linear-gradient(135deg, #64748b, #475569); }
+        .btn:hover { filter: brightness(1.07); transform: translateY(-1px); }
+
+        .info-title { font-size: 15px; font-weight: 800; color: #1b2a4a; margin: 4px 0 9px; display: flex; align-items: center; gap: 7px; }
+        .readout { display: flex; justify-content: space-between; align-items: center; padding: 5.5px 0; border-bottom: 1px dashed rgba(150,170,205,0.45); font-size: 13px; }
+        .ro-name { color: #5a6b8c; font-weight: 600; }
+        .ro-val { font-weight: 800; color: #1b2a4a; font-variant-numeric: tabular-nums; }
+        .ro-val.lo { color: #2563eb; } .ro-val.hi { color: #dc2626; } .ro-val.li { color: #15803d; }
+
+        .liftbar { height: 11px; border-radius: 6px; background: rgba(150,170,205,0.3); overflow: hidden; margin-top: 8px; }
+        .liftbar > div { height: 100%; width: 0%; background: linear-gradient(90deg, #34d399, #15803d); transition: width 0.12s linear; }
+
+        .formula-panel {
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 7;
+            background: rgba(27,42,74,0.93); color: #eaf0fb; padding: 11px 22px; border-radius: 14px;
+            box-shadow: 0 10px 30px rgba(20,35,70,0.34); text-align: center; max-width: 72%;
+        }
+        .formula { font-family: 'Cambria Math','Times New Roman', serif; font-size: 18px; font-weight: 600; }
+        .formula .sep { color: #6b7da6; margin: 0 12px; }
+        .formula-note { font-size: 12.5px; color: #9fb2d8; margin-top: 5px; }
+
+        .hint {
+            position: absolute; bottom: 18px; left: 22px; z-index: 7; font-size: 12px; color: #5a6b8c;
+            background: rgba(255,255,255,0.72); padding: 7px 13px; border-radius: 9px;
+            border: 1px solid rgba(150,170,205,0.45);
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div id="labels"></div>
+
+    <div class="header">
+        <h1>✈️ Принцип Бернулли</h1>
+        <p><span>Обтекание крыла • быстрее поток — ниже давление — подъёмная сила</span></p>
+    </div>
+
+    <div class="panel control-panel">
+        <div class="param-group">
+            <div class="param-label">
+                <span class="param-name"><span class="param-icon">💨</span><span data-i18n="vLabel">Скорость потока v</span></span>
+                <span class="param-value" id="v-value">120 м/с</span>
+            </div>
+            <input type="range" id="vel" min="40" max="250" step="5" value="120">
+        </div>
+        <div class="param-group">
+            <div class="param-label">
+                <span class="param-name"><span class="param-icon">📐</span><span data-i18n="aoaLabel">Угол атаки α</span></span>
+                <span class="param-value" id="aoa-value">6°</span>
+            </div>
+            <input type="range" id="aoa" min="-6" max="18" step="1" value="6">
+        </div>
+        <div class="param-group">
+            <div class="param-label">
+                <span class="param-name"><span class="param-icon">🌫️</span><span data-i18n="rhoLabel">Плотность воздуха ρ</span></span>
+                <span class="param-value" id="rho-value">1.22 кг/м³</span>
+            </div>
+            <input type="range" id="rho" min="0.4" max="1.5" step="0.01" value="1.22">
+        </div>
+
+        <div class="toggle-grid">
+            <button class="toggle-btn active" id="t-stream"><span class="dot"></span><span data-i18n="tStream">Линии тока</span></button>
+            <button class="toggle-btn active" id="t-pressure"><span class="dot"></span><span data-i18n="tPressure">Давление</span></button>
+            <button class="toggle-btn active" id="t-lift"><span class="dot"></span><span data-i18n="tLift">Подъёмная сила</span></button>
+            <button class="toggle-btn active" id="t-lbl"><span class="dot"></span><span data-i18n="tLbl">Подписи</span></button>
+        </div>
+
+        <div class="action-row">
+            <button class="btn btn-play" id="btn-play" data-i18n="pause">⏸ Пауза</button>
+            <button class="btn btn-reset" id="btn-reset" data-i18n="reset">↺ Сброс</button>
+        </div>
+    </div>
+
+    <div class="panel info-panel">
+        <div class="info-title">📊 <span data-i18n="infoTitle">Параметры</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roVtop">Скорость сверху vₜₒₚ</span><span class="ro-val lo" id="ro-vtop">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roVbot">Скорость снизу v_bot</span><span class="ro-val hi" id="ro-vbot">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roDp">Разность давлений Δp</span><span class="ro-val" id="ro-dp">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roCl">Коэффициент Cₗ</span><span class="ro-val" id="ro-cl">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roLift">Подъёмная сила L</span><span class="ro-val li" id="ro-lift">—</span></div>
+        <div class="liftbar"><div id="lift-fill"></div></div>
+    </div>
+
+    <div class="formula-panel">
+        <div class="formula">
+            p + ½·ρ·v² = const
+            <span class="sep">|</span>
+            L = ½·ρ·v²·S·Cₗ
+        </div>
+        <div class="formula-note" data-i18n="note">Над крылом поток быстрее → давление меньше; под крылом медленнее → давление больше. Разность давлений создаёт подъёмную силу.</div>
+    </div>
+
+    <div class="hint"><span data-i18n="hint">ЛКМ — вращение • ПКМ — перемещение • Колесо — зум</span></div>
+
+    <script src="../../libs/vendor/three-r128/three.min.js"></script>
+    <script>
+    const LANG = (new URLSearchParams(window.location.search).get('lang')) || 'ru';
+    const I18N = {
+        ru: { headH:'✈️ Принцип Бернулли', headS:'Обтекание крыла • быстрее поток — ниже давление — подъёмная сила',
+              vLabel:'Скорость потока v', aoaLabel:'Угол атаки α', rhoLabel:'Плотность воздуха ρ',
+              tStream:'Линии тока', tPressure:'Давление', tLift:'Подъёмная сила', tLbl:'Подписи',
+              play:'▶ Пуск', pause:'⏸ Пауза', reset:'↺ Сброс', infoTitle:'Параметры',
+              roVtop:'Скорость сверху vₜₒₚ', roVbot:'Скорость снизу v_bot', roDp:'Разность давлений Δp', roCl:'Коэффициент Cₗ', roLift:'Подъёмная сила L',
+              note:'Над крылом поток быстрее → давление меньше; под крылом медленнее → давление больше. Разность давлений создаёт подъёмную силу.',
+              hint:'ЛКМ — вращение • ПКМ — перемещение • Колесо — зум',
+              lLow:'низкое давление (быстро)', lHigh:'высокое давление (медленно)', lLift:'подъёмная сила L', lWing:'крыло (профиль)',
+              uMs:'м/с', uRho:'кг/м³', uPa:'Па', uN:'Н', stall:'СРЫВ ПОТОКА' },
+        kz: { headH:'✈️ Бернулли принципі', headS:'Қанатты ағынмен орау • ағын жылдам — қысым төмен — көтеру күші',
+              vLabel:'Ағын жылдамдығы v', aoaLabel:'Шабуыл бұрышы α', rhoLabel:'Ауа тығыздығы ρ',
+              tStream:'Ағын сызықтары', tPressure:'Қысым', tLift:'Көтеру күші', tLbl:'Жазулар',
+              play:'▶ Қосу', pause:'⏸ Тоқтату', reset:'↺ Қайтару', infoTitle:'Параметрлер',
+              roVtop:'Үстіңгі жылдамдық vₜₒₚ', roVbot:'Астыңғы жылдамдық v_bot', roDp:'Қысым айырымы Δp', roCl:'Коэффициент Cₗ', roLift:'Көтеру күші L',
+              note:'Қанат үстінде ағын жылдам → қысым аз; астында баяу → қысым көп. Қысым айырымы көтеру күшін тудырады.',
+              hint:'СБ — айналдыру • ОБ — жылжыту • Дөңгелек — масштаб',
+              lLow:'төмен қысым (жылдам)', lHigh:'жоғары қысым (баяу)', lLift:'көтеру күші L', lWing:'қанат (профиль)',
+              uMs:'м/с', uRho:'кг/м³', uPa:'Па', uN:'Н', stall:'АҒЫН ҮЗІЛУІ' },
+        en: { headH:'✈️ Bernoulli\'s Principle', headS:'Airflow over a wing • faster flow — lower pressure — lift',
+              vLabel:'Flow speed v', aoaLabel:'Angle of attack α', rhoLabel:'Air density ρ',
+              tStream:'Streamlines', tPressure:'Pressure', tLift:'Lift force', tLbl:'Labels',
+              play:'▶ Play', pause:'⏸ Pause', reset:'↺ Reset', infoTitle:'Parameters',
+              roVtop:'Speed above vₜₒₚ', roVbot:'Speed below v_bot', roDp:'Pressure difference Δp', roCl:'Coefficient Cₗ', roLift:'Lift force L',
+              note:'Above the wing the flow is faster → lower pressure; below it is slower → higher pressure. The pressure difference produces lift.',
+              hint:'LMB — rotate • RMB — pan • Wheel — zoom',
+              lLow:'low pressure (fast)', lHigh:'high pressure (slow)', lLift:'lift force L', lWing:'wing (airfoil)',
+              uMs:'m/s', uRho:'kg/m³', uPa:'Pa', uN:'N', stall:'STALL' }
+    };
+    const L = I18N[LANG] || I18N.ru;
+
+    // ---- physics ----
+    const WING_AREA = 16;     // m² (assumed)
+    const CHORD = 4;          // visual chord length (units)
+    let vInf = 120;           // m/s
+    let aoaDeg = 6;           // angle of attack (deg)
+    let rho = 1.22;           // kg/m³
+    let showStream = true, showPressure = true, showLift = true, showLbl = true;
+    let playing = true, simT = 0;
+
+    function aoaRad() { return aoaDeg * Math.PI / 180; }
+    // simplified thin-airfoil lift coefficient with stall after ~15°
+    function cL() {
+        const a = aoaDeg;
+        if (a <= 15) return 2 * Math.PI * aoaRad() * 0.9 + 0.25;   // +0.25 camber offset
+        // post-stall: lift drops
+        const peak = 2 * Math.PI * (15 * Math.PI / 180) * 0.9 + 0.25;
+        return Math.max(0.4, peak - (a - 15) * 0.12);
+    }
+    function stalled() { return aoaDeg > 15; }
+    function lift() { return 0.5 * rho * vInf * vInf * WING_AREA * cL(); }   // N
+    // top/bottom speeds from circulation idea: vtop = v(1+k·cL), vbot = v(1-k·cL)
+    function vTop() { return vInf * (1 + 0.18 * cL()); }
+    function vBot() { return vInf * (1 - 0.12 * cL()); }
+    function deltaP() { return 0.5 * rho * (vTop() * vTop() - vBot() * vBot()); }  // Pa
+
+    // ---- three.js ----
+    let scene, camera, renderer, root, wing, streamGroup, pressureGroup, liftArrow;
+    let streamlines = [];   // { pts:[], dots:[] }
+    const clock = new THREE.Clock();
+    const container = document.getElementById('canvas-container');
+    const labelLayer = document.getElementById('labels');
+
+    let camTheta = 1.2, camPhi = 1.28, camRadius = 14;
+    const camTarget = new THREE.Vector3(0, 0.2, 0);
+    let dragMode = 0, lastX = 0, lastY = 0;
+
+    function init() {
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xeef3fb);
+        scene.fog = new THREE.Fog(0xeef3fb, 26, 64);
+
+        camera = new THREE.PerspectiveCamera(47, window.innerWidth / window.innerHeight, 0.1, 200);
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        container.appendChild(renderer.domElement);
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.95));
+        const key = new THREE.DirectionalLight(0xffffff, 0.45); key.position.set(4, 9, 8); scene.add(key);
+
+        root = new THREE.Group(); scene.add(root);
+
+        buildWing();
+        streamGroup = new THREE.Group(); root.add(streamGroup);
+        pressureGroup = new THREE.Group(); root.add(pressureGroup);
+        liftArrow = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 0), 2, 0x15803d, 0.45, 0.3);
+        root.add(liftArrow);
+
+        makeLabels();
+        applyI18N();
+        setupControls();
+        rebuild();
+        updateCamera();
+        animate();
+    }
+
+    // airfoil cross-section (NACA-like), extruded along z
+    function airfoilShape() {
+        const shape = new THREE.Shape();
+        const N = 40, t = 0.13, c = CHORD;
+        const camber = 0.05;
+        const top = [], bot = [];
+        for (let i = 0; i <= N; i++) {
+            const x = i / N;                          // 0..1
+            const yt = 5 * t * (0.2969 * Math.sqrt(x) - 0.1260 * x - 0.3516 * x * x + 0.2843 * x * x * x - 0.1015 * x * x * x * x);
+            const yc = camber * (x < 0.4 ? (x / 0.4) : (1 - x) / 0.6) ;   // simple camber hump
+            top.push([(x - 0.25) * c, (yc + yt) * c]);
+            bot.push([(x - 0.25) * c, (yc - yt) * c]);
+        }
+        shape.moveTo(top[0][0], top[0][1]);
+        for (let i = 1; i < top.length; i++) shape.lineTo(top[i][0], top[i][1]);
+        for (let i = bot.length - 1; i >= 0; i--) shape.lineTo(bot[i][0], bot[i][1]);
+        return shape;
+    }
+
+    function buildWing() {
+        wing = new THREE.Group(); root.add(wing);
+        const geo = new THREE.ExtrudeGeometry(airfoilShape(), { depth: 5, bevelEnabled: false, steps: 1 });
+        geo.translate(0, 0, -2.5);
+        const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0xd7deea, metalness: 0.5, roughness: 0.4 }));
+        wing.add(mesh);
+        const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: 0x8794ad, transparent: true, opacity: 0.4 }));
+        wing.add(edges);
+    }
+
+    // streamline y-profile: bends over/under the airfoil; offset = vertical lane
+    function buildStreamlines() {
+        streamGroup.clear ? streamGroup.clear() : (() => { while (streamGroup.children.length) streamGroup.remove(streamGroup.children[0]); })();
+        streamlines = [];
+        const lanes = [-2.2, -1.6, -1.05, -0.55, 0.55, 1.05, 1.6, 2.2];   // skip lane through wing center
+        const zRows = [-1.6, 0, 1.6];
+        zRows.forEach(z => lanes.forEach(lane => {
+            const pts = [];
+            for (let i = 0; i <= 60; i++) {
+                const x = -7 + 14 * i / 60;
+                // deflection near wing (x in [-1.75,2.25]); squeeze lane toward/away
+                const prox = Math.exp(-Math.pow(x / 2.4, 2));
+                const bend = (lane > 0 ? 1 : -1) * prox * (0.5 + Math.abs(lane) * 0.05);
+                const y = lane + bend * (lane > 0 ? 0.7 : 0.4);
+                pts.push(new THREE.Vector3(x, y, z));
+            }
+            const geo = new THREE.BufferGeometry().setFromPoints(pts);
+            const line = new THREE.Line(geo, new THREE.LineBasicMaterial({ color: 0x93b4e6, transparent: true, opacity: 0.45 }));
+            streamGroup.add(line);
+            // moving dots
+            const dots = [];
+            for (let d = 0; d < 3; d++) {
+                const m = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), new THREE.MeshBasicMaterial({ color: lane > 0 ? 0x2563eb : 0xdc2626 }));
+                m.userData = { off: d / 3 + Math.random() * 0.1 }; streamGroup.add(m); dots.push(m);
+            }
+            streamlines.push({ pts, dots, lane });
+        }));
+    }
+
+    function buildPressure() {
+        while (pressureGroup.children.length) { const c = pressureGroup.children[0]; c.geometry && c.geometry.dispose(); pressureGroup.remove(c); }
+        // low pressure (above, blue) and high pressure (below, red) zones as translucent slabs
+        const low = new THREE.Mesh(new THREE.PlaneGeometry(5, 1.6),
+            new THREE.MeshBasicMaterial({ color: 0x2563eb, transparent: true, opacity: 0.16, side: THREE.DoubleSide }));
+        low.rotation.x = -Math.PI / 2; low.position.set(0, 0.95, 0); low.userData.kind = 'low'; pressureGroup.add(low);
+        const high = new THREE.Mesh(new THREE.PlaneGeometry(5, 1.6),
+            new THREE.MeshBasicMaterial({ color: 0xdc2626, transparent: true, opacity: 0.16, side: THREE.DoubleSide }));
+        high.rotation.x = -Math.PI / 2; high.position.set(0, -0.95, 0); high.userData.kind = 'high'; pressureGroup.add(high);
+        // pressure arrows: down-pull on top (suction), up-push on bottom
+        for (let i = -1; i <= 1; i++) {
+            const a1 = new THREE.ArrowHelper(new THREE.Vector3(0, -1, 0), new THREE.Vector3(i * 1.3, 1.4, 0), 0.6, 0x2563eb, 0.18, 0.12); pressureGroup.add(a1);
+            const a2 = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(i * 1.3, -1.4, 0), 0.6, 0xdc2626, 0.18, 0.12); pressureGroup.add(a2);
+        }
+    }
+
+    function rebuild() {
+        wing.rotation.z = aoaRad();        // pitch the airfoil to angle of attack
+        buildStreamlines();
+        buildPressure();
+        applyVisibility();
+        recalc();
+    }
+
+    function applyVisibility() {
+        streamGroup.visible = showStream;
+        pressureGroup.visible = showPressure;
+        liftArrow.visible = showLift;
+    }
+
+    function recalc() {
+        const Lift = lift();
+        setTxt('ro-vtop', vTop().toFixed(0) + ' ' + L.uMs);
+        setTxt('ro-vbot', vBot().toFixed(0) + ' ' + L.uMs);
+        setTxt('ro-dp', fmt(deltaP()) + ' ' + L.uPa);
+        setTxt('ro-cl', cL().toFixed(2) + (stalled() ? '  ⚠ ' + L.stall : ''));
+        setTxt('ro-lift', fmt(Lift) + ' ' + L.uN);
+        document.getElementById('ro-cl').className = 'ro-val' + (stalled() ? ' hi' : '');
+        // lift bar normalized to a reference (max ~ at v=250, a=15)
+        const Lref = 0.5 * 1.22 * 250 * 250 * WING_AREA * (2 * Math.PI * (15 * Math.PI / 180) * 0.9 + 0.25);
+        document.getElementById('lift-fill').style.width = Math.max(0, Math.min(100, Lift / Lref * 100)) + '%';
+        // lift arrow length
+        liftArrow.setLength(Math.max(0.3, Math.min(3.4, Lift / 90000)), 0.4, 0.3);
+        // pressure intensity by opacity
+        const inten = Math.min(0.4, 0.08 + Math.abs(deltaP()) / 60000);
+        pressureGroup.children.forEach(c => { if (c.userData.kind === 'low') c.material.opacity = inten; if (c.userData.kind === 'high') c.material.opacity = inten; });
+    }
+    function fmt(x) { return Math.abs(x) >= 1e6 ? (x / 1e6).toFixed(2) + '·10⁶' : Math.abs(x) >= 1e3 ? (x / 1e3).toFixed(1) + '·10³' : x.toFixed(0); }
+
+    function setTxt(id, v) { const el = document.getElementById(id); if (el) el.textContent = v; }
+
+    // ---- labels ----
+    let lblLow, lblHigh, lblLift, lblWing;
+    function makeLabels() {
+        const mk = (cls) => { const d = document.createElement('div'); d.className = 'label3d ' + cls; labelLayer.appendChild(d); return d; };
+        lblLow = mk('lo'); lblHigh = mk('hi'); lblLift = mk('li'); lblWing = mk('w');
+    }
+    function proj(el, p, show, text) {
+        if (!show) { el.style.display = 'none'; return; }
+        const v = p.clone().project(camera);
+        if (v.z > 1) { el.style.display = 'none'; return; }
+        el.style.display = 'block'; if (text != null) el.textContent = text;
+        el.style.left = (v.x * 0.5 + 0.5) * window.innerWidth + 'px';
+        el.style.top = (-v.y * 0.5 + 0.5) * window.innerHeight + 'px';
+    }
+    function updateLabels() {
+        proj(lblLow, new THREE.Vector3(0, 1.9, 0), showLbl && showPressure, L.lLow);
+        proj(lblHigh, new THREE.Vector3(0, -1.9, 0), showLbl && showPressure, L.lHigh);
+        proj(lblLift, new THREE.Vector3(0.5, liftArrow.position.y + Math.max(0.3, Math.min(3.4, lift() / 90000)) + 0.3, 0), showLbl && showLift, L.lLift);
+        proj(lblWing, new THREE.Vector3(2.6, -0.2, 0), showLbl, L.lWing);
+    }
+
+    function updateCamera() {
+        const sp = Math.sin(camPhi), cp = Math.cos(camPhi), st = Math.sin(camTheta), ct = Math.cos(camTheta);
+        camera.position.set(camTarget.x + camRadius * sp * ct, camTarget.y + camRadius * cp, camTarget.z + camRadius * sp * st);
+        camera.lookAt(camTarget);
+    }
+
+    function setupControls() {
+        document.getElementById('vel').addEventListener('input', e => { vInf = +e.target.value; setTxt('v-value', vInf + ' ' + L.uMs); recalc(); });
+        document.getElementById('aoa').addEventListener('input', e => { aoaDeg = +e.target.value; setTxt('aoa-value', aoaDeg + '°'); rebuild(); });
+        document.getElementById('rho').addEventListener('input', e => { rho = +e.target.value; setTxt('rho-value', rho.toFixed(2) + ' ' + L.uRho); recalc(); });
+
+        const tog = (id, fn) => { const el = document.getElementById(id); el.addEventListener('click', () => { el.classList.toggle('active'); fn(el.classList.contains('active')); }); };
+        tog('t-stream', v => { showStream = v; streamGroup.visible = v; });
+        tog('t-pressure', v => { showPressure = v; pressureGroup.visible = v; });
+        tog('t-lift', v => { showLift = v; liftArrow.visible = v; });
+        tog('t-lbl', v => showLbl = v);
+
+        document.getElementById('btn-play').addEventListener('click', () => {
+            playing = !playing; document.getElementById('btn-play').textContent = playing ? L.pause : L.play;
+        });
+        document.getElementById('btn-reset').addEventListener('click', () => {
+            vInf = 120; aoaDeg = 6; rho = 1.22; playing = true; showStream = showPressure = showLift = showLbl = true;
+            document.getElementById('vel').value = 120; document.getElementById('aoa').value = 6; document.getElementById('rho').value = 1.22;
+            setTxt('v-value', '120 ' + L.uMs); setTxt('aoa-value', '6°'); setTxt('rho-value', '1.22 ' + L.uRho);
+            ['t-stream', 't-pressure', 't-lift', 't-lbl'].forEach(id => document.getElementById(id).classList.add('active'));
+            document.getElementById('btn-play').textContent = L.pause;
+            camTheta = 1.2; camPhi = 1.28; camRadius = 14; camTarget.set(0, 0.2, 0);
+            rebuild(); updateCamera();
+        });
+
+        const el = renderer.domElement;
+        el.addEventListener('contextmenu', e => e.preventDefault());
+        el.addEventListener('mousedown', e => { dragMode = (e.button === 2 || e.shiftKey) ? 2 : 1; lastX = e.clientX; lastY = e.clientY; });
+        window.addEventListener('mousemove', e => {
+            if (!dragMode) return;
+            const dx = e.clientX - lastX, dy = e.clientY - lastY; lastX = e.clientX; lastY = e.clientY;
+            if (dragMode === 1) { camTheta -= dx * 0.005; camPhi = Math.max(0.18, Math.min(Math.PI - 0.18, camPhi - dy * 0.005)); }
+            else { const ps = camRadius * 0.0016; const right = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0); const up = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 1); camTarget.addScaledVector(right, -dx * ps); camTarget.addScaledVector(up, dy * ps); }
+            updateCamera();
+        });
+        window.addEventListener('mouseup', () => dragMode = 0);
+        el.addEventListener('wheel', e => { e.preventDefault(); camRadius = Math.max(8, Math.min(32, camRadius + e.deltaY * 0.014)); updateCamera(); }, { passive: false });
+        el.addEventListener('touchstart', e => { const t = e.touches[0]; dragMode = 1; lastX = t.clientX; lastY = t.clientY; }, { passive: true });
+        el.addEventListener('touchmove', e => { if (!dragMode) return; const t = e.touches[0]; const dx = t.clientX - lastX, dy = t.clientY - lastY; lastX = t.clientX; lastY = t.clientY; camTheta -= dx * 0.006; camPhi = Math.max(0.18, Math.min(Math.PI - 0.18, camPhi - dy * 0.006)); updateCamera(); e.preventDefault(); }, { passive: false });
+        window.addEventListener('touchend', () => dragMode = 0);
+        window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+    }
+
+    function applyI18N() {
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const k = el.getAttribute('data-i18n');
+            if (L[k] != null) { if (k === 'note') el.innerHTML = L[k]; else el.textContent = L[k]; }
+        });
+        document.querySelector('.header h1').textContent = L.headH;
+        document.querySelector('.header p span').textContent = L.headS;
+        setTxt('v-value', vInf + ' ' + L.uMs); setTxt('aoa-value', aoaDeg + '°'); setTxt('rho-value', rho.toFixed(2) + ' ' + L.uRho);
+        document.title = L.headH.replace(/^[^\wА-Яа-яЁё]+/, '');
+        document.documentElement.lang = LANG;
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+        const dt = Math.min(clock.getDelta(), 0.05);
+        if (playing) simT += dt;
+
+        // animate flow dots; top lanes (positive) move faster (Bernoulli)
+        if (showStream) {
+            const spdTop = vInf / 120 * 0.16 * (1 + 0.18 * cL());
+            const spdBot = vInf / 120 * 0.16 * (1 - 0.12 * cL());
+            streamlines.forEach(sl => {
+                const spd = sl.lane > 0 ? spdTop : spdBot;
+                sl.dots.forEach(dot => {
+                    const u = (simT * spd + dot.userData.off) % 1;
+                    const f = u * (sl.pts.length - 1); const i = Math.floor(f), fr = f - i;
+                    dot.position.lerpVectors(sl.pts[i], sl.pts[Math.min(i + 1, sl.pts.length - 1)], fr);
+                });
+            });
+        }
+        updateLabels();
+        renderer.render(scene, camera);
+    }
+
+    init();
+    </script>
+</body>
+</html>

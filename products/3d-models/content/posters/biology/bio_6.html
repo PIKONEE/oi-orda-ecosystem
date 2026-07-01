@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="page_title">Почки и мочевыделительная система</title>
+    <link rel="stylesheet" href="_poster.css">
+</head>
+<body>
+<div id="canvas-container"></div>
+<div id="header">
+    <h1 data-i18n="header_title">Мочевыделительная система</h1>
+    <p data-i18n="header_subtitle">Интерактивная анатомическая модель — 6 ключевых органов</p>
+</div>
+<div id="hint" data-i18n="hint">Кликните по любому органу, чтобы узнать больше</div>
+<button id="reset-btn" data-i18n="reset_btn" data-i18n-title="reset_btn_title" title="Сбросить вид">↺ Сбросить вид</button>
+<div id="info-panel" aria-hidden="true"></div>
+<div id="legend"></div>
+<div id="hover-label"></div>
+<div id="loading"><div class="spinner"></div><div id="loading-text" data-i18n="loading">Загрузка модели…</div></div>
+
+<script type="importmap">
+    { "imports": { "three": "../../libs/vendor/three-0.160.0/three.module.js", "three/addons/": "../../libs/vendor/three-0.160.0/addons/" } }
+</script>
+
+<script type="module">
+    import { initPoster } from './_poster_lib.js';
+
+    const I18N = {
+        ru: {
+            page_title: 'Почки и мочевыделительная система',
+            header_title: 'Мочевыделительная система',
+            header_subtitle: 'Интерактивная анатомическая модель — 6 ключевых органов',
+            hint: 'Кликните по любому органу, чтобы узнать больше',
+            reset_btn: '↺ Сбросить вид', reset_btn_title: 'Сбросить вид', close_btn_label: 'Закрыть',
+            loading: 'Загрузка модели…', error_load: 'Не удалось загрузить kidneys.glb', error_no_mesh: 'В модели нет меша',
+            facts_label: 'Интересный факт',
+            zones: {
+                kidney_r: { title: 'Правая почка', desc: 'Бобовидный парный орган, расположенный в забрюшинном пространстве на уровне 12-го грудного — 3-го поясничного позвонков. Правая почка обычно находится чуть ниже левой из-за давления печени. Фильтрует кровь, образуя мочу: за сутки через почки проходит около 1500 литров крови, из которых образуется 1,5–2 литра мочи.', facts: 'Каждая почка содержит около 1 миллиона нефронов — структурных единиц, в которых происходит фильтрация крови.' },
+                kidney_l: { title: 'Левая почка', desc: 'Парный орган, расположенный симметрично правой почке, но немного выше. Состоит из коркового вещества (содержит почечные клубочки) и мозгового вещества (почечные пирамиды). Помимо фильтрации крови, почки регулируют артериальное давление, водно-солевой баланс и вырабатывают гормон эритропоэтин для образования эритроцитов.', facts: 'Через почки проходит около 20% всего объёма крови, который сердце выбрасывает за минуту — это самый высокий процент среди органов.' },
+                ureter_r: { title: 'Правый мочеточник', desc: 'Трубчатый орган длиной 25–30 см и диаметром 4–7 мм, соединяющий правую почку с мочевым пузырём. Стенки мочеточника состоят из гладких мышц, которые совершают перистальтические сокращения, проталкивая мочу к мочевому пузырю порциями (1–4 раза в минуту).', facts: 'Мочеточник имеет три физиологических сужения — наиболее частые места застревания камней при мочекаменной болезни.' },
+                ureter_l: { title: 'Левый мочеточник', desc: 'Симметричен правому мочеточнику. Впадает в мочевой пузырь, прободая его стенку под острым углом — это создаёт клапанный механизм, который не позволяет моче возвращаться обратно в почку.', facts: 'Перистальтические волны мочеточника движутся со скоростью около 2–3 см в секунду.' },
+                bladder: { title: 'Мочевой пузырь', desc: 'Полый мышечный орган в полости малого таза, служит резервуаром для накопления мочи. Может растягиваться до объёма 500–700 мл, но позыв к мочеиспусканию возникает уже при 200–300 мл. Стенка состоит из трёх слоёв гладких мышц (детрузор), которые сокращаются при опорожнении.', facts: 'Слизистая оболочка мочевого пузыря — одна из самых растяжимых тканей тела: она может увеличить площадь поверхности в 6–10 раз.' },
+                urethra: { title: 'Мочеиспускательный канал', desc: 'Трубчатый орган, через который моча выводится наружу. У мужчин его длина 18–22 см, у женщин — 3–5 см. Имеет два сфинктера: внутренний (непроизвольный) и наружный (произвольный), которые контролируют процесс мочеиспускания.', facts: 'Из-за более короткой длины уретры женщины в 8 раз чаще болеют инфекциями мочевыводящих путей, чем мужчины.' }
+            }
+        },
+        kz: {
+            page_title: 'Бүйрек және зәр шығару жүйесі',
+            header_title: 'Зәр шығару жүйесі',
+            header_subtitle: 'Интерактивті анатомиялық модель — 6 негізгі мүше',
+            hint: 'Толығырақ білу үшін кез келген мүшеге басыңыз',
+            reset_btn: '↺ Көріністі қалпына келтіру', reset_btn_title: 'Көріністі қалпына келтіру', close_btn_label: 'Жабу',
+            loading: 'Модель жүктелуде…', error_load: 'kidneys.glb файлын жүктеу мүмкін болмады', error_no_mesh: 'Модельде меш табылмады',
+            facts_label: 'Қызықты факт',
+            zones: {
+                kidney_r: { title: 'Оң жақ бүйрек', desc: 'Бұршақ тәрізді жұп мүше, 12-ші көкірек — 3-ші бел омыртқалары деңгейіндегі іш қуысының артқы кеңістігінде орналасқан. Оң жақ бүйрек әдетте бауырдың қысымына байланысты сол жақтан сәл төменде орналасады. Қанды сүзіп, зәр түзеді: тәулігіне бүйрек арқылы шамамен 1500 литр қан өтеді, оның 1,5–2 литры зәрге айналады.', facts: 'Әрбір бүйректе шамамен 1 миллион нефрон — қанды сүзу жүретін құрылымдық бірлік бар.' },
+                kidney_l: { title: 'Сол жақ бүйрек', desc: 'Оң жақ бүйрекке симметриялы орналасқан жұп мүше, бірақ сәл жоғарырақ. Қыртыс заттан (бүйрек шумақтарын қамтиды) және ми заттан (бүйрек пирамидалары) тұрады. Қанды сүзуден басқа, бүйректер артериялық қысымды, су-тұз балансын реттейді және эритроциттер түзу үшін эритропоэтин гормонын шығарады.', facts: 'Жүректің минут сайын шығаратын барлық қан көлемінің шамамен 20%-ы бүйрек арқылы өтеді — бұл мүшелер арасындағы ең жоғары пайыз.' },
+                ureter_r: { title: 'Оң жақ зәр ағары', desc: 'Ұзындығы 25–30 см, диаметрі 4–7 мм болатын түтік тәрізді мүше, оң бүйректі қуықпен жалғайды. Қабырғалары тегіс бұлшықеттерден тұрады, олар перистальтикалық жиырылыстар жасап, зәрді қуыққа порциялап жылжытады (минутына 1–4 рет).', facts: 'Зәр ағарының үш физиологиялық тарылуы бар — бұл бүйрек тас ауруында тастар жиі кептелетін орындар.' },
+                ureter_l: { title: 'Сол жақ зәр ағары', desc: 'Оң жақ зәр ағарына симметриялы. Қуықтың қабырғасын өткір бұрышпен тесіп, оған құяды — бұл зәрді кері бүйрекке қайтармайтын клапандық механизм жасайды.', facts: 'Зәр ағарының перистальтикалық толқындары секундына шамамен 2–3 см жылдамдықпен қозғалады.' },
+                bladder: { title: 'Қуық', desc: 'Кіші жамбас қуысында орналасқан қуыс бұлшықетті мүше, зәрді жинақтауға арналған резервуар қызметін атқарады. 500–700 мл көлеміне дейін созыла алады, бірақ зәр шығаруға қажет 200–300 мл-де пайда болады.', facts: 'Қуықтың кілегейлі қабығы — дененің ең созылғыш тіндерінің бірі: ол беткі ауданын 6–10 есеге арттыра алады.' },
+                urethra: { title: 'Зәр шығару каналы', desc: 'Зәрді сыртқа шығаратын түтік тәрізді мүше. Ер адамдарда ұзындығы 18–22 см, әйелдерде — 3–5 см. Зәр шығару процесін бақылайтын екі сфинктері бар: ішкі (еріксіз) және сыртқы (ерікті).', facts: 'Зәр шығару каналының қысқа болуына байланысты әйелдер ер адамдармен салыстырғанда зәр шығару жолдары инфекцияларымен 8 есе жиі ауырады.' }
+            }
+        },
+        en: {
+            page_title: 'Kidneys & Urinary System',
+            header_title: 'Urinary System',
+            header_subtitle: 'Interactive anatomical model — 6 key organs',
+            hint: 'Click any organ to learn more',
+            reset_btn: '↺ Reset view', reset_btn_title: 'Reset view', close_btn_label: 'Close',
+            loading: 'Loading model…', error_load: 'Failed to load kidneys.glb', error_no_mesh: 'No mesh found in the model',
+            facts_label: 'Did you know?',
+            zones: {
+                kidney_r: { title: 'Right Kidney', desc: 'A paired bean-shaped organ located in the retroperitoneal space at the level of the 12th thoracic to 3rd lumbar vertebrae. The right kidney usually sits slightly lower than the left due to pressure from the liver. It filters blood to produce urine: about 1500 liters of blood pass through the kidneys daily, producing 1.5–2 liters of urine.', facts: 'Each kidney contains about 1 million nephrons — the structural units where blood filtration takes place.' },
+                kidney_l: { title: 'Left Kidney', desc: 'Paired organ located symmetrically to the right kidney but slightly higher. It consists of the cortex (containing renal glomeruli) and the medulla (renal pyramids). In addition to filtering blood, the kidneys regulate blood pressure, water-salt balance, and produce the hormone erythropoietin for red blood cell formation.', facts: 'About 20% of the total blood volume pumped by the heart per minute passes through the kidneys — the highest percentage among all organs.' },
+                ureter_r: { title: 'Right Ureter', desc: 'A tubular organ 25–30 cm long and 4–7 mm in diameter, connecting the right kidney to the bladder. Its walls consist of smooth muscles that perform peristaltic contractions, pushing urine toward the bladder in portions (1–4 times per minute).', facts: 'The ureter has three physiological narrowings — the most common sites for kidney stones to get stuck during urolithiasis.' },
+                ureter_l: { title: 'Left Ureter', desc: 'Symmetric to the right ureter. It enters the bladder by piercing its wall at an acute angle, creating a valve mechanism that prevents urine from flowing back to the kidney.', facts: 'Peristaltic waves in the ureter travel at about 2–3 cm per second.' },
+                bladder: { title: 'Urinary Bladder', desc: 'A hollow muscular organ in the pelvic cavity that serves as a reservoir for storing urine. It can stretch to a volume of 500–700 mL, but the urge to urinate arises at 200–300 mL.', facts: 'The bladder mucosa is one of the most stretchy tissues in the body — it can increase its surface area 6–10 times.' },
+                urethra: { title: 'Urethra', desc: 'A tubular organ through which urine is excreted from the body. In men its length is 18–22 cm, in women 3–5 cm. It has two sphincters: internal (involuntary) and external (voluntary), which control the urination process.', facts: 'Due to the shorter length of the urethra, women suffer from urinary tract infections 8 times more often than men.' }
+            }
+        }
+    };
+
+    const ZONES = [
+        { id: 'kidney_r', subtitle: 'Ren dexter',      color: 0xff6b6b },
+        { id: 'kidney_l', subtitle: 'Ren sinister',    color: 0x4d96ff },
+        { id: 'ureter_r', subtitle: 'Ureter dexter',   color: 0xffd93d },
+        { id: 'ureter_l', subtitle: 'Ureter sinister', color: 0x6bcb77 },
+        { id: 'bladder',  subtitle: 'Vesica urinaria', color: 0xc77dff },
+        { id: 'urethra',  subtitle: 'Urethra',         color: 0xff9f45 }
+    ];
+
+    // classify(x, y, z): x=right, y=up, z=front
+    // Kidneys at top, ureters in middle, bladder lower, urethra at bottom
+    function classify(x, y, z) {
+        // Urethra — very bottom center
+        if (y < -0.7 && Math.abs(x) < 0.25) return 5;
+        // Bladder — lower area
+        if (y < -0.35) return 4;
+        // Kidneys — upper area
+        if (y > 0.15) {
+            return x > 0 ? 0 : 1; // right / left kidney
+        }
+        // Ureters — middle connecting area
+        return x > 0 ? 2 : 3; // right / left ureter
+    }
+
+    initPoster({ modelFile: 'kidneys.glb', zones: ZONES, classify, i18n: I18N });
+</script>
+</body>
+</html>

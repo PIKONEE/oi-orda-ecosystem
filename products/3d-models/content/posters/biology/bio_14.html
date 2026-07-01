@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="page_title">Цветок в разрезе — анатомическая модель</title>
+    <link rel="stylesheet" href="_poster.css">
+</head>
+<body>
+<div id="canvas-container"></div>
+<div id="header">
+    <h1 data-i18n="header_title">Строение цветка</h1>
+    <p data-i18n="header_subtitle">Интерактивная модель в разрезе — 5 органов цветка</p>
+</div>
+<div id="hint" data-i18n="hint">Кликните по любой части цветка, чтобы узнать больше</div>
+<button id="reset-btn" data-i18n="reset_btn" data-i18n-title="reset_btn_title" title="Сбросить вид">↺ Сбросить вид</button>
+<div id="info-panel" aria-hidden="true">
+    <button class="close-btn" id="close-btn" data-i18n-aria-label="close_btn_label" aria-label="Закрыть">×</button>
+    <div class="info-header"><span class="info-dot" id="info-dot"></span><div><h2 id="info-title">Название</h2><span id="info-subtitle"></span></div></div>
+    <p id="info-desc">Описание</p>
+    <div id="info-facts"></div>
+</div>
+<div id="legend"></div>
+<div id="hover-label"></div>
+<div id="loading"><div class="spinner"></div><div id="loading-text" data-i18n="loading">Загрузка модели…</div></div>
+
+<script type="importmap">
+    { "imports": { "three": "../../libs/vendor/three-0.160.0/three.module.js", "three/addons/": "../../libs/vendor/three-0.160.0/addons/" } }
+</script>
+
+<script type="module">
+    import { initPoster } from './_poster_lib.js';
+
+    const I18N = {
+        ru: {
+            page_title: 'Цветок в разрезе — анатомическая модель',
+            header_title: 'Строение цветка',
+            header_subtitle: 'Интерактивная модель в разрезе — 5 органов цветка',
+            hint: 'Кликните по любой части цветка, чтобы узнать больше',
+            reset_btn: '↺ Сбросить вид', reset_btn_title: 'Сбросить вид', close_btn_label: 'Закрыть',
+            loading: 'Загрузка модели…', error_load: 'Не удалось загрузить flower.glb', error_no_mesh: 'В модели нет меша',
+            facts_label: 'Интересный факт',
+            zones: {
+                petals: { title: 'Лепестки (венчик)', desc: 'Яркие листовидные структуры, окружающие репродуктивные органы цветка. Их основная функция — привлечение опылителей (насекомых, птиц, летучих мышей) с помощью цвета, формы и запаха. Совокупность лепестков образует венчик. У многих цветков лепестки содержат нектарники и эфирные масла.', facts: 'Самые большие цветочные лепестки — у раффлезии (до 1 метра в диаметре), а самые маленькие — у вольфии (меньше миллиметра).' },
+                sepals: { title: 'Чашелистики (чашечка)', desc: 'Внешние, обычно зелёные листоподобные структуры, расположенные у основания цветка. Защищают бутон цветка во время развития и поддерживают раскрытый цветок. Совокупность чашелистиков образует чашечку. У некоторых растений (тюльпаны, лилии) чашелистики и лепестки одинаковы — их называют листочками околоцветника.', facts: 'У ландыша и водяной лилии чашелистики выглядят как лепестки — это адаптация для привлечения опылителей.' },
+                stamen: { title: 'Тычинки (мужские органы)', desc: 'Мужские репродуктивные органы цветка. Каждая тычинка состоит из тонкой нити (тычиночной нити) и расширенного на конце пыльника, в котором образуется и созревает пыльца. Совокупность тычинок называется андроцеем. Количество тычинок в цветке варьирует от 1 (орхидеи) до сотен (мак, шиповник).', facts: 'Один пыльник может производить от тысячи до миллиона пыльцевых зёрен — каждое из них содержит мужские половые клетки.' },
+                pistil: { title: 'Пестик (женский орган)', desc: 'Центральный женский репродуктивный орган цветка. Состоит из рыльца (липкая верхушка, улавливающая пыльцу), столбика (тонкая трубка) и завязи (нижняя расширенная часть с семязачатками). На рыльце прорастает пыльцевое зерно, и его пыльцевая трубка прорастает через столбик к семязачаткам в завязи.', facts: 'Пыльцевая трубка может прорасти через столбик длиной до 30 см (у кукурузы) всего за несколько часов — это один из самых быстрых процессов роста в растительном мире.' },
+                ovary: { title: 'Завязь и семязачатки', desc: 'Нижняя расширенная часть пестика, содержащая семязачатки (будущие семена). После оплодотворения пыльцой завязь разрастается в плод, а семязачатки — в семена. Может быть верхней (свободной от других частей) или нижней (сросшейся с цветоложем). Тип завязи — важный признак для классификации растений.', facts: 'Из одного цветка тыквы или арбуза может вырасти плод массой до 100 кг — но в момент опыления его завязь весит меньше грамма!' }
+            }
+        },
+        kz: {
+            page_title: 'Гүл кесіндіде — анатомиялық модель',
+            header_title: 'Гүлдің құрылысы',
+            header_subtitle: 'Кесінді бойынша интерактивті модель — гүлдің 5 мүшесі',
+            hint: 'Толығырақ білу үшін гүлдің кез келген бөлігіне басыңыз',
+            reset_btn: '↺ Көріністі қалпына келтіру', reset_btn_title: 'Көріністі қалпына келтіру', close_btn_label: 'Жабу',
+            loading: 'Модель жүктелуде…', error_load: 'flower.glb файлын жүктеу мүмкін болмады', error_no_mesh: 'Модельде меш табылмады',
+            facts_label: 'Қызықты факт',
+            zones: {
+                petals: { title: 'Күлте жапырақшалары', desc: 'Гүлдің репродуктивті мүшелерін қоршап тұрған жарқын жапырақ тәрізді құрылымдар. Олардың негізгі қызметі — түс, пішін және иіс арқылы тозаңдатушыларды (жәндіктер, құстар, жарқанаттар) тарту. Күлте жапырақшаларының жиынтығы күлте құрайды. Көптеген гүлдерде күлте жапырақшалары нектарниктерді және эфир майларын қамтиды.', facts: 'Ең үлкен гүл жапырақшалары раффлезияда (диаметрі 1 метрге дейін), ал ең кішкенелері вольфияда (миллиметрден кем).' },
+                sepals: { title: 'Тостағанша жапырақшалары', desc: 'Гүлдің негізінде орналасқан сыртқы, әдетте жасыл жапырақ тәрізді құрылымдар. Гүл бүршіктерін даму кезінде қорғайды және ашылған гүлді қолдайды. Тостағанша жапырақшаларының жиынтығы тостағанша құрайды. Кейбір өсімдіктерде (қызғалдақ, лалагүл) тостағанша жапырақшалары мен күлте жапырақшалары бірдей — оларды гүлсерік жапырақшалары деп атайды.', facts: 'Інжугүл мен су лалагүлінде тостағанша жапырақшалары күлте жапырақшалары сияқты көрінеді — бұл тозаңдатушыларды тартуға бейімделу.' },
+                stamen: { title: 'Аталықтар (еркек мүшелер)', desc: 'Гүлдің еркек репродуктивті мүшелері. Әрбір аталық жіңішке жіптен (аталық жібінен) және ұшында кеңейген тозаңқаптан тұрады, онда тозаң түзіліп, пісіп жетіледі. Аталықтардың жиынтығы андроцей деп аталады. Гүлдегі аталықтар саны 1-ден (орхидеялар) бірнеше жүзге дейін (көкнәр, итмұрын) болады.', facts: 'Бір тозаңқап мыңнан миллионға дейін тозаң түйірлерін өндіре алады — олардың әрқайсысы еркек жыныс жасушаларын қамтиды.' },
+                pistil: { title: 'Аналық (әйел мүше)', desc: 'Гүлдің орталық әйел репродуктивті мүшесі. Аналық аузынан (тозаңды ұстайтын жабысқақ ұш), бағаншадан (жіңішке түтік) және жатыннан (тұқым бүршіктері бар төменгі кеңейген бөлік) тұрады. Аналық аузында тозаң түйірі өсіп, оның тозаң түтігі бағанша арқылы жатындағы тұқым бүршіктеріне дейін өседі.', facts: 'Тозаң түтігі ұзындығы 30 см-ге дейінгі (жүгерідегі) бағаншадан тек бірнеше сағатта өсіп шыға алады — бұл өсімдіктер әлеміндегі ең жылдам өсу процестерінің бірі.' },
+                ovary: { title: 'Жатын және тұқым бүршіктері', desc: 'Тұқым бүршіктерін (болашақ тұқымдар) қамтитын аналықтың төменгі кеңейген бөлігі. Тозаңмен ұрықтанғаннан кейін жатын жемісқа айналады, ал тұқым бүршіктері — тұқымдарға. Жоғарғы (басқа бөліктерден еркін) немесе төменгі (гүл орнымен бірге өскен) болуы мүмкін. Жатын түрі — өсімдіктерді жіктеудің маңызды белгісі.', facts: 'Бір асқабақ немесе қарбыз гүлінен массасы 100 кг-ға дейін жеміс өсіп шығуы мүмкін — бірақ тозаңдану сәтінде оның жатынының салмағы граммнан да аз!' }
+            }
+        },
+        en: {
+            page_title: 'Flower Cross-section — Anatomical Model',
+            header_title: 'Flower Structure',
+            header_subtitle: 'Interactive cross-section model — 5 flower organs',
+            hint: 'Click any part of the flower to learn more',
+            reset_btn: '↺ Reset view', reset_btn_title: 'Reset view', close_btn_label: 'Close',
+            loading: 'Loading model…', error_load: 'Failed to load flower.glb', error_no_mesh: 'No mesh found in the model',
+            facts_label: 'Did you know?',
+            zones: {
+                petals: { title: 'Petals (Corolla)', desc: 'Bright leaf-like structures surrounding the reproductive organs of the flower. Their main function is to attract pollinators (insects, birds, bats) with color, shape, and scent. Together the petals form the corolla. In many flowers the petals contain nectaries and essential oils.', facts: 'The largest flower petals belong to Rafflesia (up to 1 meter in diameter), while the smallest are in Wolffia (less than a millimeter).' },
+                sepals: { title: 'Sepals (Calyx)', desc: 'Outer, usually green leaf-like structures at the base of the flower. They protect the flower bud during development and support the open flower. Together the sepals form the calyx. In some plants (tulips, lilies) sepals and petals look the same — they are called tepals.', facts: 'In lily of the valley and water lilies, sepals look like petals — an adaptation to attract pollinators.' },
+                stamen: { title: 'Stamens (Male Organs)', desc: 'The male reproductive organs of the flower. Each stamen consists of a thin filament and an expanded anther at its tip, where pollen is produced and matures. The collective set of stamens is called the androecium. The number of stamens varies from 1 (orchids) to hundreds (poppy, rose hip).', facts: 'A single anther can produce from a thousand to a million pollen grains — each containing male reproductive cells.' },
+                pistil: { title: 'Pistil (Female Organ)', desc: 'The central female reproductive organ of the flower. It consists of a stigma (sticky tip that catches pollen), a style (thin tube), and an ovary (lower expanded part containing ovules). A pollen grain germinates on the stigma and its pollen tube grows through the style to the ovules in the ovary.', facts: 'A pollen tube can grow through a style up to 30 cm long (in corn) in just a few hours — one of the fastest growth processes in the plant world.' },
+                ovary: { title: 'Ovary & Ovules', desc: 'The lower expanded part of the pistil containing ovules (future seeds). After fertilization by pollen, the ovary develops into a fruit, and the ovules into seeds. It can be superior (free from other parts) or inferior (fused with the receptacle). Ovary type is an important characteristic for plant classification.', facts: 'A single pumpkin or watermelon flower can grow a fruit weighing up to 100 kg — but at the moment of pollination its ovary weighs less than a gram!' }
+            }
+        }
+    };
+
+    const ZONES = [
+        { id: 'petals', subtitle: 'Petala (Corolla)', color: 0xff6b6b },
+        { id: 'sepals', subtitle: 'Sepala (Calyx)',   color: 0x6bcb77 },
+        { id: 'stamen', subtitle: 'Stamen',           color: 0xffd93d },
+        { id: 'pistil', subtitle: 'Pistillum',        color: 0xc77dff },
+        { id: 'ovary',  subtitle: 'Ovarium',          color: 0x4d96ff }
+    ];
+
+    // classify(x, y, z): vertical axis, top=stigma, bottom=ovary
+    function classify(x, y, z) {
+        const rad = Math.sqrt(x * x + z * z); // distance from vertical axis
+        if (rad < 0.18) return y > -0.1 ? 3 : 4; // pistil / ovary
+        if (rad < 0.42 && y > -0.15) return 2;    // stamen
+        return y > 0 ? 0 : 1;                      // petals / sepals
+    }
+
+    initPoster({ modelFile: 'flower.glb', zones: ZONES, classify, i18n: I18N });
+</script>
+</body>
+</html>

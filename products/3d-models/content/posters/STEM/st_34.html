@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Лидар (LiDAR)</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { width: 100%; height: 100%; overflow: hidden; }
+        body { font-family: 'Segoe UI','Inter',system-ui,sans-serif; background: linear-gradient(135deg,#0c1424 0%,#121d36 100%); color:#e7eefb; }
+        #canvas-container { position: absolute; inset: 0; }
+        #labels { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+        .label3d { position: absolute; transform: translate(-50%,-50%); font-size: 12px; font-weight: 800; padding: 2px 9px; border-radius: 7px; background: rgba(18,29,54,0.9); border: 1.5px solid rgba(90,130,200,0.6); box-shadow: 0 2px 8px rgba(0,0,0,0.4); white-space: nowrap; color:#cfe0ff; }
+
+        .header { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); text-align: center; z-index: 6; pointer-events: none; width: 92%; }
+        .header h1 { font-size: 25px; font-weight: 800; color:#eaf2ff; text-shadow: 0 1px 6px rgba(0,0,0,0.5); }
+        .header p { font-size: 13.5px; color:#93a7cc; margin-top: 4px; font-weight: 600; }
+
+        .panel { position: absolute; z-index: 7; background: rgba(16,26,48,0.84);   border: 1px solid rgba(90,120,180,0.35); border-radius: 16px; box-shadow: 0 10px 34px rgba(0,0,0,0.4); }
+        .control-panel { top: 88px; left: 22px; width: 314px; padding: 16px 18px; }
+        .info-panel { top: 88px; right: 22px; width: 290px; padding: 16px 18px; }
+
+        .param-group { margin-bottom: 13px; }
+        .param-label { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+        .param-name { font-size: 13px; font-weight: 700; color:#b9c8e6; display: flex; align-items: center; gap: 6px; }
+        .param-value { font-size: 15px; font-weight: 800; color:#22d3ee; font-variant-numeric: tabular-nums; }
+
+        input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; border-radius: 6px; outline: none; cursor: pointer; background: linear-gradient(90deg,#1e3a5f,#2a5a8a); }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; border-radius: 50%; background:#22d3ee; border: 3px solid #0c1424; box-shadow: 0 2px 7px rgba(34,211,238,0.5); cursor: pointer; }
+
+        .toggle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
+        .toggle-btn { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 9px 6px; border-radius: 10px; border: 1.5px solid rgba(90,120,180,0.4); background: rgba(30,45,75,0.5); color:#9fb2d8; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.16s; }
+        .toggle-btn .dot { width: 9px; height: 9px; border-radius: 50%; background:#5a6c8c; transition: all 0.16s; }
+        .toggle-btn.active { background: rgba(34,211,238,0.16); border-color:#22d3ee; color:#eaf6ff; }
+        .toggle-btn.active .dot { background:#22d3ee; box-shadow: 0 0 7px rgba(34,211,238,0.9); }
+
+        .action-row { display: flex; gap: 8px; margin-top: 11px; }
+        .btn { flex: 1; padding: 9px; border: none; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.16s; color:#fff; }
+        .btn-play { background: linear-gradient(135deg,#0891b2,#0e7490); } .btn-reset { background: linear-gradient(135deg,#475569,#334155); }
+        .btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
+
+        .info-title { font-size: 15px; font-weight: 800; color:#eaf2ff; margin-bottom: 10px; display: flex; align-items: center; gap: 7px; }
+        .readout { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px dashed rgba(90,120,180,0.3); font-size: 13px; }
+        .readout:last-child { border-bottom: none; }
+        .ro-name { color:#93a7cc; font-weight: 600; }
+        .ro-val { font-weight: 800; color:#eaf2ff; font-variant-numeric: tabular-nums; }
+        .scanbar { height: 8px; border-radius: 5px; background:#1a2a44; overflow:hidden; margin-top:8px; position:relative; }
+        .scanbar > div { position:absolute; top:0; bottom:0; width:18%; background: linear-gradient(90deg,transparent,#22d3ee,transparent); }
+
+        .formula-panel { position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 7; background: rgba(10,18,34,0.92); color:#cfe0ff; padding: 10px 22px; border-radius: 13px; box-shadow: 0 10px 30px rgba(0,0,0,0.45); text-align: center; max-width: 76%; border:1px solid rgba(90,120,180,0.3); }
+        .formula { font-size: 15px; font-weight: 600; } .formula b.d { color:#7fe0a8; } .formula b.t { color:#ffd27f; }
+        .formula-note { font-size: 12px; color:#7e92ba; margin-top: 4px; }
+        .hint { position: absolute; bottom: 16px; left: 22px; z-index: 7; font-size: 12px; color:#7e92ba; background: rgba(16,26,48,0.7); padding: 7px 13px; border-radius: 9px; border: 1px solid rgba(90,120,180,0.3); }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div id="labels"></div>
+
+    <div class="header">
+        <h1>🛰️ Лидар (LiDAR)</h1>
+        <p><span id="h-sub">Вращающийся лазер • время пролёта света → облако точек</span></p>
+    </div>
+
+    <div class="panel control-panel">
+        <div class="param-group">
+            <div class="param-label"><span class="param-name">🔄 <span data-i18n="rpmLabel">Скорость вращения</span></span><span class="param-value" id="rpm-value">600 об/мин</span></div>
+            <input type="range" id="rpm-slider" min="60" max="1200" step="20" value="600">
+        </div>
+        <div class="param-group">
+            <div class="param-label"><span class="param-name">📶 <span data-i18n="chLabel">Каналов (лучей)</span></span><span class="param-value" id="ch-value">16</span></div>
+            <input type="range" id="ch-slider" min="4" max="64" step="4" value="16">
+        </div>
+        <div class="param-group">
+            <div class="param-label"><span class="param-name">📏 <span data-i18n="rangeLabel">Дальность</span></span><span class="param-value" id="range-value">30 м</span></div>
+            <input type="range" id="range-slider" min="8" max="50" value="30">
+        </div>
+
+        <div class="toggle-grid">
+            <button class="toggle-btn active" id="t-beams"><span class="dot"></span><span data-i18n="tBeams">Лучи лазера</span></button>
+            <button class="toggle-btn active" id="t-cloud"><span class="dot"></span><span data-i18n="tCloud">Облако точек</span></button>
+            <button class="toggle-btn active" id="t-scene"><span class="dot"></span><span data-i18n="tScene">Реальная сцена</span></button>
+            <button class="toggle-btn active" id="t-labels"><span class="dot"></span><span data-i18n="tLabels">Подписи</span></button>
+        </div>
+
+        <div class="action-row">
+            <button class="btn btn-play" id="btn-play" data-i18n="pause">⏸ Пауза</button>
+            <button class="btn btn-reset" id="btn-clear" data-i18n="clear">🧹 Очистить</button>
+        </div>
+    </div>
+
+    <div class="panel info-panel">
+        <div class="info-title">📊 <span data-i18n="infoTitle">Параметры сканера</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roRate">Частота сканирования</span><span class="ro-val" id="ro-rate">10.0 Гц</span></div>
+        <div class="scanbar"><div id="scan-ind"></div></div>
+        <div class="readout"><span class="ro-name" data-i18n="roCh">Каналов</span><span class="ro-val" id="ro-ch">16</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roPts">Точек в облаке</span><span class="ro-val" id="ro-pts" style="color:#22d3ee">0</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roPps">Точек в секунду</span><span class="ro-val" id="ro-pps">~0</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roRange">Дальность</span><span class="ro-val" id="ro-range">30 м</span></div>
+    </div>
+
+    <div class="formula-panel">
+        <div class="formula"><b class="d">d</b> = c·<b class="t">t</b> / 2 &nbsp;|&nbsp; <span data-i18n="fNote">c — скорость света, t — время пролёта импульса</span></div>
+        <div class="formula-note" data-i18n="note">Лазер измеряет время возврата света для каждого направления и строит трёхмерную карту</div>
+    </div>
+
+    <div class="hint"><span data-i18n="hint">ЛКМ — вращение • ПКМ — перемещение • Колесо — зум</span></div>
+
+    <script src="../../libs/vendor/three-r128/three.min.js"></script>
+    <script>
+    const LANG = (new URLSearchParams(window.location.search).get('lang')) || 'ru';
+    const I18N = {
+        ru: { headH:'🛰️ Лидар (LiDAR)', headS:'Вращающийся лазер • время пролёта света → облако точек',
+              rpmLabel:'Скорость вращения', chLabel:'Каналов (лучей)', rangeLabel:'Дальность',
+              tBeams:'Лучи лазера', tCloud:'Облако точек', tScene:'Реальная сцена', tLabels:'Подписи',
+              pause:'⏸ Пауза', play:'▶ Пуск', clear:'🧹 Очистить', infoTitle:'Параметры сканера',
+              roRate:'Частота сканирования', roCh:'Каналов', roPts:'Точек в облаке', roPps:'Точек в секунду', roRange:'Дальность',
+              fNote:'c — скорость света, t — время пролёта импульса',
+              note:'Лазер измеряет время возврата света для каждого направления и строит трёхмерную карту',
+              hint:'ЛКМ — вращение • ПКМ — перемещение • Колесо — зум',
+              lLidar:'Лидар (вращ. головка)', lCloud:'Облако точек', lObj:'Объекты сцены',
+              uRpm:' об/мин', uHz:' Гц', uM:' м' },
+        kz: { headH:'🛰️ Лидар (LiDAR)', headS:'Айналмалы лазер • жарық ұшу уақыты → нүкте бұлты',
+              rpmLabel:'Айналу жылдамдығы', chLabel:'Арналар (сәулелер)', rangeLabel:'Қашықтық',
+              tBeams:'Лазер сәулелері', tCloud:'Нүкте бұлты', tScene:'Нақты сахна', tLabels:'Жазулар',
+              pause:'⏸ Кідіріс', play:'▶ Бастау', clear:'🧹 Тазалау', infoTitle:'Сканер параметрлері',
+              roRate:'Сканерлеу жиілігі', roCh:'Арналар', roPts:'Бұлттағы нүктелер', roPps:'Секундына нүкте', roRange:'Қашықтық',
+              fNote:'c — жарық жылдамдығы, t — импульс ұшу уақыты',
+              note:'Лазер әр бағыт үшін жарықтың қайту уақытын өлшеп, үш өлшемді карта құрады',
+              hint:'СБ — айналдыру • ОБ — жылжыту • Дөңгелек — масштаб',
+              lLidar:'Лидар (айн. бас)', lCloud:'Нүкте бұлты', lObj:'Сахна нысандары',
+              uRpm:' айн/мин', uHz:' Гц', uM:' м' },
+        en: { headH:'🛰️ LiDAR', headS:'Spinning laser • light time-of-flight → point cloud',
+              rpmLabel:'Rotation speed', chLabel:'Channels (beams)', rangeLabel:'Range',
+              tBeams:'Laser beams', tCloud:'Point cloud', tScene:'Real scene', tLabels:'Labels',
+              pause:'⏸ Pause', play:'▶ Play', clear:'🧹 Clear', infoTitle:'Scanner parameters',
+              roRate:'Scan rate', roCh:'Channels', roPts:'Points in cloud', roPps:'Points per second', roRange:'Range',
+              fNote:'c — speed of light, t — pulse time of flight',
+              note:'The laser measures the light return time for each direction and builds a 3D map',
+              hint:'LMB — rotate • RMB — pan • Wheel — zoom',
+              lLidar:'LiDAR (spinning head)', lCloud:'Point cloud', lObj:'Scene objects',
+              uRpm:' rpm', uHz:' Hz', uM:' m' },
+    };
+    const L = I18N[LANG] || I18N.ru;
+
+    const M_PER_UNIT = 2.5;            // 1 world unit = 2.5 m
+    const MAX_POINTS = 7000;
+    const SENSOR_Y = 1.1;
+    let rpm = 600, channels = 16, rangeM = 30;
+    let playing = true, showBeams = true, showCloud = true, showScene = true, showLabels = true;
+    let azimuth = 0, pps = 0, ppsAccum = 0, ppsTimer = 0;
+
+    let scene, camera, renderer, root, head, beams, cloud, cloudGeo, cloudPos, cloudCol;
+    let targets = [], sceneGroup;
+    let writeIdx = 0, filled = 0;
+    const raycaster = new THREE.Raycaster();
+    const labelDefs = [];
+    const clock = new THREE.Clock();
+    const container = document.getElementById('canvas-container');
+    const labelLayer = document.getElementById('labels');
+
+    let camTheta = 0.9, camPhi = 1.0, camRadius = 24;
+    const camTarget = new THREE.Vector3(0, 1.0, 0);
+    let dragMode = 0, lastX = 0, lastY = 0;
+
+    function init() {
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0c1424);
+        scene.fog = new THREE.Fog(0x0c1424, 34, 80);
+        camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 300);
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        container.appendChild(renderer.domElement);
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+        const key = new THREE.DirectionalLight(0xbfe0ff, 0.7); key.position.set(8,16,10); scene.add(key);
+        const fill = new THREE.DirectionalLight(0x88aaff, 0.3); fill.position.set(-8,6,-7); scene.add(fill);
+
+        root = new THREE.Group(); scene.add(root);
+        buildScene();
+        buildLidar();
+        buildCloud();
+        buildBeams();
+        makeLabels();
+        applyI18N();
+        setupControls();
+        recompute();
+        updateCamera();
+        animate();
+    }
+    function mat(c,m,r,o){ return new THREE.MeshStandardMaterial(Object.assign({color:c,metalness:m,roughness:r},o||{})); }
+
+    function buildScene() {
+        sceneGroup = new THREE.Group(); root.add(sceneGroup);
+        // floor (a target too)
+        const floor = new THREE.Mesh(new THREE.CircleGeometry(16, 64), mat(0x1b2a44,0.1,0.95));
+        floor.rotation.x = -Math.PI/2; floor.position.y = 0; sceneGroup.add(floor); targets.push(floor);
+        const ring = new THREE.Mesh(new THREE.RingGeometry(15.6,16,64), new THREE.MeshBasicMaterial({color:0x22d3ee,transparent:true,opacity:0.3,side:THREE.DoubleSide}));
+        ring.rotation.x=-Math.PI/2; ring.position.y=0.01; sceneGroup.add(ring);
+
+        const addBox = (w,h,d,x,z,col,ry)=>{ const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d), mat(col,0.2,0.7)); m.position.set(x,h/2,z); if(ry)m.rotation.y=ry; sceneGroup.add(m); targets.push(m); return m; };
+        const addCyl=(r,h,x,z,col)=>{ const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,20), mat(col,0.2,0.7)); m.position.set(x,h/2,z); sceneGroup.add(m); targets.push(m); return m; };
+
+        // surrounding "city" objects
+        addBox(3,5,3, -8, 4, 0x6b7c99, 0.3);
+        addBox(2.4,3.2,2.4, 7, -6, 0x7c8aa0, -0.4);
+        addBox(5,2.2,2, 9, 5, 0x66788f);
+        addCyl(0.9, 6, -6, -8, 0x5f7088);            // column / tree trunk
+        addBox(4,1.4,2, -10, -3, 0x738299, 0.2);     // car-ish
+        addCyl(1.4, 2.5, 4, 9, 0x6e7f97);
+        // a "wall" arc behind
+        addBox(0.6,4,8, 12, 0, 0x60718c);
+        addBox(8,4,0.6, 0, 0, 0x60718c).position.set(0,2,-12);
+        // person-ish
+        const person = new THREE.Group();
+        const torsoGeo = THREE.CapsuleGeometry ? new THREE.CapsuleGeometry(0.35,1.0,4,8) : new THREE.CylinderGeometry(0.35,0.35,1.4,12);
+        const torso=new THREE.Mesh(torsoGeo, mat(0x8aa0c0,0.2,0.7)); torso.position.y=1.1; person.add(torso); targets.push(torso);
+        const head2=new THREE.Mesh(new THREE.SphereGeometry(0.32,16,12), mat(0x8aa0c0,0.2,0.7)); head2.position.y=1.9; person.add(head2); targets.push(head2);
+        person.position.set(3,0,-7); sceneGroup.add(person);
+
+        labelDefs.push({ key:'lObj', pos:new THREE.Vector3(-8, 5.4, 4) });
+    }
+
+    function buildLidar() {
+        const base = new THREE.Mesh(new THREE.CylinderGeometry(0.7,0.85,0.7,28), mat(0x2b3a55,0.6,0.4)); base.position.y=0.35; root.add(base);
+        head = new THREE.Group(); head.position.y = SENSOR_Y; root.add(head);
+        const drum = new THREE.Mesh(new THREE.CylinderGeometry(0.62,0.62,0.8,28), mat(0x1f2c44,0.7,0.35)); head.add(drum);
+        // sensor window band
+        const band = new THREE.Mesh(new THREE.CylinderGeometry(0.63,0.63,0.42,28,1,true), new THREE.MeshStandardMaterial({color:0x0a0f1c,metalness:0.5,roughness:0.2,emissive:0x06303a,emissiveIntensity:0.4,side:THREE.DoubleSide}));
+        band.position.y=0.02; head.add(band);
+        // emitter marker (shows facing direction)
+        const emit = new THREE.Mesh(new THREE.BoxGeometry(0.12,0.3,0.18), new THREE.MeshBasicMaterial({color:0x22d3ee})); emit.position.set(0.62,0.02,0); head.add(emit);
+        const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.62,0.2,28), mat(0x2b3a55,0.6,0.4)); cap.position.y=0.5; head.add(cap);
+        labelDefs.push({ key:'lLidar', pos:new THREE.Vector3(0, SENSOR_Y+1.2, 0) });
+    }
+
+    function buildCloud() {
+        cloudGeo = new THREE.BufferGeometry();
+        cloudPos = new Float32Array(MAX_POINTS*3);
+        cloudCol = new Float32Array(MAX_POINTS*3);
+        cloudGeo.setAttribute('position', new THREE.BufferAttribute(cloudPos,3));
+        cloudGeo.setAttribute('color', new THREE.BufferAttribute(cloudCol,3));
+        cloudGeo.setDrawRange(0,0);
+        cloud = new THREE.Points(cloudGeo, new THREE.PointsMaterial({ size:0.13, vertexColors:true, sizeAttenuation:true }));
+        root.add(cloud);
+    }
+
+    function buildBeams() {
+        const g = new THREE.BufferGeometry();
+        g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(64*2*3),3));
+        beams = new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color:0x22d3ee, transparent:true, opacity:0.5 }));
+        root.add(beams);
+    }
+
+    function heightColor(y) {
+        // y from 0..6 -> blue->cyan->green->yellow->red
+        const t = Math.max(0, Math.min(1, y/6));
+        const c = new THREE.Color();
+        c.setHSL((1-t)*0.66, 0.85, 0.55);
+        return c;
+    }
+
+    function addPoint(p) {
+        const i = writeIdx*3;
+        cloudPos[i]=p.x; cloudPos[i+1]=p.y; cloudPos[i+2]=p.z;
+        const c = heightColor(p.y);
+        cloudCol[i]=c.r; cloudCol[i+1]=c.g; cloudCol[i+2]=c.b;
+        writeIdx = (writeIdx+1) % MAX_POINTS;
+        filled = Math.min(MAX_POINTS, filled+1);
+    }
+
+    function makeLabels(){ labelDefs.forEach(d=>{ const el=document.createElement('div'); el.className='label3d'; labelLayer.appendChild(el); d.el=el; }); }
+    function updateLabels(){
+        labelDefs.forEach(d=>{ const txt=L[d.key]||d.key; if(d.el.textContent!==txt) d.el.textContent=txt;
+            if(!showLabels){ d.el.style.display='none'; return; }
+            const v=d.pos.clone().project(camera); if(v.z>1){ d.el.style.display='none'; return; }
+            d.el.style.display='block'; d.el.style.left=(v.x*0.5+0.5)*window.innerWidth+'px'; d.el.style.top=(-v.y*0.5+0.5)*window.innerHeight+'px';
+        });
+    }
+
+    function recompute() {
+        document.getElementById('rpm-value').textContent = rpm + L.uRpm;
+        document.getElementById('ch-value').textContent = channels;
+        document.getElementById('range-value').textContent = rangeM + L.uM;
+        document.getElementById('ro-rate').textContent = (rpm/60).toFixed(1) + L.uHz;
+        document.getElementById('ro-ch').textContent = channels;
+        document.getElementById('ro-range').textContent = rangeM + L.uM;
+    }
+
+    function clearCloud(){ writeIdx=0; filled=0; cloudGeo.setDrawRange(0,0); }
+
+    function setupControls() {
+        document.getElementById('rpm-slider').addEventListener('input', e=>{ rpm=+e.target.value; recompute(); });
+        document.getElementById('ch-slider').addEventListener('input', e=>{ channels=+e.target.value; recompute(); });
+        document.getElementById('range-slider').addEventListener('input', e=>{ rangeM=+e.target.value; recompute(); });
+        const tog=(id,fn)=>{ const el=document.getElementById(id); el.addEventListener('click',()=>{ el.classList.toggle('active'); fn(el.classList.contains('active')); }); };
+        tog('t-beams', v=>{ showBeams=v; beams.visible=v; });
+        tog('t-cloud', v=>{ showCloud=v; cloud.visible=v; });
+        tog('t-scene', v=>{ showScene=v; sceneGroup.children.forEach(c=>{ if(c.geometry && c.geometry.type==='RingGeometry') return; c.visible=v; }); });
+        tog('t-labels', v=>showLabels=v);
+        const play=document.getElementById('btn-play'); play.addEventListener('click',()=>{ playing=!playing; play.textContent=playing?L.pause:L.play; });
+        document.getElementById('btn-clear').addEventListener('click', clearCloud);
+
+        const el=renderer.domElement;
+        el.addEventListener('contextmenu', e=>e.preventDefault());
+        el.addEventListener('mousedown', e=>{ dragMode=(e.button===2||e.shiftKey)?2:1; lastX=e.clientX; lastY=e.clientY; });
+        window.addEventListener('mousemove', e=>{ if(!dragMode)return; const dx=e.clientX-lastX,dy=e.clientY-lastY; lastX=e.clientX; lastY=e.clientY; if(dragMode===1){camTheta-=dx*0.005; camPhi=Math.max(0.12,Math.min(Math.PI-0.12,camPhi-dy*0.005));} else {const ps=camRadius*0.0016; const right=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,0); const up=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,1); camTarget.addScaledVector(right,-dx*ps); camTarget.addScaledVector(up,dy*ps);} updateCamera(); });
+        window.addEventListener('mouseup', ()=>dragMode=0);
+        el.addEventListener('wheel', e=>{ e.preventDefault(); camRadius=Math.max(10,Math.min(60,camRadius+e.deltaY*0.02)); updateCamera(); }, {passive:false});
+        el.addEventListener('touchstart', e=>{ const t=e.touches[0]; dragMode=1; lastX=t.clientX; lastY=t.clientY; }, {passive:true});
+        el.addEventListener('touchmove', e=>{ if(!dragMode)return; const t=e.touches[0]; const dx=t.clientX-lastX,dy=t.clientY-lastY; lastX=t.clientX; lastY=t.clientY; camTheta-=dx*0.006; camPhi=Math.max(0.12,Math.min(Math.PI-0.12,camPhi-dy*0.006)); updateCamera(); e.preventDefault(); }, {passive:false});
+        window.addEventListener('touchend', ()=>dragMode=0);
+        window.addEventListener('resize', ()=>{ camera.aspect=window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+    }
+
+    function updateCamera(){ const sp=Math.sin(camPhi),cp=Math.cos(camPhi),st=Math.sin(camTheta),ct=Math.cos(camTheta); camera.position.set(camTarget.x+camRadius*sp*ct, camTarget.y+camRadius*cp, camTarget.z+camRadius*sp*st); camera.lookAt(camTarget); camera.updateMatrixWorld(true); }
+
+    function applyI18N(){
+        document.querySelectorAll('[data-i18n]').forEach(el=>{ const k=el.getAttribute('data-i18n'); if(L[k]!=null) el.textContent=L[k]; });
+        document.querySelector('.header h1').textContent=L.headH;
+        document.getElementById('h-sub').textContent=L.headS;
+        document.title=L.headH.replace(/^[^\wА-Яа-яЁё]+/, ''); document.documentElement.lang=LANG;
+    }
+
+    const origin = new THREE.Vector3(0, SENSOR_Y, 0);
+    const rangeU = () => rangeM / M_PER_UNIT;
+    function castColumn(az) {
+        const beamPos = beams.geometry.attributes.position.array;
+        let bi = 0;
+        const fovTop = 15*Math.PI/180, fovBot = -15*Math.PI/180;
+        for (let ch=0; ch<channels; ch++){
+            const phi = channels>1 ? fovBot + (ch/(channels-1))*(fovTop-fovBot) : 0;
+            const dir = new THREE.Vector3(Math.cos(phi)*Math.cos(az), Math.sin(phi), Math.cos(phi)*Math.sin(az)).normalize();
+            raycaster.set(origin, dir); raycaster.far = rangeU();
+            const hits = raycaster.intersectObjects(targets, false);
+            let end;
+            if (hits.length>0 && hits[0].distance <= rangeU()){
+                end = hits[0].point.clone();
+                addPoint(end);
+                ppsAccum++;
+            } else {
+                end = origin.clone().addScaledVector(dir, rangeU());
+            }
+            // beam segment (only draw a subset of channels to keep lines light)
+            if (bi < beamPos.length-6){
+                beamPos[bi++]=origin.x; beamPos[bi++]=origin.y; beamPos[bi++]=origin.z;
+                beamPos[bi++]=end.x; beamPos[bi++]=end.y; beamPos[bi++]=end.z;
+            }
+        }
+        beams.geometry.setDrawRange(0, channels*2);
+        beams.geometry.attributes.position.needsUpdate = true;
+    }
+
+    function animate(){
+        requestAnimationFrame(animate);
+        const dt = Math.min(clock.getDelta(), 0.05);
+        if (playing) {
+            const omega = rpm/60 * 2*Math.PI;     // rad/s real
+            const dAz = omega * dt * 0.18;          // visual slow-mo
+            // cast several azimuth columns per frame for a continuous sweep
+            const steps = Math.max(1, Math.min(6, Math.round(dAz / 0.05)));
+            for (let s=0;s<steps;s++){ azimuth += dAz/steps; castColumn(azimuth); }
+            head.rotation.y = -azimuth;
+
+            // update cloud draw range + flag
+            cloudGeo.setDrawRange(0, filled);
+            cloudGeo.attributes.position.needsUpdate = true;
+            cloudGeo.attributes.color.needsUpdate = true;
+        }
+        beams.visible = showBeams && playing;
+
+        // pps meter
+        ppsTimer += dt;
+        if (ppsTimer >= 0.4){ pps = Math.round(ppsAccum/ppsTimer); ppsAccum=0; ppsTimer=0;
+            document.getElementById('ro-pts').textContent = filled.toLocaleString();
+            document.getElementById('ro-pps').textContent = '~' + pps.toLocaleString();
+        }
+        // scan indicator sweep
+        document.getElementById('scan-ind').style.left = ((Math.sin(clock.elapsedTime*rpm/120)*0.5+0.5)*82) + '%';
+
+        updateLabels();
+        renderer.render(scene, camera);
+    }
+
+    init();
+    </script>
+</body>
+</html>

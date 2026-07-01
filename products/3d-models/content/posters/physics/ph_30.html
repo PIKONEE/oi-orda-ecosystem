@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Поперечные и продольные волны</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { width: 100%; height: 100%; overflow: hidden; }
+        body {
+            font-family: 'Segoe UI', 'Inter', system-ui, sans-serif;
+            background: linear-gradient(135deg, #eef3fb 0%, #e6edf8 100%);
+            color: #16233f;
+        }
+        #canvas-container { position: absolute; inset: 0; }
+        #labels { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+        .label3d {
+            position: absolute; transform: translate(-50%, -50%);
+            font-size: 12.5px; font-weight: 800; padding: 2px 8px; border-radius: 7px;
+            background: rgba(255,255,255,0.92); border: 1px solid rgba(150,170,205,0.6);
+            box-shadow: 0 2px 8px rgba(40,60,110,0.16); white-space: nowrap;
+        }
+        .label3d.trans { color: #0369a1; } .label3d.long { color: #b91c1c; }
+        .label3d.dir { color: #334155; } .label3d.lam { color: #7c3aed; }
+
+        .header {
+            position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+            text-align: center; z-index: 6; pointer-events: none; width: 92%;
+        }
+        .header h1 { font-size: 26px; font-weight: 800; color: #1b2a4a; text-shadow: 0 1px 0 rgba(255,255,255,0.7); }
+        .header p { font-size: 14px; color: #5a6b8c; margin-top: 4px; font-weight: 600; }
+
+        .panel {
+            position: absolute; z-index: 7; background: rgba(255,255,255,0.82);
+             
+            border: 1px solid rgba(150,170,205,0.5); border-radius: 16px;
+            box-shadow: 0 10px 34px rgba(40,60,110,0.14);
+        }
+        .control-panel { top: 92px; left: 22px; width: 320px; padding: 15px 18px; }
+        .info-panel { top: 92px; right: 22px; width: 300px; padding: 15px 18px; }
+
+        .param-group { margin-bottom: 12px; }
+        .param-label { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+        .param-name { font-size: 13px; font-weight: 700; color: #33405e; display: flex; align-items: center; gap: 6px; }
+        .param-icon { font-size: 15px; }
+        .param-value { font-size: 15px; font-weight: 800; color: #2563eb; font-variant-numeric: tabular-nums; }
+
+        input[type=range] {
+            -webkit-appearance: none; appearance: none; width: 100%; height: 6px;
+            border-radius: 6px; outline: none; cursor: pointer;
+            background: linear-gradient(90deg, #c4d2ec, #aebfe0);
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none; width: 18px; height: 18px;
+            border-radius: 50%; background: #fff; border: 3px solid #2563eb;
+            box-shadow: 0 2px 7px rgba(37,99,235,0.4); cursor: pointer;
+        }
+
+        .toggle-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 4px; }
+        .toggle-btn {
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+            padding: 9px 6px; border-radius: 10px; border: 1.5px solid rgba(150,170,205,0.6);
+            background: rgba(255,255,255,0.55); color: #44537a; font-size: 12.5px; font-weight: 700;
+            cursor: pointer; transition: all 0.16s;
+        }
+        .toggle-btn .dot { width: 9px; height: 9px; border-radius: 50%; background: #b7c2d8; transition: all 0.16s; }
+        .toggle-btn.active { background: rgba(37,99,235,0.12); border-color: #2563eb; color: #1b2a4a; }
+        .toggle-btn.active .dot { background: #2563eb; box-shadow: 0 0 7px rgba(37,99,235,0.8); }
+
+        .action-row { display: flex; gap: 8px; margin-top: 11px; }
+        .btn { flex: 1; padding: 9px; border: none; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.16s; color: #fff; }
+        .btn-play { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
+        .btn-reset { background: linear-gradient(135deg, #64748b, #475569); }
+        .btn:hover { filter: brightness(1.07); transform: translateY(-1px); }
+
+        .info-title { font-size: 15px; font-weight: 800; color: #1b2a4a; margin: 4px 0 9px; display: flex; align-items: center; gap: 7px; }
+        .readout { display: flex; justify-content: space-between; align-items: center; padding: 5.5px 0; border-bottom: 1px dashed rgba(150,170,205,0.45); font-size: 13px; }
+        .ro-name { color: #5a6b8c; font-weight: 600; }
+        .ro-val { font-weight: 800; color: #1b2a4a; font-variant-numeric: tabular-nums; }
+        .ro-val.v { color: #15803d; } .ro-val.t { color: #2563eb; } .ro-val.k { color: #7c3aed; }
+
+        .legend { display: flex; gap: 14px; margin-top: 10px; font-size: 11.5px; color: #5a6b8c; font-weight: 700; }
+        .legend span { display: flex; align-items: center; gap: 5px; }
+        .legend i { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+
+        .formula-panel {
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 7;
+            background: rgba(27,42,74,0.93); color: #eaf0fb; padding: 11px 22px; border-radius: 14px;
+            box-shadow: 0 10px 30px rgba(20,35,70,0.34); text-align: center; max-width: 70%;
+        }
+        .formula { font-family: 'Cambria Math','Times New Roman', serif; font-size: 18px; font-weight: 600; }
+        .formula .sep { color: #6b7da6; margin: 0 12px; }
+        .formula-note { font-size: 12.5px; color: #9fb2d8; margin-top: 5px; }
+
+        .hint {
+            position: absolute; bottom: 18px; left: 22px; z-index: 7; font-size: 12px; color: #5a6b8c;
+            background: rgba(255,255,255,0.72); padding: 7px 13px; border-radius: 9px;
+            border: 1px solid rgba(150,170,205,0.45);
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div id="labels"></div>
+
+    <div class="header">
+        <h1>🌊 Поперечные и продольные волны</h1>
+        <p><span>Направление колебаний частиц • v = λf • сжатия и разрежения</span></p>
+    </div>
+
+    <div class="panel control-panel">
+        <div class="param-group">
+            <div class="param-label">
+                <span class="param-name"><span class="param-icon">📏</span><span data-i18n="lamLabel">Длина волны λ</span></span>
+                <span class="param-value" id="lam-value">4.0 м</span>
+            </div>
+            <input type="range" id="lam" min="2" max="6" step="0.1" value="4">
+        </div>
+        <div class="param-group">
+            <div class="param-label">
+                <span class="param-name"><span class="param-icon">🔁</span><span data-i18n="fLabel">Частота f</span></span>
+                <span class="param-value" id="f-value">0.60 Гц</span>
+            </div>
+            <input type="range" id="freq" min="0.2" max="1.5" step="0.05" value="0.6">
+        </div>
+        <div class="param-group">
+            <div class="param-label">
+                <span class="param-name"><span class="param-icon">↕️</span><span data-i18n="aLabel">Амплитуда A</span></span>
+                <span class="param-value" id="a-value">30 см</span>
+            </div>
+            <input type="range" id="amp" min="0.1" max="0.45" step="0.01" value="0.30">
+        </div>
+
+        <div class="toggle-grid">
+            <button class="toggle-btn active" id="t-curve"><span class="dot"></span><span data-i18n="tCurve">Профиль</span></button>
+            <button class="toggle-btn active" id="t-density"><span class="dot"></span><span data-i18n="tDensity">Сжатия</span></button>
+            <button class="toggle-btn active" id="t-lbl"><span class="dot"></span><span data-i18n="tLbl">Подписи</span></button>
+        </div>
+
+        <div class="action-row">
+            <button class="btn btn-play" id="btn-play" data-i18n="pause">⏸ Пауза</button>
+            <button class="btn btn-reset" id="btn-reset" data-i18n="reset">↺ Сброс</button>
+        </div>
+
+        <div class="legend">
+            <span><i style="background:#ef4444"></i><span data-i18n="lComp">сжатие</span></span>
+            <span><i style="background:#3b82f6"></i><span data-i18n="lRare">разрежение</span></span>
+        </div>
+    </div>
+
+    <div class="panel info-panel">
+        <div class="info-title">📊 <span data-i18n="infoTitle">Параметры</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roV">Скорость v = λf</span><span class="ro-val v" id="ro-v">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roT">Период T = 1/f</span><span class="ro-val t" id="ro-t">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roLam">Длина волны λ</span><span class="ro-val" id="ro-lam">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roF">Частота f</span><span class="ro-val" id="ro-f">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roW">Угловая частота ω</span><span class="ro-val" id="ro-w">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roK">Волновое число k = 2π/λ</span><span class="ro-val k" id="ro-k">—</span></div>
+    </div>
+
+    <div class="formula-panel">
+        <div class="formula">
+            v = λ·f
+            <span class="sep">|</span>
+            T = 1 ∕ f
+            <span class="sep">|</span>
+            k = 2π ∕ λ
+        </div>
+        <div class="formula-note" data-i18n="note">Поперечная: частицы колеблются ⊥ направлению волны. Продольная: частицы колеблются вдоль — возникают сжатия и разрежения.</div>
+    </div>
+
+    <div class="hint"><span data-i18n="hint">ЛКМ — вращение • ПКМ — перемещение • Колесо — зум</span></div>
+
+    <script src="../../libs/vendor/three-r128/three.min.js"></script>
+    <script>
+    const LANG = (new URLSearchParams(window.location.search).get('lang')) || 'ru';
+    const I18N = {
+        ru: { headH:'🌊 Поперечные и продольные волны', headS:'Направление колебаний частиц • v = λf • сжатия и разрежения',
+              lamLabel:'Длина волны λ', fLabel:'Частота f', aLabel:'Амплитуда A',
+              tCurve:'Профиль', tDensity:'Сжатия', tLbl:'Подписи', play:'▶ Пуск', pause:'⏸ Пауза', reset:'↺ Сброс',
+              infoTitle:'Параметры', roV:'Скорость v = λf', roT:'Период T = 1/f', roLam:'Длина волны λ', roF:'Частота f',
+              roW:'Угловая частота ω', roK:'Волновое число k = 2π/λ',
+              note:'Поперечная: частицы колеблются ⊥ направлению волны. Продольная: частицы колеблются вдоль — возникают сжатия и разрежения.',
+              hint:'ЛКМ — вращение • ПКМ — перемещение • Колесо — зум',
+              lTrans:'Поперечная волна', lLong:'Продольная волна', lDir:'направление волны v', lComp:'сжатие', lRare:'разрежение',
+              uM:'м', uCm:'см', uHz:'Гц', uMs:'м/с', uRad:'рад/с', uRadM:'рад/м', uS:'с' },
+        kz: { headH:'🌊 Көлденең және қума толқындар', headS:'Бөлшектердің тербеліс бағыты • v = λf • сығылу мен сиреу',
+              lamLabel:'Толқын ұзындығы λ', fLabel:'Жиілік f', aLabel:'Амплитуда A',
+              tCurve:'Профиль', tDensity:'Сығылулар', tLbl:'Жазулар', play:'▶ Қосу', pause:'⏸ Тоқтату', reset:'↺ Қайтару',
+              infoTitle:'Параметрлер', roV:'Жылдамдық v = λf', roT:'Период T = 1/f', roLam:'Толқын ұзындығы λ', roF:'Жиілік f',
+              roW:'Бұрыштық жиілік ω', roK:'Толқындық сан k = 2π/λ',
+              note:'Көлденең: бөлшектер толқын бағытына ⊥ тербеледі. Қума: бөлшектер бойымен тербеледі — сығылу мен сиреу пайда болады.',
+              hint:'СБ — айналдыру • ОБ — жылжыту • Дөңгелек — масштаб',
+              lTrans:'Көлденең толқын', lLong:'Қума толқын', lDir:'толқын бағыты v', lComp:'сығылу', lRare:'сиреу',
+              uM:'м', uCm:'см', uHz:'Гц', uMs:'м/с', uRad:'рад/с', uRadM:'рад/м', uS:'с' },
+        en: { headH:'🌊 Transverse & Longitudinal Waves', headS:'Particle oscillation direction • v = λf • compressions & rarefactions',
+              lamLabel:'Wavelength λ', fLabel:'Frequency f', aLabel:'Amplitude A',
+              tCurve:'Waveform', tDensity:'Compressions', tLbl:'Labels', play:'▶ Play', pause:'⏸ Pause', reset:'↺ Reset',
+              infoTitle:'Parameters', roV:'Speed v = λf', roT:'Period T = 1/f', roLam:'Wavelength λ', roF:'Frequency f',
+              roW:'Angular freq. ω', roK:'Wave number k = 2π/λ',
+              note:'Transverse: particles oscillate ⊥ to the wave direction. Longitudinal: particles oscillate along it — forming compressions and rarefactions.',
+              hint:'LMB — rotate • RMB — pan • Wheel — zoom',
+              lTrans:'Transverse wave', lLong:'Longitudinal wave', lDir:'wave direction v', lComp:'compression', lRare:'rarefaction',
+              uM:'m', uCm:'cm', uHz:'Hz', uMs:'m/s', uRad:'rad/s', uRadM:'rad/m', uS:'s' }
+    };
+    const L = I18N[LANG] || I18N.ru;
+
+    // ---- physics state ----
+    let lam = 4.0;      // wavelength (m)
+    let freq = 0.6;     // Hz
+    let amp = 0.30;     // m (oscillation amplitude, same for both)
+    let showCurve = true, showDensity = true, showLbl = true;
+    let playing = true;
+    let simT = 0;
+
+    function waveK() { return 2 * Math.PI / lam; }   // rad/m
+    function omega() { return 2 * Math.PI * freq; }  // rad/s
+    function speed() { return lam * freq; }          // m/s
+    function periodT() { return 1 / freq; }          // s
+
+    // ---- layout ----
+    const X_MIN = -7, X_MAX = 7, N = 29, D = (X_MAX - X_MIN) / (N - 1);
+    const BASE_YT = 2.3;    // transverse row centre
+    const BASE_YL = -2.3;   // longitudinal row centre
+    const RADIUS = 0.13;
+
+    // ---- three.js ----
+    let scene, camera, renderer, root;
+    let transParticles = [], longParticles = [], waveLine, transAxis, longAxis;
+    let transBracket, longBracket, dirArrow;
+    const clock = new THREE.Clock();
+    const container = document.getElementById('canvas-container');
+    const labelLayer = document.getElementById('labels');
+
+    const COL_NEU = new THREE.Color(0x8aa0c8), COL_COMP = new THREE.Color(0xef4444), COL_RARE = new THREE.Color(0x3b82f6);
+    const COL_LONG = new THREE.Color(0x6b7fb0);
+
+    let camTheta = 1.4, camPhi = 1.28, camRadius = 16;
+    const camTarget = new THREE.Vector3(0, -0.1, 0);
+    let dragMode = 0, lastX = 0, lastY = 0;
+
+    function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+    function xAt(i) { return X_MIN + i * D; }
+
+    function init() {
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xeef3fb);
+        scene.fog = new THREE.Fog(0xeef3fb, 26, 64);
+
+        camera = new THREE.PerspectiveCamera(46, window.innerWidth / window.innerHeight, 0.1, 200);
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        container.appendChild(renderer.domElement);
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.92));
+        const key = new THREE.DirectionalLight(0xffffff, 0.5); key.position.set(5, 10, 9); scene.add(key);
+        const fill = new THREE.DirectionalLight(0xbcd4ff, 0.32); fill.position.set(-7, 3, -6); scene.add(fill);
+
+        root = new THREE.Group(); scene.add(root);
+        const grid = new THREE.GridHelper(34, 17, 0xc2cee4, 0xdde5f1);
+        grid.position.y = -4.6; root.add(grid);
+
+        buildParticles();
+        buildWaveLine();
+        buildAxes();
+        buildDirArrow();
+        makeLabels();
+
+        applyI18N();
+        setupControls();
+        recalc();
+        updateCamera();
+        animate();
+    }
+
+    function buildParticles() {
+        const geo = new THREE.SphereGeometry(RADIUS, 14, 10);
+        const matT = new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.2, roughness: 0.45 });
+        for (let i = 0; i < N; i++) {
+            const p = new THREE.Mesh(geo, matT.clone());
+            p.position.set(xAt(i), BASE_YT, 0); root.add(p); transParticles.push(p);
+        }
+        for (let i = 0; i < N; i++) {
+            const p = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0x6b7fb0, metalness: 0.2, roughness: 0.45 }));
+            p.position.set(xAt(i), BASE_YL, 0); root.add(p); longParticles.push(p);
+        }
+    }
+
+    function buildWaveLine() {
+        const M = 200;
+        const arr = new Float32Array(M * 3);
+        const g = new THREE.BufferGeometry();
+        g.setAttribute('position', new THREE.BufferAttribute(arr, 3));
+        waveLine = new THREE.Line(g, new THREE.LineBasicMaterial({ color: 0x0ea5e9, transparent: true, opacity: 0.85 }));
+        waveLine.userData.M = M; root.add(waveLine);
+    }
+
+    function mkAxis(y) {
+        const g = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(X_MIN - 0.3, y, 0), new THREE.Vector3(X_MAX + 0.3, y, 0)]);
+        const m = new THREE.LineDashedMaterial({ color: 0xb0bcd6, dashSize: 0.18, gapSize: 0.12, transparent: true, opacity: 0.7 });
+        const l = new THREE.Line(g, m); l.computeLineDistances(); root.add(l); return l;
+    }
+    function buildAxes() { transAxis = mkAxis(BASE_YT); longAxis = mkAxis(BASE_YL); }
+
+    function mkBracket(y, dir) {  // dir = +1 ticks up, -1 ticks down
+        const l = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0x7c3aed }));
+        l.userData = { y, dir }; root.add(l); return l;
+    }
+    function updateBracket(l) {
+        const { y, dir } = l.userData, t = 0.22;
+        const pts = [new THREE.Vector3(-lam / 2, y + dir * t, 0), new THREE.Vector3(-lam / 2, y, 0),
+                     new THREE.Vector3(lam / 2, y, 0), new THREE.Vector3(lam / 2, y + dir * t, 0)];
+        l.geometry.dispose(); l.geometry = new THREE.BufferGeometry().setFromPoints(pts);
+    }
+
+    function buildDirArrow() {
+        dirArrow = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(X_MIN - 0.2, 4.0, 0), 2.4, 0x334155, 0.4, 0.24);
+        root.add(dirArrow);
+    }
+
+    function recalc() {
+        setTxt('ro-v', speed().toFixed(2) + ' ' + L.uMs);
+        setTxt('ro-t', periodT().toFixed(2) + ' ' + L.uS);
+        setTxt('ro-lam', lam.toFixed(2) + ' ' + L.uM);
+        setTxt('ro-f', freq.toFixed(2) + ' ' + L.uHz);
+        setTxt('ro-w', omega().toFixed(2) + ' ' + L.uRad);
+        setTxt('ro-k', waveK().toFixed(2) + ' ' + L.uRadM);
+        if (!transBracket) { transBracket = mkBracket(BASE_YT + 0.95, 1); longBracket = mkBracket(BASE_YL - 0.95, -1); }
+        updateBracket(transBracket); updateBracket(longBracket);
+        transBracket.visible = showLbl; longBracket.visible = showLbl;
+    }
+
+    function setTxt(id, v) { const el = document.getElementById(id); if (el) el.textContent = v; }
+
+    // ---- labels ----
+    let lblTrans, lblLong, lblDir, lblLamT, lblLamL;
+    function makeLabels() {
+        const mk = (cls) => { const d = document.createElement('div'); d.className = 'label3d ' + cls; labelLayer.appendChild(d); return d; };
+        lblTrans = mk('trans'); lblLong = mk('long'); lblDir = mk('dir'); lblLamT = mk('lam'); lblLamL = mk('lam');
+    }
+    function proj(el, pos3, show, text) {
+        if (!show) { el.style.display = 'none'; return; }
+        const v = pos3.clone().project(camera);
+        if (v.z > 1) { el.style.display = 'none'; return; }
+        el.style.display = 'block'; if (text != null) el.textContent = text;
+        el.style.left = (v.x * 0.5 + 0.5) * window.innerWidth + 'px';
+        el.style.top = (-v.y * 0.5 + 0.5) * window.innerHeight + 'px';
+    }
+    function updateLabels() {
+        proj(lblTrans, new THREE.Vector3(X_MIN - 0.2, BASE_YT + 1.7, 0), showLbl, L.lTrans);
+        proj(lblLong, new THREE.Vector3(X_MIN - 0.2, BASE_YL - 1.7, 0), showLbl, L.lLong);
+        proj(lblDir, new THREE.Vector3(X_MIN + 1.0, 4.5, 0), showLbl, L.lDir);
+        proj(lblLamT, new THREE.Vector3(0, BASE_YT + 1.25, 0), showLbl, 'λ');
+        proj(lblLamL, new THREE.Vector3(0, BASE_YL - 1.25, 0), showLbl, 'λ');
+    }
+
+    // ---- camera ----
+    function updateCamera() {
+        const sp = Math.sin(camPhi), cp = Math.cos(camPhi), st = Math.sin(camTheta), ct = Math.cos(camTheta);
+        camera.position.set(camTarget.x + camRadius * sp * ct, camTarget.y + camRadius * cp, camTarget.z + camRadius * sp * st);
+        camera.lookAt(camTarget);
+    }
+
+    function setupControls() {
+        document.getElementById('lam').addEventListener('input', e => { lam = +e.target.value; setTxt('lam-value', lam.toFixed(1) + ' ' + L.uM); recalc(); });
+        document.getElementById('freq').addEventListener('input', e => { freq = +e.target.value; setTxt('f-value', freq.toFixed(2) + ' ' + L.uHz); recalc(); });
+        document.getElementById('amp').addEventListener('input', e => { amp = +e.target.value; setTxt('a-value', (amp * 100).toFixed(0) + ' ' + L.uCm); });
+
+        const tog = (id, fn) => { const el = document.getElementById(id); el.addEventListener('click', () => { el.classList.toggle('active'); fn(el.classList.contains('active')); }); };
+        tog('t-curve', v => { showCurve = v; waveLine.visible = v; });
+        tog('t-density', v => showDensity = v);
+        tog('t-lbl', v => { showLbl = v; transBracket.visible = v; longBracket.visible = v; });
+
+        document.getElementById('btn-play').addEventListener('click', () => {
+            playing = !playing;
+            document.getElementById('btn-play').textContent = playing ? L.pause : L.play;
+        });
+        document.getElementById('btn-reset').addEventListener('click', () => {
+            lam = 4.0; freq = 0.6; amp = 0.30; playing = true; showCurve = true; showDensity = true; showLbl = true; simT = 0;
+            document.getElementById('lam').value = 4; document.getElementById('freq').value = 0.6; document.getElementById('amp').value = 0.30;
+            setTxt('lam-value', '4.0 ' + L.uM); setTxt('f-value', '0.60 ' + L.uHz); setTxt('a-value', '30 ' + L.uCm);
+            ['t-curve', 't-density', 't-lbl'].forEach(id => document.getElementById(id).classList.add('active'));
+            document.getElementById('btn-play').textContent = L.pause;
+            waveLine.visible = true;
+            camTheta = 1.4; camPhi = 1.28; camRadius = 16; camTarget.set(0, -0.1, 0);
+            recalc(); updateCamera();
+        });
+
+        const el = renderer.domElement;
+        el.addEventListener('contextmenu', e => e.preventDefault());
+        el.addEventListener('mousedown', e => { dragMode = (e.button === 2 || e.shiftKey) ? 2 : 1; lastX = e.clientX; lastY = e.clientY; });
+        window.addEventListener('mousemove', e => {
+            if (!dragMode) return;
+            const dx = e.clientX - lastX, dy = e.clientY - lastY; lastX = e.clientX; lastY = e.clientY;
+            if (dragMode === 1) { camTheta -= dx * 0.005; camPhi = Math.max(0.18, Math.min(Math.PI - 0.18, camPhi - dy * 0.005)); }
+            else { const ps = camRadius * 0.0016; const right = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0); const up = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 1); camTarget.addScaledVector(right, -dx * ps); camTarget.addScaledVector(up, dy * ps); }
+            updateCamera();
+        });
+        window.addEventListener('mouseup', () => dragMode = 0);
+        el.addEventListener('wheel', e => { e.preventDefault(); camRadius = Math.max(8, Math.min(38, camRadius + e.deltaY * 0.015)); updateCamera(); }, { passive: false });
+        el.addEventListener('touchstart', e => { const t = e.touches[0]; dragMode = 1; lastX = t.clientX; lastY = t.clientY; }, { passive: true });
+        el.addEventListener('touchmove', e => { if (!dragMode) return; const t = e.touches[0]; const dx = t.clientX - lastX, dy = t.clientY - lastY; lastX = t.clientX; lastY = t.clientY; camTheta -= dx * 0.006; camPhi = Math.max(0.18, Math.min(Math.PI - 0.18, camPhi - dy * 0.006)); updateCamera(); e.preventDefault(); }, { passive: false });
+        window.addEventListener('touchend', () => dragMode = 0);
+        window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+    }
+
+    function applyI18N() {
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const k = el.getAttribute('data-i18n');
+            if (L[k] != null) { if (k === 'note') el.innerHTML = L[k]; else el.textContent = L[k]; }
+        });
+        document.querySelector('.header h1').textContent = L.headH;
+        document.querySelector('.header p span').textContent = L.headS;
+        setTxt('lam-value', lam.toFixed(1) + ' ' + L.uM);
+        setTxt('f-value', freq.toFixed(2) + ' ' + L.uHz);
+        setTxt('a-value', (amp * 100).toFixed(0) + ' ' + L.uCm);
+        document.title = L.headH.replace(/^[^\wА-Яа-яЁё]+/, '');
+        document.documentElement.lang = LANG;
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+        const dt = Math.min(clock.getDelta(), 0.05);
+        if (playing) simT += dt;
+
+        const k = waveK(), w = omega(), t = simT;
+
+        // transverse: vertical displacement y = A sin(k x - w t)
+        for (let i = 0; i < N; i++) {
+            const x0 = xAt(i);
+            transParticles[i].position.y = BASE_YT + amp * Math.sin(k * x0 - w * t);
+        }
+        // transverse waveform line (smooth)
+        if (showCurve) {
+            const M = waveLine.userData.M, pos = waveLine.geometry.attributes.position.array;
+            for (let i = 0; i < M; i++) {
+                const x0 = X_MIN + (X_MAX - X_MIN) * i / (M - 1);
+                pos[i * 3] = x0; pos[i * 3 + 1] = BASE_YT + amp * Math.sin(k * x0 - w * t); pos[i * 3 + 2] = 0;
+            }
+            waveLine.geometry.attributes.position.needsUpdate = true;
+            waveLine.geometry.computeBoundingSphere();
+        }
+        // longitudinal: displacement along x, s = A sin(k x - w t)
+        for (let i = 0; i < N; i++) {
+            const x0 = xAt(i), ph = k * x0 - w * t;
+            longParticles[i].position.x = x0 + amp * Math.sin(ph);
+            // local compression ~ -∂s/∂x ∝ -cos(ph); positive => compressed (red), negative => rarefied (blue)
+            const c = -Math.cos(ph);
+            const mat = longParticles[i].material;
+            if (showDensity) { mat.color.copy(COL_NEU).lerp(c >= 0 ? COL_COMP : COL_RARE, Math.abs(c)); }
+            else { mat.color.copy(COL_LONG); }
+        }
+
+        updateLabels();
+        renderer.render(scene, camera);
+    }
+
+    init();
+    </script>
+</body>
+</html>

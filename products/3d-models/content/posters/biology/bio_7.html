@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="page_title">Коленный сустав — анатомическая модель</title>
+    <link rel="stylesheet" href="_poster.css">
+</head>
+<body>
+<div id="canvas-container"></div>
+<div id="header">
+    <h1 data-i18n="header_title">Коленный сустав</h1>
+    <p data-i18n="header_subtitle">Интерактивная модель — 6 ключевых структур</p>
+</div>
+<div id="hint" data-i18n="hint">Кликните по любой части сустава, чтобы узнать больше</div>
+<button id="reset-btn" data-i18n="reset_btn" data-i18n-title="reset_btn_title" title="Сбросить вид">↺ Сбросить вид</button>
+<div id="info-panel" aria-hidden="true"></div>
+<div id="legend"></div>
+<div id="hover-label"></div>
+<div id="loading"><div class="spinner"></div><div id="loading-text" data-i18n="loading">Загрузка модели…</div></div>
+
+<script type="importmap">
+    { "imports": { "three": "../../libs/vendor/three-0.160.0/three.module.js", "three/addons/": "../../libs/vendor/three-0.160.0/addons/" } }
+</script>
+
+<script type="module">
+    import { initPoster } from './_poster_lib.js';
+
+    const I18N = {
+        ru: {
+            page_title: 'Коленный сустав — анатомическая модель',
+            header_title: 'Коленный сустав',
+            header_subtitle: 'Интерактивная модель — 6 ключевых структур',
+            hint: 'Кликните по любой части сустава, чтобы узнать больше',
+            reset_btn: '↺ Сбросить вид', reset_btn_title: 'Сбросить вид', close_btn_label: 'Закрыть',
+            loading: 'Загрузка модели…', error_load: 'Не удалось загрузить knee.glb', error_no_mesh: 'В модели нет меша',
+            facts_label: 'Интересный факт',
+            zones: {
+                femur: { title: 'Бедренная кость', desc: 'Самая длинная и прочная кость в теле человека, образующая верхнюю часть коленного сустава. Дистальный конец бедренной кости расширяется и формирует два мыщелка, которые сочленяются с большеберцовой костью. Между мыщелками находится межмыщелковая ямка, где крепятся крестообразные связки.', facts: 'Бедренная кость выдерживает нагрузку до 6000 Н (около 600 кг) на сжатие — это в 3–4 раза больше веса человека.' },
+                patella: { title: 'Надколенник', desc: 'Сесамовидная кость треугольной формы, расположенная в сухожилии четырёхглавой мышцы бедра. Защищает коленный сустав спереди и увеличивает эффективность разгибания ноги, действуя как рычаг. Это самая крупная сесамовидная кость в теле человека.', facts: 'Надколенник появляется у ребёнка только к 3–6 годам — у новорождённых он представлен хрящевой пластинкой.' },
+                tibia: { title: 'Большеберцовая кость', desc: 'Главная опорная кость голени, расположенная медиально (внутри). Её верхняя часть образует плато с двумя суставными площадками для мыщелков бедра. Между ними находится межмыщелковое возвышение, где крепятся мениски и крестообразные связки.', facts: 'Большеберцовая кость передаёт около 85% веса тела при стоянии, остальное — на малоберцовую.' },
+                fibula: { title: 'Малоберцовая кость', desc: 'Тонкая длинная кость, расположенная латерально (снаружи) от большеберцовой. Не участвует напрямую в коленном суставе, но соединяется с большеберцовой костью малоберцово-большеберцовым суставом. Служит местом прикрепления многих мышц голени и латеральной коллатеральной связки.', facts: 'Малоберцовая кость настолько тонкая, что часто используется хирургами как трансплантат при восстановлении других костей.' },
+                meniscus: { title: 'Мениски', desc: 'Парные хрящевые полулунные диски (медиальный и латеральный), расположенные между мыщелками бедренной и большеберцовой костей. Действуют как амортизаторы, распределяя нагрузку, стабилизируя сустав и улучшая конгруэнтность суставных поверхностей.', facts: 'Мениски состоят из волокнистого хряща и поглощают до 50% нагрузки при стоянии и до 85% при ходьбе.' },
+                ligaments: { title: 'Связки коленного сустава', desc: 'Включают крестообразные связки (передняя — ПКС и задняя — ЗКС) внутри сустава и коллатеральные связки (медиальная — МКС и латеральная — ЛКС) снаружи. Крестообразные предотвращают смещение голени вперёд и назад, коллатеральные — в стороны.', facts: 'Разрыв передней крестообразной связки — одна из самых частых спортивных травм: происходит каждые 60–80 секунд в мире.' }
+            }
+        },
+        kz: {
+            page_title: 'Тізе буыны — анатомиялық модель',
+            header_title: 'Тізе буыны',
+            header_subtitle: 'Интерактивті модель — 6 негізгі құрылым',
+            hint: 'Толығырақ білу үшін буынның кез келген бөлігіне басыңыз',
+            reset_btn: '↺ Көріністі қалпына келтіру', reset_btn_title: 'Көріністі қалпына келтіру', close_btn_label: 'Жабу',
+            loading: 'Модель жүктелуде…', error_load: 'knee.glb файлын жүктеу мүмкін болмады', error_no_mesh: 'Модельде меш табылмады',
+            facts_label: 'Қызықты факт',
+            zones: {
+                femur: { title: 'Сан сүйегі', desc: 'Адам денесіндегі ең ұзын және ең берік сүйек, тізе буынының жоғарғы бөлігін құрайды. Дистальді ұшы кеңейіп, үлкен жіліншікпен буындасатын екі бүртік құрайды. Бүртіктер арасында айқас байламдар бекитін бүртікаралық шұңқыр орналасқан.', facts: 'Сан сүйегі қысуға 6000 Н-ге дейін (шамамен 600 кг) шыдамды — бұл адам салмағынан 3–4 есе көп.' },
+                patella: { title: 'Тізе тобығы', desc: 'Санның төрт басты бұлшықетінің сіңірінде орналасқан үшбұрышты пішінді сесамоид сүйек. Тізе буынын алдыңан қорғайды және аяқты жазудың тиімділігін иінтірек ретінде жұмыс істей отырып арттырады.', facts: 'Тізе тобығы балада тек 3–6 жасқа дейін пайда болады — жаңа туылған нәрестелерде ол шеміршек пластинасы түрінде болады.' },
+                tibia: { title: 'Үлкен жіліншік', desc: 'Сирақтың басты тірек сүйегі, медиальды (ішінде) орналасқан. Жоғарғы бөлігі сан сүйегінің бүртіктеріне арналған екі буын алаңы бар платоны құрайды.', facts: 'Тұрған кезде үлкен жіліншік дене салмағының шамамен 85%-ын тасымалдайды, қалғаны — кіші жіліншікке.' },
+                fibula: { title: 'Кіші жіліншік', desc: 'Үлкен жіліншіктен латеральды (сыртында) орналасқан жіңішке ұзын сүйек. Тізе буынына тікелей қатыспайды, бірақ үлкен жіліншікпен жіліншікаралық буын арқылы байланысады.', facts: 'Кіші жіліншік соншалықты жұқа, оны хирургтар басқа сүйектерді қалпына келтіру кезінде трансплантат ретінде жиі пайдаланады.' },
+                meniscus: { title: 'Менисктер', desc: 'Сан мен үлкен жіліншіктің бүртіктері арасында орналасқан жұп шеміршекті жартылай ай тәрізді дискілер (медиальды және латеральды). Амортизатор қызметін атқарып, жүкті бөліп, буынды тұрақтандырады.', facts: 'Менисктер талшықты шеміршектен тұрады және тұрған кезде жүктің 50%-на дейін, ал жүру кезінде 85%-на дейін сіңіреді.' },
+                ligaments: { title: 'Тізе буынының байламдары', desc: 'Буын ішіндегі айқас байламдар (алдыңғы — АКБ және артқы — АрКБ) мен сыртындағы коллатеральды байламдарды (медиальды — МКБ және латеральды — ЛКБ) қамтиды.', facts: 'Алдыңғы айқас байламның жыртылуы — ең жиі кездесетін спорттық жарақаттардың бірі: әлемде әр 60–80 секунд сайын болады.' }
+            }
+        },
+        en: {
+            page_title: 'Knee Joint — Anatomical Model',
+            header_title: 'Knee Joint',
+            header_subtitle: 'Interactive model — 6 key structures',
+            hint: 'Click any part of the joint to learn more',
+            reset_btn: '↺ Reset view', reset_btn_title: 'Reset view', close_btn_label: 'Close',
+            loading: 'Loading model…', error_load: 'Failed to load knee.glb', error_no_mesh: 'No mesh found in the model',
+            facts_label: 'Did you know?',
+            zones: {
+                femur: { title: 'Femur', desc: 'The longest and strongest bone in the human body, forming the upper part of the knee joint. The distal end expands and forms two condyles that articulate with the tibia.', facts: 'The femur can withstand a compressive load of up to 6000 N (about 600 kg) — 3 to 4 times the body weight.' },
+                patella: { title: 'Patella', desc: 'A triangular sesamoid bone located within the tendon of the quadriceps femoris muscle. It protects the knee joint anteriorly and increases the efficiency of leg extension by acting as a lever.', facts: 'The patella appears in children only by age 3–6 — in newborns it is represented by a cartilaginous plate.' },
+                tibia: { title: 'Tibia (Shinbone)', desc: 'The main weight-bearing bone of the lower leg, located medially. Its upper part forms the tibial plateau with two articular surfaces for the femoral condyles.', facts: 'The tibia carries about 85% of the body weight while standing.' },
+                fibula: { title: 'Fibula', desc: 'A thin, long bone located laterally to the tibia. It does not participate directly in the knee joint but connects to the tibia via the tibiofibular joint.', facts: 'The fibula is so thin that it is often used by surgeons as a graft for reconstructing other bones.' },
+                meniscus: { title: 'Menisci', desc: 'Paired crescent-shaped cartilage discs (medial and lateral) located between the femoral and tibial condyles. They act as shock absorbers, distributing load and stabilizing the joint.', facts: 'The menisci absorb up to 50% of the load while standing and up to 85% while walking.' },
+                ligaments: { title: 'Ligaments of the Knee', desc: 'Include the cruciate ligaments (anterior — ACL and posterior — PCL) inside the joint and the collateral ligaments (medial — MCL and lateral — LCL) outside. They prevent the tibia from sliding forward, backward and sideways.', facts: 'ACL tear is one of the most common sports injuries — it happens every 60–80 seconds worldwide.' }
+            }
+        }
+    };
+
+    const ZONES = [
+        { id: 'femur',     subtitle: 'Os femoris',      color: 0xff6b6b },
+        { id: 'patella',   subtitle: 'Patella',          color: 0x4d96ff },
+        { id: 'tibia',     subtitle: 'Tibia',            color: 0xffd93d },
+        { id: 'fibula',    subtitle: 'Fibula',           color: 0x6bcb77 },
+        { id: 'meniscus',  subtitle: 'Meniscus',         color: 0xc77dff },
+        { id: 'ligaments', subtitle: 'Ligamenta genus',  color: 0xff9f45 }
+    ];
+
+    // classify(x, y, z): x=right, y=up, z=front
+    // Knee: femur on top, tibia/fibula below, patella in front, meniscus/ligaments in middle
+    function classify(x, y, z) {
+        // Femur — upper half
+        if (y > 0.3) return 0;
+        // Tibia / Fibula — lower half
+        if (y < -0.2) {
+            if (x > 0.35) return 3; // fibula (lateral)
+            return 2; // tibia
+        }
+        // Middle zone — the joint itself
+        // Patella — front
+        if (z > 0.35) return 1;
+        // Meniscus — thin central band around y≈0
+        if (y > -0.15 && y < 0.15 && Math.abs(z) < 0.45) return 4;
+        // Ligaments — everything else in middle (central, behind patella)
+        return 5;
+    }
+
+    initPoster({ modelFile: 'knee.glb', zones: ZONES, classify, i18n: I18N });
+</script>
+</body>
+</html>

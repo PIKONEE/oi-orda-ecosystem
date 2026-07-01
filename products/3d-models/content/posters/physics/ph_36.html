@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Реактивное движение</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { width: 100%; height: 100%; overflow: hidden; }
+        body {
+            font-family: 'Segoe UI', 'Inter', system-ui, sans-serif;
+            background: linear-gradient(135deg, #eef3fb 0%, #e6edf8 100%);
+            color: #16233f;
+        }
+        #canvas-container { position: absolute; inset: 0; }
+        #labels { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+        .label3d {
+            position: absolute; transform: translate(-50%, -50%);
+            font-size: 12.5px; font-weight: 800; padding: 2px 8px; border-radius: 7px;
+            background: rgba(255,255,255,0.92); border: 1px solid rgba(150,170,205,0.6);
+            box-shadow: 0 2px 8px rgba(40,60,110,0.16); white-space: nowrap;
+        }
+        .label3d.th { color: #15803d; } .label3d.ex { color: #dc2626; } .label3d.r { color: #475569; }
+
+        .header {
+            position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+            text-align: center; z-index: 6; pointer-events: none; width: 92%;
+        }
+        .header h1 { font-size: 26px; font-weight: 800; color: #1b2a4a; text-shadow: 0 1px 0 rgba(255,255,255,0.7); }
+        .header p { font-size: 14px; color: #5a6b8c; margin-top: 4px; font-weight: 600; }
+
+        .panel {
+            position: absolute; z-index: 7; background: rgba(255,255,255,0.82);
+             
+            border: 1px solid rgba(150,170,205,0.5); border-radius: 16px;
+            box-shadow: 0 10px 34px rgba(40,60,110,0.14);
+        }
+        .control-panel { top: 92px; left: 22px; width: 322px; padding: 15px 18px; }
+        .info-panel { top: 92px; right: 22px; width: 304px; padding: 15px 18px; }
+
+        .param-group { margin-bottom: 12px; }
+        .param-label { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+        .param-name { font-size: 13px; font-weight: 700; color: #33405e; display: flex; align-items: center; gap: 6px; }
+        .param-icon { font-size: 15px; }
+        .param-value { font-size: 15px; font-weight: 800; color: #2563eb; font-variant-numeric: tabular-nums; }
+
+        input[type=range] {
+            -webkit-appearance: none; appearance: none; width: 100%; height: 6px;
+            border-radius: 6px; outline: none; cursor: pointer;
+            background: linear-gradient(90deg, #c4d2ec, #aebfe0);
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none; width: 18px; height: 18px;
+            border-radius: 50%; background: #fff; border: 3px solid #2563eb;
+            box-shadow: 0 2px 7px rgba(37,99,235,0.4); cursor: pointer;
+        }
+
+        .toggle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
+        .toggle-btn {
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+            padding: 9px 6px; border-radius: 10px; border: 1.5px solid rgba(150,170,205,0.6);
+            background: rgba(255,255,255,0.55); color: #44537a; font-size: 12.5px; font-weight: 700;
+            cursor: pointer; transition: all 0.16s;
+        }
+        .toggle-btn .dot { width: 9px; height: 9px; border-radius: 50%; background: #b7c2d8; transition: all 0.16s; }
+        .toggle-btn.active { background: rgba(37,99,235,0.12); border-color: #2563eb; color: #1b2a4a; }
+        .toggle-btn.active .dot { background: #2563eb; box-shadow: 0 0 7px rgba(37,99,235,0.8); }
+
+        .action-row { display: flex; gap: 8px; margin-top: 11px; }
+        .btn { flex: 1; padding: 9px; border: none; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.16s; color: #fff; }
+        .btn-fire { background: linear-gradient(135deg, #ef4444, #dc2626); }
+        .btn-reset { background: linear-gradient(135deg, #64748b, #475569); }
+        .btn:hover { filter: brightness(1.07); transform: translateY(-1px); }
+
+        .info-title { font-size: 15px; font-weight: 800; color: #1b2a4a; margin: 4px 0 9px; display: flex; align-items: center; gap: 7px; }
+        .readout { display: flex; justify-content: space-between; align-items: center; padding: 5.5px 0; border-bottom: 1px dashed rgba(150,170,205,0.45); font-size: 13px; }
+        .ro-name { color: #5a6b8c; font-weight: 600; }
+        .ro-val { font-weight: 800; color: #1b2a4a; font-variant-numeric: tabular-nums; }
+        .ro-val.t { color: #15803d; } .ro-val.v { color: #2563eb; } .ro-val.m { color: #b45309; }
+
+        .fuelbar { height: 11px; border-radius: 6px; background: rgba(150,170,205,0.3); overflow: hidden; margin-top: 8px; }
+        .fuelbar > div { height: 100%; width: 100%; background: linear-gradient(90deg, #fbbf24, #f59e0b); transition: width 0.1s linear; }
+
+        .formula-panel {
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 7;
+            background: rgba(27,42,74,0.93); color: #eaf0fb; padding: 11px 22px; border-radius: 14px;
+            box-shadow: 0 10px 30px rgba(20,35,70,0.34); text-align: center; max-width: 72%;
+        }
+        .formula { font-family: 'Cambria Math','Times New Roman', serif; font-size: 18px; font-weight: 600; }
+        .formula .sep { color: #6b7da6; margin: 0 12px; }
+        .formula-note { font-size: 12.5px; color: #9fb2d8; margin-top: 5px; }
+
+        .hint {
+            position: absolute; bottom: 18px; left: 22px; z-index: 7; font-size: 12px; color: #5a6b8c;
+            background: rgba(255,255,255,0.72); padding: 7px 13px; border-radius: 9px;
+            border: 1px solid rgba(150,170,205,0.45);
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div id="labels"></div>
+
+    <div class="header">
+        <h1>🚀 Реактивное движение</h1>
+        <p><span>3-й закон Ньютона • тяга = скорость газов × расход • сохранение импульса</span></p>
+    </div>
+
+    <div class="panel control-panel">
+        <div class="param-group">
+            <div class="param-label">
+                <span class="param-name"><span class="param-icon">💨</span><span data-i18n="veLabel">Скорость истечения газов uₑ</span></span>
+                <span class="param-value" id="ve-value">2500 м/с</span>
+            </div>
+            <input type="range" id="ve" min="800" max="4500" step="50" value="2500">
+        </div>
+        <div class="param-group">
+            <div class="param-label">
+                <span class="param-name"><span class="param-icon">🔥</span><span data-i18n="rateLabel">Расход топлива dm/dt</span></span>
+                <span class="param-value" id="rate-value">120 кг/с</span>
+            </div>
+            <input type="range" id="rate" min="20" max="300" step="5" value="120">
+        </div>
+        <div class="param-group">
+            <div class="param-label">
+                <span class="param-name"><span class="param-icon">⚖️</span><span data-i18n="m0Label">Начальная масса m₀</span></span>
+                <span class="param-value" id="m0-value">2000 кг</span>
+            </div>
+            <input type="range" id="m0" min="800" max="5000" step="100" value="2000">
+        </div>
+        <div class="param-group">
+            <div class="param-label">
+                <span class="param-name"><span class="param-icon">⛽</span><span data-i18n="fuelLabel">Доля топлива</span></span>
+                <span class="param-value" id="fuel-value">70%</span>
+            </div>
+            <input type="range" id="fuel" min="20" max="85" step="1" value="70">
+        </div>
+
+        <div class="toggle-grid">
+            <button class="toggle-btn active" id="t-vectors"><span class="dot"></span><span data-i18n="tVectors">Векторы сил</span></button>
+            <button class="toggle-btn active" id="t-gravity"><span class="dot"></span><span data-i18n="tGravity">Гравитация</span></button>
+        </div>
+
+        <div class="action-row">
+            <button class="btn btn-fire" id="btn-fire" data-i18n="fire">🔥 Запуск</button>
+            <button class="btn btn-reset" id="btn-reset" data-i18n="reset">↺ Сброс</button>
+        </div>
+    </div>
+
+    <div class="panel info-panel">
+        <div class="info-title">📊 <span data-i18n="infoTitle">Параметры</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roThrust">Тяга F = uₑ·(dm/dt)</span><span class="ro-val t" id="ro-thrust">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roAcc">Ускорение a = F/m − g</span><span class="ro-val" id="ro-acc">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roVel">Скорость ракеты v</span><span class="ro-val v" id="ro-vel">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roMass">Текущая масса m</span><span class="ro-val m" id="ro-mass">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roDv">Запас Δv (Циолковский)</span><span class="ro-val" id="ro-dv">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roFuel">Остаток топлива</span><span class="ro-val" id="ro-fuelpct">100%</span></div>
+        <div class="fuelbar"><div id="fuel-fill"></div></div>
+    </div>
+
+    <div class="formula-panel">
+        <div class="formula">
+            F = uₑ · (dm ∕ dt)
+            <span class="sep">|</span>
+            Δv = uₑ · ln(m₀ ∕ m)
+        </div>
+        <div class="formula-note" data-i18n="note">Ракета выбрасывает газ назад — газ толкает ракету вперёд с равной силой (3-й закон Ньютона). Импульс системы сохраняется.</div>
+    </div>
+
+    <div class="hint"><span data-i18n="hint">ЛКМ — вращение • ПКМ — перемещение • Колесо — зум</span></div>
+
+    <script src="../../libs/vendor/three-r128/three.min.js"></script>
+    <script>
+    const LANG = (new URLSearchParams(window.location.search).get('lang')) || 'ru';
+    const I18N = {
+        ru: { headH:'🚀 Реактивное движение', headS:'3-й закон Ньютона • тяга = скорость газов × расход • сохранение импульса',
+              veLabel:'Скорость истечения газов uₑ', rateLabel:'Расход топлива dm/dt', m0Label:'Начальная масса m₀', fuelLabel:'Доля топлива',
+              tVectors:'Векторы сил', tGravity:'Гравитация', fire:'🔥 Запуск', reset:'↺ Сброс', infoTitle:'Параметры',
+              roThrust:'Тяга F = uₑ·(dm/dt)', roAcc:'Ускорение a = F/m − g', roVel:'Скорость ракеты v', roMass:'Текущая масса m',
+              roDv:'Запас Δv (Циолковский)', roFuel:'Остаток топлива',
+              note:'Ракета выбрасывает газ назад — газ толкает ракету вперёд с равной силой (3-й закон Ньютона). Импульс системы сохраняется.',
+              hint:'ЛКМ — вращение • ПКМ — перемещение • Колесо — зум',
+              lThrust:'тяга (реакция)', lExhaust:'выброс газов', lRocket:'ракета', burning:'⏸ Стоп',
+              uMs:'м/с', uKgs:'кг/с', uKg:'кг', uN:'Н', uMs2:'м/с²' },
+        kz: { headH:'🚀 Реактивті қозғалыс', headS:'Ньютонның 3-ші заңы • тарту = газ жылдамдығы × шығын • импульс сақталуы',
+              veLabel:'Газ ағу жылдамдығы uₑ', rateLabel:'Отын шығыны dm/dt', m0Label:'Бастапқы масса m₀', fuelLabel:'Отын үлесі',
+              tVectors:'Күш векторлары', tGravity:'Гравитация', fire:'🔥 Іске қосу', reset:'↺ Қайтару', infoTitle:'Параметрлер',
+              roThrust:'Тарту F = uₑ·(dm/dt)', roAcc:'Үдеу a = F/m − g', roVel:'Зымыран жылдамдығы v', roMass:'Ағымдағы масса m',
+              roDv:'Δv қоры (Циолковский)', roFuel:'Отын қалдығы',
+              note:'Зымыран газды артқа лақтырады — газ зымыранды тең күшпен алға итереді (Ньютонның 3-ші заңы). Жүйе импульсі сақталады.',
+              hint:'СБ — айналдыру • ОБ — жылжыту • Дөңгелек — масштаб',
+              lThrust:'тарту (реакция)', lExhaust:'газ шығуы', lRocket:'зымыран', burning:'⏸ Тоқтату',
+              uMs:'м/с', uKgs:'кг/с', uKg:'кг', uN:'Н', uMs2:'м/с²' },
+        en: { headH:'🚀 Rocket Propulsion', headS:"Newton's 3rd law • thrust = exhaust speed × mass rate • momentum conservation",
+              veLabel:'Exhaust speed uₑ', rateLabel:'Mass flow rate dm/dt', m0Label:'Initial mass m₀', fuelLabel:'Fuel fraction',
+              tVectors:'Force vectors', tGravity:'Gravity', fire:'🔥 Launch', reset:'↺ Reset', infoTitle:'Parameters',
+              roThrust:'Thrust F = uₑ·(dm/dt)', roAcc:'Acceleration a = F/m − g', roVel:'Rocket speed v', roMass:'Current mass m',
+              roDv:'Δv budget (Tsiolkovsky)', roFuel:'Fuel remaining',
+              note:'The rocket throws gas backward — the gas pushes the rocket forward with equal force (Newton\'s 3rd law). Total momentum is conserved.',
+              hint:'LMB — rotate • RMB — pan • Wheel — zoom',
+              lThrust:'thrust (reaction)', lExhaust:'exhaust gas', lRocket:'rocket', burning:'⏸ Stop',
+              uMs:'m/s', uKgs:'kg/s', uKg:'kg', uN:'N', uMs2:'m/s²' }
+    };
+    const L = I18N[LANG] || I18N.ru;
+
+    // ---- physics ----
+    const G = 9.8;
+    let ue = 2500;       // exhaust speed (m/s)
+    let rate = 120;      // dm/dt (kg/s)
+    let m0 = 2000;       // initial mass (kg)
+    let fuelFrac = 0.70; // fraction of m0 that is propellant
+    let useGravity = true, showVectors = true;
+    let burning = false;
+
+    // dynamic
+    let fuelLeft = 0;    // kg of propellant remaining
+    let mass = m0;       // kg
+    let vel = 0;         // m/s
+    let alt = 0;         // m (physical), visual scaled
+
+    function fuelMass() { return m0 * fuelFrac; }
+    function dryMass() { return m0 * (1 - fuelFrac); }
+    function thrust() { return ue * rate; }                       // N
+    function deltaVbudget() { return ue * Math.log(m0 / dryMass()); } // m/s (Tsiolkovsky)
+
+    // ---- three.js ----
+    let scene, camera, renderer, root, rocket, flame, exhaustGroup, thrustArrow, gravArrow, weightArrow;
+    let smoke = [];
+    const clock = new THREE.Clock();
+    const container = document.getElementById('canvas-container');
+    const labelLayer = document.getElementById('labels');
+
+    let camTheta = 0.85, camPhi = 1.32, camRadius = 16;
+    const camTarget = new THREE.Vector3(0, 1.5, 0);
+    let dragMode = 0, lastX = 0, lastY = 0;
+    const VIS_SCALE = 0.0006;  // metres -> visual units for altitude
+
+    function init() {
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xeef3fb);
+        scene.fog = new THREE.Fog(0xeef3fb, 30, 80);
+
+        camera = new THREE.PerspectiveCamera(47, window.innerWidth / window.innerHeight, 0.1, 300);
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        container.appendChild(renderer.domElement);
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+        const key = new THREE.DirectionalLight(0xffffff, 0.55); key.position.set(6, 11, 8); scene.add(key);
+
+        root = new THREE.Group(); scene.add(root);
+        const grid = new THREE.GridHelper(40, 20, 0xc2cee4, 0xdde5f1);
+        grid.position.y = -0.5; root.add(grid);
+        // launch pad
+        const pad = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.8, 0.4, 24),
+            new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.3, roughness: 0.7 }));
+        pad.position.y = -0.3; root.add(pad);
+
+        buildRocket();
+        buildExhaust();
+        buildArrows();
+        makeLabels();
+
+        applyI18N();
+        setupControls();
+        recalcStatic();
+        resetState();
+        updateCamera();
+        animate();
+    }
+
+    function buildRocket() {
+        rocket = new THREE.Group(); root.add(rocket);
+        const bodyMat = new THREE.MeshStandardMaterial({ color: 0xe6ebf4, metalness: 0.5, roughness: 0.35 });
+        const body = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 2.6, 28), bodyMat);
+        body.position.y = 1.5; rocket.add(body);
+        const nose = new THREE.Mesh(new THREE.ConeGeometry(0.5, 1.1, 28), new THREE.MeshStandardMaterial({ color: 0xdc2626, metalness: 0.4, roughness: 0.4 }));
+        nose.position.y = 3.35; rocket.add(nose);
+        const band = new THREE.Mesh(new THREE.CylinderGeometry(0.51, 0.51, 0.3, 28), new THREE.MeshStandardMaterial({ color: 0x2563eb, metalness: 0.4, roughness: 0.4 }));
+        band.position.y = 2.2; rocket.add(band);
+        const nozzle = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.5, 0.5, 24), new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.7, roughness: 0.3 }));
+        nozzle.position.y = 0.05; rocket.add(nozzle);
+        // fins
+        const finMat = new THREE.MeshStandardMaterial({ color: 0xb91c1c, metalness: 0.3, roughness: 0.5, side: THREE.DoubleSide });
+        for (let i = 0; i < 3; i++) {
+            const fin = new THREE.Mesh(new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(0, 0.3, 0), new THREE.Vector3(0, 1.2, 0), new THREE.Vector3(0.9, 0.0, 0)]).setIndex([0, 1, 2]), finMat);
+            fin.geometry.computeVertexNormals();
+            fin.rotation.y = i * Math.PI * 2 / 3; rocket.add(fin);
+        }
+        // flame
+        flame = new THREE.Mesh(new THREE.ConeGeometry(0.32, 1.6, 18),
+            new THREE.MeshBasicMaterial({ color: 0xfb923c, transparent: true, opacity: 0.9 }));
+        flame.position.y = -0.85; flame.rotation.x = Math.PI; rocket.add(flame);
+        const flameCore = new THREE.Mesh(new THREE.ConeGeometry(0.16, 1.0, 14), new THREE.MeshBasicMaterial({ color: 0xfde047 }));
+        flameCore.position.y = -0.6; flameCore.rotation.x = Math.PI; rocket.add(flameCore);
+        flame.userData.core = flameCore;
+        flame.visible = false; flameCore.visible = false;
+    }
+
+    function buildExhaust() {
+        exhaustGroup = new THREE.Group(); root.add(exhaustGroup);
+        const geo = new THREE.SphereGeometry(0.22, 8, 6);
+        for (let i = 0; i < 40; i++) {
+            const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xcbd5e1, transparent: true, opacity: 0.0 }));
+            m.userData = { active: false, vy: 0, vx: 0, vz: 0, life: 0 };
+            m.visible = false; exhaustGroup.add(m); smoke.push(m);
+        }
+    }
+
+    function buildArrows() {
+        thrustArrow = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 1.5, 0), 2, 0x15803d, 0.4, 0.26);
+        weightArrow = new THREE.ArrowHelper(new THREE.Vector3(0, -1, 0), new THREE.Vector3(0, 1.5, 0), 1.4, 0x475569, 0.34, 0.2);
+        gravArrow = new THREE.ArrowHelper(new THREE.Vector3(0, -1, 0), new THREE.Vector3(0, 0.6, 0), 1.2, 0xdc2626, 0.34, 0.2);
+        root.add(thrustArrow); root.add(weightArrow);
+    }
+
+    function recalcStatic() {
+        setTxt('ro-thrust', fmt(thrust()) + ' ' + L.uN);
+        setTxt('ro-dv', deltaVbudget().toFixed(0) + ' ' + L.uMs);
+    }
+    function fmt(x) { return x >= 1e6 ? (x / 1e6).toFixed(2) + '·10⁶' : x >= 1e3 ? (x / 1e3).toFixed(1) + '·10³' : x.toFixed(0); }
+
+    function resetState() {
+        fuelLeft = fuelMass(); mass = m0; vel = 0; alt = 0; burning = false;
+        rocket.position.y = 0;
+        flame.visible = false; flame.userData.core.visible = false;
+        smoke.forEach(s => { s.userData.active = false; s.visible = false; });
+        document.getElementById('btn-fire').textContent = L.fire;
+        updateDynReadouts(0);
+    }
+
+    function updateDynReadouts(a) {
+        setTxt('ro-acc', a.toFixed(1) + ' ' + L.uMs2);
+        setTxt('ro-vel', vel.toFixed(0) + ' ' + L.uMs);
+        setTxt('ro-mass', mass.toFixed(0) + ' ' + L.uKg);
+        const pct = fuelMass() > 0 ? fuelLeft / fuelMass() * 100 : 0;
+        setTxt('ro-fuelpct', pct.toFixed(0) + '%');
+        document.getElementById('fuel-fill').style.width = pct + '%';
+    }
+
+    function setTxt(id, v) { const el = document.getElementById(id); if (el) el.textContent = v; }
+
+    // ---- labels ----
+    let lblThrust, lblExhaust, lblRocket;
+    function makeLabels() {
+        const mk = (cls) => { const d = document.createElement('div'); d.className = 'label3d ' + cls; labelLayer.appendChild(d); return d; };
+        lblThrust = mk('th'); lblExhaust = mk('ex'); lblRocket = mk('r');
+    }
+    function proj(el, p, show, text) {
+        if (!show) { el.style.display = 'none'; return; }
+        const v = p.clone().project(camera);
+        if (v.z > 1) { el.style.display = 'none'; return; }
+        el.style.display = 'block'; if (text != null) el.textContent = text;
+        el.style.left = (v.x * 0.5 + 0.5) * window.innerWidth + 'px';
+        el.style.top = (-v.y * 0.5 + 0.5) * window.innerHeight + 'px';
+    }
+    function updateLabels() {
+        const ry = rocket.position.y;
+        proj(lblRocket, new THREE.Vector3(0.8, ry + 2.6, 0), showVectors === undefined ? true : true, L.lRocket);
+        proj(lblThrust, new THREE.Vector3(0.55, ry + 3.2, 0), showVectors && burning, L.lThrust);
+        proj(lblExhaust, new THREE.Vector3(0.0, ry - 1.6, 0), burning, L.lExhaust);
+    }
+
+    function updateCamera() {
+        const sp = Math.sin(camPhi), cp = Math.cos(camPhi), st = Math.sin(camTheta), ct = Math.cos(camTheta);
+        camera.position.set(camTarget.x + camRadius * sp * ct, camTarget.y + camRadius * cp, camTarget.z + camRadius * sp * st);
+        camera.lookAt(camTarget);
+    }
+
+    function spawnSmoke(originY) {
+        const s = smoke.find(x => !x.userData.active); if (!s) return;
+        s.userData.active = true; s.userData.life = 0;
+        s.position.set((Math.random() - 0.5) * 0.3, originY - 1.4, (Math.random() - 0.5) * 0.3);
+        s.userData.vy = -3 - Math.random() * 3; s.userData.vx = (Math.random() - 0.5) * 1.5; s.userData.vz = (Math.random() - 0.5) * 1.5;
+        s.material.opacity = 0.85; s.scale.setScalar(0.6); s.visible = true;
+    }
+
+    function setupControls() {
+        document.getElementById('ve').addEventListener('input', e => { ue = +e.target.value; setTxt('ve-value', ue + ' ' + L.uMs); recalcStatic(); });
+        document.getElementById('rate').addEventListener('input', e => { rate = +e.target.value; setTxt('rate-value', rate + ' ' + L.uKgs); recalcStatic(); });
+        document.getElementById('m0').addEventListener('input', e => { m0 = +e.target.value; setTxt('m0-value', m0 + ' ' + L.uKg); recalcStatic(); resetState(); });
+        document.getElementById('fuel').addEventListener('input', e => { fuelFrac = +e.target.value / 100; setTxt('fuel-value', e.target.value + '%'); recalcStatic(); resetState(); });
+
+        const tog = (id, fn) => { const el = document.getElementById(id); el.addEventListener('click', () => { el.classList.toggle('active'); fn(el.classList.contains('active')); }); };
+        tog('t-vectors', v => { showVectors = v; thrustArrow.visible = v; weightArrow.visible = v; });
+        tog('t-gravity', v => useGravity = v);
+
+        document.getElementById('btn-fire').addEventListener('click', () => {
+            if (fuelLeft <= 0) resetState();
+            burning = !burning;
+            document.getElementById('btn-fire').textContent = burning ? L.burning : L.fire;
+        });
+        document.getElementById('btn-reset').addEventListener('click', () => {
+            ue = 2500; rate = 120; m0 = 2000; fuelFrac = 0.70; useGravity = true; showVectors = true;
+            document.getElementById('ve').value = 2500; document.getElementById('rate').value = 120;
+            document.getElementById('m0').value = 2000; document.getElementById('fuel').value = 70;
+            setTxt('ve-value', '2500 ' + L.uMs); setTxt('rate-value', '120 ' + L.uKgs); setTxt('m0-value', '2000 ' + L.uKg); setTxt('fuel-value', '70%');
+            document.getElementById('t-vectors').classList.add('active'); document.getElementById('t-gravity').classList.add('active');
+            thrustArrow.visible = true; weightArrow.visible = true;
+            camTheta = 0.85; camPhi = 1.32; camRadius = 16; camTarget.set(0, 1.5, 0);
+            recalcStatic(); resetState(); updateCamera();
+        });
+
+        const el = renderer.domElement;
+        el.addEventListener('contextmenu', e => e.preventDefault());
+        el.addEventListener('mousedown', e => { dragMode = (e.button === 2 || e.shiftKey) ? 2 : 1; lastX = e.clientX; lastY = e.clientY; });
+        window.addEventListener('mousemove', e => {
+            if (!dragMode) return;
+            const dx = e.clientX - lastX, dy = e.clientY - lastY; lastX = e.clientX; lastY = e.clientY;
+            if (dragMode === 1) { camTheta -= dx * 0.005; camPhi = Math.max(0.18, Math.min(Math.PI - 0.18, camPhi - dy * 0.005)); }
+            else { const ps = camRadius * 0.0016; const right = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0); const up = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 1); camTarget.addScaledVector(right, -dx * ps); camTarget.addScaledVector(up, dy * ps); }
+            updateCamera();
+        });
+        window.addEventListener('mouseup', () => dragMode = 0);
+        el.addEventListener('wheel', e => { e.preventDefault(); camRadius = Math.max(9, Math.min(40, camRadius + e.deltaY * 0.016)); updateCamera(); }, { passive: false });
+        el.addEventListener('touchstart', e => { const t = e.touches[0]; dragMode = 1; lastX = t.clientX; lastY = t.clientY; }, { passive: true });
+        el.addEventListener('touchmove', e => { if (!dragMode) return; const t = e.touches[0]; const dx = t.clientX - lastX, dy = t.clientY - lastY; lastX = t.clientX; lastY = t.clientY; camTheta -= dx * 0.006; camPhi = Math.max(0.18, Math.min(Math.PI - 0.18, camPhi - dy * 0.006)); updateCamera(); e.preventDefault(); }, { passive: false });
+        window.addEventListener('touchend', () => dragMode = 0);
+        window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+    }
+
+    function applyI18N() {
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const k = el.getAttribute('data-i18n');
+            if (L[k] != null) { if (k === 'note') el.innerHTML = L[k]; else el.textContent = L[k]; }
+        });
+        document.querySelector('.header h1').textContent = L.headH;
+        document.querySelector('.header p span').textContent = L.headS;
+        setTxt('ve-value', ue + ' ' + L.uMs); setTxt('rate-value', rate + ' ' + L.uKgs);
+        setTxt('m0-value', m0 + ' ' + L.uKg); setTxt('fuel-value', Math.round(fuelFrac * 100) + '%');
+        document.title = L.headH.replace(/^[^\wА-Яа-яЁё]+/, '');
+        document.documentElement.lang = LANG;
+    }
+
+    let smokeTimer = 0;
+    function animate() {
+        requestAnimationFrame(animate);
+        const dt = Math.min(clock.getDelta(), 0.05);
+
+        let a = 0;
+        const active = burning && fuelLeft > 0;
+        if (active) {
+            const dm = rate * dt;
+            const burned = Math.min(dm, fuelLeft);
+            fuelLeft -= burned; mass -= burned;
+            const F = thrust();
+            a = F / mass - (useGravity ? G : 0);
+            vel += a * dt; if (vel < 0 && rocket.position.y <= 0) vel = 0;
+            alt += vel * dt;
+            rocket.position.y = Math.max(0, alt * VIS_SCALE);
+            if (fuelLeft <= 0) { burning = false; document.getElementById('btn-fire').textContent = L.fire; }
+        } else if (rocket.position.y > 0 || vel > 0) {
+            // coasting under gravity
+            a = useGravity ? -G : 0;
+            vel += a * dt; alt += vel * dt;
+            if (alt <= 0) { alt = 0; vel = 0; }
+            rocket.position.y = Math.max(0, alt * VIS_SCALE);
+        }
+
+        // flame + exhaust
+        flame.visible = active; flame.userData.core.visible = active;
+        if (active) {
+            const fscale = 0.7 + 0.5 * Math.random() + rate / 300;
+            flame.scale.set(1, fscale, 1); flame.userData.core.scale.set(1, fscale, 1);
+            smokeTimer -= dt;
+            if (smokeTimer <= 0) { spawnSmoke(rocket.position.y); spawnSmoke(rocket.position.y); smokeTimer = 0.02; }
+        }
+        smoke.forEach(s => {
+            if (!s.userData.active) return;
+            s.userData.life += dt;
+            s.position.y += s.userData.vy * dt; s.position.x += s.userData.vx * dt; s.position.z += s.userData.vz * dt;
+            s.scale.setScalar(0.6 + s.userData.life * 2.2);
+            s.material.opacity = Math.max(0, 0.85 - s.userData.life * 0.9);
+            if (s.userData.life > 1.0) { s.userData.active = false; s.visible = false; }
+        });
+
+        // arrows
+        const ry = rocket.position.y;
+        if (showVectors) {
+            const F = active ? thrust() : 0;
+            const W = mass * (useGravity ? G : 0);
+            thrustArrow.visible = active;
+            thrustArrow.position.set(0, ry + 0.2, 0);
+            thrustArrow.setLength(Math.max(0.2, Math.min(3.5, F / 9000)), 0.4, 0.26);
+            weightArrow.visible = useGravity;
+            weightArrow.position.set(0, ry + 1.5, 0);
+            weightArrow.setLength(Math.max(0.2, Math.min(3.0, W / 9000)), 0.34, 0.2);
+        }
+
+        // camera follows rocket altitude smoothly
+        camTarget.y += ((1.5 + ry) - camTarget.y) * Math.min(1, dt * 3);
+        updateCamera();
+
+        updateDynReadouts(a);
+        updateLabels();
+        renderer.render(scene, camera);
+    }
+
+    init();
+    </script>
+</body>
+</html>

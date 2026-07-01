@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="page_title">Нейтрализация — Взаимодействие кислоты и щёлочи</title>
+<script src="../../libs/vendor/three-r128/three.min.js"></script>
+<style>
+
+
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --blue:#38bdf8;--purple:#a78bfa;--orange:#fb923c;--green:#4ade80;--red:#f87171;
+  --yellow:#facc15;--cyan:#22d3ee;
+  --acid:#ef4444;--base:#3b82f6;--water:#67e8f9;--salt:#a78bfa;--neutral:#22c55e;
+  --glass-bg:rgba(20,28,50,0.6);--glass-border:rgba(255,255,255,0.13);
+  --text:#e8ecf4;--text-dim:#8b9ec2;
+  --mono:'JetBrains Mono',monospace;--serif:'Playfair Display',serif;--sans:'Nunito',sans-serif;
+}
+body{background:radial-gradient(ellipse at 50% 30%,#1a2240 0%,#0e1525 50%,#080c18 100%);color:var(--text);font-family:var(--sans);overflow:hidden;height:100vh;width:100vw;}
+#canvas-container{position:absolute;inset:0;z-index:0;}
+canvas{display:block;}
+.glass{background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,0.35),inset 0 1px 0 rgba(255,255,255,0.06);}
+::-webkit-scrollbar{width:5px;}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.15);border-radius:3px;}
+
+#left-panel{position:absolute;top:56px;left:16px;width:370px;z-index:10;padding:24px;display:flex;flex-direction:column;gap:16px;max-height:calc(100vh - 72px);overflow-y:auto;}
+.panel-title{font-family:var(--serif);font-size:28px;font-weight:700;background:linear-gradient(135deg,var(--acid),var(--base));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.panel-subtitle{font-size:15px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1.5px;}
+.separator{height:1px;background:linear-gradient(90deg,transparent,var(--glass-border),transparent);}
+
+.control-group{display:flex;flex-direction:column;gap:8px;}
+.control-label{display:flex;justify-content:space-between;align-items:baseline;font-size:18px;color:var(--text-dim);}
+.control-value{font-family:var(--mono);font-weight:600;font-size:20px;}
+
+input[type="range"]{-webkit-appearance:none;width:100%;height:10px;border-radius:5px;background:rgba(255,255,255,0.1);outline:none;cursor:pointer;}
+input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:28px;height:28px;border-radius:50%;background:var(--blue);box-shadow:0 0 12px rgba(56,189,248,0.4);cursor:pointer;transition:transform .15s;}
+input[type="range"]::-webkit-slider-thumb:hover{transform:scale(1.2);}
+.slider-red::-webkit-slider-thumb{background:var(--acid);box-shadow:0 0 12px rgba(239,68,68,0.4);}
+.slider-blue::-webkit-slider-thumb{background:var(--base);box-shadow:0 0 12px rgba(59,130,246,0.4);}
+.slider-green::-webkit-slider-thumb{background:var(--green);box-shadow:0 0 12px rgba(74,222,128,0.4);}
+
+.btn{padding:14px 20px;border:none;border-radius:14px;font-family:var(--sans);font-weight:700;font-size:20px;cursor:pointer;transition:all .2s;letter-spacing:.5px;width:100%;}
+.btn-start{background:linear-gradient(135deg,var(--green),#16a34a);color:#052e16;box-shadow:0 4px 18px rgba(74,222,128,0.25);}
+.btn-start:hover{transform:translateY(-1px);box-shadow:0 6px 22px rgba(74,222,128,0.4);}
+.btn-stop{background:linear-gradient(135deg,var(--red),#dc2626);color:#450a0a;box-shadow:0 4px 18px rgba(248,113,113,0.25);}
+.btn-pour{background:linear-gradient(135deg,var(--base),#2563eb);color:#eff6ff;box-shadow:0 4px 18px rgba(59,130,246,0.3);font-size:18px;padding:12px 16px;}
+.btn-pour:hover{transform:translateY(-1px);box-shadow:0 6px 22px rgba(59,130,246,0.45);}
+.btn-reset{background:rgba(255,255,255,0.08);color:var(--text);border:1px solid var(--glass-border);margin-top:4px;font-size:18px;padding:12px 16px;}
+.btn-reset:hover{background:rgba(255,255,255,0.14);}
+
+.toggle-row{display:flex;align-items:center;justify-content:space-between;font-size:18px;color:var(--text-dim);}
+.toggle{width:52px;height:28px;border-radius:14px;background:rgba(255,255,255,0.12);position:relative;cursor:pointer;transition:background .3s;}
+.toggle.active{background:var(--blue);}
+.toggle::after{content:'';position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:white;transition:transform .3s;}
+.toggle.active::after{transform:translateX(24px);}
+
+/* PAIR SELECTOR */
+.pair-selector{display:flex;gap:6px;flex-wrap:wrap;}
+.pair-btn{padding:10px 8px;border:1px solid var(--glass-border);border-radius:10px;background:rgba(255,255,255,0.04);color:var(--text-dim);font-size:15px;cursor:pointer;transition:all .2s;text-align:center;flex:1;min-width:90px;font-family:var(--mono);}
+.pair-btn.active{background:rgba(56,189,248,0.12);border-color:var(--blue);color:var(--blue);}
+.pair-btn:hover{background:rgba(255,255,255,0.08);}
+.pair-btn .name{font-family:var(--sans);font-size:12px;display:block;margin-top:2px;color:var(--text-dim);}
+
+/* RIGHT PANEL */
+#right-panel{position:absolute;top:16px;right:16px;width:400px;z-index:10;padding:24px;display:flex;flex-direction:column;gap:14px;max-height:calc(100vh - 32px);overflow-y:auto;}
+.stat-row{display:flex;justify-content:space-between;align-items:baseline;}
+.stat-label{font-size:17px;color:var(--text-dim);}
+.stat-value{font-family:var(--mono);font-weight:600;font-size:22px;}
+
+.reaction-box{background:rgba(0,0,0,0.2);border-radius:14px;padding:16px 18px;border:1px solid rgba(255,255,255,0.07);text-align:center;}
+.reaction-eq-big{font-family:var(--serif);font-size:24px;color:var(--text);font-style:italic;line-height:1.6;}
+
+.formula-box{background:rgba(0,0,0,0.18);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:14px 16px;font-family:var(--serif);font-size:20px;line-height:1.9;color:var(--text-dim);}
+
+.info-box{background:rgba(0,0,0,0.15);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:14px 16px;font-size:17px;line-height:1.7;color:var(--text-dim);}
+.info-box b{color:var(--text);font-weight:600;}
+
+.legend-item{display:flex;align-items:center;gap:10px;font-size:16px;color:var(--text-dim);}
+.legend-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0;}
+
+/* pH GAUGE */
+.ph-gauge{width:100%;height:28px;border-radius:14px;background:linear-gradient(90deg,#ef4444,#f97316,#facc15,#a3e635,#22c55e,#14b8a6,#06b6d4,#3b82f6,#6366f1,#7c3aed,#9333ea);overflow:hidden;position:relative;border:1px solid rgba(255,255,255,0.1);}
+.ph-needle{position:absolute;top:-2px;width:4px;height:32px;background:white;border-radius:2px;box-shadow:0 0 8px rgba(255,255,255,0.8);transition:left .5s;}
+.ph-labels{display:flex;justify-content:space-between;font-size:13px;color:var(--text-dim);margin-top:4px;font-family:var(--mono);}
+
+/* BOTTOM */
+#bottom-panel{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);z-index:10;padding:16px 36px;display:flex;gap:44px;align-items:center;white-space:nowrap;}
+.bottom-stat{display:flex;flex-direction:column;align-items:center;gap:3px;}
+.bottom-stat .label{font-size:14px;text-transform:uppercase;letter-spacing:1.2px;color:var(--text-dim);}
+.bottom-stat .value{font-family:var(--mono);font-size:26px;font-weight:700;}
+
+/* STATUS */
+#status-bar{position:absolute;top:16px;left:50%;transform:translateX(-50%);z-index:10;padding:12px 28px;display:flex;align-items:center;gap:14px;font-size:20px;font-weight:700;letter-spacing:1px;}
+.status-dot{width:16px;height:16px;border-radius:50%;flex-shrink:0;}
+.status-dot.on{animation:blink 1s infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.4;}}
+
+/* THERMOMETER */
+.thermo-container{display:flex;align-items:center;gap:10px;}
+.thermo-bar-bg{flex:1;height:14px;border-radius:7px;background:rgba(255,255,255,0.08);overflow:hidden;}
+.thermo-bar-fill{height:100%;border-radius:7px;transition:width .5s;background:linear-gradient(90deg,var(--blue),var(--yellow),var(--red));}
+
+</style>
+</head>
+<body>
+<div id="canvas-container"></div>
+
+<!-- STATUS -->
+<div id="status-bar" class="glass">
+  <div class="status-dot" id="status-dot" style="background:var(--text-dim);"></div>
+  <span id="status-text" style="color:var(--text-dim);" data-i18n="status_ready">ГОТОВО К ТИТРОВАНИЮ</span>
+</div>
+
+<!-- LEFT PANEL -->
+<div id="left-panel" class="glass">
+  <div>
+    <div class="panel-title" data-i18n="panel_title">Нейтрализация</div>
+    <div class="panel-subtitle" data-i18n="panel_subtitle">Кислота + Щёлочь</div>
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="panel-subtitle" data-i18n="reagents_label">Реагенты</div>
+  <div class="pair-selector">
+    <div class="pair-btn active" data-pair="hcl_naoh">HCl + NaOH<span class="name" data-i18n="pair_hcl">соляная + натр</span></div>
+    <div class="pair-btn" data-pair="h2so4_koh">H₂SO₄ + KOH<span class="name" data-i18n="pair_h2so4">серная + калий</span></div>
+    <div class="pair-btn" data-pair="hno3_naoh">HNO₃ + NaOH<span class="name" data-i18n="pair_hno3">азотная + натр</span></div>
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="control-group">
+    <div class="control-label">
+      <span data-i18n="acid_conc">Концентрация кислоты</span>
+      <span class="control-value" id="acid-conc-val" style="color:var(--acid);">1.0 М</span>
+    </div>
+    <input type="range" id="acid-conc-slider" class="slider-red" min="1" max="30" value="10" step="1">
+  </div>
+
+  <div class="control-group">
+    <div class="control-label">
+      <span data-i18n="base_conc">Концентрация щёлочи</span>
+      <span class="control-value" id="base-conc-val" style="color:var(--base);">1.0 М</span>
+    </div>
+    <input type="range" id="base-conc-slider" class="slider-blue" min="1" max="30" value="10" step="1">
+  </div>
+
+  <div class="control-group">
+    <div class="control-label">
+      <span data-i18n="add_speed">Скорость добавления</span>
+      <span class="control-value" id="speed-val" style="color:var(--green);">1.0×</span>
+    </div>
+    <input type="range" id="speed-slider" class="slider-green" min="1" max="30" value="10" step="1">
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="toggle-row">
+    <span data-i18n="toggle_flashes">Вспышки при реакции</span>
+    <div class="toggle active" id="toggle-flashes"></div>
+  </div>
+  <div class="toggle-row">
+    <span data-i18n="toggle_heat">Тепловой эффект</span>
+    <div class="toggle active" id="toggle-heat"></div>
+  </div>
+
+  <div class="separator"></div>
+
+  <button class="btn btn-pour" id="btn-pour" data-i18n="btn_pour">💧 Добавить порцию щёлочи</button>
+  <button class="btn btn-start" id="btn-start" style="margin-top:6px;" data-i18n="btn_auto">▶ Автотитрование</button>
+  <button class="btn btn-reset" id="btn-reset" data-i18n="btn_reset">↺ Сброс</button>
+</div>
+
+<!-- RIGHT PANEL -->
+<div id="right-panel" class="glass">
+
+  <div class="reaction-box">
+    <div class="reaction-eq-big" id="reaction-display">
+      <span style="color:var(--acid);">HCl</span> + <span style="color:var(--base);">NaOH</span> → <span style="color:var(--salt);">NaCl</span> + <span style="color:var(--water);">H₂O</span>
+    </div>
+    <div style="font-size:16px;color:var(--text-dim);margin-top:4px;">ΔH = −57.3 кДж/моль (экзотермическая)</div>
+  </div>
+
+  <!-- pH -->
+  <div>
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
+      <span class="stat-label" data-i18n="stat_ph">Водородный показатель pH</span>
+      <span class="stat-value" id="stat-ph" style="color:var(--acid);font-size:28px;">1.0</span>
+    </div>
+    <div class="ph-gauge">
+      <div class="ph-needle" id="ph-needle" style="left:7%;"></div>
+    </div>
+    <div class="ph-labels"><span>0</span><span>3</span><span>7</span><span>11</span><span>14</span></div>
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="stat-row">
+    <span class="stat-label" data-i18n="stat_h">Ионы H⁺</span>
+    <span class="stat-value" id="stat-h" style="color:var(--acid);">0</span>
+  </div>
+  <div class="stat-row">
+    <span class="stat-label" data-i18n="stat_oh">Ионы OH⁻</span>
+    <span class="stat-value" id="stat-oh" style="color:var(--base);">0</span>
+  </div>
+  <div class="stat-row">
+    <span class="stat-label" data-i18n="stat_water">Молекулы H₂O</span>
+    <span class="stat-value" id="stat-water" style="color:var(--water);">0</span>
+  </div>
+  <div class="stat-row">
+    <span class="stat-label" data-i18n="stat_salt">Ионы соли</span>
+    <span class="stat-value" id="stat-salt" style="color:var(--salt);">0</span>
+  </div>
+  <div class="stat-row">
+    <span class="stat-label" data-i18n="stat_temp">Температура раствора</span>
+    <span class="stat-value" id="stat-temp" style="color:var(--red);">25 °C</span>
+  </div>
+
+  <div class="thermo-container">
+    <span style="font-size:14px;color:var(--text-dim);">T</span>
+    <div class="thermo-bar-bg"><div class="thermo-bar-fill" id="thermo-fill" style="width:10%;"></div></div>
+    <span style="font-size:14px;color:var(--text-dim);" id="thermo-label">25°C</span>
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="panel-subtitle" data-i18n="essence_title">Суть реакции</div>
+  <div class="formula-box" style="font-size:22px;text-align:center;">
+    <span style="color:var(--acid);">H⁺</span> + <span style="color:var(--base);">OH⁻</span> → <span style="color:var(--water);">H₂O</span>
+    <div style="font-size:15px;margin-top:6px;font-family:var(--sans);font-style:normal;text-align:left;">
+      <span data-i18n="essence_text">Суть любой нейтрализации — ион водорода соединяется с гидроксид-ионом, образуя воду</span>
+    </div>
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="panel-subtitle" data-i18n="legend_title">Легенда частиц</div>
+  <div style="display:flex;flex-direction:column;gap:8px;">
+    <div class="legend-item"><div class="legend-dot" style="background:var(--acid);"></div><span id="leg-h">H⁺ — ион водорода (кислота)</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--base);"></div><span id="leg-oh">OH⁻ — гидроксид-ион (щёлочь)</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--water);"></div><span data-i18n="leg_water">H₂O — вода (продукт)</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--salt);"></div><span id="leg-salt">Na⁺ / Cl⁻ — ионы соли</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--yellow);"></div><span data-i18n="leg_flash">Вспышка — момент нейтрализации</span></div>
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="panel-subtitle" data-i18n="how_title">Как это работает</div>
+  <div class="info-box" data-i18n-html="info_neutralization">
+    <b>Кислота</b> диссоциирует на H⁺ и анионы. <b>Щёлочь</b> — на OH⁻ и катионы.<br><br>
+    При смешении H⁺ + OH⁻ необратимо образуют <b>H₂O</b> — это и есть <b>нейтрализация</b>.<br><br>
+    Реакция <b>экзотермическая</b> — выделяется ~57 кДж/моль тепла, раствор нагревается.<br><br>
+    В точке <b>эквивалентности</b> (pH = 7) все ионы H⁺ и OH⁻ полностью прореагировали.
+  </div>
+</div>
+
+<!-- BOTTOM -->
+<div id="bottom-panel" class="glass">
+  <div class="bottom-stat">
+    <span class="label">pH</span>
+    <span class="value" id="b-ph" style="color:var(--acid);">1.0</span>
+  </div>
+  <div class="bottom-stat">
+    <span class="label">H⁺</span>
+    <span class="value" id="b-h" style="color:var(--acid);">0</span>
+  </div>
+  <div class="bottom-stat">
+    <span class="label">OH⁻</span>
+    <span class="value" id="b-oh" style="color:var(--base);">0</span>
+  </div>
+  <div class="bottom-stat">
+    <span class="label">H₂O</span>
+    <span class="value" id="b-water" style="color:var(--water);">0</span>
+  </div>
+  <div class="bottom-stat">
+    <span class="label">T °C</span>
+    <span class="value" id="b-temp" style="color:var(--red);">25</span>
+  </div>
+  <div class="bottom-stat">
+    <span class="label" data-i18n="b_env">Среда</span>
+    <span class="value" id="b-env" style="color:var(--acid);">Кисл.</span>
+  </div>
+</div>
+
+<script>
+// =====================================================================
+//  I18N — встроенные переводы (RU / KZ / EN). Язык: ?lang=ru|kz|en.
+// =====================================================================
+const I18N = {
+  ru: {
+    page_title:'Нейтрализация — Взаимодействие кислоты и щёлочи',panel_title:'Нейтрализация',panel_subtitle:'Кислота + Щёлочь',
+    reagents_label:'Реагенты',pair_hcl:'соляная + натр',pair_h2so4:'серная + калий',pair_hno3:'азотная + натр',
+    acid_conc:'Концентрация кислоты',base_conc:'Концентрация щёлочи',add_speed:'Скорость добавления',
+    toggle_flashes:'Вспышки при реакции',toggle_heat:'Тепловой эффект',
+    btn_pour:'💧 Добавить порцию щёлочи',btn_auto:'▶ Автотитрование',btn_stop:'⏸ Остановить',btn_reset:'↺ Сброс',
+    stat_ph:'Водородный показатель pH',stat_h:'Ионы H⁺',stat_oh:'Ионы OH⁻',stat_water:'Молекулы H₂O',stat_salt:'Ионы соли',stat_temp:'Температура раствора',
+    essence_title:'Суть реакции',essence_text:'Суть любой нейтрализации — ион водорода соединяется с гидроксид-ионом, образуя воду',
+    legend_title:'Легенда частиц',leg_water:'H₂O — вода (продукт)',leg_flash:'Вспышка — момент нейтрализации',
+    how_title:'Как это работает',
+    info_neutralization:'<b>Кислота</b> диссоциирует на H⁺ и анионы. <b>Щёлочь</b> — на OH⁻ и катионы.<br><br>При смешении H⁺ + OH⁻ необратимо образуют <b>H₂O</b> — это и есть <b>нейтрализация</b>.<br><br>Реакция <b>экзотермическая</b> — выделяется ~57 кДж/моль тепла, раствор нагревается.<br><br>В точке <b>эквивалентности</b> (pH = 7) все ионы H⁺ и OH⁻ полностью прореагировали.',
+    b_env:'Среда',status_ready:'ГОТОВО К ТИТРОВАНИЮ',status_acid:'🧪 КИСЛАЯ СРЕДА',status_base:'🧪 ЩЕЛОЧНАЯ СРЕДА',status_neutral:'⚖ ТОЧКА НЕЙТРАЛИЗАЦИИ (pH ≈ 7)',
+    env_acid:'Кисл.',env_base:'Щел.',env_neutral:'Нейтр.',
+    unit_m:'М'
+  },
+  kz: {
+    page_title:'Бейтараптану — Қышқыл мен сілтінің әрекеттесуі',panel_title:'Бейтараптану',panel_subtitle:'Қышқыл + Сілті',
+    reagents_label:'Реагенттер',pair_hcl:'тұз қышқылы + натрий',pair_h2so4:'күкірт қышқылы + калий',pair_hno3:'азот қышқылы + натрий',
+    acid_conc:'Қышқыл концентрациясы',base_conc:'Сілті концентрациясы',add_speed:'Қосу жылдамдығы',
+    toggle_flashes:'Реакция кезіндегі жарқылдар',toggle_heat:'Жылу эффектісі',
+    btn_pour:'💧 Сілті порциясын қосу',btn_auto:'▶ Автотитрлеу',btn_stop:'⏸ Тоқтату',btn_reset:'↺ Қалпына келтіру',
+    stat_ph:'Сутектік көрсеткіш pH',stat_h:'H⁺ иондары',stat_oh:'OH⁻ иондары',stat_water:'H₂O молекулалары',stat_salt:'Тұз иондары',stat_temp:'Ерітінді температурасы',
+    essence_title:'Реакция мәні',essence_text:'Кез келген бейтараптанудың мәні — сутек ионы гидроксид-ионмен қосылып су түзеді',
+    legend_title:'Бөлшектер шартты белгілері',leg_water:'H₂O — су (өнім)',leg_flash:'Жарқыл — бейтараптану сәті',
+    how_title:'Бұл қалай жұмыс істейді',
+    info_neutralization:'<b>Қышқыл</b> H⁺ және аниондарға диссоциацияланады. <b>Сілті</b> — OH⁻ және катиондарға.<br><br>Араласқанда H⁺ + OH⁻ қайтымсыз <b>H₂O</b> түзеді — бұл <b>бейтараптану</b>.<br><br>Реакция <b>экзотермиялық</b> — ~57 кДж/моль жылу бөлінеді, ерітінді қызады.<br><br><b>Эквиваленттілік</b> нүктесінде (pH = 7) барлық H⁺ және OH⁻ иондары толық әрекеттескен.',
+    b_env:'Орта',status_ready:'ТИТРЛЕУГЕ ДАЙЫН',status_acid:'🧪 ҚЫШҚЫЛ ОРТА',status_base:'🧪 СІЛТІЛІ ОРТА',status_neutral:'⚖ БЕЙТАРАПТАНУ НҮКТЕСІ (pH ≈ 7)',
+    env_acid:'Қышқ.',env_base:'Сілт.',env_neutral:'Бейтар.',
+    unit_m:'М'
+  },
+  en: {
+    page_title:'Neutralization — Acid-Base Reaction',panel_title:'Neutralization',panel_subtitle:'Acid + Base',
+    reagents_label:'Reagents',pair_hcl:'hydrochloric + sodium',pair_h2so4:'sulfuric + potassium',pair_hno3:'nitric + sodium',
+    acid_conc:'Acid concentration',base_conc:'Base concentration',add_speed:'Addition speed',
+    toggle_flashes:'Reaction flashes',toggle_heat:'Heat effect',
+    btn_pour:'💧 Add base portion',btn_auto:'▶ Auto-titration',btn_stop:'⏸ Stop',btn_reset:'↺ Reset',
+    stat_ph:'pH value',stat_h:'H⁺ ions',stat_oh:'OH⁻ ions',stat_water:'H₂O molecules',stat_salt:'Salt ions',stat_temp:'Solution temperature',
+    essence_title:'Reaction essence',essence_text:'The essence of any neutralization — a hydrogen ion combines with a hydroxide ion to form water',
+    legend_title:'Particle legend',leg_water:'H₂O — water (product)',leg_flash:'Flash — neutralization moment',
+    how_title:'How it works',
+    info_neutralization:'<b>Acid</b> dissociates into H⁺ and anions. <b>Base</b> — into OH⁻ and cations.<br><br>When mixed, H⁺ + OH⁻ irreversibly form <b>H₂O</b> — this is <b>neutralization</b>.<br><br>The reaction is <b>exothermic</b> — ~57 kJ/mol of heat is released, the solution heats up.<br><br>At the <b>equivalence point</b> (pH = 7) all H⁺ and OH⁻ ions have fully reacted.',
+    b_env:'Medium',status_ready:'READY FOR TITRATION',status_acid:'🧪 ACIDIC MEDIUM',status_base:'🧪 BASIC MEDIUM',status_neutral:'⚖ NEUTRALIZATION POINT (pH ≈ 7)',
+    env_acid:'Acidic',env_base:'Basic',env_neutral:'Neutral',
+    unit_m:'M'
+  }
+};
+const LANG=(()=>{const q=new URLSearchParams(location.search).get('lang');return(q&&I18N[q])?q:'ru';})();
+const t=(key)=>(I18N[LANG]&&I18N[LANG][key])??(I18N.ru&&I18N.ru[key]);
+
+function applyStaticI18N(){
+  document.documentElement.lang=LANG;
+  const tv=t('page_title');if(tv)document.title=tv;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{const v=t(el.getAttribute('data-i18n'));if(v)el.textContent=v;});
+  document.querySelectorAll('[data-i18n-html]').forEach(el=>{const v=t(el.getAttribute('data-i18n-html'));if(v)el.innerHTML=v;});
+}
+applyStaticI18N();
+// ═══════════════════════════════════════
+// REAGENT DATA
+// ═══════════════════════════════════════
+const PAIRS = {
+  hcl_naoh: {
+    name:'HCl + NaOH',
+    acidFormula:'HCl', baseFormula:'NaOH', saltFormula:'NaCl',
+    acidIon:'Cl⁻', baseIon:'Na⁺',
+    acidIonColor:0x22c55e, baseIonColor:0xa78bfa,
+    rxDisplay:'<span style="color:var(--acid);">HCl</span> + <span style="color:var(--base);">NaOH</span> → <span style="color:var(--salt);">NaCl</span> + <span style="color:var(--water);">H₂O</span>',
+    legH:'H⁺ — ион водорода (от HCl)',
+    legOH:'OH⁻ — гидроксид-ион (от NaOH)',
+    legSalt:'Na⁺ / Cl⁻ — ионы соли NaCl',
+  },
+  h2so4_koh: {
+    name:'H₂SO₄ + 2KOH',
+    acidFormula:'H₂SO₄', baseFormula:'KOH', saltFormula:'K₂SO₄',
+    acidIon:'SO₄²⁻', baseIon:'K⁺',
+    acidIonColor:0xfb923c, baseIonColor:0xa78bfa,
+    rxDisplay:'<span style="color:var(--acid);">H₂SO₄</span> + 2<span style="color:var(--base);">KOH</span> → <span style="color:var(--salt);">K₂SO₄</span> + 2<span style="color:var(--water);">H₂O</span>',
+    legH:'H⁺ — ион водорода (от H₂SO₄)',
+    legOH:'OH⁻ — гидроксид-ион (от KOH)',
+    legSalt:'K⁺ / SO₄²⁻ — ионы соли K₂SO₄',
+  },
+  hno3_naoh: {
+    name:'HNO₃ + NaOH',
+    acidFormula:'HNO₃', baseFormula:'NaOH', saltFormula:'NaNO₃',
+    acidIon:'NO₃⁻', baseIon:'Na⁺',
+    acidIonColor:0xfacc15, baseIonColor:0xa78bfa,
+    rxDisplay:'<span style="color:var(--acid);">HNO₃</span> + <span style="color:var(--base);">NaOH</span> → <span style="color:var(--salt);">NaNO₃</span> + <span style="color:var(--water);">H₂O</span>',
+    legH:'H⁺ — ион водорода (от HNO₃)',
+    legOH:'OH⁻ — гидроксид-ион (от NaOH)',
+    legSalt:'Na⁺ / NO₃⁻ — ионы соли NaNO₃',
+  }
+};
+
+// ═══════════════════════════════════════
+// SCENE
+// ═══════════════════════════════════════
+const container = document.getElementById('canvas-container');
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x0e1525, 0.004);
+
+const camera = new THREE.PerspectiveCamera(50, innerWidth/innerHeight, 0.1, 300);
+const renderer = new THREE.WebGLRenderer({antialias: true, alpha:true});
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = false;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+container.appendChild(renderer.domElement);
+
+scene.add(new THREE.AmbientLight(0x445566, 0.6));
+const dirLight = new THREE.DirectionalLight(0xffeedd, 0.8);
+dirLight.position.set(8, 20, 12);dirLight.castShadow=true;dirLight.shadow.mapSize.set(2048,2048);
+scene.add(dirLight);
+scene.add(new THREE.PointLight(0x6688aa, 0.3, 40));
+
+// Floor — slightly lighter
+const flMesh = new THREE.Mesh(new THREE.PlaneGeometry(100,100), new THREE.MeshStandardMaterial({color:0x0f1628,roughness:0.85}));
+flMesh.rotation.x=-Math.PI/2;flMesh.position.y=-0.5;flMesh.receiveShadow=true;scene.add(flMesh);
+
+// ═══════════════════════════════════════
+// BEAKER
+// ═══════════════════════════════════════
+const bkW=10, bkH=8, bkD=7;
+const glassMat = new THREE.MeshStandardMaterial({color:0x99bbdd, transparent:true, opacity:0.1, roughness:0.05, metalness:0.1, side:THREE.DoubleSide});
+const edgeMat = new THREE.LineBasicMaterial({color:0x99bbdd, transparent:true, opacity:0.25});
+
+// Front wall
+const frontWall = new THREE.Mesh(new THREE.PlaneGeometry(bkW,bkH), glassMat);
+frontWall.position.set(0, bkH/2, bkD/2);
+scene.add(frontWall);
+// Back wall
+const backWall = new THREE.Mesh(new THREE.PlaneGeometry(bkW,bkH), glassMat.clone());
+backWall.position.set(0, bkH/2, -bkD/2);
+scene.add(backWall);
+// Left wall
+const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(bkD,bkH), glassMat.clone());
+leftWall.rotation.y = Math.PI/2;
+leftWall.position.set(-bkW/2, bkH/2, 0);
+scene.add(leftWall);
+// Right wall
+const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(bkD,bkH), glassMat.clone());
+rightWall.rotation.y = Math.PI/2;
+rightWall.position.set(bkW/2, bkH/2, 0);
+scene.add(rightWall);
+// Bottom
+const bottomWall = new THREE.Mesh(new THREE.PlaneGeometry(bkW,bkD), new THREE.MeshStandardMaterial({color:0x1e293b,roughness:0.5,metalness:0.3}));
+bottomWall.rotation.x = -Math.PI/2;
+bottomWall.position.y = 0.01;
+scene.add(bottomWall);
+
+// Edges
+const edgeVerts = [
+  [[-bkW/2,0,-bkD/2],[-bkW/2,0,bkD/2]],
+  [[-bkW/2,0,bkD/2],[-bkW/2,bkH,bkD/2]],
+  [[-bkW/2,bkH,bkD/2],[-bkW/2,bkH,-bkD/2]],
+  [[-bkW/2,bkH,-bkD/2],[-bkW/2,0,-bkD/2]],
+  [[bkW/2,0,-bkD/2],[bkW/2,0,bkD/2]],
+  [[bkW/2,0,bkD/2],[bkW/2,bkH,bkD/2]],
+  [[bkW/2,bkH,bkD/2],[bkW/2,bkH,-bkD/2]],
+  [[bkW/2,bkH,-bkD/2],[bkW/2,0,-bkD/2]],
+  [[-bkW/2,0,bkD/2],[bkW/2,0,bkD/2]],
+  [[-bkW/2,0,-bkD/2],[bkW/2,0,-bkD/2]],
+  [[-bkW/2,bkH,bkD/2],[bkW/2,bkH,bkD/2]],
+  [[-bkW/2,bkH,-bkD/2],[bkW/2,bkH,-bkD/2]],
+];
+edgeVerts.forEach(pair => {
+  const g = new THREE.BufferGeometry().setFromPoints(pair.map(p=>new THREE.Vector3(...p)));
+  scene.add(new THREE.Line(g, edgeMat));
+});
+
+// Solution — fits snugly inside beaker
+const solH = bkH * 0.7;
+const solGeo = new THREE.BoxGeometry(bkW - 0.6, solH, bkD - 0.6);
+const solMat = new THREE.MeshStandardMaterial({color:0xef4444, transparent:true, opacity:0.15, roughness:0.1, side:THREE.DoubleSide});
+const solMesh = new THREE.Mesh(solGeo, solMat);
+solMesh.position.set(0, solH / 2 + 0.05, 0);
+scene.add(solMesh);
+
+// ═══════════════════════════════════════
+// PARTICLES
+// ═══════════════════════════════════════
+const particles = []; // {mesh, type:'h'|'oh'|'water'|'acidion'|'baseion', vx,vy,vz, alive}
+
+const hMat = new THREE.MeshStandardMaterial({color:0xef4444, emissive:0xef4444, emissiveIntensity:0.25, roughness:0.3});
+const ohMat = new THREE.MeshStandardMaterial({color:0x3b82f6, emissive:0x3b82f6, emissiveIntensity:0.25, roughness:0.3});
+const waterMat = new THREE.MeshStandardMaterial({color:0x67e8f9, emissive:0x67e8f9, emissiveIntensity:0.1, roughness:0.3, transparent:true, opacity:0.5});
+const saltMat1 = new THREE.MeshStandardMaterial({color:0xa78bfa, emissive:0xa78bfa, emissiveIntensity:0.1, roughness:0.3});
+
+function spawnParticle(type, x, y, z, customColor){
+  let geo, mat;
+  if(type==='h'){geo=new THREE.SphereGeometry(0.25,10,10);mat=hMat.clone();}
+  else if(type==='oh'){
+    const g=new THREE.Group();
+    const s1=new THREE.Mesh(new THREE.SphereGeometry(0.28,10,10),ohMat.clone());
+    const s2=new THREE.Mesh(new THREE.SphereGeometry(0.18,10,10),new THREE.MeshStandardMaterial({color:0x93c5fd,roughness:0.3}));
+    s2.position.x=0.25;g.add(s1);g.add(s2);
+    if(x===undefined){x=(Math.random()-0.5)*(bkW-2);y=0.5+Math.random()*(solH-1.2);z=(Math.random()-0.5)*(bkD-2);}
+    g.position.set(x,y,z);scene.add(g);
+    const sp=2+Math.random()*2;const a=Math.random()*Math.PI*2;
+    particles.push({mesh:g,type,vx:Math.cos(a)*sp,vy:(Math.random()-0.5)*sp,vz:Math.sin(a)*sp,alive:true});
+    return;
+  }
+  else if(type==='water'){geo=new THREE.SphereGeometry(0.2,8,8);mat=waterMat.clone();}
+  else if(type==='acidion'){geo=new THREE.SphereGeometry(0.22,8,8);mat=new THREE.MeshStandardMaterial({color:customColor||0x22c55e,emissive:customColor||0x22c55e,emissiveIntensity:0.1,roughness:0.4});}
+  else if(type==='baseion'){geo=new THREE.SphereGeometry(0.22,8,8);mat=saltMat1.clone();}
+
+  const mesh = new THREE.Mesh(geo, mat);
+  if(x===undefined){x=(Math.random()-0.5)*(bkW-2);y=0.5+Math.random()*(solH-1.2);z=(Math.random()-0.5)*(bkD-2);}
+  mesh.position.set(x,y,z);scene.add(mesh);
+  const sp=2+Math.random()*2;const a=Math.random()*Math.PI*2;
+  particles.push({mesh,type,vx:Math.cos(a)*sp,vy:(Math.random()-0.5)*sp,vz:Math.sin(a)*sp,alive:true});
+}
+
+function removeParticle(idx){scene.remove(particles[idx].mesh);particles.splice(idx,1);}
+
+// Flashes
+const flashes=[];
+function spawnFlash(x,y,z){
+  const m=new THREE.Mesh(new THREE.SphereGeometry(0.4,8,8),new THREE.MeshBasicMaterial({color:0xfacc15,transparent:true,opacity:0.9}));
+  m.position.set(x,y,z);scene.add(m);
+  flashes.push({mesh:m,life:0,maxLife:0.35});
+}
+
+// ═══════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════
+const state = {
+  pair:'hcl_naoh',
+  acidConc:1.0, baseConc:1.0, speed:1.0,
+  running:false, autoTitrating:false,
+  showFlashes:true, showHeat:true,
+  nH:0, nOH:0, nWater:0, nSalt:0,
+  temperature:25, time:0, pourTimer:0,
+  totalBaseAdded:0,
+};
+
+// ═══════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════
+function initSolution(){
+  while(particles.length) removeParticle(0);
+  flashes.forEach(f=>scene.remove(f.mesh));flashes.length=0;
+  state.nH=0;state.nOH=0;state.nWater=0;state.nSalt=0;state.temperature=25;state.totalBaseAdded=0;
+
+  const d=PAIRS[state.pair];
+  const count = Math.round(state.acidConc*15+5);
+  // Acid: H+ ions + acid anions
+  for(let i=0;i<count;i++){
+    spawnParticle('h');state.nH++;
+    spawnParticle('acidion',undefined,undefined,undefined,d.acidIonColor);
+  }
+
+  document.getElementById('reaction-display').innerHTML = d.rxDisplay;
+  document.getElementById('leg-h').textContent = d.legH;
+  document.getElementById('leg-oh').textContent = d.legOH;
+  document.getElementById('leg-salt').textContent = d.legSalt;
+
+  solMat.color.setHex(0xef4444);
+  solMat.opacity = 0.15;
+  updateUI();
+}
+initSolution();
+
+// ═══════════════════════════════════════
+// POUR BASE
+// ═══════════════════════════════════════
+function pourBase(amount){
+  const d=PAIRS[state.pair];
+  const count = Math.round(amount);
+  for(let i=0;i<count;i++){
+    const x=(Math.random()-0.5)*3;
+    const z=(Math.random()-0.5)*3;
+    spawnParticle('oh', x, solH+0.5, z);state.nOH++;
+    spawnParticle('baseion', x+0.3, solH+0.5, z);
+  }
+  state.totalBaseAdded += count;
+  if(!state.running) state.running = true;
+}
+
+// ═══════════════════════════════════════
+// pH CALCULATION
+// ═══════════════════════════════════════
+function computePH(){
+  if(state.nH > state.nOH + 1){
+    // Acidic: excess H+
+    const excess = state.nH - state.nOH;
+    const total = state.nH + state.nOH + state.nWater + state.nSalt + 1;
+    return Math.max(0, 7 - Math.log10(excess / total * 100 + 1) * 3);
+  } else if(state.nOH > state.nH + 1){
+    // Basic: excess OH-
+    const excess = state.nOH - state.nH;
+    const total = state.nH + state.nOH + state.nWater + state.nSalt + 1;
+    return Math.min(14, 7 + Math.log10(excess / total * 100 + 1) * 3);
+  }
+  return 7; // neutral
+}
+
+// ═══════════════════════════════════════
+// UI
+// ═══════════════════════════════════════
+document.getElementById('acid-conc-slider').addEventListener('input',e=>{
+  state.acidConc=+e.target.value/10;
+  document.getElementById('acid-conc-val').textContent=state.acidConc.toFixed(1)+' '+t('unit_m');
+});
+document.getElementById('base-conc-slider').addEventListener('input',e=>{
+  state.baseConc=+e.target.value/10;
+  document.getElementById('base-conc-val').textContent=state.baseConc.toFixed(1)+' '+t('unit_m');
+});
+document.getElementById('speed-slider').addEventListener('input',e=>{
+  state.speed=+e.target.value/10;
+  document.getElementById('speed-val').textContent=state.speed.toFixed(1)+'×';
+});
+
+document.querySelectorAll('.pair-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.pair-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    state.pair=btn.dataset.pair;
+    state.autoTitrating=false;state.running=false;
+    initSolution();
+  });
+});
+
+document.getElementById('toggle-flashes').addEventListener('click',function(){this.classList.toggle('active');state.showFlashes=this.classList.contains('active');});
+document.getElementById('toggle-heat').addEventListener('click',function(){this.classList.toggle('active');state.showHeat=this.classList.contains('active');});
+
+document.getElementById('btn-pour').addEventListener('click',()=>{
+  pourBase(Math.round(state.baseConc * 5));
+});
+
+const btnStart=document.getElementById('btn-start');
+btnStart.addEventListener('click',()=>{
+  if(!state.autoTitrating){
+    state.autoTitrating=true;state.running=true;state.pourTimer=0;
+    btnStart.textContent=t('btn_stop');btnStart.className='btn btn-stop';
+  } else {
+    state.autoTitrating=false;
+    btnStart.textContent=t('btn_auto');btnStart.className='btn btn-start';
+  }
+});
+
+document.getElementById('btn-reset').addEventListener('click',()=>{
+  state.autoTitrating=false;state.running=false;
+  btnStart.textContent=t('btn_auto');btnStart.className='btn btn-start';
+  document.getElementById('status-dot').style.background='var(--text-dim)';
+  document.getElementById('status-text').style.color='var(--text-dim)';
+  document.getElementById('status-text').textContent=t('status_ready');
+  initSolution();
+  camSph={r:26,theta:Math.PI*0.5,phi:Math.PI*0.42};camTarget.set(0,4,0);updateCam();
+});
+
+function updateUI(){
+  const ph = computePH();
+
+  // pH color
+  let phColor;
+  if(ph<4) phColor='var(--acid)';
+  else if(ph<6) phColor='var(--orange)';
+  else if(ph<8) phColor='var(--neutral)';
+  else if(ph<10) phColor='var(--blue)';
+  else phColor='var(--base)';
+
+  document.getElementById('stat-ph').textContent=ph.toFixed(1);
+  document.getElementById('stat-ph').style.color=phColor;
+  document.getElementById('ph-needle').style.left=(ph/14*96+2)+'%';
+
+  document.getElementById('stat-h').textContent=state.nH;
+  document.getElementById('stat-oh').textContent=state.nOH;
+  document.getElementById('stat-water').textContent=state.nWater;
+  document.getElementById('stat-salt').textContent=state.nSalt;
+  document.getElementById('stat-temp').textContent=state.temperature.toFixed(1)+' °C';
+
+  document.getElementById('b-ph').textContent=ph.toFixed(1);
+  document.getElementById('b-ph').style.color=phColor;
+  document.getElementById('b-h').textContent=state.nH;
+  document.getElementById('b-oh').textContent=state.nOH;
+  document.getElementById('b-water').textContent=state.nWater;
+  document.getElementById('b-temp').textContent=state.temperature.toFixed(0);
+
+  // Environment label
+  const env=document.getElementById('b-env');
+  if(ph<6.5){env.textContent=t('env_acid');env.style.color='var(--acid)';}
+  else if(ph>7.5){env.textContent=t('env_base');env.style.color='var(--base)';}
+  else{env.textContent=t('env_neutral');env.style.color='var(--neutral)';}
+
+  // Thermo
+  const thermoPct=Math.min(100, (state.temperature-20)/60*100);
+  document.getElementById('thermo-fill').style.width=thermoPct+'%';
+  document.getElementById('thermo-label').textContent=state.temperature.toFixed(0)+'°C';
+
+  // Solution color: red→green→blue based on pH
+  const ratio = ph / 14;
+  let r,g,b;
+  if(ratio < 0.5){
+    const f=ratio*2;
+    r=Math.round(239*(1-f)+34*f); g=Math.round(68*(1-f)+197*f); b=Math.round(68*(1-f)+94*f);
+  } else {
+    const f=(ratio-0.5)*2;
+    r=Math.round(34*(1-f)+59*f); g=Math.round(197*(1-f)+130*f); b=Math.round(94*(1-f)+246*f);
+  }
+  solMat.color.setRGB(r/255,g/255,b/255);
+  solMat.opacity = 0.12 + 0.08*Math.abs(ph-7)/7;
+
+  // Status
+  if(state.running){
+    document.getElementById('status-dot').className='status-dot on';
+    if(ph < 6.5){
+      document.getElementById('status-dot').style.background='var(--acid)';
+      document.getElementById('status-text').style.color='var(--acid)';
+      document.getElementById('status-text').textContent=t('status_acid');
+    } else if(ph > 7.5){
+      document.getElementById('status-dot').style.background='var(--base)';
+      document.getElementById('status-text').style.color='var(--base)';
+      document.getElementById('status-text').textContent=t('status_base');
+    } else {
+      document.getElementById('status-dot').style.background='var(--neutral)';
+      document.getElementById('status-text').style.color='var(--neutral)';
+      document.getElementById('status-text').textContent=t('status_neutral');
+    }
+  }
+}
+
+// ═══════════════════════════════════════
+// CAMERA
+// ═══════════════════════════════════════
+let isDrag=false,isPan=false,prevM={x:0,y:0};
+let camSph={r:26,theta:Math.PI*0.5,phi:Math.PI*0.42};
+let camTarget=new THREE.Vector3(0,4,0);
+
+function updateCam(){
+  camera.position.set(
+    camTarget.x+camSph.r*Math.sin(camSph.phi)*Math.cos(camSph.theta),
+    camTarget.y+camSph.r*Math.cos(camSph.phi),
+    camTarget.z+camSph.r*Math.sin(camSph.phi)*Math.sin(camSph.theta)
+  );camera.lookAt(camTarget);
+}
+updateCam();
+
+renderer.domElement.addEventListener('mousedown',e=>{if(e.button===0)isDrag=true;if(e.button===2)isPan=true;prevM={x:e.clientX,y:e.clientY};});
+renderer.domElement.addEventListener('mousemove',e=>{
+  const dx=e.clientX-prevM.x,dy=e.clientY-prevM.y;prevM={x:e.clientX,y:e.clientY};
+  if(isDrag){camSph.theta-=dx*0.005;camSph.phi=Math.max(0.1,Math.min(Math.PI*0.48,camSph.phi+dy*0.005));updateCam();}
+  if(isPan){const r2=new THREE.Vector3();camera.getWorldDirection(r2);r2.cross(new THREE.Vector3(0,1,0)).normalize();camTarget.addScaledVector(r2,-dx*0.04);camTarget.y=Math.max(-2,camTarget.y+dy*0.04);updateCam();}
+});
+renderer.domElement.addEventListener('mouseup',()=>{isDrag=false;isPan=false;});
+renderer.domElement.addEventListener('contextmenu',e=>e.preventDefault());
+renderer.domElement.addEventListener('wheel',e=>{camSph.r=Math.max(8,Math.min(80,camSph.r+e.deltaY*0.03));updateCam();});
+
+// ═══════════════════════════════════════
+// ANIMATE
+// ═══════════════════════════════════════
+const clock=new THREE.Clock();
+
+function animate(){
+  requestAnimationFrame(animate);
+  const dt=Math.min(clock.getDelta(),0.05);
+  const hw=bkW/2-0.6, hd=bkD/2-0.6;
+
+  // Auto-titration
+  if(state.autoTitrating){
+    state.pourTimer+=dt;
+    if(state.pourTimer > 1.0/state.speed){
+      state.pourTimer=0;
+      pourBase(Math.max(1, Math.round(state.baseConc*2)));
+    }
+  }
+
+  if(state.running){
+    state.time+=dt;
+
+    // Move particles
+    particles.forEach(p=>{
+      if(!p.alive)return;
+      const m=p.mesh.position||p.mesh;
+      const pos = p.mesh.position;
+
+      pos.x += p.vx*dt;
+      pos.y += p.vy*dt;
+      pos.z += p.vz*dt;
+
+      // Brownian
+      p.vx+=(Math.random()-0.5)*4*dt;
+      p.vy+=(Math.random()-0.5)*4*dt;
+      p.vz+=(Math.random()-0.5)*4*dt;
+
+      // Speed limit
+      const spd=Math.sqrt(p.vx*p.vx+p.vy*p.vy+p.vz*p.vz);
+      if(spd>4){const f=4/spd;p.vx*=f;p.vy*=f;p.vz*=f;}
+
+      // Bounds
+      if(pos.x<-hw){pos.x=-hw;p.vx=Math.abs(p.vx);}
+      if(pos.x>hw){pos.x=hw;p.vx=-Math.abs(p.vx);}
+      if(pos.y<0.4){pos.y=0.4;p.vy=Math.abs(p.vy);}
+      if(pos.y>solH-0.4){pos.y=solH-0.4;p.vy=-Math.abs(p.vy);}
+      if(pos.z<-hd){pos.z=-hd;p.vz=Math.abs(p.vz);}
+      if(pos.z>hd){pos.z=hd;p.vz=-Math.abs(p.vz);}
+
+      // Rotation for groups
+      if(p.mesh.rotation) p.mesh.rotation.y += dt*0.3;
+    });
+
+    // ─── Neutralization reactions ───
+    // Find H+ near OH- and react
+    for(let i=particles.length-1;i>=0;i--){
+      if(particles[i].type!=='h'||!particles[i].alive) continue;
+      for(let j=particles.length-1;j>=0;j--){
+        if(i===j) continue;
+        if(particles[j].type!=='oh'||!particles[j].alive) continue;
+        const d=particles[i].mesh.position.distanceTo(particles[j].mesh.position);
+        if(d < 1.2){
+          const mid = particles[i].mesh.position.clone().add(particles[j].mesh.position).multiplyScalar(0.5);
+
+          // Create water
+          spawnParticle('water', mid.x, mid.y, mid.z);
+          state.nWater++;
+          state.nSalt++;
+
+          // Flash
+          if(state.showFlashes) spawnFlash(mid.x, mid.y, mid.z);
+
+          // Heat
+          if(state.showHeat) state.temperature = Math.min(80, state.temperature + 0.3);
+
+          // Remove reactants
+          state.nH--;state.nOH--;
+          removeParticle(Math.max(i,j));
+          removeParticle(Math.min(i,j));
+          break;
+        }
+      }
+    }
+
+    // Cool down slowly
+    state.temperature = Math.max(25, state.temperature - dt*0.5);
+  } else {
+    // Idle motion
+    particles.forEach(p=>{
+      if(!p.alive)return;
+      const pos=p.mesh.position;
+      p.vx+=(Math.random()-0.5)*0.5*dt;p.vy+=(Math.random()-0.5)*0.5*dt;p.vz+=(Math.random()-0.5)*0.5*dt;
+      p.vx*=0.98;p.vy*=0.98;p.vz*=0.98;
+      pos.x+=p.vx*dt*0.3;pos.y+=p.vy*dt*0.3;pos.z+=p.vz*dt*0.3;
+      if(pos.x<-hw){pos.x=-hw;p.vx*=-1;}if(pos.x>hw){pos.x=hw;p.vx*=-1;}
+      if(pos.y<0.4){pos.y=0.4;p.vy*=-1;}if(pos.y>solH-0.4){pos.y=solH-0.4;p.vy*=-1;}
+      if(pos.z<-hd){pos.z=-hd;p.vz*=-1;}if(pos.z>hd){pos.z=hd;p.vz*=-1;}
+    });
+  }
+
+  // Flashes
+  for(let i=flashes.length-1;i>=0;i--){
+    const f=flashes[i];
+    f.life+=dt;
+    f.mesh.material.opacity=Math.max(0,0.9*(1-f.life/f.maxLife));
+    f.mesh.scale.setScalar(1+f.life*5);
+    if(f.life>f.maxLife){scene.remove(f.mesh);flashes.splice(i,1);}
+  }
+
+  updateUI();
+  renderer.render(scene, camera);
+}
+
+animate();
+updateUI();
+
+window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+</script>
+</body>
+</html>

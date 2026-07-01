@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="page_title">Гидролиз солей</title>
+<style>
+
+
+*{margin:0;padding:0;box-sizing:border-box;}
+
+:root{
+  --bg:#f5f4f0;
+  --surface:rgba(255,255,255,0.90);
+  --border:rgba(0,0,0,0.08);
+  --text:#1c1917;
+  --muted:#78716c;
+  --cation:#3b82f6;
+  --anion:#ef4444;
+  --water-o:#dc2626;
+  --water-h:#94a3b8;
+  --oh-color:#8b5cf6;
+  --h3o-color:#f97316;
+  --neutral:#22c55e;
+  --shadow:0 2px 20px rgba(0,0,0,0.07);
+  --shadow-lg:0 8px 44px rgba(0,0,0,0.11);
+}
+
+body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);overflow:hidden;height:100vh;}
+
+body::before{
+  content:'';position:fixed;inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='%23f5f4f0'/%3E%3Ccircle cx='1' cy='1' r='0.6' fill='rgba(0,0,0,0.025)'/%3E%3C/svg%3E");
+  pointer-events:none;z-index:0;
+}
+
+#canvas-container{position:fixed;inset:0;z-index:1;}
+
+/* ── HEADER ── */
+.header{
+  position:fixed;top:0;left:0;right:0;z-index:200;
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  padding:0 48px;height:92px;
+  display:flex;align-items:center;gap:14px;
+  box-shadow:var(--shadow);
+}
+.h-formula{font-family:'DM Mono',monospace;font-size:22px;font-weight:500;letter-spacing:-0.5px;}
+.h-cat{color:var(--cation);}
+.h-an{color:var(--anion);}
+.h-water{color:var(--water-o);}
+.header-title{font-size:26px;font-weight:700;margin-left:10px;}
+.header-sub{font-size:15px;color:var(--muted);margin-left:auto;text-align:right;line-height:1.4;}
+
+/* ── LEFT PANEL ── */
+.panel-left{
+  position:fixed;left:24px;top:108px;z-index:100;
+  width:320px;
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:24px;
+  padding:20px 22px;
+  box-shadow:var(--shadow-lg);
+}
+.panel-left h3{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:14px;}
+
+.props-table{width:100%;border-collapse:collapse;font-size:14px;}
+.props-table td{padding:7px 8px;border-bottom:1px solid rgba(0,0,0,0.05);font-size:13.5px;line-height:1.35;}
+.props-table td:first-child{color:var(--muted);font-size:12.5px;width:42%;}
+.props-table td:last-child{font-family:'DM Mono',monospace;font-weight:500;}
+
+.ph-bar{
+  margin-top:14px;height:28px;border-radius:14px;position:relative;
+  background:linear-gradient(to right, #ef4444, #f97316, #eab308, #22c55e, #06b6d4, #3b82f6, #8b5cf6);
+  overflow:hidden;
+}
+.ph-marker{
+  position:absolute;top:-4px;width:4px;height:36px;background:#1c1917;border-radius:2px;
+  transition:left 0.6s cubic-bezier(0.4,0,0.2,1);
+}
+.ph-label{
+  text-align:center;margin-top:6px;font-family:'DM Mono',monospace;font-size:14px;font-weight:700;
+  transition:color 0.4s;
+}
+
+/* ── RIGHT PANEL ── */
+.panel-right{
+  position:fixed;right:24px;top:108px;z-index:100;
+  width:285px;
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:24px;
+  padding:20px 22px;
+  box-shadow:var(--shadow-lg);
+}
+.panel-right h3{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:14px;}
+
+.salt-selector{display:flex;flex-direction:column;gap:8px;margin-bottom:14px;}
+.salt-btn{
+  width:100%;padding:12px 14px;border-radius:14px;text-align:left;
+  font-family:'Syne',sans-serif;font-size:14px;font-weight:600;
+  cursor:pointer;border:2px solid var(--border);background:rgba(0,0,0,0.02);
+  transition:all 0.2s;display:flex;align-items:center;gap:10px;
+}
+.salt-btn:hover{background:rgba(0,0,0,0.05);transform:translateY(-1px);}
+.salt-btn.sel{border-color:var(--cation);background:rgba(59,130,246,0.08);}
+.salt-btn .salt-formula{font-family:'DM Mono',monospace;font-size:13px;color:var(--muted);}
+
+.ctrl-btn{
+  width:100%;padding:11px 16px;margin-bottom:10px;
+  background:rgba(0,0,0,0.04);border:1.5px solid var(--border);border-radius:14px;
+  font-family:'Syne',sans-serif;font-size:14px;font-weight:600;
+  color:var(--text);cursor:pointer;text-align:left;
+  transition:all 0.2s;display:flex;align-items:center;gap:8px;
+}
+.ctrl-btn:hover{background:rgba(0,0,0,0.07);transform:translateY(-1px);}
+.ctrl-btn.active{background:rgba(99,102,241,0.10);border-color:rgba(99,102,241,0.4);color:#4f46e5;}
+
+/* ── LEGEND ── */
+.panel-legend{
+  position:fixed;left:24px;bottom:64px;z-index:100;
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:20px;
+  padding:14px 18px;
+  box-shadow:var(--shadow);
+  display:flex;flex-direction:column;gap:8px;
+}
+.leg-item{display:flex;align-items:center;gap:9px;font-size:13px;padding:3px 6px;border-radius:8px;cursor:pointer;transition:background 0.15s;}
+.leg-item:hover{background:rgba(0,0,0,0.05);}
+.leg-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0;}
+
+/* ── HINT ── */
+.hint-bar{
+  position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:100;
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:99px;
+  padding:9px 24px;font-size:13px;color:var(--muted);
+  box-shadow:var(--shadow);white-space:nowrap;
+}
+
+/* ── INFO PANEL ── */
+#info-panel{
+  position:fixed;right:-460px;top:0;bottom:0;z-index:300;
+  width:420px;
+  background:rgba(255,255,255,0.97);
+  border-left:1px solid var(--border);
+  padding:32px 28px;overflow-y:auto;
+  box-shadow:-4px 0 40px rgba(0,0,0,0.10);
+  transition:right 0.38s cubic-bezier(0.4,0,0.2,1);
+}
+#info-panel.open{right:0;}
+#info-close{
+  position:absolute;top:20px;right:20px;
+  width:36px;height:36px;border-radius:50%;
+  background:rgba(0,0,0,0.07);border:none;cursor:pointer;
+  font-size:18px;display:flex;align-items:center;justify-content:center;
+  transition:background 0.15s;
+}
+#info-close:hover{background:rgba(0,0,0,0.13);}
+.info-tag{display:inline-block;padding:4px 10px;border-radius:99px;font-size:12px;font-weight:600;letter-spacing:0.5px;margin-bottom:16px;}
+.info-title{font-size:22px;font-weight:800;margin-bottom:6px;line-height:1.2;}
+.info-section{margin-top:18px;}
+.info-section h4{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:6px;}
+.info-section p{font-size:14.5px;line-height:1.65;color:#292524;}
+
+</style>
+</head>
+<body>
+
+<div id="canvas-container"><canvas id="c"></canvas></div>
+
+<!-- Header -->
+<header class="header">
+  <div class="h-formula"><span class="h-cat">Salt</span> + <span class="h-water">H₂O</span> → <span class="h-cat">?</span></div>
+  <div class="header-title" data-i18n="header_title">Гидролиз солей</div>
+  <div class="header-sub" data-i18n-html="header_sub">Взаимодействие ионов с водой<br>кликните на частицу</div>
+</header>
+
+<!-- Left panel -->
+<div class="panel-left">
+  <h3 data-i18n="props_title">Свойства раствора</h3>
+  <table class="props-table">
+    <tbody>
+      <tr><td data-i18n="k_salt">Соль</td><td id="prop-salt">CH₃COONa</td></tr>
+      <tr><td data-i18n="k_type">Тип гидролиза</td><td id="prop-type">По аниону</td></tr>
+      <tr><td data-i18n="k_cation">Катион</td><td id="prop-cation">Na⁺ (сильн. осн.)</td></tr>
+      <tr><td data-i18n="k_anion">Анион</td><td id="prop-anion">CH₃COO⁻ (сл. кис.)</td></tr>
+      <tr><td data-i18n="k_reaction">Реакция</td><td id="prop-reaction" style="font-size:11px;">CH₃COO⁻+H₂O⇌CH₃COOH+OH⁻</td></tr>
+      <tr><td data-i18n="k_medium">Среда</td><td id="prop-medium">Щелочная</td></tr>
+    </tbody>
+  </table>
+  <div class="ph-bar"><div class="ph-marker" id="ph-marker" style="left:64%;"></div></div>
+  <div class="ph-label" id="ph-label">pH ≈ 9</div>
+</div>
+
+<!-- Right panel -->
+<div class="panel-right">
+  <h3 data-i18n="ctrl_title">Выберите соль</h3>
+  <div class="salt-selector">
+    <div class="salt-btn sel" data-salt="ch3coona" onclick="selectSalt('ch3coona')">
+      <span>🧪</span><div><div>Ацетат натрия</div><div class="salt-formula">CH₃COONa</div></div>
+    </div>
+    <div class="salt-btn" data-salt="nh4cl" onclick="selectSalt('nh4cl')">
+      <span>🧪</span><div><div>Хлорид аммония</div><div class="salt-formula">NH₄Cl</div></div>
+    </div>
+    <div class="salt-btn" data-salt="nacl" onclick="selectSalt('nacl')">
+      <span>🧪</span><div><div>Хлорид натрия</div><div class="salt-formula">NaCl</div></div>
+    </div>
+  </div>
+  <button class="ctrl-btn" id="btn-pause" onclick="togglePause()"><span data-i18n="btn_pause">⏸ Пауза</span></button>
+  <button class="ctrl-btn" id="btn-labels" onclick="toggleLabels()"><span data-i18n="btn_labels">🏷️ Подписи</span></button>
+</div>
+
+<!-- Legend -->
+<div class="panel-legend">
+  <div class="leg-item" onclick="flashType('cation')"><div class="leg-dot" style="background:#3b82f6;"></div><span data-i18n="leg_cation">Катион (Na⁺/NH₄⁺)</span></div>
+  <div class="leg-item" onclick="flashType('anion')"><div class="leg-dot" style="background:#ef4444;"></div><span data-i18n="leg_anion">Анион (CH₃COO⁻/Cl⁻)</span></div>
+  <div class="leg-item" onclick="flashType('water')"><div class="leg-dot" style="background:#dc2626;border:2px solid #94a3b8;"></div><span data-i18n="leg_water">Вода (H₂O)</span></div>
+  <div class="leg-item" onclick="flashType('product')"><div class="leg-dot" style="background:#8b5cf6;"></div><span data-i18n="leg_product">Продукты (OH⁻/H₃O⁺)</span></div>
+</div>
+
+<!-- Hint -->
+<div class="hint-bar" data-i18n="hint">Перетащите — вращение · Колесо — масштаб · Клик — информация</div>
+
+<!-- Info panel -->
+<div id="info-panel">
+  <button id="info-close" onclick="closeInfo()">✕</button>
+  <div class="info-tag" id="info-tag"></div>
+  <div class="info-title" id="info-title"></div>
+  <div id="info-body"></div>
+</div>
+
+<script>
+const I18N={
+ru:{
+page_title:'Гидролиз солей',header_title:'Гидролиз солей',header_sub:'Взаимодействие ионов с водой<br>кликните на частицу',
+props_title:'Свойства раствора',ctrl_title:'Выберите соль',
+k_salt:'Соль',k_type:'Тип гидролиза',k_cation:'Катион',k_anion:'Анион',k_reaction:'Реакция',k_medium:'Среда',
+btn_pause:'⏸ Пауза',btn_resume:'▶ Продолжить',btn_labels:'🏷️ Подписи',
+leg_cation:'Катион (Na⁺/NH₄⁺)',leg_anion:'Анион (CH₃COO⁻/Cl⁻)',leg_water:'Вода (H₂O)',leg_product:'Продукты (OH⁻/H₃O⁺)',
+hint:'Перетащите — вращение · Колесо — масштаб · Клик — информация',
+salts:{
+  ch3coona:{name:'Ацетат натрия',formula:'CH₃COONa',type:'По аниону',cation:'Na⁺ (сильн. осн.)',anion:'CH₃COO⁻ (сл. кис.)',reaction:'CH₃COO⁻+H₂O⇌CH₃COOH+OH⁻',medium:'Щелочная',ph:9},
+  nh4cl:{name:'Хлорид аммония',formula:'NH₄Cl',type:'По катиону',cation:'NH₄⁺ (сл. осн.)',anion:'Cl⁻ (сильн. кис.)',reaction:'NH₄⁺+H₂O⇌NH₃·H₂O+H⁺',medium:'Кислая',ph:5},
+  nacl:{name:'Хлорид натрия',formula:'NaCl',type:'Не гидролизуется',cation:'Na⁺ (сильн. осн.)',anion:'Cl⁻ (сильн. кис.)',reaction:'Na⁺+Cl⁻+H₂O → без реакции',medium:'Нейтральная',ph:7}
+}},
+kz:{
+page_title:'Тұздардың гидролизі',header_title:'Тұздардың гидролизі',header_sub:'Иондардың сумен әрекеттесуі<br>бөлшекті басыңыз',
+props_title:'Ерітінді қасиеттері',ctrl_title:'Тұзды таңдаңыз',
+k_salt:'Тұз',k_type:'Гидролиз түрі',k_cation:'Катион',k_anion:'Анион',k_reaction:'Реакция',k_medium:'Орта',
+btn_pause:'⏸ Кідірту',btn_resume:'▶ Жалғастыру',btn_labels:'🏷️ Белгілер',
+leg_cation:'Катион (Na⁺/NH₄⁺)',leg_anion:'Анион (CH₃COO⁻/Cl⁻)',leg_water:'Су (H₂O)',leg_product:'Өнімдер (OH⁻/H₃O⁺)',
+hint:'Сүйреңіз — айналдыру · Дөңгелек — масштаб · Басу — ақпарат',
+salts:{
+  ch3coona:{name:'Натрий ацетаты',formula:'CH₃COONa',type:'Анион бойынша',cation:'Na⁺ (күшті нег.)',anion:'CH₃COO⁻ (әлсіз қыш.)',reaction:'CH₃COO⁻+H₂O⇌CH₃COOH+OH⁻',medium:'Сілтілік',ph:9},
+  nh4cl:{name:'Аммоний хлориді',formula:'NH₄Cl',type:'Катион бойынша',cation:'NH₄⁺ (әлсіз нег.)',anion:'Cl⁻ (күшті қыш.)',reaction:'NH₄⁺+H₂O⇌NH₃·H₂O+H⁺',medium:'Қышқылдық',ph:5},
+  nacl:{name:'Натрий хлориді',formula:'NaCl',type:'Гидролизденбейді',cation:'Na⁺ (күшті нег.)',anion:'Cl⁻ (күшті қыш.)',reaction:'Na⁺+Cl⁻+H₂O → реакциясыз',medium:'Бейтарап',ph:7}
+}},
+en:{
+page_title:'Salt Hydrolysis',header_title:'Salt Hydrolysis',header_sub:'Ion-water interaction<br>click on a particle',
+props_title:'Solution properties',ctrl_title:'Select salt',
+k_salt:'Salt',k_type:'Hydrolysis type',k_cation:'Cation',k_anion:'Anion',k_reaction:'Reaction',k_medium:'Medium',
+btn_pause:'⏸ Pause',btn_resume:'▶ Resume',btn_labels:'🏷️ Labels',
+leg_cation:'Cation (Na⁺/NH₄⁺)',leg_anion:'Anion (CH₃COO⁻/Cl⁻)',leg_water:'Water (H₂O)',leg_product:'Products (OH⁻/H₃O⁺)',
+hint:'Drag — rotate · Scroll — zoom · Click — info',
+salts:{
+  ch3coona:{name:'Sodium acetate',formula:'CH₃COONa',type:'By anion',cation:'Na⁺ (strong base)',anion:'CH₃COO⁻ (weak acid)',reaction:'CH₃COO⁻+H₂O⇌CH₃COOH+OH⁻',medium:'Alkaline',ph:9},
+  nh4cl:{name:'Ammonium chloride',formula:'NH₄Cl',type:'By cation',cation:'NH₄⁺ (weak base)',anion:'Cl⁻ (strong acid)',reaction:'NH₄⁺+H₂O⇌NH₃·H₂O+H⁺',medium:'Acidic',ph:5},
+  nacl:{name:'Sodium chloride',formula:'NaCl',type:'No hydrolysis',cation:'Na⁺ (strong base)',anion:'Cl⁻ (strong acid)',reaction:'Na⁺+Cl⁻+H₂O → no reaction',medium:'Neutral',ph:7}
+}}
+};
+const LANG=(()=>{const q=new URLSearchParams(location.search).get('lang');return(q&&I18N[q])?q:'ru';})();
+const tr=(key)=>(I18N[LANG]&&I18N[LANG][key])??(I18N.ru[key]);
+function applyStaticI18N(){
+  document.documentElement.lang=LANG;
+  const tv=tr('page_title');if(tv)document.title=tv;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{const v=tr(el.getAttribute('data-i18n'));if(v)el.textContent=v;});
+  document.querySelectorAll('[data-i18n-html]').forEach(el=>{const v=tr(el.getAttribute('data-i18n-html'));if(v)el.innerHTML=v;});
+}
+applyStaticI18N();
+</script>
+
+<script type="importmap">
+{"imports":{"three":"../../libs/vendor/three-0.160.0/three.module.js","three/addons/":"../../libs/vendor/three-0.160.0/addons/"}}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+/* ── SCENE ── */
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({canvas, antialias: true, alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth, innerHeight);
+
+const scene = new THREE.Scene();
+scene.background = null;
+
+const camera = new THREE.PerspectiveCamera(45, innerWidth/innerHeight, 0.1, 200);
+camera.position.set(0, 3, 20);
+camera.lookAt(0, 0, 0);
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+const dL = new THREE.DirectionalLight(0xffffff, 1.0);
+dL.position.set(8, 12, 10); scene.add(dL);
+const dL2 = new THREE.DirectionalLight(0x93c5fd, 0.25);
+dL2.position.set(-6, -4, -8); scene.add(dL2);
+
+/* ── HELPERS ── */
+const V = (x,y,z)=>new THREE.Vector3(x,y,z);
+
+function makeSphere(r, color, opacity=1){
+  const m = new THREE.MeshPhongMaterial({color, opacity, transparent:opacity<1, shininess:90, specular:0xffffff});
+  return new THREE.Mesh(new THREE.SphereGeometry(r,32,24), m);
+}
+
+function makeCyl(from, to, radius, color, opacity=1){
+  const dir = new THREE.Vector3().subVectors(to, from);
+  const len = dir.length();
+  const m = new THREE.MeshPhongMaterial({color, opacity, transparent:opacity<1, shininess:60});
+  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(radius,radius,len,10), m);
+  mesh.position.addVectors(from, to).multiplyScalar(0.5);
+  if(len>0.001) mesh.quaternion.setFromUnitVectors(V(0,1,0), dir.normalize());
+  return mesh;
+}
+
+function makeLabel(text, pos, color){
+  const c = document.createElement('canvas');
+  c.width=160; c.height=48;
+  const ctx = c.getContext('2d');
+  ctx.font='bold 24px DM Mono, monospace';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillStyle='rgba(255,255,255,0.9)';
+  ctx.beginPath(); ctx.roundRect(2,2,156,44,8); ctx.fill();
+  ctx.fillStyle=color;
+  ctx.fillText(text, 80, 26);
+  const tex = new THREE.CanvasTexture(c);
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({map:tex, depthTest:false}));
+  sp.position.copy(pos);
+  sp.scale.set(2.0, 0.6, 1);
+  sp.visible = false;
+  return sp;
+}
+
+/* ── PARTICLE SYSTEM ── */
+const mainGroup = new THREE.Group();
+scene.add(mainGroup);
+
+const clickables = [];
+const labelSprites = [];
+let particles = []; // {mesh, label, type, vel, basePos}
+
+const SALT_CONFIG = {
+  ch3coona: {
+    cations: [{pos:V(-3,1,2), label:'Na⁺', r:0.5}],
+    anions: [{pos:V(3,-1,-1), label:'CH₃COO⁻', r:0.7}],
+    waters: [
+      {pos:V(0,0,0)}, {pos:V(-1.5,-2,1.5)}, {pos:V(2,2,-2)},
+      {pos:V(-3,-1,-2)}, {pos:V(1,-2,2)}, {pos:V(3,1,2)}
+    ],
+    products: [{pos:V(4.5,2,0), label:'OH⁻', r:0.35, color:0x8b5cf6}],
+    phPos: 0.64
+  },
+  nh4cl: {
+    cations: [{pos:V(-2,1,1.5), label:'NH₄⁺', r:0.6}],
+    anions: [{pos:V(3,-1,-1.5), label:'Cl⁻', r:0.5}],
+    waters: [
+      {pos:V(0,0,0)}, {pos:V(-1,-2.5,1)}, {pos:V(2,2,-1.5)},
+      {pos:V(-3.5,-0.5,-1.5)}, {pos:V(1.5,-1.5,2.5)}, {pos:V(3,1.5,1)}
+    ],
+    products: [{pos:V(-4,2.5,0), label:'H₃O⁺', r:0.4, color:0xf97316}],
+    phPos: 0.28
+  },
+  nacl: {
+    cations: [{pos:V(-3,0.5,1.5), label:'Na⁺', r:0.5}],
+    anions: [{pos:V(3,0,-1), label:'Cl⁻', r:0.5}],
+    waters: [
+      {pos:V(0,0,0)}, {pos:V(-1.5,-2,1.5)}, {pos:V(2,2,-2)},
+      {pos:V(-3,-1.5,-1.5)}, {pos:V(1,-2,2)}, {pos:V(3,1.5,2)},
+      {pos:V(0,2.5,1)}, {pos:V(-2,1.5,-2)}
+    ],
+    products: [],
+    phPos: 0.5
+  }
+};
+
+let currentSalt = 'ch3coona';
+
+function buildScene(saltKey) {
+  // Clear
+  while(mainGroup.children.length) mainGroup.remove(mainGroup.children[0]);
+  particles = [];
+  clickables.length = 0;
+  labelSprites.length = 0;
+
+  const cfg = SALT_CONFIG[saltKey];
+
+  // Cations
+  cfg.cations.forEach(c => {
+    const mesh = makeSphere(c.r, 0x3b82f6);
+    mesh.position.copy(c.pos);
+    mesh.userData = {type:'cation'};
+    mainGroup.add(mesh); clickables.push(mesh);
+    const lb = makeLabel(c.label, c.pos.clone().add(V(0,c.r+0.5,0)), '#2563eb');
+    mainGroup.add(lb); labelSprites.push(lb);
+    particles.push({mesh, label:lb, type:'cation', vel:V(Math.random()*0.01-0.005, Math.random()*0.01-0.005, Math.random()*0.01-0.005), basePos:c.pos.clone()});
+  });
+
+  // Anions
+  cfg.anions.forEach(a => {
+    const mesh = makeSphere(a.r, 0xef4444);
+    mesh.position.copy(a.pos);
+    mesh.userData = {type:'anion'};
+    mainGroup.add(mesh); clickables.push(mesh);
+    const lb = makeLabel(a.label, a.pos.clone().add(V(0,a.r+0.5,0)), '#dc2626');
+    mainGroup.add(lb); labelSprites.push(lb);
+    particles.push({mesh, label:lb, type:'anion', vel:V(Math.random()*0.01-0.005, Math.random()*0.01-0.005, Math.random()*0.01-0.005), basePos:a.pos.clone()});
+  });
+
+  // Waters
+  cfg.waters.forEach(w => {
+    const grp = new THREE.Group();
+    grp.position.copy(w.pos);
+    // O
+    const oMesh = makeSphere(0.32, 0xdc2626);
+    grp.add(oMesh);
+    // H1
+    const h1 = makeSphere(0.2, 0xcbd5e1);
+    h1.position.set(0.7, -0.5, 0);
+    grp.add(h1);
+    // H2
+    const h2 = makeSphere(0.2, 0xcbd5e1);
+    h2.position.set(-0.7, -0.5, 0);
+    grp.add(h2);
+    // Bonds
+    grp.add(makeCyl(V(0,0,0), V(0.7,-0.5,0), 0.06, 0xfca5a5));
+    grp.add(makeCyl(V(0,0,0), V(-0.7,-0.5,0), 0.06, 0xfca5a5));
+
+    grp.userData = {type:'water'};
+    mainGroup.add(grp); clickables.push(grp);
+    const lb = makeLabel('H₂O', w.pos.clone().add(V(0,0.8,0)), '#dc2626');
+    mainGroup.add(lb); labelSprites.push(lb);
+    // Random rotation
+    grp.rotation.set(Math.random()*Math.PI, Math.random()*Math.PI, 0);
+    particles.push({mesh:grp, label:lb, type:'water', vel:V(Math.random()*0.008-0.004, Math.random()*0.008-0.004, Math.random()*0.008-0.004), basePos:w.pos.clone()});
+  });
+
+  // Products (OH- or H3O+)
+  cfg.products.forEach(p => {
+    const mesh = makeSphere(p.r, p.color, 0.8);
+    mesh.position.copy(p.pos);
+    mesh.userData = {type:'product'};
+    mainGroup.add(mesh); clickables.push(mesh);
+    const lb = makeLabel(p.label, p.pos.clone().add(V(0,p.r+0.5,0)), p.color===0x8b5cf6 ? '#7c3aed' : '#ea580c');
+    mainGroup.add(lb); labelSprites.push(lb);
+    particles.push({mesh, label:lb, type:'product', vel:V(Math.random()*0.006-0.003, Math.random()*0.006-0.003, Math.random()*0.006-0.003), basePos:p.pos.clone()});
+  });
+
+  // Show labels if active
+  const showLb = document.getElementById('btn-labels').classList.contains('active');
+  labelSprites.forEach(lb => lb.visible = showLb);
+}
+
+buildScene('ch3coona');
+
+/* ── STATE & ANIMATION ── */
+let paused = false;
+let animT = 0;
+let rotX = 0.1, isDragging = false, dragStart = null, lastMouse = {x:0,y:0}, dragDelta = 0;
+
+function animate() {
+  requestAnimationFrame(animate);
+  if(!paused) {
+    animT += 0.016;
+    mainGroup.rotation.y += 0.0006;
+    mainGroup.rotation.x = rotX;
+
+    // Brownian motion for particles
+    particles.forEach(p => {
+      const pos = p.mesh.position;
+      pos.x += p.vel.x;
+      pos.y += p.vel.y;
+      pos.z += p.vel.z;
+
+      // Bounce within bounds
+      const dist = pos.distanceTo(p.basePos);
+      if(dist > 2.0) {
+        p.vel.x *= -0.8; p.vel.y *= -0.8; p.vel.z *= -0.8;
+        const dir = pos.clone().sub(p.basePos).normalize().multiplyScalar(0.02);
+        pos.sub(dir);
+      }
+
+      // Random velocity changes
+      if(Math.random() < 0.02) {
+        p.vel.x += (Math.random()-0.5)*0.004;
+        p.vel.y += (Math.random()-0.5)*0.004;
+        p.vel.z += (Math.random()-0.5)*0.004;
+      }
+
+      // Clamp speed
+      const speed = p.vel.length();
+      if(speed > 0.02) p.vel.multiplyScalar(0.02/speed);
+
+      // Update label pos
+      if(p.label) p.label.position.copy(pos).add(V(0, 0.9, 0));
+    });
+
+    // Product glow pulse
+    particles.filter(p=>p.type==='product').forEach(p => {
+      p.mesh.material.opacity = 0.5 + 0.4*Math.sin(animT*2.5);
+    });
+  }
+  renderer.render(scene, camera);
+}
+
+/* ── CONTROLS ── */
+window.selectSalt = function(key) {
+  currentSalt = key;
+  document.querySelectorAll('.salt-btn').forEach(b => b.classList.toggle('sel', b.dataset.salt===key));
+  buildScene(key);
+  updateProps(key);
+};
+
+function updateProps(key) {
+  const lang = I18N[LANG] || I18N.ru;
+  const s = lang.salts[key];
+  document.getElementById('prop-salt').textContent = s.formula;
+  document.getElementById('prop-type').textContent = s.type;
+  document.getElementById('prop-cation').textContent = s.cation;
+  document.getElementById('prop-anion').textContent = s.anion;
+  document.getElementById('prop-reaction').textContent = s.reaction;
+  document.getElementById('prop-medium').textContent = s.medium;
+  // pH bar
+  const phPct = (s.ph / 14) * 100;
+  document.getElementById('ph-marker').style.left = phPct + '%';
+  document.getElementById('ph-label').textContent = 'pH ≈ ' + s.ph;
+  const phColors = {5:'#ef4444', 7:'#22c55e', 9:'#8b5cf6'};
+  document.getElementById('ph-label').style.color = phColors[s.ph] || '#1c1917';
+}
+
+window.togglePause = function() {
+  paused = !paused;
+  const btn = document.getElementById('btn-pause');
+  const lang = I18N[LANG] || I18N.ru;
+  btn.querySelector('span').textContent = paused ? (lang.btn_resume||'▶') : (lang.btn_pause||'⏸');
+  btn.classList.toggle('active', paused);
+};
+
+window.toggleLabels = function() {
+  const btn = document.getElementById('btn-labels');
+  const show = !btn.classList.contains('active');
+  btn.classList.toggle('active', show);
+  labelSprites.forEach(lb => lb.visible = show);
+};
+
+window.flashType = function(type) {
+  particles.filter(p=>p.type===type).forEach(p => {
+    if(p.mesh.material) {
+      p.mesh.material.emissive && p.mesh.material.emissive.setHex(p.mesh.material.color.getHex());
+      setTimeout(()=> p.mesh.material.emissive && p.mesh.material.emissive.setHex(0), 500);
+    }
+  });
+  openInfo(type);
+};
+
+/* ── INFO PANEL ── */
+const infoDB_ALL = {
+  ru: {
+    cation:{tag:'Положительный ион',title:'Катион в растворе',sections:[
+      {h:'Что такое катион',p:'Положительно заряженный ион, образующийся при диссоциации соли. Na⁺ — катион сильного основания (NaOH), не взаимодействует с водой. NH₄⁺ — катион слабого основания (NH₃·H₂O), гидролизуется.'},
+      {h:'Гидролиз по катиону',p:'NH₄⁺ + H₂O ⇌ NH₃·H₂O + H⁺. Катион слабого основания отнимает OH⁻ у воды, высвобождая H⁺. Раствор становится кислым (pH < 7).'},
+      {h:'Когда катион не гидролизуется',p:'Катионы щелочных (Li⁺, Na⁺, K⁺) и щелочноземельных (Ca²⁺, Ba²⁺) металлов не взаимодействуют с водой — их гидроксиды сильные основания.'}
+    ]},
+    anion:{tag:'Отрицательный ион',title:'Анион в растворе',sections:[
+      {h:'Что такое анион',p:'Отрицательно заряженный ион. CH₃COO⁻ — анион слабой кислоты (CH₃COOH), гидролизуется. Cl⁻ — анион сильной кислоты (HCl), не гидролизуется.'},
+      {h:'Гидролиз по аниону',p:'CH₃COO⁻ + H₂O ⇌ CH₃COOH + OH⁻. Анион слабой кислоты отнимает H⁺ у воды, высвобождая OH⁻. Раствор становится щелочным (pH > 7).'},
+      {h:'Когда анион не гидролизуется',p:'Анионы сильных кислот (Cl⁻, NO₃⁻, SO₄²⁻) не взаимодействуют с водой. Их кислоты полностью диссоциированы.'}
+    ]},
+    water:{tag:'H₂O · полярная молекула',title:'Вода — участник гидролиза',sections:[
+      {h:'Роль воды',p:'Вода — амфолит: может отдавать H⁺ (кислота) или OH⁻ (основание). При гидролизе один из ионов соли «отнимает» часть молекулы воды.'},
+      {h:'Автопротолиз',p:'2H₂O ⇌ H₃O⁺ + OH⁻. Kw = 10⁻¹⁴. В чистой воде [H⁺] = [OH⁻] = 10⁻⁷ моль/л, pH = 7.'},
+      {h:'Смещение равновесия',p:'Гидролиз смещает равновесие воды: если образуется OH⁻ — среда щелочная, если H⁺ (H₃O⁺) — кислая. Это определяет pH раствора соли.'}
+    ]},
+    product:{tag:'Продукт гидролиза',title:'OH⁻ или H₃O⁺',sections:[
+      {h:'Щелочная среда (OH⁻)',p:'Образуется при гидролизе по аниону. Примеры солей: CH₃COONa, Na₂CO₃, K₂S. pH > 7. Фенолфталеин — малиновый.'},
+      {h:'Кислая среда (H₃O⁺)',p:'Образуется при гидролизе по катиону. Примеры: NH₄Cl, FeCl₃, Al₂(SO₄)₃. pH < 7. Лакмус — красный.'},
+      {h:'Степень гидролиза',p:'Чем слабее кислота/основание, образовавшие соль, тем сильнее гидролиз. При нагревании степень гидролиза увеличивается (эндотермический процесс).'}
+    ]}
+  },
+  kz: {
+    cation:{tag:'Оң ион',title:'Ерітіндідегі катион',sections:[
+      {h:'Катион дегеніміз',p:'Тұздың диссоциациясы кезінде түзілетін оң зарядты ион. Na⁺ — күшті негіздің катионы (NaOH), сумен әрекеттеспейді. NH₄⁺ — әлсіз негіздің катионы, гидролизденеді.'},
+      {h:'Катион бойынша гидролиз',p:'NH₄⁺ + H₂O ⇌ NH₃·H₂O + H⁺. Әлсіз негіз катионы судан OH⁻ алып, H⁺ бөліп шығарады. Ерітінді қышқылдық болады (pH < 7).'},
+      {h:'Катион гидролизденбегенде',p:'Сілтілік (Li⁺, Na⁺, K⁺) және сілтілік-жер (Ca²⁺, Ba²⁺) металдарының катиондары сумен әрекеттеспейді.'}
+    ]},
+    anion:{tag:'Теріс ион',title:'Ерітіндідегі анион',sections:[
+      {h:'Анион дегеніміз',p:'Теріс зарядты ион. CH₃COO⁻ — әлсіз қышқыл анионы, гидролизденеді. Cl⁻ — күшті қышқыл анионы, гидролизденбейді.'},
+      {h:'Анион бойынша гидролиз',p:'CH₃COO⁻ + H₂O ⇌ CH₃COOH + OH⁻. Әлсіз қышқыл анионы судан H⁺ алып, OH⁻ бөліп шығарады. Ерітінді сілтілік болады (pH > 7).'},
+      {h:'Анион гидролизденбегенде',p:'Күшті қышқылдардың аниондары (Cl⁻, NO₃⁻, SO₄²⁻) сумен әрекеттеспейді.'}
+    ]},
+    water:{tag:'H₂O · полярлы молекула',title:'Су — гидролиз қатысушысы',sections:[
+      {h:'Судың рөлі',p:'Су — амфолит: H⁺ бере алады (қышқыл) немесе OH⁻ (негіз). Гидролиз кезінде тұз ионы су молекуласының бір бөлігін «алады».'},
+      {h:'Автопротолиз',p:'2H₂O ⇌ H₃O⁺ + OH⁻. Kw = 10⁻¹⁴. Таза суда [H⁺] = [OH⁻] = 10⁻⁷ моль/л, pH = 7.'},
+      {h:'Тепе-теңдіктің ығысуы',p:'Гидролиз су тепе-теңдігін ығыстырады: OH⁻ түзілсе — сілтілік орта, H⁺ түзілсе — қышқылдық. Бұл тұз ерітіндісінің pH-ын анықтайды.'}
+    ]},
+    product:{tag:'Гидролиз өнімі',title:'OH⁻ немесе H₃O⁺',sections:[
+      {h:'Сілтілік орта (OH⁻)',p:'Анион бойынша гидролизде түзіледі. Мысалдар: CH₃COONa, Na₂CO₃, K₂S. pH > 7. Фенолфталеин — қызғылт.'},
+      {h:'Қышқылдық орта (H₃O⁺)',p:'Катион бойынша гидролизде түзіледі. Мысалдар: NH₄Cl, FeCl₃, Al₂(SO₄)₃. pH < 7. Лакмус — қызыл.'},
+      {h:'Гидролиз дәрежесі',p:'Тұзды құраған қышқыл/негіз неғұрлым әлсіз болса, гидролиз соғұрлым күшті. Қыздырғанда гидролиз дәрежесі артады (эндотермиялық процесс).'}
+    ]}
+  },
+  en: {
+    cation:{tag:'Positive ion',title:'Cation in Solution',sections:[
+      {h:'What is a cation',p:'A positively charged ion formed during salt dissociation. Na⁺ — cation of a strong base (NaOH), does not interact with water. NH₄⁺ — cation of a weak base (NH₃·H₂O), undergoes hydrolysis.'},
+      {h:'Hydrolysis by cation',p:'NH₄⁺ + H₂O ⇌ NH₃·H₂O + H⁺. The weak base cation takes OH⁻ from water, releasing H⁺. The solution becomes acidic (pH < 7).'},
+      {h:'When cation doesn\'t hydrolyze',p:'Cations of alkali (Li⁺, Na⁺, K⁺) and alkaline earth (Ca²⁺, Ba²⁺) metals do not interact with water — their hydroxides are strong bases.'}
+    ]},
+    anion:{tag:'Negative ion',title:'Anion in Solution',sections:[
+      {h:'What is an anion',p:'A negatively charged ion. CH₃COO⁻ — anion of a weak acid (CH₃COOH), hydrolyzes. Cl⁻ — anion of a strong acid (HCl), does not hydrolyze.'},
+      {h:'Hydrolysis by anion',p:'CH₃COO⁻ + H₂O ⇌ CH₃COOH + OH⁻. The weak acid anion takes H⁺ from water, releasing OH⁻. The solution becomes alkaline (pH > 7).'},
+      {h:'When anion doesn\'t hydrolyze',p:'Anions of strong acids (Cl⁻, NO₃⁻, SO₄²⁻) do not interact with water. Their acids are fully dissociated.'}
+    ]},
+    water:{tag:'H₂O · polar molecule',title:'Water — Hydrolysis Participant',sections:[
+      {h:'Role of water',p:'Water is amphoteric: can donate H⁺ (acid) or OH⁻ (base). During hydrolysis, a salt ion "takes" part of the water molecule.'},
+      {h:'Autoprotolysis',p:'2H₂O ⇌ H₃O⁺ + OH⁻. Kw = 10⁻¹⁴. In pure water [H⁺] = [OH⁻] = 10⁻⁷ mol/L, pH = 7.'},
+      {h:'Equilibrium shift',p:'Hydrolysis shifts water equilibrium: if OH⁻ forms — alkaline, if H⁺ (H₃O⁺) — acidic. This determines the salt solution pH.'}
+    ]},
+    product:{tag:'Hydrolysis product',title:'OH⁻ or H₃O⁺',sections:[
+      {h:'Alkaline medium (OH⁻)',p:'Formed during hydrolysis by anion. Examples: CH₃COONa, Na₂CO₃, K₂S. pH > 7. Phenolphthalein — pink.'},
+      {h:'Acidic medium (H₃O⁺)',p:'Formed during hydrolysis by cation. Examples: NH₄Cl, FeCl₃, Al₂(SO₄)₃. pH < 7. Litmus — red.'},
+      {h:'Degree of hydrolysis',p:'The weaker the acid/base that formed the salt, the stronger the hydrolysis. Heating increases the degree of hydrolysis (endothermic process).'}
+    ]}
+  }
+};
+const infoDB = infoDB_ALL[LANG] || infoDB_ALL.ru;
+
+window.openInfo = function(type) {
+  const data = infoDB[type];
+  if(!data) return;
+  const tagEl = document.getElementById('info-tag');
+  tagEl.textContent = data.tag;
+  const tagColors = {cation:{bg:'rgba(59,130,246,0.15)',color:'#1d4ed8'},anion:{bg:'rgba(239,68,68,0.15)',color:'#b91c1c'},water:{bg:'rgba(220,38,38,0.12)',color:'#991b1b'},product:{bg:'rgba(139,92,246,0.15)',color:'#6d28d9'}};
+  const tc = tagColors[type]||tagColors.water;
+  tagEl.style.background=tc.bg; tagEl.style.color=tc.color;
+  document.getElementById('info-title').textContent = data.title;
+  document.getElementById('info-body').innerHTML = data.sections.map(s=>`<div class="info-section"><h4>${s.h}</h4><p>${s.p}</p></div>`).join('');
+  document.getElementById('info-panel').classList.add('open');
+};
+
+window.closeInfo = function(){ document.getElementById('info-panel').classList.remove('open'); };
+
+/* ── RAYCASTER ── */
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+
+canvas.addEventListener('click', e=>{
+  if(isDragging) return;
+  mouse.x = (e.clientX/innerWidth)*2-1;
+  mouse.y = -(e.clientY/innerHeight)*2+1;
+  raycaster.setFromCamera(mouse, camera);
+  const hits = raycaster.intersectObjects(clickables, true);
+  if(hits.length > 0){
+    let obj = hits[0].object;
+    while(obj && !obj.userData.type) obj = obj.parent;
+    if(obj && obj.userData.type) openInfo(obj.userData.type);
+  }
+});
+
+/* ── DRAG + ZOOM ── */
+canvas.addEventListener('mousedown', e=>{dragStart={x:e.clientX,y:e.clientY};lastMouse={x:e.clientX,y:e.clientY};isDragging=false;dragDelta=0;});
+canvas.addEventListener('mousemove', e=>{
+  if(!dragStart) return;
+  const dx=e.clientX-dragStart.x, dy=e.clientY-dragStart.y;
+  dragDelta=Math.sqrt(dx*dx+dy*dy);
+  if(dragDelta>4) isDragging=true;
+  if(isDragging){
+    mainGroup.rotation.y += (e.clientX-lastMouse.x)*0.012;
+    rotX = Math.max(-0.8, Math.min(0.8, rotX+(e.clientY-lastMouse.y)*0.010));
+    mainGroup.rotation.x = rotX;
+  }
+  lastMouse={x:e.clientX,y:e.clientY};
+});
+canvas.addEventListener('mouseup', ()=>{dragStart=null;});
+canvas.addEventListener('mouseleave', ()=>{dragStart=null;isDragging=false;});
+canvas.addEventListener('wheel', e=>{e.preventDefault();camera.position.z=Math.max(10,Math.min(32,camera.position.z+e.deltaY*0.03));},{passive:false});
+
+/* ── RESIZE ── */
+window.addEventListener('resize', ()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+
+animate();
+</script>
+</body>
+</html>

@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="page_title">Молекула воды (H₂O)</title>
+    <script type="text/javascript" src="qrc:///qtwebchannel/qwebchannel.js"></script>
+    <script src="../../libs/vendor/three-r128/three.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #0d1b2a 0%, #1b263b 50%, #415a77 100%);
+            overflow: hidden;
+            color: white;
+        }
+
+
+
+        .back-button:hover {
+            transform: translateX(-5px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .header {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            font-weight: 800;
+            text-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .info-panel {
+            position: fixed;
+            right: -420px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 400px;
+            max-height: 85vh;
+            background: rgba(255, 255, 255, 0.95);
+            
+            border-radius: 20px 0 0 20px;
+            padding: 30px;
+            box-shadow: -5px 0 30px rgba(0, 0, 0, 0.4);
+            transition: right 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            z-index: 500;
+            overflow-y: auto;
+            color: #333;
+        }
+
+        .info-panel.active {
+            right: 0;
+        }
+
+        .info-panel .close-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            background: #f44336;
+            color: white;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s;
+        }
+
+        .info-panel .close-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .info-panel h2 {
+            color: #0d1b2a;
+            font-size: 24px;
+            margin-bottom: 15px;
+            padding-right: 40px;
+        }
+
+        .info-panel .info-content {
+            line-height: 1.7;
+            font-size: 15px;
+        }
+
+        .info-section {
+            margin-bottom: 18px;
+            padding: 15px;
+            background: rgba(65, 90, 119, 0.08);
+            border-radius: 10px;
+            border-left: 4px solid #3498db;
+        }
+
+        .info-section strong {
+            color: #0d1b2a;
+            display: block;
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+
+        .controls {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.12);
+            
+            border-radius: 15px;
+            padding: 15px 25px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .controls p {
+            font-size: 14px;
+            opacity: 0.95;
+            text-align: center;
+        }
+
+        .molecule-info {
+            position: fixed;
+            top: 120px;
+            left: 30px;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.12);
+            
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            max-width: 280px;
+        }
+
+        .molecule-info h3 {
+            font-size: 18px;
+            margin-bottom: 12px;
+            font-weight: 600;
+            color: #3498db;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+            font-size: 14px;
+        }
+
+        .info-row .label {
+            opacity: 0.85;
+        }
+
+        .info-row .value {
+            font-weight: 600;
+        }
+
+        .legend {
+            position: fixed;
+            bottom: 30px;
+            left: 30px;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.12);
+            
+            border-radius: 15px;
+            padding: 18px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            max-width: 280px;
+        }
+
+        .legend h3 {
+            font-size: 16px;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+            font-size: 13px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .legend-item:hover {
+            transform: translateX(5px);
+        }
+
+        .legend-sphere {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            margin-right: 12px;
+            border: 2px solid rgba(255, 255, 255, 0.6);
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .view-controls {
+            position: fixed;
+            top: 120px;
+            right: 30px;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.12);
+            
+            border-radius: 15px;
+            padding: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .view-controls h3 {
+            font-size: 16px;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .view-btn {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin: 8px 0;
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 13px;
+        }
+
+        .view-btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+            transform: translateX(3px);
+        }
+
+        .view-btn.active {
+            background: rgba(52, 152, 219, 0.5);
+            border-color: #3498db;
+        }
+
+        
+    </style>
+</head>
+<body>
+
+
+<div class="header">
+    <h1 data-i18n="header_title">💧 Молекула воды (H₂O)</h1>
+    <p data-i18n="header_subtitle">Интерактивная 3D модель</p>
+</div>
+<div id="canvas-container"></div>
+
+<div class="molecule-info">
+    <h3 data-i18n="mol_info_heading">Вода (H₂O)</h3>
+    <div class="info-row">
+        <span class="label" data-i18n="mol_info_mass_label">Молекулярная масса:</span>
+        <span class="value" data-i18n="mol_info_mass_value">18.015 г/моль</span>
+    </div>
+    <div class="info-row">
+        <span class="label" data-i18n="mol_info_angle_label">Угол связи:</span>
+        <span class="value" data-i18n="mol_info_angle_value">104.5°</span>
+    </div>
+    <div class="info-row">
+        <span class="label" data-i18n="mol_info_bond_label">Длина O-H связи:</span>
+        <span class="value" data-i18n="mol_info_bond_value">95.84 пм</span>
+    </div>
+    <div class="info-row">
+        <span class="label" data-i18n="mol_info_bondtype_label">Тип связи:</span>
+        <span class="value" data-i18n="mol_info_bondtype_value">Ковалентная</span>
+    </div>
+    <div class="info-row">
+        <span class="label" data-i18n="mol_info_polarity_label">Полярность:</span>
+        <span class="value" data-i18n="mol_info_polarity_value">Полярная</span>
+    </div>
+    <div class="info-row">
+        <span class="label" data-i18n="mol_info_shape_label">Форма молекулы:</span>
+        <span class="value" data-i18n="mol_info_shape_value">Угловая</span>
+    </div>
+</div>
+
+<div class="view-controls">
+    <h3 data-i18n="view_controls_heading">Визуализация:</h3>
+    <button class="view-btn active" data-i18n="view_btn_dipole" onclick="toggleDipole()">Показать диполь</button>
+    <button class="view-btn" data-i18n="view_btn_electrons" onclick="toggleElectronCloud()">Электронные облака</button>
+    <button class="view-btn" data-i18n="view_btn_charges" onclick="toggleCharges()">Частичные заряды</button>
+    <button class="view-btn" data-i18n="view_btn_angles" onclick="toggleAngles()">Показать углы</button>
+</div>
+
+<div class="info-panel" id="info-panel">
+    <button class="close-btn" data-i18n-aria-label="close_btn_label" aria-label="Закрыть" onclick="closeInfo()">×</button>
+    <h2 id="info-title" data-i18n="info_default_title">Молекула воды</h2>
+    <div class="info-content" id="info-content">
+        <p data-i18n="info_default_text">Кликните на атом кислорода или водорода, чтобы узнать подробнее.</p>
+    </div>
+</div>
+
+<div class="controls">
+    <p data-i18n="controls_hint">�️ Вращение: перетаскивание | 🔍 Масштаб: колесо мыши | Пробел: пауза</p>
+</div>
+
+<div class="legend">
+    <h3 data-i18n="legend_heading">Атомы:</h3>
+    <div class="legend-item" onclick="focusPart('oxygen')">
+        <div class="legend-sphere" style="background: radial-gradient(circle at 30% 30%, #ff4444, #cc0000);"></div>
+        <span data-i18n="legend_oxygen">Кислород (O)</span>
+    </div>
+    <div class="legend-item" onclick="focusPart('hydrogen')">
+        <div class="legend-sphere" style="background: radial-gradient(circle at 30% 30%, #e8f4f8, #b8d4e8);"></div>
+        <span data-i18n="legend_hydrogen">Водород (H)</span>
+    </div>
+</div>
+
+<script>
+    // QWebChannel Bridge
+    function goBack() {
+        if (typeof bridge !== 'undefined' && bridge) {
+            bridge.onBackClicked();
+        }
+    }
+
+    if (typeof QWebChannel !== 'undefined' && typeof qt !== 'undefined') {
+        try {
+            new QWebChannel(qt.webChannelTransport, function (channel) {
+                window.bridge = channel.objects.bridge;
+            });
+        } catch (e) {
+        }
+    }
+
+    // =====================================================================
+    //  I18N — встроенные переводы (RU / KZ / EN). Язык: ?lang=ru|kz|en.
+    // =====================================================================
+    const I18N = {
+        ru: {
+            page_title: 'Молекула воды (H₂O)',
+            header_title: '💧 Молекула воды (H₂O)',
+            header_subtitle: 'Интерактивная 3D модель',
+            mol_info_heading: 'Вода (H₂O)',
+            mol_info_mass_label: 'Молекулярная масса:',
+            mol_info_mass_value: '18.015 г/моль',
+            mol_info_angle_label: 'Угол связи:',
+            mol_info_angle_value: '104.5°',
+            mol_info_bond_label: 'Длина O-H связи:',
+            mol_info_bond_value: '95.84 пм',
+            mol_info_bondtype_label: 'Тип связи:',
+            mol_info_bondtype_value: 'Ковалентная',
+            mol_info_polarity_label: 'Полярность:',
+            mol_info_polarity_value: 'Полярная',
+            mol_info_shape_label: 'Форма молекулы:',
+            mol_info_shape_value: 'Угловая',
+            view_controls_heading: 'Визуализация:',
+            view_btn_dipole: 'Показать диполь',
+            view_btn_electrons: 'Электронные облака',
+            view_btn_charges: 'Частичные заряды',
+            view_btn_angles: 'Показать углы',
+            info_default_title: 'Молекула воды',
+            info_default_text: 'Кликните на атом кислорода или водорода, чтобы узнать подробнее.',
+            controls_hint: '🖱️ Вращение: перетаскивание | 🔍 Масштаб: колесо мыши | Пробел: пауза',
+            legend_heading: 'Атомы:',
+            legend_oxygen: 'Кислород (O)',
+            legend_hydrogen: 'Водород (H)',
+            close_btn_label: 'Закрыть',
+            atoms: {
+                oxygen: {
+                    title: 'Атом кислорода (O)',
+                    sections: [
+                        { strong: 'Характеристики:', body: '<p>• Атомный номер: 8<br>• Атомная масса: 15.999 а.е.м.<br>• Электроотрицательность: 3.44 (по Полингу)<br>• Валентность: 2<br>• Ковалентный радиус: 66 пм</p>' },
+                        { strong: 'Роль в молекуле:', body: '<p>Центральный атом молекулы воды. Образует две ковалентные связи с атомами водорода.</p>' },
+                        { strong: 'Электронная конфигурация:', body: '<p>1s² 2s² 2p⁴<br>На внешнем уровне 6 электронов: 2 неподелённые пары и 2 связывающие электроны.</p>' },
+                        { strong: 'Частичный заряд:', body: '<p>δ⁻ (отрицательный). Кислород более электроотрицателен, чем водород, поэтому притягивает электроны связи к себе.</p>' }
+                    ]
+                },
+                hydrogen: {
+                    title: 'Атом водорода (H)',
+                    sections: [
+                        { strong: 'Характеристики:', body: '<p>• Атомный номер: 1<br>• Атомная масса: 1.008 а.е.м.<br>• Электроотрицательность: 2.20 (по Полингу)<br>• Валентность: 1<br>• Ковалентный радиус: 31 пм</p>' },
+                        { strong: 'Роль в молекуле:', body: '<p>Образует полярную ковалентную связь с кислородом. В молекуле воды два атома водорода.</p>' },
+                        { strong: 'Электронная конфигурация:', body: '<p>1s¹ (один электрон)<br>При образовании связи делит электронную пару с кислородом.</p>' },
+                        { strong: 'Частичный заряд:', body: '<p>δ⁺ (положительный). Электроны связи смещены к более электроотрицательному кислороду.</p>' },
+                        { strong: 'Водородные связи:', body: '<p>Атомы водорода могут образовывать водородные связи с атомами кислорода других молекул воды, что объясняет уникальные свойства воды.</p>' }
+                    ]
+                },
+                molecule: {
+                    title: 'Молекула воды (H₂O)',
+                    sections: [
+                        { strong: 'Геометрия молекулы:', body: '<p>Угловая (V-образная) форма. Угол между связями O-H составляет 104.5° (теоретически 109.5° для тетраэдра, но сжат из-за неподелённых пар электронов).</p>' },
+                        { strong: 'Полярность:', body: '<p>Молекула воды полярна. Атом кислорода имеет частичный отрицательный заряд (δ⁻), атомы водорода — частичный положительный (δ⁺). Дипольный момент: 1.85 D (дебай).</p>' },
+                        { strong: 'Тип гибридизации:', body: '<p>sp³-гибридизация кислорода. Четыре sp³-орбитали направлены к вершинам тетраэдра: две заняты связями O-H, две — неподелёнными парами.</p>' },
+                        { strong: 'Водородные связи:', body: '<p>Каждая молекула воды может образовать до 4 водородных связей: 2 через атомы водорода и 2 через неподелённые пары кислорода.</p>' },
+                        { strong: 'Уникальные свойства:', body: '<p>• Высокая температура кипения (100°C)<br>• Высокая теплоёмкость<br>• Плотность льда меньше плотности жидкой воды<br>• Универсальный растворитель<br>• Поверхностное натяжение</p>' },
+                        { strong: 'Значение для жизни:', body: '<p>Вода — основа всей жизни на Земле. Составляет ~60% массы человеческого тела.</p>' }
+                    ]
+                }
+            }
+        },
+        kz: {
+            page_title: 'Су молекуласы (H₂O)',
+            header_title: '💧 Су молекуласы (H₂O)',
+            header_subtitle: 'Интерактивті 3D модель',
+            mol_info_heading: 'Су (H₂O)',
+            mol_info_mass_label: 'Молекулалық массасы:',
+            mol_info_mass_value: '18.015 г/моль',
+            mol_info_angle_label: 'Байланыс бұрышы:',
+            mol_info_angle_value: '104.5°',
+            mol_info_bond_label: 'O-H байланысының ұзындығы:',
+            mol_info_bond_value: '95.84 пм',
+            mol_info_bondtype_label: 'Байланыс түрі:',
+            mol_info_bondtype_value: 'Ковалентті',
+            mol_info_polarity_label: 'Полярлығы:',
+            mol_info_polarity_value: 'Полярлы',
+            mol_info_shape_label: 'Молекуланың пішіні:',
+            mol_info_shape_value: 'Бұрыштық',
+            view_controls_heading: 'Визуализация:',
+            view_btn_dipole: 'Дипольді көрсету',
+            view_btn_electrons: 'Электрондық бұлттар',
+            view_btn_charges: 'Жартылай зарядтар',
+            view_btn_angles: 'Бұрыштарды көрсету',
+            info_default_title: 'Су молекуласы',
+            info_default_text: 'Толығырақ білу үшін оттегі немесе сутегі атомына басыңыз.',
+            controls_hint: '🖱️ Айналдыру: тарту | 🔍 Масштаб: тінтуір дөңгелегі | Бос орын: кідіріс',
+            legend_heading: 'Атомдар:',
+            legend_oxygen: 'Оттегі (O)',
+            legend_hydrogen: 'Сутегі (H)',
+            close_btn_label: 'Жабу',
+            atoms: {
+                oxygen: {
+                    title: 'Оттегі атомы (O)',
+                    sections: [
+                        { strong: 'Сипаттамалары:', body: '<p>• Атом нөмірі: 8<br>• Атом массасы: 15.999 а.б.м.<br>• Электртерістілігі: 3.44 (Полинг бойынша)<br>• Валенттігі: 2<br>• Ковалентті радиусы: 66 пм</p>' },
+                        { strong: 'Молекуладағы рөлі:', body: '<p>Су молекуласының орталық атомы. Сутегі атомдарымен екі ковалентті байланыс түзеді.</p>' },
+                        { strong: 'Электрондық конфигурациясы:', body: '<p>1s² 2s² 2p⁴<br>Сыртқы деңгейде 6 электрон бар: 2 бөлінбеген жұп және 2 байланыстырушы электрон.</p>' },
+                        { strong: 'Жартылай заряды:', body: '<p>δ⁻ (теріс). Оттегінің электртерістілігі сутегіден жоғары, сондықтан байланыс электрондарын өзіне тартады.</p>' }
+                    ]
+                },
+                hydrogen: {
+                    title: 'Сутегі атомы (H)',
+                    sections: [
+                        { strong: 'Сипаттамалары:', body: '<p>• Атом нөмірі: 1<br>• Атом массасы: 1.008 а.б.м.<br>• Электртерістілігі: 2.20 (Полинг бойынша)<br>• Валенттігі: 1<br>• Ковалентті радиусы: 31 пм</p>' },
+                        { strong: 'Молекуладағы рөлі:', body: '<p>Оттегімен полярлы ковалентті байланыс түзеді. Су молекуласында екі сутегі атомы бар.</p>' },
+                        { strong: 'Электрондық конфигурациясы:', body: '<p>1s¹ (бір электрон)<br>Байланыс түзу кезінде оттегімен электрон жұбын ортақ пайдаланады.</p>' },
+                        { strong: 'Жартылай заряды:', body: '<p>δ⁺ (оң). Байланыс электрондары электртерістілігі жоғары оттегіге қарай ығысқан.</p>' },
+                        { strong: 'Сутектік байланыстар:', body: '<p>Сутегі атомдары басқа су молекулаларының оттегі атомдарымен сутектік байланыстар түзе алады, бұл судың бірегей қасиеттерін түсіндіреді.</p>' }
+                    ]
+                },
+                molecule: {
+                    title: 'Су молекуласы (H₂O)',
+                    sections: [
+                        { strong: 'Молекуланың геометриясы:', body: '<p>Бұрыштық (V-тәрізді) пішін. O-H байланыстары арасындағы бұрыш 104.5° (тетраэдр үшін теориялық мән — 109.5°, бірақ бөлінбеген электрон жұптарының әсерінен ол сығылған).</p>' },
+                        { strong: 'Полярлығы:', body: '<p>Су молекуласы полярлы. Оттегі атомында жартылай теріс заряд (δ⁻), сутегі атомдарында — жартылай оң заряд (δ⁺) болады. Диполь моменті: 1.85 D (Дебай).</p>' },
+                        { strong: 'Гибридизация түрі:', body: '<p>Оттегінің sp³-гибридизациясы. Төрт sp³-орбиталь тетраэдрдің төбелеріне бағытталған: екеуі O-H байланыстарына, екеуі бөлінбеген жұптарға арналған.</p>' },
+                        { strong: 'Сутектік байланыстар:', body: '<p>Әр су молекуласы 4-ке дейін сутектік байланыс түзе алады: 2-уі сутегі атомдары арқылы, 2-уі оттегінің бөлінбеген жұптары арқылы.</p>' },
+                        { strong: 'Бірегей қасиеттері:', body: '<p>• Жоғары қайнау температурасы (100°C)<br>• Жоғары жылу сыйымдылығы<br>• Мұздың тығыздығы сұйық судан төмен<br>• Әмбебап еріткіш<br>• Беттік керілу</p>' },
+                        { strong: 'Тіршілік үшін маңызы:', body: '<p>Су — Жердегі бүкіл тіршіліктің негізі. Адам денесі массасының ~60%-ын құрайды.</p>' }
+                    ]
+                }
+            }
+        },
+        en: {
+            page_title: 'Water Molecule (H₂O)',
+            header_title: '💧 Water Molecule (H₂O)',
+            header_subtitle: 'Interactive 3D Model',
+            mol_info_heading: 'Water (H₂O)',
+            mol_info_mass_label: 'Molecular mass:',
+            mol_info_mass_value: '18.015 g/mol',
+            mol_info_angle_label: 'Bond angle:',
+            mol_info_angle_value: '104.5°',
+            mol_info_bond_label: 'O-H bond length:',
+            mol_info_bond_value: '95.84 pm',
+            mol_info_bondtype_label: 'Bond type:',
+            mol_info_bondtype_value: 'Covalent',
+            mol_info_polarity_label: 'Polarity:',
+            mol_info_polarity_value: 'Polar',
+            mol_info_shape_label: 'Molecule shape:',
+            mol_info_shape_value: 'Bent',
+            view_controls_heading: 'Visualization:',
+            view_btn_dipole: 'Show dipole',
+            view_btn_electrons: 'Electron clouds',
+            view_btn_charges: 'Partial charges',
+            view_btn_angles: 'Show angles',
+            info_default_title: 'Water molecule',
+            info_default_text: 'Click on an oxygen or hydrogen atom to learn more.',
+            controls_hint: '🖱️ Rotate: drag | 🔍 Zoom: mouse wheel | Space: pause',
+            legend_heading: 'Atoms:',
+            legend_oxygen: 'Oxygen (O)',
+            legend_hydrogen: 'Hydrogen (H)',
+            close_btn_label: 'Close',
+            atoms: {
+                oxygen: {
+                    title: 'Oxygen Atom (O)',
+                    sections: [
+                        { strong: 'Properties:', body: '<p>• Atomic number: 8<br>• Atomic mass: 15.999 amu<br>• Electronegativity: 3.44 (Pauling scale)<br>• Valence: 2<br>• Covalent radius: 66 pm</p>' },
+                        { strong: 'Role in the molecule:', body: '<p>The central atom of the water molecule. Forms two covalent bonds with hydrogen atoms.</p>' },
+                        { strong: 'Electron configuration:', body: '<p>1s² 2s² 2p⁴<br>Six electrons in the outer shell: 2 lone pairs and 2 bonding electrons.</p>' },
+                        { strong: 'Partial charge:', body: '<p>δ⁻ (negative). Oxygen is more electronegative than hydrogen, so it pulls bonding electrons toward itself.</p>' }
+                    ]
+                },
+                hydrogen: {
+                    title: 'Hydrogen Atom (H)',
+                    sections: [
+                        { strong: 'Properties:', body: '<p>• Atomic number: 1<br>• Atomic mass: 1.008 amu<br>• Electronegativity: 2.20 (Pauling scale)<br>• Valence: 1<br>• Covalent radius: 31 pm</p>' },
+                        { strong: 'Role in the molecule:', body: '<p>Forms a polar covalent bond with oxygen. There are two hydrogen atoms in a water molecule.</p>' },
+                        { strong: 'Electron configuration:', body: '<p>1s¹ (one electron)<br>When forming a bond, it shares an electron pair with oxygen.</p>' },
+                        { strong: 'Partial charge:', body: '<p>δ⁺ (positive). Bonding electrons are shifted toward the more electronegative oxygen.</p>' },
+                        { strong: 'Hydrogen bonds:', body: '<p>Hydrogen atoms can form hydrogen bonds with oxygen atoms of other water molecules, which explains the unique properties of water.</p>' }
+                    ]
+                },
+                molecule: {
+                    title: 'Water Molecule (H₂O)',
+                    sections: [
+                        { strong: 'Molecular geometry:', body: '<p>Bent (V-shaped). The angle between the O-H bonds is 104.5° (theoretically 109.5° for a tetrahedron, but compressed by the lone electron pairs).</p>' },
+                        { strong: 'Polarity:', body: '<p>The water molecule is polar. Oxygen carries a partial negative charge (δ⁻), hydrogens carry a partial positive charge (δ⁺). Dipole moment: 1.85 D (debye).</p>' },
+                        { strong: 'Hybridization:', body: '<p>Oxygen undergoes sp³ hybridization. The four sp³ orbitals point to the corners of a tetrahedron: two are taken up by O-H bonds, two by lone pairs.</p>' },
+                        { strong: 'Hydrogen bonds:', body: '<p>Each water molecule can form up to 4 hydrogen bonds: 2 through its hydrogen atoms and 2 through the lone pairs on oxygen.</p>' },
+                        { strong: 'Unique properties:', body: '<p>• High boiling point (100°C)<br>• High specific heat capacity<br>• Ice is less dense than liquid water<br>• Universal solvent<br>• Surface tension</p>' },
+                        { strong: 'Importance for life:', body: '<p>Water is the basis of all life on Earth. It makes up about 60% of human body mass.</p>' }
+                    ]
+                }
+            }
+        }
+    };
+
+    const LANG = (() => {
+        const q = new URLSearchParams(location.search).get('lang');
+        return (q && I18N[q]) ? q : 'ru';
+    })();
+    const t = (key) => (I18N[LANG] && I18N[LANG][key]) ?? I18N.ru[key];
+
+    function applyStaticI18N() {
+        document.documentElement.lang = LANG;
+        const titleVal = t('page_title');
+        if (titleVal) document.title = titleVal;
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const v = t(el.getAttribute('data-i18n'));
+            if (v) el.textContent = v;
+        });
+        document.querySelectorAll('[data-i18n-title]').forEach(el => {
+            const v = t(el.getAttribute('data-i18n-title'));
+            if (v) el.setAttribute('title', v);
+        });
+        document.querySelectorAll('[data-i18n-aria-label]').forEach(el => {
+            const v = t(el.getAttribute('data-i18n-aria-label'));
+            if (v) el.setAttribute('aria-label', v);
+        });
+    }
+
+    function getAtomInfo(type) {
+        const data = (I18N[LANG] && I18N[LANG].atoms && I18N[LANG].atoms[type]) || I18N.ru.atoms[type];
+        if (!data) return null;
+        const content = data.sections.map(s =>
+            `<div class="info-section"><strong>${s.strong}</strong>${s.body}</div>`
+        ).join('');
+        return { title: data.title, content };
+    }
+
+    applyStaticI18N();
+// Three.js
+    let scene, camera, renderer;
+    let moleculeGroup;
+    let atoms = {};
+    let bonds = [];
+    let dipoleArrow = null;
+    let electronClouds = [];
+    let chargeLabels = [];
+    let angleIndicators = [];
+    let raycaster, mouse;
+    let selectedPart = null;
+    let isDragging = false;
+    let previousMousePosition = {x: 0, y: 0};
+    let animationPaused = false;
+    let showDipole = true;
+    let showElectrons = false;
+    let showCharges = false;
+    let showAngles = false;
+
+    function init() {
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0d1b2a);
+
+        camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 0, 6);
+
+        const container = document.getElementById('canvas-container');
+        renderer = new THREE.WebGLRenderer({antialias: true});
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        container.appendChild(renderer.domElement);
+
+        // Освещение
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+
+        const light1 = new THREE.DirectionalLight(0xffffff, 0.8);
+        light1.position.set(5, 5, 5);
+        scene.add(light1);
+
+        const light2 = new THREE.DirectionalLight(0xffffff, 0.5);
+        light2.position.set(-5, -3, -5);
+        scene.add(light2);
+
+        const light3 = new THREE.PointLight(0x3498db, 0.6, 20);
+        light3.position.set(0, 3, 3);
+        scene.add(light3);
+
+        moleculeGroup = new THREE.Group();
+        scene.add(moleculeGroup);
+
+        createWaterMolecule();
+
+        raycaster = new THREE.Raycaster();
+        mouse = new THREE.Vector2();
+
+        window.addEventListener('resize', onWindowResize);
+        renderer.domElement.addEventListener('click', onMouseClick);
+        renderer.domElement.addEventListener('mousemove', onMouseMove);
+        renderer.domElement.addEventListener('mousedown', onMouseDown);
+        renderer.domElement.addEventListener('mouseup', onMouseUp);
+        renderer.domElement.addEventListener('wheel', onWheel);
+        window.addEventListener('keydown', onKeyDown);
+
+        animate();
+    }
+
+    function createWaterMolecule() {
+        // АТОМ КИСЛОРОДА (центр)
+        const oxygenGeom = new THREE.SphereGeometry(0.6, 32, 32);
+        const oxygenMat = new THREE.MeshPhongMaterial({
+            color: 0xff4444,
+            emissive: 0xcc0000,
+            emissiveIntensity: 0.3,
+            shininess: 100,
+            specular: 0xffffff
+        });
+        const oxygen = new THREE.Mesh(oxygenGeom, oxygenMat);
+        oxygen.position.set(0, 0, 0);
+        oxygen.userData = {type: 'oxygen'};
+        moleculeGroup.add(oxygen);
+        atoms.oxygen = oxygen;
+
+        // АТОМЫ ВОДОРОДА
+        // Угол связи 104.5 градусов
+        const angle = (104.5 * Math.PI) / 180;
+        const bondLength = 1.8;
+
+        const h1Geom = new THREE.SphereGeometry(0.35, 32, 32);
+        const h1Mat = new THREE.MeshPhongMaterial({
+            color: 0xe8f4f8,
+            emissive: 0xb8d4e8,
+            emissiveIntensity: 0.2,
+            shininess: 100,
+            specular: 0xffffff
+        });
+        const hydrogen1 = new THREE.Mesh(h1Geom, h1Mat);
+        hydrogen1.position.set(
+                bondLength * Math.sin(angle / 2),
+                bondLength * Math.cos(angle / 2),
+                0
+        );
+        hydrogen1.userData = {type: 'hydrogen', id: 1};
+        moleculeGroup.add(hydrogen1);
+        atoms.hydrogen1 = hydrogen1;
+
+        const hydrogen2 = new THREE.Mesh(h1Geom.clone(), h1Mat.clone());
+        hydrogen2.position.set(
+                -bondLength * Math.sin(angle / 2),
+                bondLength * Math.cos(angle / 2),
+                0
+        );
+        hydrogen2.userData = {type: 'hydrogen', id: 2};
+        moleculeGroup.add(hydrogen2);
+        atoms.hydrogen2 = hydrogen2;
+
+        // КОВАЛЕНТНЫЕ СВЯЗИ
+        createBond(oxygen.position, hydrogen1.position);
+        createBond(oxygen.position, hydrogen2.position);
+
+        // ЭЛЕКТРОННЫЕ ОБЛАКА (неподелённые пары)
+        createElectronClouds();
+
+        // ДИПОЛЬ
+        createDipoleArrow();
+
+        // ЧАСТИЧНЫЕ ЗАРЯДЫ
+        createChargeLabels();
+
+        // ИНДИКАТОРЫ УГЛОВ
+        createAngleIndicators();
+    }
+
+    function createBond(pos1, pos2) {
+        const direction = new THREE.Vector3().subVectors(pos2, pos1);
+        const length = direction.length();
+        const bondGeom = new THREE.CylinderGeometry(0.08, 0.08, length, 16);
+        const bondMat = new THREE.MeshPhongMaterial({
+            color: 0xcccccc,
+            shininess: 50
+        });
+        const bond = new THREE.Mesh(bondGeom, bondMat);
+
+        bond.position.copy(pos1).add(direction.multiplyScalar(0.5));
+        bond.lookAt(pos2);
+        bond.rotateX(Math.PI / 2);
+
+        moleculeGroup.add(bond);
+        bonds.push(bond);
+    }
+
+    function createElectronClouds() {
+        // Две неподелённые пары электронов на кислороде
+        const cloudGeom = new THREE.SphereGeometry(0.35, 24, 24);
+        const cloudMat = new THREE.MeshBasicMaterial({
+            color: 0xff6666,
+            transparent: true,
+            opacity: 0.3,
+            side: THREE.BackSide
+        });
+
+        // Неподелённые пары направлены вниз под углом
+        const cloud1 = new THREE.Mesh(cloudGeom, cloudMat);
+        cloud1.position.set(0.5, -0.7, 0);
+        cloud1.visible = showElectrons;
+        moleculeGroup.add(cloud1);
+        electronClouds.push(cloud1);
+
+        const cloud2 = new THREE.Mesh(cloudGeom, cloudMat.clone());
+        cloud2.position.set(-0.5, -0.7, 0);
+        cloud2.visible = showElectrons;
+        moleculeGroup.add(cloud2);
+        electronClouds.push(cloud2);
+    }
+
+    function createDipoleArrow() {
+        // Стрелка диполя от δ⁺ к δ⁻
+        const arrowGroup = new THREE.Group();
+
+        // Линия
+        const lineGeom = new THREE.CylinderGeometry(0.04, 0.04, 2.2, 12);
+        const lineMat = new THREE.MeshBasicMaterial({color: 0xffff00});
+        const line = new THREE.Mesh(lineGeom, lineMat);
+        line.position.set(0, 0.3, 0);
+        arrowGroup.add(line);
+
+        // Наконечник
+        const coneGeom = new THREE.ConeGeometry(0.15, 0.3, 16);
+        const coneMat = new THREE.MeshBasicMaterial({color: 0xffff00});
+        const cone = new THREE.Mesh(coneGeom, coneMat);
+        cone.position.set(0, -0.9, 0);
+        cone.rotation.x = Math.PI;
+        arrowGroup.add(cone);
+
+        // Плюс вверху
+        const plusGeom = new THREE.TorusGeometry(0.12, 0.03, 12, 24);
+        const plus1 = new THREE.Mesh(plusGeom, new THREE.MeshBasicMaterial({color: 0xff0000}));
+        plus1.position.set(0, 1.5, 0);
+        arrowGroup.add(plus1);
+
+        const plus2 = new THREE.Mesh(plusGeom, new THREE.MeshBasicMaterial({color: 0xff0000}));
+        plus2.position.set(0, 1.5, 0);
+        plus2.rotation.z = Math.PI / 2;
+        arrowGroup.add(plus2);
+
+        // Минус внизу
+        const minusGeom = new THREE.BoxGeometry(0.25, 0.05, 0.05);
+        const minus = new THREE.Mesh(minusGeom, new THREE.MeshBasicMaterial({color: 0x0000ff}));
+        minus.position.set(0, -0.95, 0);
+        arrowGroup.add(minus);
+
+        arrowGroup.visible = showDipole;
+        moleculeGroup.add(arrowGroup);
+        dipoleArrow = arrowGroup;
+    }
+
+    function createChargeLabels() {
+        // Создаём текстовые метки для частичных зарядов
+        // (Упрощённая версия без THREE.TextGeometry)
+        // Вместо этого используем маленькие индикаторы
+
+        // δ⁻ на кислороде
+        const negGeom = new THREE.SphereGeometry(0.1, 16, 16);
+        const negMat = new THREE.MeshBasicMaterial({color: 0x0000ff});
+        const negCharge = new THREE.Mesh(negGeom, negMat);
+        negCharge.position.set(-0.7, -0.3, 0);
+        negCharge.visible = showCharges;
+        moleculeGroup.add(negCharge);
+        chargeLabels.push(negCharge);
+
+        // δ⁺ на водородах
+        const posGeom = new THREE.SphereGeometry(0.08, 16, 16);
+        const posMat = new THREE.MeshBasicMaterial({color: 0xff0000});
+
+        const posCharge1 = new THREE.Mesh(posGeom, posMat);
+        posCharge1.position.set(
+                atoms.hydrogen1.position.x + 0.3,
+                atoms.hydrogen1.position.y + 0.3,
+                0
+        );
+        posCharge1.visible = showCharges;
+        moleculeGroup.add(posCharge1);
+        chargeLabels.push(posCharge1);
+
+        const posCharge2 = new THREE.Mesh(posGeom, posMat.clone());
+        posCharge2.position.set(
+                atoms.hydrogen2.position.x - 0.3,
+                atoms.hydrogen2.position.y + 0.3,
+                0
+        );
+        posCharge2.visible = showCharges;
+        moleculeGroup.add(posCharge2);
+        chargeLabels.push(posCharge2);
+    }
+
+    function createAngleIndicators() {
+        // Дуга показывающая угол 104.5°
+        const curve = new THREE.EllipseCurve(
+                0, 0,
+                0.8, 0.8,
+                0, (104.5 * Math.PI) / 180,
+                false,
+                Math.PI / 2
+        );
+
+        const points = curve.getPoints(50);
+        const geometry = new THREE.BufferGeometry().setFromPoints(points);
+        const material = new THREE.LineBasicMaterial({color: 0x00ff00, linewidth: 2});
+        const arc = new THREE.Line(geometry, material);
+        arc.rotation.z = -(104.5 * Math.PI) / 360;
+        arc.visible = showAngles;
+        moleculeGroup.add(arc);
+        angleIndicators.push(arc);
+    }
+
+    function toggleDipole() {
+        showDipole = !showDipole;
+        if (dipoleArrow) dipoleArrow.visible = showDipole;
+        updateButton(0, showDipole);
+    }
+
+    function toggleElectronCloud() {
+        showElectrons = !showElectrons;
+        electronClouds.forEach(cloud => cloud.visible = showElectrons);
+        updateButton(1, showElectrons);
+    }
+
+    function toggleCharges() {
+        showCharges = !showCharges;
+        chargeLabels.forEach(label => label.visible = showCharges);
+        updateButton(2, showCharges);
+    }
+
+    function toggleAngles() {
+        showAngles = !showAngles;
+        angleIndicators.forEach(indicator => indicator.visible = showAngles);
+        updateButton(3, showAngles);
+    }
+
+    function updateButton(index, active) {
+        const buttons = document.querySelectorAll('.view-btn');
+        if (buttons[index]) {
+            buttons[index].classList.toggle('active', active);
+        }
+    }
+
+    function onMouseDown(e) {
+        isDragging = true;
+        previousMousePosition = {x: e.clientX, y: e.clientY};
+    }
+
+    function onMouseUp() {
+        isDragging = false;
+    }
+
+    function onMouseMove(e) {
+        mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+        if (isDragging) {
+            const deltaX = e.clientX - previousMousePosition.x;
+            const deltaY = e.clientY - previousMousePosition.y;
+            moleculeGroup.rotation.y += deltaX * 0.005;
+            moleculeGroup.rotation.x += deltaY * 0.005;
+            previousMousePosition = {x: e.clientX, y: e.clientY};
+        }
+
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObjects([atoms.oxygen, atoms.hydrogen1, atoms.hydrogen2]);
+        document.body.style.cursor = intersects.length > 0 ? 'pointer' : 'default';
+    }
+
+    function onMouseClick(e) {
+        mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObjects([atoms.oxygen, atoms.hydrogen1, atoms.hydrogen2]);
+
+        if (intersects.length > 0) {
+            const atom = intersects[0].object;
+            const type = atom.userData.type;
+            showInfo(type);
+            highlightPart(atom);
+        } else {
+            showInfo('molecule');
+        }
+    }
+
+    function onWheel(e) {
+        e.preventDefault();
+        camera.position.z += e.deltaY * 0.005;
+        camera.position.z = Math.max(3, Math.min(12, camera.position.z));
+    }
+
+    function onKeyDown(e) {
+        if (e.code === 'Space') {
+            e.preventDefault();
+            animationPaused = !animationPaused;
+        }
+    }
+
+    function showInfo(type) {
+        const info = getAtomInfo(type);
+        if (info) {
+            document.getElementById('info-title').textContent = info.title;
+            document.getElementById('info-content').innerHTML = info.content;
+            document.getElementById('info-panel').classList.add('active');
+        }
+    }
+
+    function closeInfo() {
+        document.getElementById('info-panel').classList.remove('active');
+        if (selectedPart) {
+            const originalColor = selectedPart.userData.type === 'oxygen' ? 0xcc0000 : 0xb8d4e8;
+            selectedPart.material.emissive.setHex(originalColor);
+            selectedPart.material.emissiveIntensity = selectedPart.userData.type === 'oxygen' ? 0.3 : 0.2;
+            selectedPart = null;
+        }
+    }
+
+    function highlightPart(atom) {
+        if (selectedPart) {
+            const originalColor = selectedPart.userData.type === 'oxygen' ? 0xcc0000 : 0xb8d4e8;
+            selectedPart.material.emissive.setHex(originalColor);
+            selectedPart.material.emissiveIntensity = selectedPart.userData.type === 'oxygen' ? 0.3 : 0.2;
+        }
+        atom.material.emissive.setHex(0xffffff);
+        atom.material.emissiveIntensity = 0.7;
+        selectedPart = atom;
+    }
+
+    function focusPart(type) {
+        if (type === 'oxygen') {
+            showInfo('oxygen');
+            highlightPart(atoms.oxygen);
+        } else if (type === 'hydrogen') {
+            showInfo('hydrogen');
+            highlightPart(atoms.hydrogen1);
+        }
+    }
+
+    function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+
+        if (!animationPaused) {
+            moleculeGroup.rotation.y += 0.003;
+        }
+
+        renderer.render(scene, camera);
+    }
+
+    window.addEventListener('load', init);
+</script>
+</body>
+</html>

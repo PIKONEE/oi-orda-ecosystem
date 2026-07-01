@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="page_title">Единичная окружность</title>
+<style>
+
+
+*{margin:0;padding:0;box-sizing:border-box;}
+
+:root{
+  --bg:#f3f2f6;
+  --surface:rgba(255,255,255,0.94);
+  --border:rgba(35,20,55,0.08);
+  --text:#1b1525;
+  --muted:#6b6377;
+  --faint:#a59cb2;
+  --sin:#db2777;  --sin-dim:rgba(219,39,119,0.10);
+  --cos:#2563eb;  --cos-dim:rgba(37,99,235,0.10);
+  --tan:#16a34a;  --tan-dim:rgba(22,163,74,0.10);
+  --accent:#7c3aed;
+  --accent-dim:rgba(124,58,237,0.10);
+  --shadow:0 2px 22px rgba(40,25,80,0.07);
+  --shadow-lg:0 18px 56px rgba(45,28,90,0.15);
+}
+
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);overflow:hidden;height:100vh;}
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(1200px 760px at 70% 30%, rgba(167,139,250,0.12), transparent 60%),
+    radial-gradient(820px 560px at 16% 84%, rgba(219,39,119,0.06), transparent 55%);
+}
+
+#canvas-container{position:fixed;inset:0;z-index:1;}
+#labels-layer{position:fixed;inset:0;z-index:40;pointer-events:none;overflow:hidden;}
+
+.dim-label{position:absolute;transform:translate(-50%,-50%);font-family:'Roboto Mono',monospace;font-size:14px;font-weight:600;padding:3px 9px;border-radius:9px;white-space:nowrap;letter-spacing:-0.3px;background:rgba(255,255,255,0.97);box-shadow:0 3px 12px rgba(40,25,80,0.13);transition:opacity 0.18s;}
+.dim-label.hidden{opacity:0;}
+.dim-label.lsin{color:var(--sin);border:1px solid rgba(219,39,119,0.30);}
+.dim-label.lcos{color:var(--cos);border:1px solid rgba(37,99,235,0.30);}
+.dim-label.ltan{color:var(--tan);border:1px solid rgba(22,163,74,0.30);}
+.dim-label.lth{background:var(--accent);color:#fff;border:none;box-shadow:0 4px 14px rgba(124,58,237,0.4);}
+.dim-label.lsign{color:var(--text);border:1px solid rgba(35,20,55,0.18);font-size:13px;}
+
+.header{position:fixed;top:0;left:0;right:0;z-index:200;background:var(--surface);border-bottom:1px solid var(--border);padding:0 38px;height:84px;display:flex;align-items:center;gap:15px;box-shadow:var(--shadow);}
+.h-badge{width:46px;height:46px;border-radius:14px;flex-shrink:0;background:linear-gradient(135deg,#7c3aed,#a78bfa);display:flex;align-items:center;justify-content:center;box-shadow:0 7px 20px rgba(124,58,237,0.36);}
+.h-badge svg{width:25px;height:25px;}
+.header-title{font-size:24px;font-weight:800;letter-spacing:-0.5px;}
+.header-tag{font-family:'Roboto Mono',monospace;font-size:13px;color:var(--accent);background:var(--accent-dim);padding:4px 11px;border-radius:8px;}
+.header-sub{font-size:14px;color:var(--muted);margin-left:auto;text-align:right;line-height:1.45;}
+
+.eq-banner{position:fixed;top:96px;left:50%;transform:translateX(-50%);z-index:150;background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-lg);padding:9px 22px;display:flex;flex-direction:column;align-items:center;gap:2px;pointer-events:none;}
+.eq-l1{font-family:'Roboto Mono',monospace;font-size:17px;font-weight:700;}
+.eq-l2{font-family:'Roboto Mono',monospace;font-size:14px;color:var(--muted);}
+.eq-l2 .es{color:var(--sin);font-weight:600;} .eq-l2 .ec{color:var(--cos);font-weight:600;}
+
+.panel{position:fixed;z-index:100;background:var(--surface);border:1px solid var(--border);border-radius:22px;box-shadow:var(--shadow-lg);}
+.panel h3{font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;color:var(--faint);}
+
+.panel-left{left:22px;top:98px;width:332px;padding:18px 18px;overflow:hidden;min-height:400px;}
+.ld-list,.ld-detail{transition:transform 0.4s cubic-bezier(0.4,0,0.2,1),opacity 0.28s;}
+.ld-list h3{margin-bottom:12px;padding-left:4px;}
+.ld-detail{position:absolute;inset:18px 18px;transform:translateX(26px);opacity:0;pointer-events:none;overflow-y:auto;}
+.ld-detail::-webkit-scrollbar{width:4px;}
+.ld-detail::-webkit-scrollbar-thumb{background:rgba(40,25,80,0.16);border-radius:4px;}
+.panel-left.detail .ld-list{transform:translateX(-26px);opacity:0;pointer-events:none;}
+.panel-left.detail .ld-detail{transform:translateX(0);opacity:1;pointer-events:auto;}
+
+.metric{display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:14px;cursor:pointer;border:1px solid transparent;transition:all 0.15s;margin-bottom:2px;}
+.metric:hover{background:rgba(40,25,80,0.04);}
+.metric.active{background:var(--accent-dim);border-color:rgba(124,58,237,0.22);}
+.metric-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0;}
+.metric-main{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;}
+.metric-name{font-size:15px;font-weight:700;line-height:1.15;}
+.metric-sub{font-family:'Roboto Mono',monospace;font-size:13px;color:var(--muted);}
+.metric-val{font-family:'Roboto Mono',monospace;font-size:21px;font-weight:500;color:var(--accent);letter-spacing:-1px;flex-shrink:0;}
+
+.ld-back{display:inline-flex;align-items:center;gap:5px;cursor:pointer;border:none;background:none;font-family:'Inter',sans-serif;font-size:14px;font-weight:700;color:var(--accent);padding:4px 6px 4px 0;margin-bottom:12px;}
+.ld-back:hover{opacity:0.7;}
+.d-tag{display:inline-block;padding:4px 12px;border-radius:99px;font-size:13px;font-weight:700;margin-bottom:10px;background:var(--accent-dim);color:var(--accent);}
+.d-title{font-size:22px;font-weight:800;letter-spacing:-0.4px;line-height:1.15;margin-bottom:14px;}
+.d-bigval{display:flex;align-items:baseline;gap:9px;margin-bottom:4px;}
+.d-bigval b{font-family:'Roboto Mono',monospace;font-size:37px;font-weight:500;color:var(--accent);letter-spacing:-1.5px;line-height:1;}
+.d-bigval span{font-size:14px;color:var(--muted);font-weight:600;}
+.d-formula{margin:13px 0 4px;padding:13px 15px;border-radius:13px;background:linear-gradient(135deg,rgba(167,139,250,0.12),rgba(124,58,237,0.05));border:1px solid rgba(124,58,237,0.16);font-family:'Roboto Mono',monospace;font-size:14px;color:#6d28d9;font-weight:500;line-height:1.95;white-space:pre-line;}
+.d-para{font-size:15px;line-height:1.62;color:#352f42;margin-top:13px;}
+
+.panel-right{right:22px;top:98px;width:300px;padding:18px;}
+.angle-card{background:linear-gradient(135deg,rgba(167,139,250,0.12),rgba(124,58,237,0.05));border:1px solid rgba(124,58,237,0.18);border-radius:16px;padding:14px 16px;margin-bottom:16px;}
+.ac-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;}
+.ac-name{font-size:16px;font-weight:700;}
+.ac-name b{color:var(--accent);font-style:italic;}
+.ac-pill{font-family:'Roboto Mono',monospace;font-size:22px;font-weight:500;color:#fff;background:linear-gradient(135deg,#7c3aed,#9333ea);padding:3px 14px;border-radius:10px;letter-spacing:-0.5px;box-shadow:0 4px 12px rgba(124,58,237,0.35);}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:7px;border-radius:4px;background:linear-gradient(90deg,var(--accent) var(--fill,0%),rgba(124,58,237,0.16) var(--fill,0%));outline:none;cursor:pointer;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:23px;height:23px;border-radius:50%;background:#fff;border:3px solid var(--accent);cursor:pointer;box-shadow:0 4px 12px rgba(124,58,237,0.45);transition:transform 0.13s;}
+input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.16);}
+.ac-scale{display:flex;justify-content:space-between;font-family:'Roboto Mono',monospace;font-size:12px;color:var(--faint);margin-top:7px;}
+
+.quick{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px;}
+.qbtn{flex:1;min-width:40px;padding:7px 0;border-radius:10px;border:1.5px solid var(--border);background:rgba(255,255,255,0.7);font-family:'Roboto Mono',monospace;font-size:13.5px;font-weight:600;color:var(--text);cursor:pointer;transition:all 0.15s;}
+.qbtn:hover{border-color:var(--accent);color:var(--accent);}
+
+.show-label{font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;color:var(--faint);margin:14px 0 11px 2px;}
+.show-chip{display:flex;align-items:center;gap:12px;width:100%;padding:13px 15px;margin-bottom:9px;border-radius:14px;cursor:pointer;background:rgba(40,25,80,0.035);border:1.5px solid transparent;transition:all 0.16s;}
+.show-chip:hover{background:rgba(40,25,80,0.06);}
+.show-chip.on{background:var(--accent-dim);border-color:rgba(124,58,237,0.30);}
+.chip-ico{width:36px;height:36px;border-radius:11px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:19px;background:rgba(124,58,237,0.10);transition:all 0.16s;}
+.show-chip.on .chip-ico{background:var(--accent);}
+.chip-text{display:flex;flex-direction:column;gap:1px;flex:1;min-width:0;}
+.chip-name{font-size:15px;font-weight:700;}
+.chip-sub{font-size:13px;color:var(--muted);font-family:'Roboto Mono',monospace;}
+.chip-state{width:22px;height:22px;border-radius:50%;flex-shrink:0;border:2px solid rgba(40,25,80,0.16);display:flex;align-items:center;justify-content:center;transition:all 0.16s;}
+.show-chip.on .chip-state{background:var(--accent);border-color:var(--accent);}
+.show-chip.on .chip-state::after{content:'✓';color:#fff;font-size:14px;font-weight:700;}
+
+.hint-bar{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:100;background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:9px 22px;font-size:13.5px;color:var(--muted);box-shadow:var(--shadow);white-space:nowrap;display:flex;align-items:center;gap:9px;}
+.hint-grab{color:var(--accent);font-weight:700;}
+.hint-dot{color:var(--faint);}
+
+@media (max-width:1180px){.panel-left{width:296px;}.panel-right{width:268px;}}
+</style>
+</head>
+<body>
+
+<div id="canvas-container"><canvas id="c"></canvas></div>
+<div id="labels-layer"></div>
+
+<header class="header">
+  <div class="h-badge">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.7" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="9"/><path d="M12 12 L19 8"/><path d="M3 12 H21 M12 3 V21"/>
+    </svg>
+  </div>
+  <div class="header-title" data-i18n="header_title">Единичная окружность</div>
+  <div class="header-tag">sin · cos · tan</div>
+  <div class="header-sub" data-i18n-html="header_sub">Точка на окружности радиуса 1 даёт (cos θ, sin θ)<br>тяните точку по кругу — меняйте угол</div>
+</header>
+
+<div class="eq-banner">
+  <div class="eq-l1" id="eq-l1">θ = 45° = π/4</div>
+  <div class="eq-l2" id="eq-l2"></div>
+</div>
+
+<!-- LEFT -->
+<div class="panel panel-left" id="panel-left">
+  <div class="ld-list">
+    <h3 data-i18n="props_title">Значения</h3>
+    <div id="metrics"></div>
+  </div>
+  <div class="ld-detail">
+    <button class="ld-back" onclick="window.showList()"><span>‹</span> <span data-i18n="back">Назад</span></button>
+    <div id="detail-content"></div>
+  </div>
+</div>
+
+<!-- RIGHT -->
+<div class="panel panel-right">
+  <div class="angle-card">
+    <div class="ac-top">
+      <span class="ac-name" data-i18n-html="ac_name">Угол <b>θ</b></span>
+      <span class="ac-pill" id="pill-deg">45°</span>
+    </div>
+    <input type="range" min="0" max="360" step="1" value="45" id="slider-deg" oninput="window.setAngle(+this.value)">
+    <div class="ac-scale"><span>0°</span><span>180°</span><span>360°</span></div>
+  </div>
+
+  <div class="show-label" data-i18n="quick_title">Особые углы</div>
+  <div class="quick">
+    <button class="qbtn" onclick="window.setAngle(0)">0</button>
+    <button class="qbtn" onclick="window.setAngle(30)">30</button>
+    <button class="qbtn" onclick="window.setAngle(45)">45</button>
+    <button class="qbtn" onclick="window.setAngle(60)">60</button>
+    <button class="qbtn" onclick="window.setAngle(90)">90</button>
+  </div>
+  <div class="quick">
+    <button class="qbtn" onclick="window.setAngle(120)">120</button>
+    <button class="qbtn" onclick="window.setAngle(135)">135</button>
+    <button class="qbtn" onclick="window.setAngle(180)">180</button>
+    <button class="qbtn" onclick="window.setAngle(270)">270</button>
+    <button class="qbtn" onclick="window.setAngle(360)">360</button>
+  </div>
+
+  <div class="show-label" data-i18n="show_title">Показать</div>
+  <div class="show-chip on" id="chip-tan" onclick="window.toggleTan()">
+    <div class="chip-ico">📏</div>
+    <div class="chip-text"><span class="chip-name" data-i18n="ch_tan">Линия тангенса</span><span class="chip-sub">tan = sin / cos</span></div>
+    <div class="chip-state"></div>
+  </div>
+  <div class="show-chip" id="chip-quad" onclick="window.toggleQuad()">
+    <div class="chip-ico">🧭</div>
+    <div class="chip-text"><span class="chip-name" data-i18n="ch_quad">Четверть и знаки</span><span class="chip-sub" data-i18n="ch_quad_sub">знаки sin, cos, tan</span></div>
+    <div class="chip-state"></div>
+  </div>
+</div>
+
+<div class="hint-bar" data-i18n-html="hint">
+  <span class="hint-grab">Тяните точку</span><span>по кругу</span><span class="hint-dot">·</span>
+  <span>клик по кругу — задать угол</span><span class="hint-dot">·</span><span>перетаскивание фона — поворот</span>
+</div>
+
+<script>
+const I18N={
+ru:{
+  page_title:'Единичная окружность',header_title:'Единичная окружность',
+  header_sub:'Точка на окружности радиуса 1 даёт (cos θ, sin θ)<br>тяните точку по кругу — меняйте угол',
+  props_title:'Значения',back:'Назад',ac_name:'Угол <b>θ</b>',quick_title:'Особые углы',show_title:'Показать',
+  ch_tan:'Линия тангенса',ch_quad:'Четверть и знаки',ch_quad_sub:'знаки sin, cos, tan',
+  hint:'<span class="hint-grab">Тяните точку</span><span>по кругу</span><span class="hint-dot">·</span><span>клик по кругу — задать угол</span><span class="hint-dot">·</span><span>перетаскивание фона — поворот</span>',
+  m_deg:'Угол θ (градусы)',m_rad:'Угол θ (радианы)',m_sin:'Синус',m_cos:'Косинус',m_tan:'Тангенс',
+  sub_deg:'полный оборот = 360°',sub_sin:'y-координата точки',sub_cos:'x-координата точки',sub_tan:'sin θ / cos θ',
+  unit_deg:'°',unit_rad:'рад',unit_none:'',
+  q1:'I четверть',q2:'II четверть',q3:'III четверть',q4:'IV четверть',
+},
+kz:{
+  page_title:'Бірлік шеңбер',header_title:'Бірлік шеңбер',
+  header_sub:'Радиусы 1 шеңбердегі нүкте (cos θ, sin θ) береді<br>нүктені шеңбер бойымен сүйреңіз — бұрышты өзгертіңіз',
+  props_title:'Мәндер',back:'Артқа',ac_name:'Бұрыш <b>θ</b>',quick_title:'Ерекше бұрыштар',show_title:'Көрсету',
+  ch_tan:'Тангенс сызығы',ch_quad:'Ширек және таңбалар',ch_quad_sub:'sin, cos, tan таңбалары',
+  hint:'<span class="hint-grab">Нүктені сүйреңіз</span><span>шеңбермен</span><span class="hint-dot">·</span><span>шеңберді басу — бұрыш</span><span class="hint-dot">·</span><span>фонды сүйреу — бұру</span>',
+  m_deg:'Бұрыш θ (градус)',m_rad:'Бұрыш θ (радиан)',m_sin:'Синус',m_cos:'Косинус',m_tan:'Тангенс',
+  sub_deg:'толық айналым = 360°',sub_sin:'нүктенің y-координатасы',sub_cos:'нүктенің x-координатасы',sub_tan:'sin θ / cos θ',
+  unit_deg:'°',unit_rad:'рад',unit_none:'',
+  q1:'I ширек',q2:'II ширек',q3:'III ширек',q4:'IV ширек',
+},
+en:{
+  page_title:'Unit Circle',header_title:'Unit Circle',
+  header_sub:'A point on the radius-1 circle gives (cos θ, sin θ)<br>drag the point around the circle to change the angle',
+  props_title:'Values',back:'Back',ac_name:'Angle <b>θ</b>',quick_title:'Special angles',show_title:'Show',
+  ch_tan:'Tangent line',ch_quad:'Quadrant & signs',ch_quad_sub:'signs of sin, cos, tan',
+  hint:'<span class="hint-grab">Drag the point</span><span>around the circle</span><span class="hint-dot">·</span><span>click circle — set angle</span><span class="hint-dot">·</span><span>drag background — rotate</span>',
+  m_deg:'Angle θ (degrees)',m_rad:'Angle θ (radians)',m_sin:'Sine',m_cos:'Cosine',m_tan:'Tangent',
+  sub_deg:'full turn = 360°',sub_sin:'y-coordinate of the point',sub_cos:'x-coordinate of the point',sub_tan:'sin θ / cos θ',
+  unit_deg:'°',unit_rad:'rad',unit_none:'',
+  q1:'Quadrant I',q2:'Quadrant II',q3:'Quadrant III',q4:'Quadrant IV',
+}
+};
+const LANG=(()=>{const q=new URLSearchParams(location.search).get('lang');return(q&&I18N[q])?q:'ru';})();
+const tr=key=>(I18N[LANG]&&I18N[LANG][key])!==undefined?I18N[LANG][key]:I18N.ru[key];
+function applyStaticI18N(){
+  document.documentElement.lang=LANG;
+  const tv=tr('page_title');if(tv)document.title=tv;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{const v=tr(el.getAttribute('data-i18n'));if(v!==undefined)el.textContent=v;});
+  document.querySelectorAll('[data-i18n-html]').forEach(el=>{const v=tr(el.getAttribute('data-i18n-html'));if(v!==undefined)el.innerHTML=v;});
+}
+applyStaticI18N();
+
+const PI=Math.PI;
+const nz=v=>(v==='-0'||v==='-0.0'||v==='-0.00'||v==='-0.000')?v.replace('-',''):v;
+const f1=x=>nz(x.toFixed(1));
+const f2=x=>nz(x.toFixed(2));
+const f3=x=>nz(x.toFixed(3));
+window.A={deg:45};
+const rad=()=>window.A.deg*PI/180;
+const SIN=()=>Math.sin(rad());
+const COS=()=>Math.cos(rad());
+function gcd(a,b){a=Math.abs(a);b=Math.abs(b);while(b){[a,b]=[b,a%b];}return a||1;}
+function piFrac(deg){
+  deg=((Math.round(deg)%360)+360)%360;
+  if(deg===0)return '0';
+  const g=gcd(deg,180);let num=deg/g,den=180/g;
+  const top=(num===1?'π':num+'π');
+  return den===1?top:top+'/'+den;
+}
+function tanStr(){
+  const c=COS();
+  if(Math.abs(c)<1e-3) return '∞';
+  return f2(SIN()/c);
+}
+
+const METRICS=[
+  {key:'deg', dot:'var(--accent)', i:'m_deg', val:()=>window.A.deg, fmt:()=>f1(window.A.deg), sub:()=>tr('sub_deg'), unit:'unit_deg'},
+  {key:'rad', dot:'var(--accent)', i:'m_rad', val:()=>rad(),         fmt:()=>f2(rad()),         sub:()=>(window.A.deg%15===0?piFrac(window.A.deg):f2(rad())+' '+tr('unit_rad')), unit:'unit_rad'},
+  {key:'sin', dot:'var(--sin)',    i:'m_sin', val:()=>SIN(),         fmt:()=>f3(SIN()),         sub:()=>tr('sub_sin'), unit:'unit_none'},
+  {key:'cos', dot:'var(--cos)',    i:'m_cos', val:()=>COS(),         fmt:()=>f3(COS()),         sub:()=>tr('sub_cos'), unit:'unit_none'},
+  {key:'tan', dot:'var(--tan)',    i:'m_tan', val:()=>SIN()/COS(),   fmt:()=>tanStr(),          sub:()=>tr('sub_tan'), unit:'unit_none'},
+];
+function renderMetrics(){
+  document.getElementById('metrics').innerHTML=METRICS.map(m=>`
+    <div class="metric" data-key="${m.key}" onclick="window.openDetail('${m.key}')">
+      <div class="metric-dot" style="background:${m.dot}"></div>
+      <div class="metric-main"><span class="metric-name">${tr(m.i)}</span><span class="metric-sub" id="ms-${m.key}"></span></div>
+      <span class="metric-val" id="mv-${m.key}">—</span>
+    </div>`).join('');
+}
+function updateMetricValues(){
+  METRICS.forEach(m=>{
+    const v=document.getElementById('mv-'+m.key);if(v)v.textContent=m.fmt();
+    const s=document.getElementById('ms-'+m.key);if(s)s.textContent=m.sub();
+  });
+  document.getElementById('pill-deg').textContent=f1(window.A.deg)+'°';
+  document.getElementById('slider-deg').style.setProperty('--fill',(window.A.deg/360*100)+'%');
+  const radStr=window.A.deg%15===0?piFrac(window.A.deg):f2(rad())+' рад';
+  document.getElementById('eq-l1').textContent='θ = '+f1(window.A.deg)+'° = '+radStr;
+  document.getElementById('eq-l2').innerHTML=`(cos, sin) = (<span class="ec">${f2(COS())}</span>, <span class="es">${f2(SIN())}</span>)`;
+}
+renderMetrics();
+</script>
+
+<script type="importmap">
+{"imports":{"three":"../../libs/vendor/three-0.160.0/three.module.js"}}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+const canvas=document.getElementById('c');
+const renderer=new THREE.WebGLRenderer({canvas,antialias: true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+
+const scene=new THREE.Scene();scene.background=null;
+const camera=new THREE.PerspectiveCamera(40,innerWidth/innerHeight,0.1,8000);
+const CAM_DIR=new THREE.Vector3(0.32,0.26,1).normalize();
+let camDist=30,camDistTarget=30,userZoom=1.0;
+let showTan=true,showQuad=false;
+
+const PI=Math.PI;
+const nz=v=>(v==='-0'||v==='-0.0'||v==='-0.00'||v==='-0.000')?v.replace('-',''):v;
+const f1=x=>nz(x.toFixed(1));
+const f2=x=>nz(x.toFixed(2));
+const f3=x=>nz(x.toFixed(3));
+const R=8;                       // drawn radius of the unit circle
+const rad=()=>window.A.deg*PI/180;
+
+function computeCamTarget(){
+  const R0=R*1.95*1.12;
+  const fovy=camera.fov*PI/180;
+  const dV=R0/Math.sin(fovy/2);
+  const usableW=Math.max(420,innerWidth-660);
+  const fovx=2*Math.atan(Math.tan(fovy/2)*usableW/innerHeight);
+  const dH=R0/Math.sin(fovx/2);
+  return Math.max(dV,dH)*userZoom;
+}
+function applyCamera(){camera.position.copy(CAM_DIR).multiplyScalar(camDist);camera.lookAt(0,0,0);}
+
+scene.add(new THREE.AmbientLight(0xffffff,0.8));
+const kL=new THREE.DirectionalLight(0xffffff,0.85);kL.position.set(4,8,12);scene.add(kL);
+const fL=new THREE.DirectionalLight(0xc4b5fd,0.35);fL.position.set(-8,-3,4);scene.add(fL);
+
+const V=(x,y,z)=>new THREE.Vector3(x,y,z);
+const root=new THREE.Group();scene.add(root);
+const obj=new THREE.Group();root.add(obj);
+
+const COL={circle:0x9ca3af,axis:0x6b7280,sin:0xdb2777,cos:0x2563eb,tan:0x16a34a,radius:0x7c3aed,tick:0xb8b0c4};
+
+function cyl(from,to,rr,mat){
+  const dir=new THREE.Vector3().subVectors(to,from),len=dir.length();
+  const m=new THREE.Mesh(new THREE.CylinderGeometry(rr,rr,len,12),mat);
+  m.position.addVectors(from,to).multiplyScalar(0.5);
+  if(len>1e-6)m.quaternion.setFromUnitVectors(V(0,1,0),dir.normalize());return m;
+}
+function cone3(at,dir,rr,hh,mat){const m=new THREE.Mesh(new THREE.ConeGeometry(rr,hh,16),mat);m.position.copy(at);m.quaternion.setFromUnitVectors(V(0,1,0),dir.clone().normalize());return m;}
+function sphere(r,mat){return new THREE.Mesh(new THREE.SphereGeometry(r,20,16),mat);}
+
+/* ── STATIC scene (built once) ── */
+const er=R*0.012, tR=R*0.008;
+const staticGroup=new THREE.Group();obj.add(staticGroup);
+const tanLineGroup=new THREE.Group();obj.add(tanLineGroup);
+(function buildStatic(){
+  // coordinate grid (always on)
+  {const GW=12,step=R*0.5;const gMat=new THREE.MeshBasicMaterial({color:0xccd3de,transparent:true,opacity:0.5});
+   for(let i=-GW;i<=GW+0.01;i+=step){if(Math.abs(i)<0.01)continue;staticGroup.add(cyl(V(i,-GW,-0.08),V(i,GW,-0.08),tR*0.45,gMat));staticGroup.add(cyl(V(-GW,i,-0.08),V(GW,i,-0.08),tR*0.45,gMat));}}
+  // circle ring
+  const ringMat=new THREE.MeshStandardMaterial({color:COL.circle,roughness:0.4,metalness:0.1});
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(R,er*0.8,12,128),ringMat);staticGroup.add(ring);
+  // axes
+  const axMat=new THREE.MeshStandardMaterial({color:COL.axis,roughness:0.5});
+  const ext=R*1.45;
+  staticGroup.add(cyl(V(-ext,0,0),V(ext,0,0),tR*0.7,axMat));
+  staticGroup.add(cyl(V(0,-ext,0),V(0,ext,0),tR*0.7,axMat));
+  staticGroup.add(cone3(V(ext,0,0),V(1,0,0),tR*2.2,tR*6,axMat));
+  staticGroup.add(cone3(V(0,ext,0),V(0,1,0),tR*2.2,tR*6,axMat));
+  // ticks every 30°
+  const tickMat=new THREE.MeshStandardMaterial({color:COL.tick,roughness:0.5});
+  for(let d=0;d<360;d+=30){const a=d*PI/180;const c=Math.cos(a),s=Math.sin(a);staticGroup.add(cyl(V(R*0.965*c,R*0.965*s,0),V(R*1.035*c,R*1.035*s,0),tR*0.8,tickMat));}
+  // vertical tangent line at x=R (for tan), faded
+  const tlMat=new THREE.MeshStandardMaterial({color:COL.tan,roughness:0.5,transparent:true,opacity:0.30});
+  tanLineGroup.add(cyl(V(R,-R*1.3,0),V(R,R*1.3,0),tR*0.6,tlMat));
+})();
+
+/* ── QUADRANT shading (dynamic, rebuilt) ── */
+const dynGroup=new THREE.Group();obj.add(dynGroup);
+function disposeDyn(){while(dynGroup.children.length){const o=dynGroup.children[0];o.traverse(x=>{if(x.geometry)x.geometry.dispose();});dynGroup.remove(o);}}
+
+let pointHandle=null;
+let hiKey=null;          // highlighted segment from the left menu
+function buildDyn(){
+  disposeDyn();
+  const a=rad(),cx=Math.cos(a)*R,cy=Math.sin(a)*R,c=Math.cos(a),s=Math.sin(a);
+  const P=V(cx,cy,0);
+
+  // quadrant shading
+  if(showQuad){
+    const qi=Math.floor(((window.A.deg%360)+360)%360/90); // 0..3
+    const qMat=new THREE.MeshStandardMaterial({color:COL.radius,roughness:0.6,transparent:true,opacity:0.10,side:THREE.DoubleSide});
+    const seg=new THREE.Mesh(new THREE.CircleGeometry(R,48,qi*PI/2,PI/2),qMat);
+    seg.position.z=-R*0.004;dynGroup.add(seg);
+  }
+
+  const hi=k=>hiKey===k;
+  const mat=(col,on)=>new THREE.MeshStandardMaterial({color:col,roughness:0.35,metalness:0.1,emissive:on?col:0x000000,emissiveIntensity:on?0.6:0});
+  // cos segment (x-axis): O -> (cx,0)
+  if(Math.abs(cx)>1e-3) dynGroup.add(cyl(V(0,0,R*0.01),V(cx,0,R*0.01),tR*(hi('cos')?2.4:1.3),mat(COL.cos,hi('cos'))));
+  // sin segment (vertical): (cx,0) -> P
+  if(Math.abs(cy)>1e-3) dynGroup.add(cyl(V(cx,0,R*0.012),V(cx,cy,R*0.012),tR*(hi('sin')?2.4:1.3),mat(COL.sin,hi('sin'))));
+  // radius O -> P  (highlighted for the angle θ — deg/rad)
+  const angHi=hi('deg')||hi('rad');
+  dynGroup.add(cyl(V(0,0,R*0.014),P.clone().setZ(R*0.014),tR*(angHi?2.0:1.1),mat(COL.radius,angHi)));
+
+  // tangent segment on x=R line: (R,0) -> (R, R*tan)
+  if(showTan && Math.abs(c)>0.02){
+    let ty=R*(s/c);
+    const cap=R*3.4;
+    const tyc=Math.max(-cap,Math.min(cap,ty));
+    dynGroup.add(cyl(V(R,0,R*0.016),V(R,tyc,R*0.016),tR*(hi('tan')?2.4:1.3),mat(COL.tan,hi('tan'))));
+    // extended radius dashed-ish (thin) from O through P to tan line
+    const exMat=new THREE.MeshStandardMaterial({color:COL.radius,roughness:0.5,transparent:true,opacity:0.4});
+    dynGroup.add(cyl(P.clone().setZ(R*0.006),V(R,tyc,R*0.006),tR*0.5,exMat));
+  }
+
+  // angle arc 0 -> θ
+  const arcMat=new THREE.LineBasicMaterial({color:COL.radius});
+  const arcR=R*0.26,steps=Math.max(4,Math.round(Math.abs(window.A.deg)/4));
+  const pts=[];for(let i=0;i<=steps;i++){const aa=a*i/steps;pts.push(V(arcR*Math.cos(aa),arcR*Math.sin(aa),R*0.02));}
+  dynGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),arcMat));
+
+  // point handle
+  const hMat=new THREE.MeshStandardMaterial({color:COL.radius,roughness:0.2,metalness:0.3,emissive:COL.radius,emissiveIntensity:0.25});
+  pointHandle=sphere(R*0.05,hMat);pointHandle.position.copy(P).setZ(R*0.02);pointHandle.userData.handle=true;dynGroup.add(pointHandle);
+
+  updateLabelAnchors();
+}
+
+/* ── LABELS ── */
+const layer=document.getElementById('labels-layer');
+function mkLabel(cls){const d=document.createElement('div');d.className='dim-label '+cls;layer.appendChild(d);return d;}
+const L_sin=mkLabel('lsin'),L_cos=mkLabel('lcos'),L_tan=mkLabel('ltan'),L_th=mkLabel('lth'),L_sign=mkLabel('lsign');
+const anc={sin:V(),cos:V(),tan:V(),th:V(),sign:V()};
+function updateLabelAnchors(){
+  const a=rad(),cx=Math.cos(a)*R,cy=Math.sin(a)*R,c=Math.cos(a),s=Math.sin(a);
+  anc.cos.set(cx/2,-R*0.09*Math.sign(cy||1),0);
+  anc.sin.set(cx+R*0.10*Math.sign(cx||1),cy/2,0);
+  let ty=R*(s/(Math.abs(c)<0.02?0.02*Math.sign(c||1):c));const cap=R*3.4;ty=Math.max(-cap,Math.min(cap,ty));
+  anc.tan.set(R+R*0.12,ty/2,0);
+  anc.th.set(R*0.34*Math.cos(a/2),R*0.34*Math.sin(a/2),0);
+  anc.sign.set(R*0.55*Math.cos(a),R*0.55*Math.sin(a),0);
+  L_cos.textContent='cos = '+f2(c);
+  L_sin.textContent='sin = '+f2(s);
+  L_tan.textContent='tan = '+(Math.abs(c)<1e-3?'∞':f2(s/c));
+  L_th.textContent='θ = '+f1(window.A.deg)+'°';
+  const qi=Math.floor(((window.A.deg%360)+360)%360/90);
+  const qname=[tr('q1'),tr('q2'),tr('q3'),tr('q4')][qi];
+  const sg=x=>x>1e-6?'+':x<-1e-6?'−':'0';
+  L_sign.textContent=qname+': sin '+sg(s)+', cos '+sg(c)+', tan '+sg(s*c);
+}
+function project(localVec){const w=localVec.clone().applyMatrix4(obj.matrixWorld).project(camera);return {x:(w.x*0.5+0.5)*innerWidth,y:(-w.y*0.5+0.5)*innerHeight,behind:w.z>1};}
+function place(el,v,vis){if(!vis){el.classList.add('hidden');return;}const s=project(v);if(s.behind){el.classList.add('hidden');return;}el.classList.remove('hidden');el.style.left=s.x+'px';el.style.top=s.y+'px';}
+function updateLabels(){
+  const a=rad();
+  place(L_cos,anc.cos,Math.abs(Math.cos(a))>0.05);
+  place(L_sin,anc.sin,Math.abs(Math.sin(a))>0.05);
+  place(L_tan,anc.tan,showTan && Math.abs(Math.cos(a))>0.05);
+  place(L_th,anc.th,window.A.deg>6 && window.A.deg<354);
+  place(L_sign,anc.sign,showQuad);
+}
+
+/* ── DETAIL ── */
+const DETAIL_ALL={
+ru:{
+  deg:{tag:'Угол',p:'Угол θ отсчитывается от положительной оси X против часовой стрелки. Полный оборот — 360°. На рисунке θ — это дуга от оси X до радиуса, идущего в точку.'},
+  rad:{tag:'Радианы',p:'Радиан — «природная» мера угла: это длина дуги единичной окружности. Полный оборот 360° = 2π радиан, поэтому 180° = π, 90° = π/2, 45° = π/4.'},
+  sin:{tag:'Синус',p:'Синус угла θ — это y-координата точки на единичной окружности (розовый вертикальный отрезок). Значение всегда от −1 до 1. sin 0° = 0, sin 90° = 1.'},
+  cos:{tag:'Косинус',p:'Косинус угла θ — это x-координата точки на единичной окружности (синий горизонтальный отрезок). Тоже от −1 до 1. cos 0° = 1, cos 90° = 0.'},
+  tan:{tag:'Тангенс',p:'Тангенс tan θ = sin θ / cos θ — это длина зелёного отрезка на вертикальной касательной x = 1. При θ → 90° косинус стремится к 0, и тангенс уходит в бесконечность.'},
+},
+kz:{
+  deg:{tag:'Бұрыш',p:'θ бұрышы оң X осінен сағат тіліне қарсы өлшенеді. Толық айналым — 360°. Суретте θ — X осінен нүктеге баратын радиусқа дейінгі доға.'},
+  rad:{tag:'Радиан',p:'Радиан — бұрыштың табиғи өлшемі: бірлік шеңбер доғасының ұзындығы. 360° = 2π радиан, сондықтан 180° = π, 90° = π/2, 45° = π/4.'},
+  sin:{tag:'Синус',p:'θ бұрышының синусы — бірлік шеңбердегі нүктенің y-координатасы (қызғылт тік кесінді). Мәні әрқашан −1 мен 1 аралығында. sin 0° = 0, sin 90° = 1.'},
+  cos:{tag:'Косинус',p:'θ бұрышының косинусы — нүктенің x-координатасы (көк көлденең кесінді). Ол да −1 мен 1 аралығында. cos 0° = 1, cos 90° = 0.'},
+  tan:{tag:'Тангенс',p:'Тангенс tan θ = sin θ / cos θ — x = 1 жанамасындағы жасыл кесіндінің ұзындығы. θ → 90° болғанда косинус 0-ге ұмтылып, тангенс шексіздікке кетеді.'},
+},
+en:{
+  deg:{tag:'Angle',p:'The angle θ is measured from the positive X-axis counter-clockwise. A full turn is 360°. In the figure θ is the arc from the X-axis to the radius pointing at the point.'},
+  rad:{tag:'Radians',p:'The radian is the "natural" measure of an angle: the arc length on the unit circle. A full turn 360° = 2π radians, so 180° = π, 90° = π/2, 45° = π/4.'},
+  sin:{tag:'Sine',p:'The sine of θ is the y-coordinate of the point on the unit circle (the pink vertical segment). It always lies between −1 and 1. sin 0° = 0, sin 90° = 1.'},
+  cos:{tag:'Cosine',p:'The cosine of θ is the x-coordinate of the point on the unit circle (the blue horizontal segment). Also between −1 and 1. cos 0° = 1, cos 90° = 0.'},
+  tan:{tag:'Tangent',p:'The tangent tan θ = sin θ / cos θ is the length of the green segment on the vertical tangent line x = 1. As θ → 90°, cosine tends to 0 and the tangent runs to infinity.'},
+}
+};
+const DETAIL=DETAIL_ALL[LANG]||DETAIL_ALL.ru;
+
+let savedTan=true,savedQuad=false;
+function openDetail(key){
+  const d=DETAIL[key];if(!d)return;
+  const m=METRICS.find(x=>x.key===key);
+  if(!document.getElementById('panel-left').classList.contains('detail')){savedTan=showTan;savedQuad=showQuad;}
+  document.querySelectorAll('.metric').forEach(el=>el.classList.toggle('active',el.dataset.key===key));
+  hiKey=key; buildDyn();
+  if(key==='tan'&&!showTan) window.toggleTan();
+  const dg=window.A.deg,c=Math.cos(rad()),s=Math.sin(rad());
+  const calc={
+    deg:`θ = ${f1(dg)}°`,
+    rad:`θ = ${f1(dg)}° = ${piFrac2(dg)}\n  ≈ ${f3(rad())} рад`,
+    sin:`sin ${f1(dg)}° = ${f3(s)}`,
+    cos:`cos ${f1(dg)}° = ${f3(c)}`,
+    tan:`tan θ = sin θ / cos θ\n  = ${f3(s)} / ${f3(c)} = ${Math.abs(c)<1e-3?'∞':f3(s/c)}`,
+  }[key];
+  document.getElementById('detail-content').innerHTML=`
+    <div class="d-tag">${d.tag}</div>
+    <div class="d-title">${tr(m.i)}</div>
+    <div class="d-bigval"><b>${m.fmt()}</b><span>${tr(m.unit)}</span></div>
+    <div class="d-formula">${calc}</div>
+    <div class="d-para">${d.p}</div>`;
+  document.getElementById('panel-left').classList.add('detail');
+  currentDetail=key;markInteract();
+}
+function piFrac2(deg){return (deg%15===0)?piFrac(deg):f3(deg*PI/180)+' рад';}
+function gcd(a,b){a=Math.abs(a);b=Math.abs(b);while(b){[a,b]=[b,a%b];}return a||1;}
+function piFrac(deg){deg=((Math.round(deg)%360)+360)%360;if(deg===0)return '0';const g=gcd(deg,180);let num=deg/g,den=180/g;const top=(num===1?'π':num+'π');return den===1?top:top+'/'+den;}
+let currentDetail=null;
+window.openDetail=openDetail;
+window.showList=function(){
+  document.getElementById('panel-left').classList.remove('detail');currentDetail=null;
+  document.querySelectorAll('.metric').forEach(m=>m.classList.remove('active'));
+  hiKey=null; buildDyn();
+  if(showTan!==savedTan) window.toggleTan();
+  if(showQuad!==savedQuad) window.toggleQuad();
+};
+
+/* ── CONTROLS ── */
+window.setAngle=function(deg){
+  deg=((deg%360)+360)%360;
+  window.A.deg=deg;
+  buildDyn();updateMetricValues();
+  document.getElementById('slider-deg').value=Math.round(deg);
+  if(currentDetail) openDetail(currentDetail);
+  markInteract();
+};
+window.toggleTan=function(){showTan=!showTan;document.getElementById('chip-tan').classList.toggle('on',showTan);tanLineGroup.visible=showTan;buildDyn();markInteract();};
+window.toggleQuad=function(){showQuad=!showQuad;document.getElementById('chip-quad').classList.toggle('on',showQuad);buildDyn();markInteract();};
+
+/* ── RAYCAST + DRAG ── */
+const ray=new THREE.Raycaster(),m2=new THREE.Vector2();
+function pick(e,objs){m2.x=(e.clientX/innerWidth)*2-1;m2.y=-(e.clientY/innerHeight)*2+1;ray.setFromCamera(m2,camera);return ray.intersectObjects(objs,false);}
+function planeAngle(e){
+  m2.x=(e.clientX/innerWidth)*2-1;m2.y=-(e.clientY/innerHeight)*2+1;ray.setFromCamera(m2,camera);
+  const normal=new THREE.Vector3(0,0,1).transformDirection(obj.matrixWorld);
+  const plane=new THREE.Plane().setFromNormalAndCoplanarPoint(normal,V(0,0,0));
+  const hit=new THREE.Vector3();
+  if(!ray.ray.intersectPlane(plane,hit))return null;
+  hit.applyMatrix4(new THREE.Matrix4().copy(obj.matrixWorld).invert());
+  return {deg:(Math.atan2(hit.y,hit.x)*180/PI+360)%360, r:Math.hypot(hit.x,hit.y)};
+}
+
+let mode=null,last={x:0,y:0},dd=0,isDragging=false,rotX=0.0,downPos=null;
+let lastInteract=performance.now()-11000,autoSpeed=0;const AUTO_TARGET=0.0011,IDLE_MS=15000;
+function markInteract(){lastInteract=performance.now();}
+
+canvas.addEventListener('mousedown',e=>{
+  markInteract();downPos={x:e.clientX,y:e.clientY};
+  if(pointHandle){const h=pick(e,[pointHandle]);if(h.length>0){mode='angle';canvas.style.cursor='grabbing';return;}}
+  mode='rotate';last={x:e.clientX,y:e.clientY};isDragging=false;dd=0;
+});
+canvas.addEventListener('mousemove',e=>{
+  if(mode==='angle'){const pa=planeAngle(e);if(pa)window.setAngle(pa.deg);markInteract();return;}
+  if(mode==='rotate'){
+    dd=Math.hypot(e.clientX-last.x,e.clientY-last.y);if(dd>4)isDragging=true;
+    if(isDragging){root.rotation.y+=(e.clientX-last.x)*0.010;rotX=Math.max(-1.2,Math.min(1.2,rotX+(e.clientY-last.y)*0.008));root.rotation.x=rotX;markInteract();}
+    last={x:e.clientX,y:e.clientY};return;
+  }
+  if(pointHandle){const h=pick(e,[pointHandle]);canvas.style.cursor=h.length>0?'grab':'default';}
+});
+window.addEventListener('mouseup',e=>{
+  if(mode==='angle')canvas.style.cursor='default';
+  // click on the circle (no drag) → set angle to that direction
+  if(mode==='rotate' && !isDragging && downPos){
+    const pa=planeAngle(e);
+    if(pa && pa.r<R*1.35) window.setAngle(pa.deg);
+  }
+  mode=null;downPos=null;
+});
+canvas.addEventListener('wheel',e=>{e.preventDefault();userZoom=Math.max(0.6,Math.min(1.7,userZoom+e.deltaY*0.0015));markInteract();},{passive:false});
+window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+
+/* ── LOOP ── */
+let t=0;
+function animate(){
+  requestAnimationFrame(animate);t+=0.016;
+  const idle=performance.now()-lastInteract;
+  if(idle>IDLE_MS)autoSpeed+=(AUTO_TARGET-autoSpeed)*0.025;else autoSpeed+=(0-autoSpeed)*0.18;
+  root.rotation.y+=autoSpeed;root.rotation.x=rotX;
+  camDistTarget=computeCamTarget();camDist+=(camDistTarget-camDist)*0.18;applyCamera();
+  const pulse=idle>IDLE_MS?(1+Math.sin(t*2.4)*0.13):1;
+  if(pointHandle)pointHandle.scale.setScalar(pulse);
+  renderer.render(scene,camera);
+  obj.updateWorldMatrix(true,false);
+  updateLabels();
+}
+
+root.rotation.x=rotX;
+buildDyn();updateMetricValues();
+camDistTarget=computeCamTarget();camDist=camDistTarget;applyCamera();
+animate();
+</script>
+</body>
+</html>

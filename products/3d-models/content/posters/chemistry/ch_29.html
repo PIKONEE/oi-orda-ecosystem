@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="page_title">Гибридизация орбиталей — sp³, sp², sp</title>
+<style>
+
+
+*{margin:0;padding:0;box-sizing:border-box;}
+
+:root{
+  --bg:#f5f4f0;
+  --surface:rgba(255,255,255,0.90);
+  --border:rgba(0,0,0,0.08);
+  --text:#1c1917;
+  --muted:#78716c;
+  --carbon:#292524;
+  --hydrogen:#64748b;
+  --hybrid:#f97316;
+  --porbital:#8b5cf6;
+  --pi:#ec4899;
+  --sigma:#78716c;
+  --shadow:0 2px 20px rgba(0,0,0,0.07);
+  --shadow-lg:0 8px 44px rgba(0,0,0,0.11);
+}
+
+body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);overflow:hidden;height:100vh;}
+
+body::before{
+  content:'';position:fixed;inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='%23f5f4f0'/%3E%3Ccircle cx='1' cy='1' r='0.6' fill='rgba(0,0,0,0.025)'/%3E%3C/svg%3E");
+  pointer-events:none;z-index:0;
+}
+
+#canvas-container{position:fixed;inset:0;z-index:1;}
+
+/* ── HEADER ── */
+.header{
+  position:fixed;top:0;left:0;right:0;z-index:200;
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  padding:0 48px;height:92px;
+  display:flex;align-items:center;gap:14px;
+  box-shadow:var(--shadow);
+}
+.h-icon{font-size:30px;}
+.header-title{font-size:25px;font-weight:700;}
+.header-sub{font-size:14.5px;color:var(--muted);margin-left:auto;text-align:right;line-height:1.4;}
+
+/* ── LEFT PANEL ── */
+.panel-left{
+  position:fixed;left:24px;top:108px;bottom:400px;z-index:100;
+  overflow-y:auto;
+  width:300px;
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:24px;
+  padding:20px 22px;box-shadow:var(--shadow-lg);
+}
+.panel-left h3{font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:14px;}
+.props-table{width:100%;border-collapse:collapse;}
+.props-table td{padding:8px 6px;border-bottom:1px solid rgba(0,0,0,0.05);font-size:14px;line-height:1.35;}
+.props-table tr:last-child td{border-bottom:none;}
+.props-table td:first-child{color:var(--muted);font-size:13px;width:50%;}
+.props-table td:last-child{font-weight:600;font-family:'DM Mono',monospace;font-size:13.5px;text-align:right;}
+
+/* ── RIGHT PANEL ── */
+.panel-right{
+  position:fixed;right:24px;top:108px;z-index:100;
+  width:288px;
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:24px;
+  padding:20px 22px;box-shadow:var(--shadow-lg);
+}
+.panel-right h3{font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:12px;}
+
+/* mode selector (inside right panel) */
+.mode-selector{display:flex;flex-direction:column;gap:8px;margin-bottom:8px;}
+.mode-btn{
+  width:100%;padding:11px 14px;border-radius:14px;text-align:left;
+  font-family:'Syne',sans-serif;font-weight:700;color:var(--text);cursor:pointer;
+  border:2px solid var(--border);background:rgba(0,0,0,0.02);
+  transition:all 0.2s;display:flex;align-items:center;gap:11px;
+}
+.mode-btn:hover{background:rgba(0,0,0,0.05);transform:translateY(-1px);}
+.mode-btn.sel{border-color:var(--hybrid);background:rgba(249,115,22,0.10);color:#ea580c;}
+.mode-dot{width:13px;height:13px;border-radius:50%;flex-shrink:0;}
+.mode-formula{font-family:'DM Mono',monospace;font-size:17px;font-weight:600;}
+.mode-sub{font-size:12.5px;font-weight:500;color:var(--muted);margin-left:auto;}
+.mode-btn.sel .mode-sub{color:#ea580c;}
+.panel-sep{height:1px;background:var(--border);margin:14px 0;}
+.ctrl-btn{
+  width:100%;padding:11px 16px;margin-bottom:10px;
+  background:rgba(0,0,0,0.04);border:1.5px solid var(--border);border-radius:14px;
+  font-family:'Syne',sans-serif;font-size:14px;font-weight:600;
+  color:var(--text);cursor:pointer;text-align:left;
+  transition:all 0.2s;display:flex;align-items:center;gap:8px;
+}
+.ctrl-btn:hover{background:rgba(0,0,0,0.07);transform:translateY(-1px);}
+.ctrl-btn.active{background:rgba(249,115,22,0.10);border-color:rgba(249,115,22,0.4);color:#ea580c;}
+
+/* ── LEGEND (clickable info chips) ── */
+.panel-legend{
+  position:fixed;left:24px;bottom:64px;z-index:100;
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:20px;
+  padding:14px 16px;box-shadow:var(--shadow);
+  display:flex;flex-direction:column;gap:6px;width:248px;
+}
+.legend-head{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:4px;display:flex;align-items:center;gap:6px;}
+.leg-item{
+  display:flex;align-items:center;gap:9px;font-size:13px;font-weight:600;
+  padding:8px 11px;border-radius:11px;cursor:pointer;
+  border:1px solid var(--border);background:rgba(0,0,0,0.025);
+  transition:all 0.16s;
+}
+.leg-item:hover{background:rgba(249,115,22,0.08);border-color:rgba(249,115,22,0.35);transform:translateX(3px);}
+.leg-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0;}
+.leg-info{
+  margin-left:auto;flex-shrink:0;
+  width:18px;height:18px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:700;font-style:italic;font-family:'DM Mono',monospace;
+  background:rgba(0,0,0,0.06);color:var(--muted);transition:all 0.16s;
+}
+.leg-item:hover .leg-info{background:var(--hybrid);color:#fff;}
+
+/* ── HINT ── */
+.hint-bar{
+  position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:100;
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:99px;
+  padding:9px 24px;font-size:13px;color:var(--muted);
+  box-shadow:var(--shadow);white-space:nowrap;
+}
+.hint-bar kbd{background:rgba(0,0,0,0.07);border-radius:5px;padding:2px 7px;font-family:'DM Mono',monospace;font-size:12px;}
+
+/* ── OVERLAY NAME ── */
+.overlay-name{
+  position:fixed;bottom:58px;right:28px;z-index:100;
+  font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:2px;
+  color:var(--muted);opacity:0.55;pointer-events:none;
+}
+
+/* ── INFO PANEL ── */
+#info-panel{
+  position:fixed;right:-460px;top:0;bottom:0;z-index:300;
+  width:420px;
+  background:rgba(255,255,255,0.97);
+  border-left:1px solid var(--border);
+  padding:32px 28px;overflow-y:auto;
+  box-shadow:-4px 0 40px rgba(0,0,0,0.10);
+  transition:right 0.38s cubic-bezier(0.4,0,0.2,1);
+}
+#info-panel.open{right:0;}
+#info-close{
+  position:absolute;top:20px;right:20px;
+  width:36px;height:36px;border-radius:50%;
+  background:rgba(0,0,0,0.07);border:none;cursor:pointer;
+  font-size:18px;display:flex;align-items:center;justify-content:center;
+}
+#info-close:hover{background:rgba(0,0,0,0.13);}
+.info-tag{display:inline-block;padding:4px 12px;border-radius:99px;font-size:12px;font-weight:700;letter-spacing:0.5px;margin-bottom:16px;}
+.info-title{font-size:22px;font-weight:800;margin-bottom:6px;line-height:1.2;}
+.info-section{margin-top:18px;}
+.info-section h4{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:6px;}
+.info-section p{font-size:14.5px;line-height:1.65;color:#292524;}
+
+@media (max-width:1100px){
+  .panel-left{width:260px;}
+  .panel-right{width:215px;}
+}
+</style>
+</head>
+<body>
+
+<div id="canvas-container"><canvas id="c"></canvas></div>
+
+<header class="header">
+  <div class="h-icon">🔀</div>
+  <div class="header-title" data-i18n="header_title">Гибридизация орбиталей</div>
+  <div class="header-sub" data-i18n-html="header_sub">Форма молекул и валентные углы<br>кликните на орбиталь или связь</div>
+</header>
+
+<div class="panel-left">
+  <h3 data-i18n="props_title">Параметры</h3>
+  <table class="props-table"><tbody id="props-body"></tbody></table>
+</div>
+
+<div class="panel-right">
+  <h3 data-i18n="mode_title">Тип гибридизации</h3>
+  <div class="mode-selector">
+    <button class="mode-btn sel" data-id="sp3" onclick="switchTo('sp3')">
+      <span class="mode-dot" style="background:#f97316"></span><span class="mode-formula">sp³</span><span class="mode-sub" data-i18n="sw_sp3">тетраэдр</span>
+    </button>
+    <button class="mode-btn" data-id="sp2" onclick="switchTo('sp2')">
+      <span class="mode-dot" style="background:#10b981"></span><span class="mode-formula">sp²</span><span class="mode-sub" data-i18n="sw_sp2">треугольник</span>
+    </button>
+    <button class="mode-btn" data-id="sp" onclick="switchTo('sp')">
+      <span class="mode-dot" style="background:#3b82f6"></span><span class="mode-formula">sp</span><span class="mode-sub" data-i18n="sw_sp">линейная</span>
+    </button>
+  </div>
+  <div class="panel-sep"></div>
+  <h3 data-i18n="ctrl_title">Управление</h3>
+  <button class="ctrl-btn active" id="btn-spin" onclick="toggleSpin()"><span data-i18n="btn_pause">⏸ Пауза</span></button>
+  <button class="ctrl-btn active" id="btn-hybrid" onclick="toggleHybrid()"><span data-i18n="btn_hybrid">☁️ Гибридные орбитали</span></button>
+  <button class="ctrl-btn active" id="btn-pi" onclick="togglePi()"><span data-i18n="btn_pi">🌸 p-орбитали и π-связи</span></button>
+  <button class="ctrl-btn active" id="btn-labels" onclick="toggleLabels()"><span data-i18n="btn_labels">🏷️ Подписи</span></button>
+</div>
+
+<div class="panel-legend">
+  <div class="legend-head" data-i18n="legend_head">👆 Нажмите для описания</div>
+  <div class="leg-item" onclick="openInfo('carbon')"><div class="leg-dot" style="background:#292524;"></div><span data-i18n="leg_carbon">Атом углерода C</span><span class="leg-info">i</span></div>
+  <div class="leg-item" onclick="openInfo('hydrogen')"><div class="leg-dot" style="background:#64748b;"></div><span data-i18n="leg_hydrogen">Атом водорода H</span><span class="leg-info">i</span></div>
+  <div class="leg-item" onclick="openInfo('hybrid')"><div class="leg-dot" style="background:#f97316;"></div><span data-i18n="leg_hybrid">Гибридная орбиталь</span><span class="leg-info">i</span></div>
+  <div class="leg-item" onclick="openInfo('porbital')"><div class="leg-dot" style="background:#8b5cf6;"></div><span data-i18n="leg_porbital">p-орбиталь (негибрид.)</span><span class="leg-info">i</span></div>
+  <div class="leg-item" onclick="openInfo('sigma')"><div class="leg-dot" style="background:#78716c;"></div><span data-i18n="leg_sigma">σ-связь</span><span class="leg-info">i</span></div>
+  <div class="leg-item" onclick="openInfo('pi')"><div class="leg-dot" style="background:#ec4899;"></div><span data-i18n="leg_pi">π-связь</span><span class="leg-info">i</span></div>
+</div>
+
+<div class="overlay-name" id="overlay-name">CH₄ · метан</div>
+
+<div class="hint-bar" data-i18n-html="hint">Перетащите — вращение · <kbd>Колесо</kbd> — масштаб · Клик — информация</div>
+
+<div id="info-panel">
+  <button id="info-close" onclick="closeInfo()">✕</button>
+  <div class="info-tag" id="info-tag"></div>
+  <div class="info-title" id="info-title"></div>
+  <div id="info-body"></div>
+</div>
+
+<script>
+const I18N={
+ru:{
+page_title:'Гибридизация орбиталей — sp³, sp², sp',header_title:'Гибридизация орбиталей',
+header_sub:'Форма молекул и валентные углы<br>кликните на орбиталь или связь',
+props_title:'Параметры',ctrl_title:'Управление',mode_title:'Тип гибридизации',legend_head:'👆 Нажмите для описания',
+sw_sp3:'тетраэдр',sw_sp2:'треугольник',sw_sp:'линейная',
+btn_pause:'⏸ Пауза',btn_resume:'▶ Вращение',btn_hybrid:'☁️ Гибридные орбитали',btn_pi:'🌸 p-орбитали и π-связи',btn_labels:'🏷️ Подписи',
+leg_carbon:'Атом углерода C',leg_hydrogen:'Атом водорода H',leg_hybrid:'Гибридная орбиталь',leg_porbital:'p-орбиталь (негибрид.)',leg_sigma:'σ-связь',leg_pi:'π-связь',
+hint:'Перетащите — вращение · <kbd>Колесо</kbd> — масштаб · Клик — информация',
+p_hyb:'Гибридизация',p_geom:'Геометрия',p_angle:'Валентный угол',p_sigma:'σ-связей (на атом)',p_pi:'π-связей',p_example:'Пример',p_bond:'Тип связи',
+g_tetra:'Тетраэдр',g_trig:'Плоский треугольник',g_lin:'Линейная',
+b_single:'одинарная',b_double:'двойная (1σ+1π)',b_triple:'тройная (1σ+2π)',
+ex_ch4:'CH₄ — метан',ex_c2h4:'C₂H₄ — этилен',ex_c2h2:'C₂H₂ — ацетилен'
+},
+kz:{
+page_title:'Орбитальдердің гибридтенуі — sp³, sp², sp',header_title:'Орбитальдердің гибридтенуі',
+header_sub:'Молекула пішіні және валенттік бұрыштар<br>орбитальді немесе байланысты басыңыз',
+props_title:'Параметрлер',ctrl_title:'Басқару',mode_title:'Гибридтену түрі',legend_head:'👆 Сипаттама үшін басыңыз',
+sw_sp3:'тетраэдр',sw_sp2:'үшбұрыш',sw_sp:'сызықтық',
+btn_pause:'⏸ Кідірту',btn_resume:'▶ Айналдыру',btn_hybrid:'☁️ Гибрид орбитальдер',btn_pi:'🌸 p-орбитальдер және π-байланыс',btn_labels:'🏷️ Белгілер',
+leg_carbon:'Көміртек атомы C',leg_hydrogen:'Сутек атомы H',leg_hybrid:'Гибрид орбиталь',leg_porbital:'p-орбиталь (гибридтенбеген)',leg_sigma:'σ-байланыс',leg_pi:'π-байланыс',
+hint:'Сүйреңіз — айналдыру · <kbd>Дөңгелек</kbd> — масштаб · Басу — ақпарат',
+p_hyb:'Гибридтену',p_geom:'Геометрия',p_angle:'Валенттік бұрыш',p_sigma:'σ-байланыс (атомға)',p_pi:'π-байланыс',p_example:'Мысал',p_bond:'Байланыс түрі',
+g_tetra:'Тетраэдр',g_trig:'Жазық үшбұрыш',g_lin:'Сызықтық',
+b_single:'жалғыз',b_double:'қос (1σ+1π)',b_triple:'үштік (1σ+2π)',
+ex_ch4:'CH₄ — метан',ex_c2h4:'C₂H₄ — этилен',ex_c2h2:'C₂H₂ — ацетилен'
+},
+en:{
+page_title:'Orbital Hybridization — sp³, sp², sp',header_title:'Orbital Hybridization',
+header_sub:'Molecular shape and bond angles<br>click an orbital or a bond',
+props_title:'Parameters',ctrl_title:'Controls',mode_title:'Hybridization type',legend_head:'👆 Click for description',
+sw_sp3:'tetrahedral',sw_sp2:'trigonal',sw_sp:'linear',
+btn_pause:'⏸ Pause',btn_resume:'▶ Rotate',btn_hybrid:'☁️ Hybrid orbitals',btn_pi:'🌸 p-orbitals & π-bonds',btn_labels:'🏷️ Labels',
+leg_carbon:'Carbon atom C',leg_hydrogen:'Hydrogen atom H',leg_hybrid:'Hybrid orbital',leg_porbital:'p-orbital (unhybridized)',leg_sigma:'σ-bond',leg_pi:'π-bond',
+hint:'Drag — rotate · <kbd>Scroll</kbd> — zoom · Click — info',
+p_hyb:'Hybridization',p_geom:'Geometry',p_angle:'Bond angle',p_sigma:'σ-bonds (per atom)',p_pi:'π-bonds',p_example:'Example',p_bond:'Bond type',
+g_tetra:'Tetrahedral',g_trig:'Trigonal planar',g_lin:'Linear',
+b_single:'single',b_double:'double (1σ+1π)',b_triple:'triple (1σ+2π)',
+ex_ch4:'CH₄ — methane',ex_c2h4:'C₂H₄ — ethylene',ex_c2h2:'C₂H₂ — acetylene'
+}
+};
+const LANG=(()=>{const q=new URLSearchParams(location.search).get('lang');return(q&&I18N[q])?q:'ru';})();
+const tr=(key)=>(I18N[LANG]&&I18N[LANG][key])??(I18N.ru[key]);
+function applyStaticI18N(){
+  document.documentElement.lang=LANG;
+  const tv=tr('page_title');if(tv)document.title=tv;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{const v=tr(el.getAttribute('data-i18n'));if(v)el.textContent=v;});
+  document.querySelectorAll('[data-i18n-html]').forEach(el=>{const v=tr(el.getAttribute('data-i18n-html'));if(v)el.innerHTML=v;});
+}
+applyStaticI18N();
+</script>
+
+<script type="importmap">
+{"imports":{"three":"../../libs/vendor/three-0.160.0/three.module.js"}}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({canvas, antialias: true, alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth, innerHeight);
+
+const scene = new THREE.Scene();
+scene.background = null;
+
+const camera = new THREE.PerspectiveCamera(45, innerWidth/innerHeight, 0.1, 200);
+camera.position.set(0, 2.5, 13);
+camera.lookAt(0,0,0);
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+const dL = new THREE.DirectionalLight(0xffffff, 1.0); dL.position.set(8,12,10); scene.add(dL);
+const dL2 = new THREE.DirectionalLight(0xfde68a, 0.3); dL2.position.set(-8,-4,-6); scene.add(dL2);
+
+const V=(x,y,z)=>new THREE.Vector3(x,y,z);
+const YUP=V(0,1,0);
+
+const root = new THREE.Group();
+scene.add(root);
+const modelGroup = new THREE.Group();
+root.add(modelGroup);
+
+let clickables=[];
+let hybridMeshes=[];   // hybrid orbital lobes
+let piMeshes=[];       // p-orbitals + pi clouds
+let labelSprites=[];
+
+const COL={carbon:0x292524, hydrogen:0x64748b, hybrid:0xf97316, p1:0x8b5cf6, p2:0x38bdf8, sigma:0x78716c, pi:0xec4899};
+
+/* ── HELPERS ── */
+function makeSphere(r,color,opts={}){
+  const m=new THREE.MeshPhongMaterial({color,shininess:opts.shin||90,specular:0x555555,
+    transparent:(opts.opacity||1)<1,opacity:opts.opacity||1,
+    emissive:opts.emissive||0x000000,emissiveIntensity:opts.emissiveI||0});
+  return new THREE.Mesh(new THREE.SphereGeometry(r,28,20),m);
+}
+function makeCyl(from,to,radius,color,opacity=1){
+  const dir=new THREE.Vector3().subVectors(to,from); const len=dir.length();
+  const m=new THREE.MeshPhongMaterial({color,opacity,transparent:opacity<1,shininess:40});
+  const mesh=new THREE.Mesh(new THREE.CylinderGeometry(radius,radius,len,14),m);
+  mesh.position.addVectors(from,to).multiplyScalar(0.5);
+  if(len>0.001) mesh.quaternion.setFromUnitVectors(YUP,dir.normalize());
+  return mesh;
+}
+// Lobe pointing +Y from origin; teardrop=fat near tip (hybrid), ellipsoid for p
+function makeLobe(color,length,maxR,opacity,teardrop){
+  const pts=[]; const seg=26;
+  for(let i=0;i<=seg;i++){
+    const t=i/seg; const y=t*length;
+    let r=Math.sin(t*Math.PI)*maxR;
+    if(teardrop) r=Math.pow(Math.sin(t*Math.PI),0.85)*maxR*(0.35+0.75*t);
+    pts.push(new THREE.Vector2(Math.max(r,0.0008),y));
+  }
+  const geo=new THREE.LatheGeometry(pts,30);
+  const mat=new THREE.MeshPhongMaterial({color,transparent:true,opacity,shininess:30,
+    side:THREE.DoubleSide,emissive:color,emissiveIntensity:0.10,depthWrite:false});
+  return new THREE.Mesh(geo,mat);
+}
+function orient(obj,dir){ obj.quaternion.setFromUnitVectors(YUP,dir.clone().normalize()); }
+
+function makeLabel(text,pos,color,scale=1){
+  const c=document.createElement('canvas'); c.width=220; c.height=64;
+  const ctx=c.getContext('2d');
+  ctx.font='bold 30px DM Mono, monospace'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillStyle='rgba(255,255,255,0.93)';
+  ctx.beginPath(); ctx.roundRect(3,3,214,58,12); ctx.fill();
+  ctx.lineWidth=2; ctx.strokeStyle=color; ctx.stroke();
+  ctx.fillStyle=color; ctx.fillText(text,110,34);
+  const tex=new THREE.CanvasTexture(c);
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,depthTest:false,transparent:true}));
+  sp.position.copy(pos); sp.scale.set(1.5*scale,0.43*scale,1);
+  return sp;
+}
+
+// p-orbital dumbbell (two lobes) along axis; group placed at center
+function makePOrbital(center,axis,length,maxR){
+  const g=new THREE.Group(); g.position.copy(center);
+  const a=axis.clone().normalize();
+  const l1=makeLobe(COL.p1,length,maxR,0.42,false); orient(l1,a); g.add(l1);
+  const l2=makeLobe(COL.p2,length,maxR,0.42,false); orient(l2,a.clone().negate()); g.add(l2);
+  return g;
+}
+// flattened pi cloud blob between two points, offset along normal
+function makePiBlob(from,to,normal,offset){
+  const mid=from.clone().add(to).multiplyScalar(0.5).add(normal.clone().normalize().multiplyScalar(offset));
+  const len=from.distanceTo(to);
+  const geo=new THREE.SphereGeometry(1,24,16);
+  const mat=new THREE.MeshPhongMaterial({color:COL.pi,transparent:true,opacity:0.34,shininess:20,
+    emissive:COL.pi,emissiveIntensity:0.12,depthWrite:false,side:THREE.DoubleSide});
+  const m=new THREE.Mesh(geo,mat);
+  m.position.copy(mid);
+  // stretch along bond axis (x'), flatten along normal
+  const axis=to.clone().sub(from).normalize();
+  m.scale.set(len*0.62, 0.42, 0.95);
+  m.quaternion.setFromUnitVectors(V(1,0,0),axis);
+  return m;
+}
+
+/* ── ATOM / BOND BUILDERS ── */
+function addCarbon(pos){
+  const s=makeSphere(0.52,COL.carbon,{shin:60});
+  s.position.copy(pos); s.userData={type:'carbon'};
+  modelGroup.add(s); clickables.push(s);
+  return s;
+}
+function addHydrogen(pos){
+  const s=makeSphere(0.34,COL.hydrogen,{shin:80});
+  s.position.copy(pos); s.userData={type:'hydrogen'};
+  modelGroup.add(s); clickables.push(s);
+  return s;
+}
+function addSigma(from,to){
+  const b=makeCyl(from,to,0.10,COL.sigma); b.userData={type:'sigma'};
+  modelGroup.add(b); clickables.push(b); return b;
+}
+function addHybrid(center,dir,length){
+  const lobe=makeLobe(COL.hybrid,length,0.40,0.40,true);
+  orient(lobe,dir); lobe.position.copy(center);
+  lobe.userData={type:'hybrid'};
+  modelGroup.add(lobe); hybridMeshes.push(lobe); clickables.push(lobe);
+  return lobe;
+}
+
+/* ── MODELS ── */
+function clearModel(){
+  while(modelGroup.children.length) modelGroup.remove(modelGroup.children[0]);
+  clickables=[]; hybridMeshes=[]; piMeshes=[]; labelSprites=[];
+}
+
+function buildSP3(){
+  const C=V(0,0,0);
+  addCarbon(C);
+  const dirs=[V(1,1,1),V(1,-1,-1),V(-1,1,-1),V(-1,-1,1)].map(d=>d.normalize());
+  const BL=2.5;
+  dirs.forEach(d=>{
+    const H=d.clone().multiplyScalar(BL);
+    addSigma(C,H); addHydrogen(H); addHybrid(C,d,1.85);
+  });
+  // angle label
+  const lb=makeLabel('109.5°',V(0,2.6,0),'#ea580c',1.15); modelGroup.add(lb); labelSprites.push(lb);
+  // sigma label on one bond
+  const sl=makeLabel('σ',dirs[0].clone().multiplyScalar(1.25),'#57534e',0.8); modelGroup.add(sl); labelSprites.push(sl);
+}
+
+function buildSP2(){
+  const C1=V(-0.78,0,0), C2=V(0.78,0,0);
+  addCarbon(C1); addCarbon(C2);
+  // sigma C-C
+  addSigma(C1,C2);
+  const BL=2.1;
+  // C1 hydrogens at 120
+  const c1dirs=[V(-0.5,0.866,0),V(-0.5,-0.866,0)];
+  const c2dirs=[V(0.5,0.866,0),V(0.5,-0.866,0)];
+  c1dirs.forEach(d=>{const H=C1.clone().add(d.clone().multiplyScalar(BL)); addSigma(C1,H); addHydrogen(H); addHybrid(C1,d,1.55);});
+  c2dirs.forEach(d=>{const H=C2.clone().add(d.clone().multiplyScalar(BL)); addSigma(C2,H); addHydrogen(H); addHybrid(C2,d,1.55);});
+  // hybrid lobes toward each other along C-C
+  addHybrid(C1,V(1,0,0),1.35); addHybrid(C2,V(-1,0,0),1.35);
+  // p-orbitals along Z (perpendicular to molecular plane)
+  const p1=makePOrbital(C1,V(0,0,1),1.5,0.42); p1.userData={type:'porbital'};
+  const p2=makePOrbital(C2,V(0,0,1),1.5,0.42); p2.userData={type:'porbital'};
+  modelGroup.add(p1,p2); piMeshes.push(p1,p2); clickables.push(p1,p2);
+  // pi cloud above and below
+  const piT=makePiBlob(C1,C2,V(0,0,1),0.95); piT.userData={type:'pi'};
+  const piB=makePiBlob(C1,C2,V(0,0,-1),0.95); piB.userData={type:'pi'};
+  modelGroup.add(piT,piB); piMeshes.push(piT,piB); clickables.push(piT,piB);
+  // labels
+  const lb=makeLabel('120°',V(0,2.55,0),'#059669',1.1); modelGroup.add(lb); labelSprites.push(lb);
+  const sl=makeLabel('σ',V(0,0,0).add(V(0,-0.55,0)),'#57534e',0.75); modelGroup.add(sl); labelSprites.push(sl);
+  const pl=makeLabel('π',V(0,0,1.55),'#db2777',0.8); modelGroup.add(pl); labelSprites.push(pl);
+}
+
+function buildSP(){
+  const C1=V(-0.68,0,0), C2=V(0.68,0,0);
+  addCarbon(C1); addCarbon(C2);
+  addSigma(C1,C2);
+  const BL=2.0;
+  const H1=C1.clone().add(V(-1,0,0).multiplyScalar(BL));
+  const H2=C2.clone().add(V(1,0,0).multiplyScalar(BL));
+  addSigma(C1,H1); addHydrogen(H1);
+  addSigma(C2,H2); addHydrogen(H2);
+  // sp hybrid lobes: each C two lobes along +/-X
+  addHybrid(C1,V(-1,0,0),1.5); addHybrid(C1,V(1,0,0),1.25);
+  addHybrid(C2,V(1,0,0),1.5);  addHybrid(C2,V(-1,0,0),1.25);
+  // two perpendicular p-orbitals on each C: along Y and Z
+  [V(0,1,0),V(0,0,1)].forEach(ax=>{
+    const pa=makePOrbital(C1,ax,1.45,0.4); pa.userData={type:'porbital'};
+    const pb=makePOrbital(C2,ax,1.45,0.4); pb.userData={type:'porbital'};
+    modelGroup.add(pa,pb); piMeshes.push(pa,pb); clickables.push(pa,pb);
+  });
+  // two pi clouds: vertical (Y) pair and depth (Z) pair
+  const piYa=makePiBlob(C1,C2,V(0,1,0),0.9); piYa.userData={type:'pi'};
+  const piYb=makePiBlob(C1,C2,V(0,-1,0),0.9); piYb.userData={type:'pi'};
+  const piZa=makePiBlob(C1,C2,V(0,0,1),0.9); piZa.userData={type:'pi'};
+  const piZb=makePiBlob(C1,C2,V(0,0,-1),0.9); piZb.userData={type:'pi'};
+  modelGroup.add(piYa,piYb,piZa,piZb); piMeshes.push(piYa,piYb,piZa,piZb);
+  clickables.push(piYa,piYb,piZa,piZb);
+  // labels
+  const lb=makeLabel('180°',V(0,2.4,0),'#2563eb',1.1); modelGroup.add(lb); labelSprites.push(lb);
+  const sl=makeLabel('σ',V(0,-0.7,0),'#57534e',0.75); modelGroup.add(sl); labelSprites.push(sl);
+  const pl=makeLabel('π×2',V(0,1.5,0),'#db2777',0.8); modelGroup.add(pl); labelSprites.push(pl);
+}
+
+const BUILDERS={sp3:buildSP3,sp2:buildSP2,sp:buildSP};
+const MOL_NAME={sp3:'ex_ch4',sp2:'ex_c2h4',sp:'ex_c2h2'};
+
+/* ── PROPS ── */
+const PROPS={
+  sp3:[['p_hyb','sp³'],['p_geom','g_tetra'],['p_angle','109.5°'],['p_sigma','4'],['p_pi','0'],['p_example','CH₄'],['p_bond','b_single']],
+  sp2:[['p_hyb','sp²'],['p_geom','g_trig'],['p_angle','120°'],['p_sigma','3'],['p_pi','1'],['p_example','C₂H₄'],['p_bond','b_double']],
+  sp: [['p_hyb','sp'],['p_geom','g_lin'],['p_angle','180°'],['p_sigma','2'],['p_pi','2'],['p_example','C₂H₂'],['p_bond','b_triple']]
+};
+const TRKEYS=new Set(['g_tetra','g_trig','g_lin','b_single','b_double','b_triple']);
+function renderProps(type){
+  const body=document.getElementById('props-body');
+  body.innerHTML=PROPS[type].map(([k,v])=>{
+    const val=TRKEYS.has(v)?tr(v):v;
+    return `<tr><td>${tr(k)}</td><td>${val}</td></tr>`;
+  }).join('');
+}
+
+/* ── STATE ── */
+let current='sp3';
+let spinning=true, showHybrid=true, showPi=true, showLabels=true;
+
+function applyVisibility(){
+  hybridMeshes.forEach(m=>m.visible=showHybrid);
+  piMeshes.forEach(m=>m.visible=showPi);
+  labelSprites.forEach(m=>m.visible=showLabels);
+}
+
+window.switchTo=function(type){
+  current=type;
+  document.querySelectorAll('.mode-btn').forEach(b=>b.classList.toggle('sel',b.dataset.id===type));
+  clearModel();
+  BUILDERS[type]();
+  applyVisibility();
+  renderProps(type);
+  document.getElementById('overlay-name').textContent=tr(MOL_NAME[type]);
+};
+
+window.toggleSpin=function(){
+  spinning=!spinning;
+  const b=document.getElementById('btn-spin');
+  b.classList.toggle('active',spinning);
+  b.querySelector('span').textContent=spinning?tr('btn_pause'):tr('btn_resume');
+};
+window.toggleHybrid=function(){
+  showHybrid=!showHybrid;
+  document.getElementById('btn-hybrid').classList.toggle('active',showHybrid);
+  applyVisibility();
+};
+window.togglePi=function(){
+  showPi=!showPi;
+  document.getElementById('btn-pi').classList.toggle('active',showPi);
+  applyVisibility();
+};
+window.toggleLabels=function(){
+  showLabels=!showLabels;
+  document.getElementById('btn-labels').classList.toggle('active',showLabels);
+  applyVisibility();
+};
+
+/* ── INFO DB ── */
+const INFO_ALL={
+ru:{
+  carbon:{tag:'Центральный атом',title:'Атом углерода (C)',sections:[
+    {h:'Электронная конфигурация',p:'1s² 2s² 2p². В возбуждённом состоянии один электрон с 2s переходит на 2p: получаются 4 неспаренных электрона (2s¹ 2p³), способных образовать 4 связи.'},
+    {h:'Зачем гибридизация',p:'Чистые s- и p-орбитали имеют разную форму и энергию. Чтобы связи были равноценными, орбитали «смешиваются» (гибридизуются) — образуются одинаковые гибридные орбитали, направленные в пространстве под максимальными углами.'},
+    {h:'Три типа',p:'sp³ (4 гибрида, тетраэдр), sp² (3 гибрида + 1 p, треугольник), sp (2 гибрида + 2 p, линейная). Тип определяет форму молекулы и углы между связями.'}
+  ]},
+  hydrogen:{tag:'Концевой атом',title:'Атом водорода (H)',sections:[
+    {h:'Роль в молекуле',p:'Водород имеет одну 1s-орбиталь с единственным электроном. Он образует только σ-связь, перекрывая свою 1s-орбиталь с гибридной орбиталью углерода.'},
+    {h:'Почему по краям',p:'Водород одновалентен — образует ровно одну связь, поэтому всегда находится на «концах» молекулы и задаёт её внешнюю форму.'}
+  ]},
+  hybrid:{tag:'Смешанная орбиталь',title:'Гибридная орбиталь',sections:[
+    {h:'Что это',p:'Орбиталь, полученная «смешиванием» одной s- и одной/двух/трёх p-орбиталей. Имеет вытянутую несимметричную форму: большая доля направлена наружу — именно ей удобно перекрываться с соседним атомом.'},
+    {h:'Направленность',p:'sp³ — углы 109.5° (тетраэдр), sp² — 120° (плоскость), sp — 180° (прямая). Чем больше доля s, тем ближе угол к 180° и тем короче/прочнее связь.'},
+    {h:'Образует σ-связь',p:'Гибридные орбитали всегда дают только σ-связи — перекрытие «лоб в лоб» вдоль линии, соединяющей ядра атомов.'}
+  ]},
+  porbital:{tag:'Негибридизованная',title:'p-орбиталь',sections:[
+    {h:'Что остаётся',p:'При sp²-гибридизации одна p-орбиталь не участвует в смешивании, при sp — две. Они сохраняют форму «гантели» (две доли) и расположены перпендикулярно плоскости гибридных орбиталей.'},
+    {h:'Образует π-связь',p:'Параллельные p-орбитали соседних атомов перекрываются боками — над и под линией связи. Так возникает π-связь. Двойная связь = 1σ + 1π, тройная = 1σ + 2π.'}
+  ]},
+  sigma:{tag:'Основная связь',title:'σ-связь (сигма)',sections:[
+    {h:'Как образуется',p:'Перекрывание орбиталей вдоль линии, соединяющей ядра («лоб в лоб»). Электронная плотность максимальна между ядрами — это самая прочная и первая образующаяся связь.'},
+    {h:'Свойства',p:'Допускает свободное вращение вокруг оси связи. Присутствует в любой связи: одинарная — только σ, двойная и тройная тоже содержат одну σ плюс π-связи.'}
+  ]},
+  pi:{tag:'Дополнительная связь',title:'π-связь (пи)',sections:[
+    {h:'Как образуется',p:'Боковое перекрывание параллельных p-орбиталей. Электронная плотность сосредоточена над и под осью связи, а не между ядрами. Поэтому π-связь слабее σ-связи.'},
+    {h:'Жёсткость молекулы',p:'π-связь блокирует вращение вокруг связи — отсюда плоское строение этилена и существование цис/транс-изомеров. Тройная связь (ацетилен) содержит две π-связи во взаимно перпендикулярных плоскостях.'}
+  ]}
+},
+kz:{
+  carbon:{tag:'Орталық атом',title:'Көміртек атомы (C)',sections:[
+    {h:'Электрондық конфигурация',p:'1s² 2s² 2p². Қозған күйде 2s-тен бір электрон 2p-ға өтеді: 4 жұптаспаған электрон (2s¹ 2p³) пайда болып, 4 байланыс түзе алады.'},
+    {h:'Гибридтену не үшін',p:'Таза s- және p-орбитальдердің пішіні мен энергиясы әртүрлі. Байланыстар бірдей болу үшін орбитальдер «араласады» (гибридтенеді) — бірдей гибрид орбитальдер түзіліп, кеңістікте максимал бұрыштармен бағытталады.'},
+    {h:'Үш түрі',p:'sp³ (4 гибрид, тетраэдр), sp² (3 гибрид + 1 p, үшбұрыш), sp (2 гибрид + 2 p, сызықтық). Түрі молекула пішіні мен байланыс бұрыштарын анықтайды.'}
+  ]},
+  hydrogen:{tag:'Шеткі атом',title:'Сутек атомы (H)',sections:[
+    {h:'Молекуладағы рөлі',p:'Сутекте бір 1s-орбиталь және бір электрон бар. Ол тек σ-байланыс түзеді: өзінің 1s-орбиталін көміртектің гибрид орбиталімен қаптайды.'},
+    {h:'Неге шетте',p:'Сутек бір валентті — дәл бір байланыс түзеді, сондықтан әрқашан молекуланың «шетінде» болып, оның сыртқы пішінін береді.'}
+  ]},
+  hybrid:{tag:'Аралас орбиталь',title:'Гибрид орбиталь',sections:[
+    {h:'Бұл не',p:'Бір s- және бір/екі/үш p-орбитальді «араластырудан» алынған орбиталь. Созылған асимметриялы пішіні бар: үлкен бөлігі сыртқа бағытталған — соған көршілес атоммен қапталу ыңғайлы.'},
+    {h:'Бағыттылығы',p:'sp³ — 109.5° (тетраэдр), sp² — 120° (жазықтық), sp — 180° (түзу). s үлесі неғұрлым көп болса, бұрыш 180°-қа жақын, байланыс қысқа әрі мықты.'},
+    {h:'σ-байланыс түзеді',p:'Гибрид орбитальдер тек σ-байланыс береді — ядроларды қосатын сызық бойымен «маңдай-маңдай» қапталу.'}
+  ]},
+  porbital:{tag:'Гибридтенбеген',title:'p-орбиталь',sections:[
+    {h:'Не қалады',p:'sp²-гибридтенуде бір p-орбиталь, sp-да екеуі араласуға қатыспайды. Олар «гантель» пішінін (екі бөлік) сақтайды және гибрид орбитальдер жазықтығына перпендикуляр.'},
+    {h:'π-байланыс түзеді',p:'Көршілес атомдардың параллель p-орбитальдері бүйірімен қапталады — байланыс сызығының үсті мен астында. Осылай π-байланыс пайда болады. Қос байланыс = 1σ + 1π, үштік = 1σ + 2π.'}
+  ]},
+  sigma:{tag:'Негізгі байланыс',title:'σ-байланыс (сигма)',sections:[
+    {h:'Қалай түзіледі',p:'Ядроларды қосатын сызық бойымен орбитальдердің қапталуы («маңдай-маңдай»). Электрон тығыздығы ядролар арасында ең көп — бұл ең мықты әрі бірінші түзілетін байланыс.'},
+    {h:'Қасиеттері',p:'Байланыс осі бойынша еркін айналуға мүмкіндік береді. Кез келген байланыста бар: жалғыз — тек σ, қос пен үштікте де бір σ және π-байланыстар бар.'}
+  ]},
+  pi:{tag:'Қосымша байланыс',title:'π-байланыс (пи)',sections:[
+    {h:'Қалай түзіледі',p:'Параллель p-орбитальдердің бүйірлік қапталуы. Электрон тығыздығы ядролар арасында емес, байланыс осінің үсті мен астында жинақталады. Сондықтан π-байланыс σ-дан әлсіз.'},
+    {h:'Молекуланың қаттылығы',p:'π-байланыс байланыс айналасында айналуды бөгейді — этиленнің жазық құрылымы мен цис/транс-изомерлер осыдан. Үштік байланыста (ацетилен) өзара перпендикуляр екі π-байланыс бар.'}
+  ]}
+},
+en:{
+  carbon:{tag:'Central atom',title:'Carbon atom (C)',sections:[
+    {h:'Electron configuration',p:'1s² 2s² 2p². In the excited state one 2s electron promotes to 2p, giving 4 unpaired electrons (2s¹ 2p³) able to form 4 bonds.'},
+    {h:'Why hybridize',p:'Pure s- and p-orbitals differ in shape and energy. To make bonds equivalent, orbitals "mix" (hybridize) — forming identical hybrid orbitals directed at maximum angles in space.'},
+    {h:'Three types',p:'sp³ (4 hybrids, tetrahedral), sp² (3 hybrids + 1 p, trigonal), sp (2 hybrids + 2 p, linear). The type sets the molecular shape and bond angles.'}
+  ]},
+  hydrogen:{tag:'Terminal atom',title:'Hydrogen atom (H)',sections:[
+    {h:'Role',p:'Hydrogen has one 1s orbital with a single electron. It forms only a σ-bond by overlapping its 1s orbital with a carbon hybrid orbital.'},
+    {h:'Why at the edges',p:'Hydrogen is monovalent — it forms exactly one bond, so it always sits at the "ends" of the molecule and defines its outer shape.'}
+  ]},
+  hybrid:{tag:'Mixed orbital',title:'Hybrid orbital',sections:[
+    {h:'What it is',p:'An orbital obtained by "mixing" one s- with one/two/three p-orbitals. It has an elongated asymmetric shape: the large lobe points outward — convenient for overlapping with a neighboring atom.'},
+    {h:'Directionality',p:'sp³ — 109.5° (tetrahedral), sp² — 120° (planar), sp — 180° (linear). The more s-character, the closer the angle to 180° and the shorter/stronger the bond.'},
+    {h:'Forms σ-bonds',p:'Hybrid orbitals always give only σ-bonds — head-on overlap along the line joining the nuclei.'}
+  ]},
+  porbital:{tag:'Unhybridized',title:'p-orbital',sections:[
+    {h:'What remains',p:'In sp² one p-orbital, in sp two p-orbitals stay out of the mix. They keep the "dumbbell" shape (two lobes) and sit perpendicular to the plane of the hybrid orbitals.'},
+    {h:'Forms π-bonds',p:'Parallel p-orbitals of neighboring atoms overlap sideways — above and below the bond line. This creates a π-bond. Double bond = 1σ + 1π, triple = 1σ + 2π.'}
+  ]},
+  sigma:{tag:'Primary bond',title:'σ-bond (sigma)',sections:[
+    {h:'How it forms',p:'Overlap of orbitals along the internuclear line ("head-on"). Electron density is greatest between the nuclei — it is the strongest and first-formed bond.'},
+    {h:'Properties',p:'Allows free rotation about the bond axis. Present in every bond: single — σ only; double and triple also contain one σ plus π-bonds.'}
+  ]},
+  pi:{tag:'Additional bond',title:'π-bond (pi)',sections:[
+    {h:'How it forms',p:'Sideways overlap of parallel p-orbitals. Electron density gathers above and below the bond axis, not between the nuclei. Hence the π-bond is weaker than a σ-bond.'},
+    {h:'Molecular rigidity',p:'A π-bond blocks rotation about the bond — giving ethylene its planar structure and cis/trans isomers. A triple bond (acetylene) has two π-bonds in mutually perpendicular planes.'}
+  ]}
+}
+};
+const INFO=INFO_ALL[LANG]||INFO_ALL.ru;
+const TAGC={carbon:{bg:'rgba(41,37,36,0.12)',c:'#292524'},hydrogen:{bg:'rgba(100,116,139,0.15)',c:'#475569'},
+  hybrid:{bg:'rgba(249,115,22,0.14)',c:'#c2410c'},porbital:{bg:'rgba(139,92,246,0.14)',c:'#6d28d9'},
+  sigma:{bg:'rgba(120,113,108,0.15)',c:'#57534e'},pi:{bg:'rgba(236,72,153,0.14)',c:'#be185d'}};
+
+window.openInfo=function(type){
+  const d=INFO[type]; if(!d) return;
+  const tagEl=document.getElementById('info-tag');
+  tagEl.textContent=d.tag;
+  const c=TAGC[type]||TAGC.carbon;
+  tagEl.style.background=c.bg; tagEl.style.color=c.c;
+  document.getElementById('info-title').textContent=d.title;
+  document.getElementById('info-body').innerHTML=d.sections.map(s=>`<div class="info-section"><h4>${s.h}</h4><p>${s.p}</p></div>`).join('');
+  document.getElementById('info-panel').classList.add('open');
+};
+window.closeInfo=function(){document.getElementById('info-panel').classList.remove('open');};
+
+/* ── RAYCAST ── */
+const raycaster=new THREE.Raycaster();
+const mouse=new THREE.Vector2();
+canvas.addEventListener('click',e=>{
+  if(isDragging) return;
+  mouse.x=(e.clientX/innerWidth)*2-1; mouse.y=-(e.clientY/innerHeight)*2+1;
+  raycaster.setFromCamera(mouse,camera);
+  const hits=raycaster.intersectObjects(clickables,true);
+  if(hits.length>0){
+    let o=hits[0].object;
+    while(o && !o.userData.type) o=o.parent;
+    if(o && o.userData.type) openInfo(o.userData.type);
+  }
+});
+
+/* ── DRAG + ZOOM ── */
+let isDragging=false,dragStart=null,lastMouse={x:0,y:0},dragDelta=0,rotX=0.15;
+canvas.addEventListener('mousedown',e=>{dragStart={x:e.clientX,y:e.clientY};lastMouse={x:e.clientX,y:e.clientY};isDragging=false;dragDelta=0;});
+canvas.addEventListener('mousemove',e=>{
+  if(!dragStart) return;
+  dragDelta=Math.hypot(e.clientX-dragStart.x,e.clientY-dragStart.y);
+  if(dragDelta>4) isDragging=true;
+  if(isDragging){
+    root.rotation.y+=(e.clientX-lastMouse.x)*0.011;
+    rotX=Math.max(-0.9,Math.min(0.9,rotX+(e.clientY-lastMouse.y)*0.009));
+    root.rotation.x=rotX;
+  }
+  lastMouse={x:e.clientX,y:e.clientY};
+});
+canvas.addEventListener('mouseup',()=>{dragStart=null;});
+canvas.addEventListener('mouseleave',()=>{dragStart=null;isDragging=false;});
+canvas.addEventListener('wheel',e=>{e.preventDefault();camera.position.z=Math.max(7,Math.min(22,camera.position.z+e.deltaY*0.02));},{passive:false});
+window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+
+/* ── LOOP ── */
+function animate(){
+  requestAnimationFrame(animate);
+  if(spinning) root.rotation.y+=0.004;
+  root.rotation.x=rotX;
+  renderer.render(scene,camera);
+}
+
+// init
+root.rotation.x=rotX;
+switchTo('sp3');
+animate();
+</script>
+</body>
+</html>

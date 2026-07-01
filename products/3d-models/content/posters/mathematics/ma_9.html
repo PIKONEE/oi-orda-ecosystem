@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="page_title">Квадратичная функция</title>
+<style>
+
+
+*{margin:0;padding:0;box-sizing:border-box;}
+
+:root{
+  --bg:#f1f3f6;
+  --surface:rgba(255,255,255,0.94);
+  --border:rgba(20,30,55,0.08);
+  --text:#161e2c;
+  --muted:#5e6a7a;
+  --faint:#9aa6b4;
+  --a:#4f46e5;  --a-dim:rgba(79,70,229,0.10);    /* a — indigo */
+  --b:#0891b2;  --b-dim:rgba(8,145,178,0.10);     /* b — cyan   */
+  --c:#db2777;  --c-dim:rgba(219,39,119,0.10);    /* c — pink   */
+  --curve:#4f46e5;
+  --vertex:#d97706;
+  --root:#16a34a;
+  --axis:#db2777;
+  --accent:#4f46e5;
+  --accent-dim:rgba(79,70,229,0.10);
+  --shadow:0 2px 22px rgba(20,30,60,0.07);
+  --shadow-lg:0 18px 56px rgba(20,30,70,0.15);
+}
+
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);overflow:hidden;height:100vh;}
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(1200px 760px at 70% 30%, rgba(99,102,241,0.11), transparent 60%),
+    radial-gradient(820px 560px at 16% 84%, rgba(219,39,119,0.05), transparent 55%);
+}
+
+#canvas-container{position:fixed;inset:0;z-index:1;}
+#labels-layer{position:fixed;inset:0;z-index:40;pointer-events:none;overflow:hidden;}
+
+.dim-label{position:absolute;transform:translate(-50%,-50%);font-family:'Roboto Mono',monospace;font-size:13.5px;font-weight:600;padding:3px 9px;border-radius:9px;white-space:nowrap;letter-spacing:-0.3px;background:rgba(255,255,255,0.97);box-shadow:0 3px 12px rgba(20,30,60,0.13);transition:opacity 0.18s;}
+.dim-label.hidden{opacity:0;}
+.dim-label.lv{background:var(--vertex);color:#fff;border:none;box-shadow:0 4px 14px rgba(217,119,6,0.4);}
+.dim-label.lr{background:var(--root);color:#fff;border:none;box-shadow:0 4px 14px rgba(22,163,74,0.4);}
+.dim-label.lc{color:var(--c);border:1px solid rgba(219,39,119,0.3);}
+
+.header{position:fixed;top:0;left:0;right:0;z-index:200;background:var(--surface);border-bottom:1px solid var(--border);padding:0 38px;height:84px;display:flex;align-items:center;gap:15px;box-shadow:var(--shadow);}
+.h-badge{width:46px;height:46px;border-radius:14px;flex-shrink:0;background:linear-gradient(135deg,#4f46e5,#818cf8);display:flex;align-items:center;justify-content:center;box-shadow:0 7px 20px rgba(79,70,229,0.36);}
+.h-badge svg{width:25px;height:25px;}
+.header-title{font-size:24px;font-weight:800;letter-spacing:-0.5px;}
+.header-tag{font-family:'Roboto Mono',monospace;font-size:13px;color:var(--accent);background:var(--accent-dim);padding:4px 11px;border-radius:8px;}
+.header-sub{font-size:14px;color:var(--muted);margin-left:auto;text-align:right;line-height:1.45;}
+
+.eq-banner{position:fixed;top:96px;left:50%;transform:translateX(-50%);z-index:150;background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-lg);padding:10px 24px;pointer-events:none;}
+.eq-formula{font-family:'Roboto Mono',monospace;font-size:19px;font-weight:700;letter-spacing:0.3px;}
+.eq-formula .ea{color:var(--a);} .eq-formula .eb{color:var(--b);} .eq-formula .ec{color:var(--c);}
+
+.panel{position:fixed;z-index:100;background:var(--surface);border:1px solid var(--border);border-radius:22px;box-shadow:var(--shadow-lg);}
+.panel h3{font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;color:var(--faint);}
+
+.panel-left{left:22px;top:98px;width:336px;padding:18px 18px;overflow:hidden;min-height:438px;}
+.ld-list,.ld-detail{transition:transform 0.4s cubic-bezier(0.4,0,0.2,1),opacity 0.28s;}
+.ld-list h3{margin-bottom:12px;padding-left:4px;}
+.ld-detail{position:absolute;inset:18px 18px;transform:translateX(26px);opacity:0;pointer-events:none;overflow-y:auto;}
+.ld-detail::-webkit-scrollbar{width:4px;}
+.ld-detail::-webkit-scrollbar-thumb{background:rgba(20,30,60,0.16);border-radius:4px;}
+.panel-left.detail .ld-list{transform:translateX(-26px);opacity:0;pointer-events:none;}
+.panel-left.detail .ld-detail{transform:translateX(0);opacity:1;pointer-events:auto;}
+
+.metric{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:14px;cursor:pointer;border:1px solid transparent;transition:all 0.15s;margin-bottom:2px;}
+.metric:hover{background:rgba(20,30,60,0.04);}
+.metric.active{background:var(--accent-dim);border-color:rgba(79,70,229,0.22);}
+.metric-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0;}
+.metric-main{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;}
+.metric-name{font-size:15px;font-weight:700;line-height:1.15;}
+.metric-sub{font-family:'Roboto Mono',monospace;font-size:13px;color:var(--muted);}
+.metric-val{font-family:'Roboto Mono',monospace;font-size:19px;font-weight:500;color:var(--accent);letter-spacing:-1px;flex-shrink:0;}
+
+.ld-back{display:inline-flex;align-items:center;gap:5px;cursor:pointer;border:none;background:none;font-family:'Inter',sans-serif;font-size:14px;font-weight:700;color:var(--accent);padding:4px 6px 4px 0;margin-bottom:12px;}
+.ld-back:hover{opacity:0.7;}
+.d-tag{display:inline-block;padding:4px 12px;border-radius:99px;font-size:13px;font-weight:700;margin-bottom:10px;background:var(--accent-dim);color:var(--accent);}
+.d-title{font-size:22px;font-weight:800;letter-spacing:-0.4px;line-height:1.15;margin-bottom:14px;}
+.d-bigval{display:flex;align-items:baseline;gap:9px;margin-bottom:4px;}
+.d-bigval b{font-family:'Roboto Mono',monospace;font-size:35px;font-weight:500;color:var(--accent);letter-spacing:-1.5px;line-height:1;}
+.d-bigval span{font-size:14px;color:var(--muted);font-weight:600;}
+.d-formula{margin:13px 0 4px;padding:13px 15px;border-radius:13px;background:linear-gradient(135deg,rgba(99,102,241,0.10),rgba(79,70,229,0.05));border:1px solid rgba(79,70,229,0.16);font-family:'Roboto Mono',monospace;font-size:14px;color:#3730a3;font-weight:500;line-height:1.95;white-space:pre-line;}
+.d-para{font-size:15px;line-height:1.62;color:#2c3744;margin-top:13px;}
+
+.panel-right{right:22px;top:98px;width:300px;padding:18px;}
+.dim-slider{margin-bottom:13px;border-radius:15px;padding:11px 14px;border:1px solid;}
+.dim-slider.sa{background:var(--a-dim);border-color:rgba(79,70,229,0.18);}
+.dim-slider.sb{background:var(--b-dim);border-color:rgba(8,145,178,0.18);}
+.dim-slider.sc{background:var(--c-dim);border-color:rgba(219,39,119,0.18);}
+.ds-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px;}
+.ds-name{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:700;}
+.ds-key{font-family:'Roboto Mono',monospace;font-style:italic;font-size:18px;}
+.sa .ds-key{color:var(--a);} .sb .ds-key{color:var(--b);} .sc .ds-key{color:var(--c);}
+.ds-dimname{color:var(--muted);font-weight:600;font-size:13px;}
+.ds-pill{font-family:'Roboto Mono',monospace;font-size:18px;font-weight:500;color:#fff;padding:2px 12px;border-radius:9px;letter-spacing:-0.5px;}
+.sa .ds-pill{background:var(--a);} .sb .ds-pill{background:var(--b);} .sc .ds-pill{background:var(--c);}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:3px;outline:none;cursor:pointer;}
+.sa input[type=range]{background:linear-gradient(90deg,var(--a) var(--fill,50%),rgba(79,70,229,0.16) var(--fill,50%));}
+.sb input[type=range]{background:linear-gradient(90deg,var(--b) var(--fill,50%),rgba(8,145,178,0.16) var(--fill,50%));}
+.sc input[type=range]{background:linear-gradient(90deg,var(--c) var(--fill,50%),rgba(219,39,119,0.16) var(--fill,50%));}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:20px;height:20px;border-radius:50%;background:#fff;cursor:pointer;transition:transform 0.12s;}
+.sa input::-webkit-slider-thumb{border:3px solid var(--a);box-shadow:0 3px 10px rgba(79,70,229,0.4);}
+.sb input::-webkit-slider-thumb{border:3px solid var(--b);box-shadow:0 3px 10px rgba(8,145,178,0.4);}
+.sc input::-webkit-slider-thumb{border:3px solid var(--c);box-shadow:0 3px 10px rgba(219,39,119,0.4);}
+input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.18);}
+
+.show-label{font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;color:var(--faint);margin:11px 0 11px 2px;}
+.show-chip{display:flex;align-items:center;gap:12px;width:100%;padding:12px 15px;margin-bottom:9px;border-radius:14px;cursor:pointer;background:rgba(20,30,60,0.035);border:1.5px solid transparent;transition:all 0.16s;}
+.show-chip:hover{background:rgba(20,30,60,0.06);}
+.show-chip.on{background:var(--accent-dim);border-color:rgba(79,70,229,0.30);}
+.chip-ico{width:34px;height:34px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:18px;background:rgba(79,70,229,0.10);transition:all 0.16s;}
+.show-chip.on .chip-ico{background:var(--accent);}
+.chip-text{display:flex;flex-direction:column;gap:1px;flex:1;min-width:0;}
+.chip-name{font-size:15px;font-weight:700;}
+.chip-sub{font-size:13px;color:var(--muted);font-family:'Roboto Mono',monospace;}
+.chip-state{width:22px;height:22px;border-radius:50%;flex-shrink:0;border:2px solid rgba(20,30,60,0.16);display:flex;align-items:center;justify-content:center;transition:all 0.16s;}
+.show-chip.on .chip-state{background:var(--accent);border-color:var(--accent);}
+.show-chip.on .chip-state::after{content:'✓';color:#fff;font-size:14px;font-weight:700;}
+
+.hint-bar{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:100;background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:9px 22px;font-size:13.5px;color:var(--muted);box-shadow:var(--shadow);white-space:nowrap;display:flex;align-items:center;gap:9px;}
+.hint-grab{color:var(--accent);font-weight:700;}
+.hint-dot{color:var(--faint);}
+
+@media (max-width:1180px){.panel-left{width:300px;}.panel-right{width:270px;}}
+</style>
+</head>
+<body>
+
+<div id="canvas-container"><canvas id="c"></canvas></div>
+<div id="labels-layer"></div>
+
+<header class="header">
+  <div class="h-badge">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.7" stroke-linejoin="round">
+      <path d="M3 21 H21 M4 20 V4"/><path d="M5 19 Q12 2 19 19" fill="none"/>
+    </svg>
+  </div>
+  <div class="header-title" data-i18n="header_title">Квадратичная функция</div>
+  <div class="header-tag">y = ax² + bx + c</div>
+  <div class="header-sub" data-i18n-html="header_sub">Парабола: меняйте коэффициенты ползунками<br>вершина, корни и ось — пересчитываются вживую</div>
+</header>
+
+<div class="eq-banner"><div class="eq-formula" id="eq-formula"></div></div>
+
+<!-- LEFT -->
+<div class="panel panel-left" id="panel-left">
+  <div class="ld-list">
+    <h3 data-i18n="props_title">Свойства параболы</h3>
+    <div id="metrics"></div>
+  </div>
+  <div class="ld-detail">
+    <button class="ld-back" onclick="window.showList()"><span>‹</span> <span data-i18n="back">Назад</span></button>
+    <div id="detail-content"></div>
+  </div>
+</div>
+
+<!-- RIGHT -->
+<div class="panel panel-right">
+  <h3 data-i18n="set_title" style="margin-bottom:13px;padding-left:2px;">Коэффициенты</h3>
+  <div class="dim-slider sa">
+    <div class="ds-top"><span class="ds-name"><span class="ds-key">a</span><span class="ds-dimname" data-i18n="dn_a">направление, ширина</span></span><span class="ds-pill" id="pill-a">1.0</span></div>
+    <input type="range" min="-5" max="5" step="0.25" value="1" id="slider-a" oninput="window.setDim('a',+this.value)">
+  </div>
+  <div class="dim-slider sb">
+    <div class="ds-top"><span class="ds-name"><span class="ds-key">b</span><span class="ds-dimname" data-i18n="dn_b">сдвиг вершины</span></span><span class="ds-pill" id="pill-b">-2.0</span></div>
+    <input type="range" min="-12" max="12" step="0.5" value="-2" id="slider-b" oninput="window.setDim('b',+this.value)">
+  </div>
+  <div class="dim-slider sc">
+    <div class="ds-top"><span class="ds-name"><span class="ds-key">c</span><span class="ds-dimname" data-i18n="dn_c">пересечение с Oy</span></span><span class="ds-pill" id="pill-c">-3.0</span></div>
+    <input type="range" min="-10" max="10" step="0.5" value="-3" id="slider-c" oninput="window.setDim('c',+this.value)">
+  </div>
+
+  <div class="show-label" data-i18n="show_title">Показать</div>
+  <div class="show-chip on" id="chip-axis" onclick="window.toggleAxis()">
+    <div class="chip-ico">⫶</div>
+    <div class="chip-text"><span class="chip-name" data-i18n="ch_axis">Ось симметрии</span><span class="chip-sub">x = −b/2a</span></div>
+    <div class="chip-state"></div>
+  </div>
+  <div class="show-chip on" id="chip-grid" onclick="window.toggleGrid()">
+    <div class="chip-ico">▦</div>
+    <div class="chip-text"><span class="chip-name" data-i18n="ch_grid">Сетка</span><span class="chip-sub" data-i18n="ch_grid_sub">координатная плоскость</span></div>
+    <div class="chip-state"></div>
+  </div>
+</div>
+
+<div class="hint-bar" data-i18n-html="hint">
+  <span class="hint-grab">Двигайте ползунки</span><span>a, b, c</span><span class="hint-dot">·</span>
+  <span>фон — поворот</span><span class="hint-dot">·</span><span>клик по строке — свойство</span>
+</div>
+
+<script>
+const I18N={
+ru:{
+  page_title:'Квадратичная функция',header_title:'Квадратичная функция',
+  header_sub:'Парабола: меняйте коэффициенты ползунками<br>вершина, корни и ось — пересчитываются вживую',
+  props_title:'Свойства параболы',set_title:'Коэффициенты',back:'Назад',show_title:'Показать',
+  dn_a:'направление, ширина',dn_b:'сдвиг вершины',dn_c:'пересечение с Oy',
+  ch_axis:'Ось симметрии',ch_grid:'Сетка',ch_grid_sub:'координатная плоскость',
+  hint:'<span class="hint-grab">Двигайте ползунки</span><span>a, b, c</span><span class="hint-dot">·</span><span>фон — поворот</span><span class="hint-dot">·</span><span>клик по строке — свойство</span>',
+  m_a:'Коэффициент a',m_b:'Коэффициент b',m_c:'Коэффициент c',m_d:'Дискриминант D',m_vx:'Вершина: x₀',m_vy:'Вершина: y₀',m_roots:'Корни (нули)',
+  sub_a:'ветви вверх (a>0) / вниз (a<0)',sub_b:'b²−4ac',sub_vx:'−b / 2a',sub_vy:'значение в вершине',
+  roots2:'два корня',roots1:'один корень',roots0:'нет корней',
+  unit_none:'',
+},
+kz:{
+  page_title:'Квадраттық функция',header_title:'Квадраттық функция',
+  header_sub:'Парабола: коэффициенттерді жүгірткілермен өзгертіңіз<br>төбе, түбірлер мен ось — бірден қайта есептеледі',
+  props_title:'Парабола қасиеттері',set_title:'Коэффициенттер',back:'Артқа',show_title:'Көрсету',
+  dn_a:'бағыты, ені',dn_b:'төбе ығысуы',dn_c:'Oy-пен қиылысуы',
+  ch_axis:'Симметрия осі',ch_grid:'Тор',ch_grid_sub:'координаталық жазықтық',
+  hint:'<span class="hint-grab">Жүгірткілерді жылжытыңыз</span><span>a, b, c</span><span class="hint-dot">·</span><span>фон — бұру</span><span class="hint-dot">·</span><span>жолды басу — қасиет</span>',
+  m_a:'a коэффициенті',m_b:'b коэффициенті',m_c:'c коэффициенті',m_d:'Дискриминант D',m_vx:'Төбе: x₀',m_vy:'Төбе: y₀',m_roots:'Түбірлер (нөлдер)',
+  sub_a:'тармақтары жоғары (a>0) / төмен (a<0)',sub_b:'b²−4ac',sub_vx:'−b / 2a',sub_vy:'төбедегі мән',
+  roots2:'екі түбір',roots1:'бір түбір',roots0:'түбір жоқ',
+  unit_none:'',
+},
+en:{
+  page_title:'Quadratic Function',header_title:'Quadratic Function',
+  header_sub:'Parabola: change the coefficients with the sliders<br>vertex, roots and axis update live',
+  props_title:'Parabola properties',set_title:'Coefficients',back:'Back',show_title:'Show',
+  dn_a:'direction, width',dn_b:'shifts the vertex',dn_c:'y-axis intercept',
+  ch_axis:'Axis of symmetry',ch_grid:'Grid',ch_grid_sub:'coordinate plane',
+  hint:'<span class="hint-grab">Move the sliders</span><span>a, b, c</span><span class="hint-dot">·</span><span>background — rotate</span><span class="hint-dot">·</span><span>click a row — property</span>',
+  m_a:'Coefficient a',m_b:'Coefficient b',m_c:'Coefficient c',m_d:'Discriminant D',m_vx:'Vertex: x₀',m_vy:'Vertex: y₀',m_roots:'Roots (zeros)',
+  sub_a:'opens up (a>0) / down (a<0)',sub_b:'b²−4ac',sub_vx:'−b / 2a',sub_vy:'value at the vertex',
+  roots2:'two roots',roots1:'one root',roots0:'no roots',
+  unit_none:'',
+}
+};
+const LANG=(()=>{const q=new URLSearchParams(location.search).get('lang');return(q&&I18N[q])?q:'ru';})();
+const tr=key=>(I18N[LANG]&&I18N[LANG][key])!==undefined?I18N[LANG][key]:I18N.ru[key];
+function applyStaticI18N(){
+  document.documentElement.lang=LANG;
+  const tv=tr('page_title');if(tv)document.title=tv;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{const v=tr(el.getAttribute('data-i18n'));if(v!==undefined)el.textContent=v;});
+  document.querySelectorAll('[data-i18n-html]').forEach(el=>{const v=tr(el.getAttribute('data-i18n-html'));if(v!==undefined)el.innerHTML=v;});
+}
+applyStaticI18N();
+
+const f1=x=>{const v=x.toFixed(1);return v==='-0.0'?'0.0':v;};
+const f2=x=>{const v=x.toFixed(2);return v==='-0.00'?'0.00':v;};
+window.A={a:1,b:-2,c:-3};
+const disc=()=>window.A.b*window.A.b-4*window.A.a*window.A.c;
+const vx=()=>-window.A.b/(2*window.A.a);
+const vy=()=>{const {a,b,c}=window.A;return c-b*b/(4*a);};
+function roots(){
+  const {a,b,c}=window.A,D=disc();
+  if(D<0)return [];
+  if(D===0)return [-b/(2*a)];
+  const s=Math.sqrt(D);return [(-b-s)/(2*a),(-b+s)/(2*a)].sort((x,y)=>x-y);
+}
+function rootsStr(){
+  const r=roots();
+  if(r.length===0)return tr('roots0');
+  if(r.length===1)return 'x = '+f1(r[0]);
+  return 'x₁='+f1(r[0])+', x₂='+f1(r[1]);
+}
+
+const METRICS=[
+  {key:'a',   dot:'var(--a)',     i:'m_a',   fmt:()=>f2(window.A.a), sub:()=>tr('sub_a'),  unit:'unit_none'},
+  {key:'b',   dot:'var(--b)',     i:'m_b',   fmt:()=>f1(window.A.b), sub:()=>'', unit:'unit_none'},
+  {key:'c',   dot:'var(--c)',     i:'m_c',   fmt:()=>f1(window.A.c), sub:()=>'', unit:'unit_none'},
+  {key:'d',   dot:'var(--accent)',i:'m_d',   fmt:()=>f1(disc()),     sub:()=>tr('sub_b'), unit:'unit_none'},
+  {key:'vx',  dot:'var(--vertex)',i:'m_vx',  fmt:()=>f1(vx()),       sub:()=>tr('sub_vx'), unit:'unit_none'},
+  {key:'vy',  dot:'var(--vertex)',i:'m_vy',  fmt:()=>f1(vy()),       sub:()=>tr('sub_vy'), unit:'unit_none'},
+  {key:'roots',dot:'var(--root)', i:'m_roots',fmt:()=>String(roots().length), sub:()=>rootsStr(), unit:'unit_none'},
+];
+function renderMetrics(){
+  document.getElementById('metrics').innerHTML=METRICS.map(m=>`
+    <div class="metric" data-key="${m.key}" onclick="window.openDetail('${m.key}')">
+      <div class="metric-dot" style="background:${m.dot}"></div>
+      <div class="metric-main"><span class="metric-name">${tr(m.i)}</span><span class="metric-sub" id="ms-${m.key}"></span></div>
+      <span class="metric-val" id="mv-${m.key}">—</span>
+    </div>`).join('');
+}
+function sgn(x,first){return x<0?' − ':(first?'':' + ');}
+function updateMetricValues(){
+  METRICS.forEach(m=>{
+    const v=document.getElementById('mv-'+m.key);if(v)v.textContent=m.fmt();
+    const s=document.getElementById('ms-'+m.key);if(s)s.textContent=m.sub();
+  });
+  [['a',window.A.a],['b',window.A.b],['c',window.A.c]].forEach(([k,val])=>{
+    document.getElementById('pill-'+k).textContent=f1(val);
+  });
+  document.getElementById('slider-a').style.setProperty('--fill',((window.A.a+5)/10*100)+'%');
+  document.getElementById('slider-b').style.setProperty('--fill',((window.A.b+12)/24*100)+'%');
+  document.getElementById('slider-c').style.setProperty('--fill',((window.A.c+10)/20*100)+'%');
+  const {a,b,c}=window.A;
+  document.getElementById('eq-formula').innerHTML=
+    `y = <span class="ea">${f2(a)}</span>x²<span class="eb">${sgn(b)}${f1(Math.abs(b))}</span>x<span class="ec">${sgn(c)}${f1(Math.abs(c))}</span>`;
+}
+renderMetrics();
+</script>
+
+<script type="importmap">
+{"imports":{"three":"../../libs/vendor/three-0.160.0/three.module.js"}}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+const canvas=document.getElementById('c');
+const renderer=new THREE.WebGLRenderer({canvas,antialias: true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+
+const W=10;                          // coordinate window half-size
+const scene=new THREE.Scene();scene.background=null;
+const camera=new THREE.PerspectiveCamera(40,innerWidth/innerHeight,0.1,8000);
+const CAM_DIR=new THREE.Vector3(0.28,0.22,1).normalize();
+let camDist=40,camDistTarget=40,userZoom=1.0;
+let showAxis=true,showGrid=true;
+
+function computeCamTarget(){
+  const R0=W*1.5*1.1;
+  const fovy=camera.fov*Math.PI/180;
+  const dV=R0/Math.sin(fovy/2);
+  const usableW=Math.max(420,innerWidth-660);
+  const fovx=2*Math.atan(Math.tan(fovy/2)*usableW/innerHeight);
+  const dH=R0/Math.sin(fovx/2);
+  return Math.max(dV,dH)*userZoom;
+}
+function applyCamera(){camera.position.copy(CAM_DIR).multiplyScalar(camDist);camera.lookAt(0,0,0);}
+
+scene.add(new THREE.AmbientLight(0xffffff,0.82));
+const kL=new THREE.DirectionalLight(0xffffff,0.8);kL.position.set(4,8,12);scene.add(kL);
+const fL=new THREE.DirectionalLight(0xc4b5fd,0.3);fL.position.set(-8,-3,4);scene.add(fL);
+
+const V=(x,y,z)=>new THREE.Vector3(x,y,z);
+const PI=Math.PI;
+const root=new THREE.Group();scene.add(root);
+const obj=new THREE.Group();root.add(obj);
+
+const COL={grid:0xcdd3dc,axis:0x64748b,curve:0x4f46e5,vertex:0xd97706,root:0x16a34a,sym:0xdb2777,yint:0x0891b2};
+const tR=W*0.012;
+
+const disc=()=>window.A.b*window.A.b-4*window.A.a*window.A.c;
+const vxF=()=>-window.A.b/(2*window.A.a);
+const vyF=()=>{const {a,b,c}=window.A;return c-b*b/(4*a);};
+function rootsF(){const {a,b,c}=window.A,D=disc();if(D<0)return [];if(D===0)return [-b/(2*a)];const s=Math.sqrt(D);return [(-b-s)/(2*a),(-b+s)/(2*a)];}
+
+function cyl(from,to,rr,mat){const dir=new THREE.Vector3().subVectors(to,from),len=dir.length();const m=new THREE.Mesh(new THREE.CylinderGeometry(rr,rr,len,10),mat);m.position.addVectors(from,to).multiplyScalar(0.5);if(len>1e-6)m.quaternion.setFromUnitVectors(V(0,1,0),dir.normalize());return m;}
+function sphere(r,mat){return new THREE.Mesh(new THREE.SphereGeometry(r,18,14),mat);}
+
+/* ── STATIC: grid + axes (built once) ── */
+const gridGroup=new THREE.Group();obj.add(gridGroup);
+const axisGroup=new THREE.Group();obj.add(axisGroup);
+(function buildStatic(){
+  const gMat=new THREE.MeshBasicMaterial({color:COL.grid,transparent:true,opacity:0.7});
+  for(let i=-W;i<=W;i+=2){
+    if(i===0)continue;
+    gridGroup.add(cyl(V(i,-W,-0.02),V(i,W,-0.02),tR*0.4,gMat));
+    gridGroup.add(cyl(V(-W,i,-0.02),V(W,i,-0.02),tR*0.4,gMat));
+  }
+  const aMat=new THREE.MeshStandardMaterial({color:COL.axis,roughness:0.5});
+  axisGroup.add(cyl(V(-W*1.08,0,0),V(W*1.08,0,0),tR*0.7,aMat));
+  axisGroup.add(cyl(V(0,-W*1.08,0),V(0,W*1.08,0),tR*0.7,aMat));
+  axisGroup.add(new THREE.Mesh(new THREE.ConeGeometry(tR*2.4,tR*7,14),aMat).translateX(W*1.08).rotateZ(-PI/2));
+  axisGroup.add(new THREE.Mesh(new THREE.ConeGeometry(tR*2.4,tR*7,14),aMat).translateY(W*1.08));
+})();
+
+/* ── DYNAMIC: curve + markers ── */
+const dynGroup=new THREE.Group();obj.add(dynGroup);
+function disposeDyn(){while(dynGroup.children.length){const o=dynGroup.children[0];o.traverse(x=>{if(x.geometry)x.geometry.dispose();});dynGroup.remove(o);}}
+let hiKey=null;
+
+function f(x){const {a,b,c}=window.A;return a*x*x+b*x+c;}
+function buildDyn(){
+  disposeDyn();
+  const {a,b,c}=window.A;
+  // curve as a tube through sampled points (y clamped to keep coords sane)
+  const pts=[];const N=160,cap=W*2.6;
+  for(let i=0;i<=N;i++){const x=-W*1.05+ (2*W*1.05)*i/N;let y=f(x);y=Math.max(-cap,Math.min(cap,y));pts.push(V(x,y,0.04));}
+  const curveHi=(hiKey==='a'||hiKey==='b'||hiKey==='c');
+  const curveMat=new THREE.MeshStandardMaterial({color:COL.curve,roughness:0.3,metalness:0.1,emissive:curveHi?COL.curve:0x000000,emissiveIntensity:curveHi?0.4:0});
+  const curve=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),200,tR*(curveHi?1.7:1.25),8,false),curveMat);
+  dynGroup.add(curve);
+
+  // axis of symmetry
+  if(showAxis){
+    const xs=vxF();
+    if(Math.abs(xs)<=W*1.05){
+      const symHi=(hiKey==='vx');
+      const symMat=new THREE.MeshStandardMaterial({color:COL.sym,roughness:0.4,transparent:true,opacity:symHi?0.95:0.6,emissive:symHi?COL.sym:0x000000,emissiveIntensity:symHi?0.4:0});
+      dynGroup.add(cyl(V(xs,-W,0.02),V(xs,W,0.02),tR*(symHi?0.9:0.5),symMat));
+    }
+  }
+
+  // y-intercept (0,c)
+  if(Math.abs(c)<=W*1.05){
+    dynGroup.add(sphere(tR*1.7,new THREE.MeshStandardMaterial({color:COL.yint,roughness:0.3,metalness:0.2})).translateX(0).translateY(c).translateZ(0.06));
+  }
+
+  // roots on x-axis
+  const rs=rootsF();const rootHi=(hiKey==='roots'||hiKey==='d');
+  rs.forEach(x=>{if(Math.abs(x)<=W*1.1){
+    const mt=new THREE.MeshStandardMaterial({color:COL.root,roughness:0.25,metalness:0.25,emissive:rootHi?COL.root:0x000000,emissiveIntensity:rootHi?0.5:0});
+    dynGroup.add(sphere(tR*(rootHi?2.6:1.9),mt).translateX(x).translateY(0).translateZ(0.07));
+  }});
+
+  // vertex marker
+  const vX=vxF(),vY=vyF();const vHi=(hiKey==='vx'||hiKey==='vy');
+  if(Math.abs(vX)<=W*1.1 && Math.abs(vY)<=W*1.3){
+    const mt=new THREE.MeshStandardMaterial({color:COL.vertex,roughness:0.25,metalness:0.25,emissive:vHi?COL.vertex:0x000000,emissiveIntensity:vHi?0.55:0});
+    dynGroup.add(sphere(tR*(vHi?2.8:2.0),mt).translateX(vX).translateY(vY).translateZ(0.08));
+  }
+  updateLabelAnchors();
+}
+
+/* ── LABELS ── */
+const layer=document.getElementById('labels-layer');
+function mkLabel(cls){const d=document.createElement('div');d.className='dim-label '+cls;layer.appendChild(d);return d;}
+const L_v=mkLabel('lv'),L_r1=mkLabel('lr'),L_r2=mkLabel('lr'),L_c=mkLabel('lc');
+const anc={v:V(),r1:V(),r2:V(),c:V()};
+function updateLabelAnchors(){
+  const vX=vxF(),vY=vyF(),rs=rootsF();
+  anc.v.set(vX,vY+ (window.A.a>0?-1:1)*0,0); anc.v.set(vX,vY,0);
+  anc.c.set(0,window.A.c,0);
+  L_v.textContent='('+f1(vX)+'; '+f1(vY)+')';
+  if(rs[0]!==undefined){anc.r1.set(rs[0],0,0);L_r1.textContent=f1(rs[0]);}
+  if(rs[1]!==undefined){anc.r2.set(rs[1],0,0);L_r2.textContent=f1(rs[1]);}
+  L_c.textContent='c = '+f1(window.A.c);
+}
+function project(localVec){const w=localVec.clone().applyMatrix4(obj.matrixWorld).project(camera);return {x:(w.x*0.5+0.5)*innerWidth,y:(-w.y*0.5+0.5)*innerHeight,behind:w.z>1};}
+function place(el,v,vis,offY){if(!vis){el.classList.add('hidden');return;}const s=project(v);if(s.behind){el.classList.add('hidden');return;}el.classList.remove('hidden');el.style.left=s.x+'px';el.style.top=(s.y+(offY||0))+'px';}
+function updateLabels(){
+  const vX=vxF(),vY=vyF(),rs=rootsF();
+  place(L_v,anc.v,Math.abs(vX)<=W*1.1&&Math.abs(vY)<=W*1.3,window.A.a>0?20:-20);
+  place(L_r1,anc.r1,rs[0]!==undefined&&Math.abs(rs[0])<=W*1.1,-18);
+  place(L_r2,anc.r2,rs[1]!==undefined&&Math.abs(rs[1])<=W*1.1,-18);
+  place(L_c,anc.c,Math.abs(window.A.c)<=W*1.05,0);
+}
+
+/* ── DETAIL ── */
+const f1=x=>{const v=x.toFixed(1);return v==='-0.0'?'0.0':v;};
+const f2=x=>{const v=x.toFixed(2);return v==='-0.00'?'0.00':v;};
+const DETAIL_ALL={
+ru:{
+  a:{tag:'Старший коэффициент',p:'Коэффициент a задаёт направление и «ширину» параболы. Если a>0 — ветви направлены вверх, если a<0 — вниз. Чем больше |a|, тем уже («круче») парабола; чем меньше — тем шире.'},
+  b:{tag:'Коэффициент',p:'Коэффициент b вместе с a отвечает за положение вершины по горизонтали: x₀ = −b/2a. Сам по себе b — это угловой коэффициент касательной в точке пересечения с осью Oy.'},
+  c:{tag:'Свободный член',p:'Коэффициент c — это значение функции при x=0, то есть ордината точки пересечения параболы с осью Oy: график всегда проходит через точку (0; c).'},
+  d:{tag:'Дискриминант',p:'Дискриминант D = b² − 4ac определяет число корней (точек пересечения с осью Ox). D>0 — два корня, D=0 — один (вершина касается оси), D<0 — корней нет (парабола не пересекает Ox).'},
+  vx:{tag:'Вершина',p:'Абсцисса вершины x₀ = −b/2a. Это ось симметрии параболы: график симметричен относительно вертикальной прямой x = x₀.'},
+  vy:{tag:'Вершина',p:'Ордината вершины y₀ = f(x₀) — наименьшее значение функции при a>0 или наибольшее при a<0. Вершина — самая «нижняя» (или «верхняя») точка параболы.'},
+  roots:{tag:'Нули функции',p:'Корни — это значения x, при которых y=0, то есть точки пересечения параболы с осью Ox. Их находят по формуле x = (−b ± √D)/2a. Количество зависит от знака дискриминанта.'},
+},
+kz:{
+  a:{tag:'Аға коэффициент',p:'a коэффициенті параболаның бағыты мен «енін» анықтайды. a>0 болса — тармақтары жоғары, a<0 болса — төмен. |a| үлкен болса, парабола тар; кіші болса — кең.'},
+  b:{tag:'Коэффициент',p:'b коэффициенті a-мен бірге төбенің көлденең орнын анықтайды: x₀ = −b/2a.'},
+  c:{tag:'Бос мүше',p:'c коэффициенті — x=0 кездегі функция мәні, яғни параболаның Oy осімен қиылысу нүктесінің ординатасы: график әрқашан (0; c) нүктесінен өтеді.'},
+  d:{tag:'Дискриминант',p:'Дискриминант D = b² − 4ac түбірлер санын анықтайды. D>0 — екі түбір, D=0 — бір, D<0 — түбір жоқ.'},
+  vx:{tag:'Төбе',p:'Төбенің абсциссасы x₀ = −b/2a. Бұл параболаның симметрия осі: график x = x₀ түзуіне қарасты симметриялы.'},
+  vy:{tag:'Төбе',p:'Төбенің ординатасы y₀ = f(x₀) — a>0 кезде ең кіші, a<0 кезде ең үлкен мән.'},
+  roots:{tag:'Функция нөлдері',p:'Түбірлер — y=0 болатын x мәндері, яғни параболаның Ox осімен қиылысу нүктелері: x = (−b ± √D)/2a.'},
+},
+en:{
+  a:{tag:'Leading coefficient',p:'The coefficient a sets the direction and "width" of the parabola. If a>0 the branches open up, if a<0 they open down. The larger |a|, the narrower the parabola; the smaller, the wider.'},
+  b:{tag:'Coefficient',p:'Together with a, the coefficient b fixes the horizontal position of the vertex: x₀ = −b/2a. On its own b is the slope of the tangent at the y-intercept.'},
+  c:{tag:'Constant term',p:'The coefficient c is the value of the function at x=0 — the y-coordinate where the parabola meets the Oy axis: the graph always passes through (0; c).'},
+  d:{tag:'Discriminant',p:'The discriminant D = b² − 4ac determines the number of roots (crossings of the Ox axis). D>0 — two roots, D=0 — one (the vertex touches the axis), D<0 — none.'},
+  vx:{tag:'Vertex',p:'The vertex x-coordinate x₀ = −b/2a. It is the axis of symmetry of the parabola: the graph is symmetric about the vertical line x = x₀.'},
+  vy:{tag:'Vertex',p:'The vertex y-coordinate y₀ = f(x₀) is the minimum value of the function when a>0, or the maximum when a<0 — the lowest (or highest) point of the parabola.'},
+  roots:{tag:'Zeros of the function',p:'The roots are the x-values where y=0 — where the parabola crosses the Ox axis. They are found by x = (−b ± √D)/2a; their count depends on the sign of the discriminant.'},
+}
+};
+const DETAIL=DETAIL_ALL[LANG]||DETAIL_ALL.ru;
+
+function openDetail(key){
+  const d=DETAIL[key];if(!d)return;
+  const m=METRICS.find(x=>x.key===key);
+  document.querySelectorAll('.metric').forEach(el=>el.classList.toggle('active',el.dataset.key===key));
+  hiKey=key; buildDyn();
+  const {a,b,c}=window.A,D=disc(),X=vxF(),Y=vyF();
+  const calc={
+    a:`a = ${f2(a)}`, b:`b = ${f1(b)}`, c:`c = ${f1(c)}`,
+    d:`D = b² − 4ac\n  = ${f1(b)}² − 4·${f2(a)}·${f1(c)} = ${f1(D)}`,
+    vx:`x₀ = −b / 2a\n  = −(${f1(b)}) / (2·${f2(a)}) = ${f1(X)}`,
+    vy:`y₀ = f(x₀) = ${f1(Y)}`,
+    roots:D<0?`D = ${f1(D)} < 0 → ${tr('roots0')}`
+            :`x = (−b ± √D) / 2a\n  D = ${f1(D)} → ${rootsCalc()}`,
+  }[key];
+  document.getElementById('detail-content').innerHTML=`
+    <div class="d-tag">${d.tag}</div>
+    <div class="d-title">${tr(m.i)}</div>
+    <div class="d-bigval"><b>${m.fmt()}</b><span>${tr(m.unit)}</span></div>
+    <div class="d-formula">${calc}</div>
+    <div class="d-para">${d.p}</div>`;
+  document.getElementById('panel-left').classList.add('detail');
+  currentDetail=key;markInteract();
+}
+function rootsCalc(){const r=rootsF();if(r.length===1)return 'x = '+f1(r[0]);const a=[...r].sort((x,y)=>x-y);return 'x₁ = '+f1(a[0])+', x₂ = '+f1(a[1]);}
+let currentDetail=null;
+window.openDetail=openDetail;
+window.showList=function(){
+  document.getElementById('panel-left').classList.remove('detail');currentDetail=null;
+  document.querySelectorAll('.metric').forEach(m=>m.classList.remove('active'));
+  hiKey=null; buildDyn();
+};
+
+/* ── CONTROLS ── */
+window.setDim=function(k,val){
+  if(k==='a'){ if(Math.abs(val)<0.5) val=0.5*(val<0?-1:1); }   // keep a away from 0 (stay a parabola)
+  window.A[k]=val;
+  buildDyn();updateMetricValues();
+  if(currentDetail) openDetail(currentDetail);
+  markInteract();
+};
+window.toggleAxis=function(){showAxis=!showAxis;document.getElementById('chip-axis').classList.toggle('on',showAxis);buildDyn();markInteract();};
+window.toggleGrid=function(){showGrid=!showGrid;document.getElementById('chip-grid').classList.toggle('on',showGrid);gridGroup.visible=showGrid;markInteract();};
+
+/* ── ROTATE + LOOP ── */
+let mode=null,last={x:0,y:0},dd=0,isDragging=false,rotX=0.0;
+let lastInteract=performance.now()-16000,autoSpeed=0;const AUTO_TARGET=0.0010,IDLE_MS=15000;
+function markInteract(){lastInteract=performance.now();}
+canvas.addEventListener('mousedown',e=>{markInteract();mode='rotate';last={x:e.clientX,y:e.clientY};isDragging=false;dd=0;});
+canvas.addEventListener('mousemove',e=>{
+  if(mode==='rotate'){dd=Math.hypot(e.clientX-last.x,e.clientY-last.y);if(dd>4)isDragging=true;
+    if(isDragging){root.rotation.y+=(e.clientX-last.x)*0.009;rotX=Math.max(-1.2,Math.min(1.2,rotX+(e.clientY-last.y)*0.007));root.rotation.x=rotX;markInteract();}
+    last={x:e.clientX,y:e.clientY};}
+});
+window.addEventListener('mouseup',()=>{mode=null;});
+canvas.addEventListener('wheel',e=>{e.preventDefault();userZoom=Math.max(0.6,Math.min(1.7,userZoom+e.deltaY*0.0015));markInteract();},{passive:false});
+window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+
+let t=0;
+function animate(){
+  requestAnimationFrame(animate);t+=0.016;
+  const idle=performance.now()-lastInteract;
+  if(idle>IDLE_MS)autoSpeed+=(AUTO_TARGET-autoSpeed)*0.025;else autoSpeed+=(0-autoSpeed)*0.18;
+  root.rotation.y+=autoSpeed;root.rotation.x=rotX;
+  camDistTarget=computeCamTarget();camDist+=(camDistTarget-camDist)*0.18;applyCamera();
+  renderer.render(scene,camera);
+  obj.updateWorldMatrix(true,false);
+  updateLabels();
+}
+
+buildDyn();updateMetricValues();
+camDistTarget=computeCamTarget();camDist=camDistTarget;applyCamera();
+animate();
+</script>
+</body>
+</html>

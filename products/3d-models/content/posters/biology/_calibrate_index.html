@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zone Calibrator — Index</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0; padding: 24px;
+            font-family: system-ui, -apple-system, sans-serif;
+            background: #0a0e1a; color: #fff;
+            min-height: 100vh;
+        }
+        h1 { font-size: 22px; margin: 0 0 6px; }
+        .subtitle { font-size: 13px; color: #8aa; margin-bottom: 20px; }
+        .help {
+            background: rgba(120, 180, 255, 0.08);
+            border: 1px solid rgba(120, 180, 255, 0.2);
+            border-radius: 10px;
+            padding: 14px 18px;
+            margin-bottom: 24px;
+            font-size: 13px;
+            line-height: 1.6;
+            max-width: 900px;
+        }
+        .help code { background: rgba(0,0,0,0.4); padding: 2px 6px; border-radius: 3px; font-family: 'JetBrains Mono', Consolas, monospace; color: #cef; font-size: 12px; }
+        .help b { color: #cef; }
+        .help ol { margin: 8px 0 0 20px; padding: 0; }
+        .help li { margin: 3px 0; }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            gap: 14px;
+            max-width: 1400px;
+        }
+        .card {
+            background: rgba(15, 20, 40, 0.6);
+            border: 1px solid rgba(120, 150, 255, 0.2);
+            border-radius: 10px;
+            padding: 14px 16px;
+            transition: all 0.2s;
+        }
+        .card:hover {
+            background: rgba(20, 28, 55, 0.8);
+            border-color: rgba(120, 180, 255, 0.5);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        }
+        .card-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; }
+        .card h3 { margin: 0; font-size: 14px; font-weight: 600; }
+        .card-id { font-family: 'JetBrains Mono', Consolas, monospace; font-size: 10px; color: #8aa; }
+        .card-model { font-family: 'JetBrains Mono', Consolas, monospace; font-size: 11px; color: #aab; margin-bottom: 8px; }
+        .zones {
+            display: flex; flex-wrap: wrap; gap: 4px;
+            margin-bottom: 12px;
+        }
+        .zone-chip {
+            background: rgba(120, 180, 255, 0.1);
+            border: 1px solid rgba(120, 180, 255, 0.25);
+            border-radius: 4px;
+            padding: 2px 8px;
+            font-size: 10px;
+            color: #cef;
+            font-family: 'JetBrains Mono', Consolas, monospace;
+        }
+        .actions { display: flex; gap: 8px; }
+        a.btn {
+            flex: 1;
+            display: inline-block;
+            padding: 8px 12px;
+            background: rgba(110, 160, 255, 0.18);
+            border: 1px solid rgba(120, 180, 255, 0.45);
+            color: #fff;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            text-decoration: none;
+            text-align: center;
+            transition: all 0.15s;
+        }
+        a.btn:hover {
+            background: rgba(110, 160, 255, 0.35);
+            transform: translateY(-1px);
+        }
+        a.btn.secondary {
+            background: rgba(255, 255, 255, 0.04);
+            border-color: rgba(255, 255, 255, 0.15);
+            flex: 0 0 auto;
+            padding: 8px 10px;
+        }
+    </style>
+</head>
+<body>
+<h1>📍 Zone Calibrator — список моделей</h1>
+<div class="subtitle">Калибруй зоны для каждого плаката, затем вставь сгенерированный JSON в HTML.</div>
+
+<div class="help">
+    <b>Как пользоваться:</b>
+    <ol>
+        <li>Открой нужную модель кнопкой <b>«Калибровать»</b></li>
+        <li>В правой панели выбери зону (станет <b>active</b>)</li>
+        <li>Кликни на 3D-модель в нужном месте — поставится точка-якорь</li>
+        <li>Для удлинённых частей (позвоночник, кишечник) ставь <b>2-3 точки</b> вдоль</li>
+        <li>Курсор по модели снизу показывает к какой зоне отнесётся клик</li>
+        <li>Кнопка <b>Copy JSON</b> — скопируй и пришли мне, я вставлю в плакат</li>
+    </ol>
+    <b>Подсказки:</b> можно вращать камеру (drag), масштабировать (scroll), <code>Ctrl+Z</code> — undo последней точки, ось <span style="color:#ff5252">X</span> красная, <span style="color:#52ff52">Y</span> зелёная, <span style="color:#5252ff">Z</span> синяя.
+</div>
+
+<div class="grid" id="grid"></div>
+
+<script>
+    // Each entry: { id, title, model, zones }
+    const POSTERS = [
+        { id: 'bio_15', title: 'Скелет человека',         model: 'skeleton.glb',      zones: ['skull','spine','ribs','arms','pelvis','legs'] },
+        { id: 'bio_16', title: 'Мышечная система',         model: 'muscles.glb',       zones: ['head_neck','chest','arms','abdomen','back','legs'] },
+        { id: 'bio_17', title: 'Пищеварительная система',  model: 'digestive.glb',     zones: ['esophagus','stomach','liver','small_intestine','large_intestine','pancreas'] },
+        { id: 'bio_18', title: 'Скелет птицы',             model: 'bird_skeleton.glb', zones: ['skull','spine','wings','sternum','pelvis','legs'] },
+        { id: 'bio_19', title: 'Бабочка-монарх',           model: 'butterfly.glb',     zones: ['head','thorax','abdomen','forewings','hindwings','legs'] },
+        { id: 'bio_20', title: 'Лягушка',                  model: 'frog.glb',          zones: ['head','eyes','forelegs','hindlegs','body','spine'] },
+        { id: 'bio_21', title: 'Клещ',                     model: 'tick.glb',          zones: ['gnathosoma','body','legs','shield','eyes'] },
+        { id: 'bio_22', title: 'Улитка',                   model: 'snail.glb',         zones: ['shell','head','tentacles','foot','body'] },
+        { id: 'bio_23', title: 'Морская ракушка',          model: 'seashell.glb',      zones: ['apex','whorls','aperture','lip','columella'] },
+        { id: 'bio_24', title: 'Морская звезда',           model: 'starfish.glb',      zones: ['central_disc','arms','tube_feet','madreporite','mouth'] },
+        { id: 'bio_25', title: 'Шляпочный гриб',           model: 'mushroom.glb',      zones: ['cap','gills','stipe','mycelium','spores'] },
+        { id: 'bio_26', title: 'Хлебная плесень',          model: 'bread_mold.glb',    zones: ['sporangium','sporangiophore','hyphae','rhizoids','stolon'] },
+        { id: 'bio_27', title: 'Строение семени',          model: 'seed.glb',          zones: ['seed_coat','cotyledons','embryo','radicle','endosperm'] }
+    ];
+
+    const grid = document.getElementById('grid');
+    POSTERS.forEach(p => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        const url = `_calibrate.html?model=${encodeURIComponent(p.model)}&zones=${p.zones.join(',')}`;
+        card.innerHTML = `
+            <div class="card-header">
+                <h3>${p.title}</h3>
+                <span class="card-id">${p.id}</span>
+            </div>
+            <div class="card-model">📦 ${p.model}</div>
+            <div class="zones">${p.zones.map(z => `<span class="zone-chip">${z}</span>`).join('')}</div>
+            <div class="actions">
+                <a class="btn" href="${url}" target="_blank">📍 Калибровать</a>
+                <a class="btn secondary" href="${p.id}.html" target="_blank" title="Открыть текущий плакат">👁 Плакат</a>
+            </div>
+        `;
+        grid.appendChild(card);
+    });
+</script>
+</body>
+</html>

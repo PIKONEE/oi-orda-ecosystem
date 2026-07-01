@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="page_title">Гриб — анатомическая модель</title>
+    <link rel="stylesheet" href="_poster.css">
+</head>
+<body>
+<div id="canvas-container"></div>
+<div id="header">
+    <h1 data-i18n="header_title">Шляпочный гриб</h1>
+    <p data-i18n="header_subtitle">Интерактивная модель — 5 анатомических зон</p>
+</div>
+<div id="hint" data-i18n="hint">Кликните по любой части гриба, чтобы узнать больше</div>
+<button id="reset-btn" data-i18n="reset_btn" data-i18n-title="reset_btn_title" title="Сбросить вид">↺ Сбросить вид</button>
+<div id="info-panel" aria-hidden="true"></div>
+<div id="legend"></div>
+<div id="hover-label"></div>
+<div id="loading"><div class="spinner"></div><div id="loading-text" data-i18n="loading">Загрузка модели…</div></div>
+
+<script type="importmap">
+    { "imports": { "three": "../../libs/vendor/three-0.160.0/three.module.js", "three/addons/": "../../libs/vendor/three-0.160.0/addons/" } }
+</script>
+
+<script type="module">
+    import { initPoster } from './_poster_lib.js';
+
+    const I18N = {
+        ru: {
+            page_title: 'Гриб — анатомическая модель',
+            header_title: 'Шляпочный гриб',
+            header_subtitle: 'Интерактивная модель — 5 анатомических зон',
+            hint: 'Кликните по любой части гриба, чтобы узнать больше',
+            reset_btn: '↺ Сбросить вид', reset_btn_title: 'Сбросить вид', close_btn_label: 'Закрыть',
+            loading: 'Загрузка модели…', error_load: 'Не удалось загрузить mushroom.glb', error_no_mesh: 'В модели нет меша',
+            facts_label: 'Интересный факт',
+            zones: {
+                cap: { title: 'Шляпка', desc: 'Верхняя часть плодового тела гриба, защищающая нижнюю спороносную часть. Сверху покрыта кожицей (кутикулой) разнообразной окраски, формы и фактуры — это главный признак для определения вида. Шляпка может быть выпуклой, плоской, вдавленной или воронковидной.', facts: 'Цвет шляпки многих ядовитых грибов (мухоморов) — яркое предупреждение для животных. У бледной поганки, наоборот, шляпка маскируется под съедобные виды — это и делает её самым опасным грибом.' },
+                gills: { title: 'Гименофор (пластинки/трубочки)', desc: 'Нижняя сторона шляпки со спороносным слоем. У одних грибов он состоит из радиальных пластинок (сыроежки, шампиньоны), у других — из мелких трубочек (белые, подосиновики). Здесь созревают и высыпаются миллионы микроскопических спор.', facts: 'Один взрослый гриб может высыпать до 16 миллиардов спор за сутки. Из всех этих спор лишь несколько достигнут подходящего места и прорастут в грибницу.' },
+                stipe: { title: 'Ножка', desc: 'Опорная часть плодового тела, поднимающая шляпку над землёй. Это нужно, чтобы ветер уносил споры подальше от родителя. Ножка состоит из плотно переплетённых гиф, может быть полой или цельной, иногда с кольцом или вольвой у основания.', facts: 'Кольцо на ножке (остаток покрывала) и вольва у основания — важные признаки. У смертельно ядовитой бледной поганки есть и кольцо, и вольва — это надо запомнить как ключевой признак опасности.' },
+                mycelium: { title: 'Грибница (мицелий)', desc: 'Невидимая основная часть гриба, скрытая в почве или древесине. Состоит из тончайших нитей-гиф, образующих обширную сеть. Именно мицелий — сам гриб; то, что мы видим над землёй, — лишь временный «плод» для размножения.', facts: 'Самый крупный живой организм Земли — гриб опёнок темный в Орегоне, его мицелий занимает площадь 9,7 км² и весит около 600 тонн. Возраст оценивают в 2 400 лет.' },
+                spores: { title: 'Споры', desc: 'Микроскопические клетки, с помощью которых гриб размножается. Каждая спора — это «семя» гриба, способное прорасти в новый мицелий. Споры разносятся ветром, дождём, насекомыми и животными на огромные расстояния.', facts: 'Одна спора имеет диаметр всего 5–10 микрометров — в 10 раз тоньше человеческого волоса. Сила, с которой она «выстреливается» из пластинки, достигает 25 000 g — больше, чем у пушечного ядра.' }
+            }
+        },
+        kz: {
+            page_title: 'Саңырауқұлақ — анатомиялық модель',
+            header_title: 'Қалпақты саңырауқұлақ',
+            header_subtitle: 'Интерактивті модель — 5 анатомиялық аймақ',
+            hint: 'Толығырақ білу үшін саңырауқұлақтың кез келген бөлігіне басыңыз',
+            reset_btn: '↺ Көріністі қалпына келтіру', reset_btn_title: 'Көріністі қалпына келтіру', close_btn_label: 'Жабу',
+            loading: 'Модель жүктелуде…', error_load: 'mushroom.glb файлын жүктеу мүмкін болмады', error_no_mesh: 'Модельде меш табылмады',
+            facts_label: 'Қызықты факт',
+            zones: {
+                cap: { title: 'Қалпақ', desc: 'Саңырауқұлақтың жеміс денесінің жоғарғы бөлігі, төменгі споралы бөлігін қорғайды. Үсті әртүрлі түсті, формалы кутикуламен жабылған — бұл түрді анықтайтын негізгі белгі.', facts: 'Қызыл шыбынжегіш сияқты улы саңырауқұлақтардың қалпағының жарқын түсі жануарларға қауіп туралы ескерту болып табылады.' },
+                gills: { title: 'Гименофор', desc: 'Споралы қабаты бар қалпақтың төменгі жағы. Кейбір саңырауқұлақтарда ол радиалды табақшалардан, басқаларында — майда түтікшелерден тұрады. Мұнда миллиондаған микроскопиялық споралар пісіп шашылады.', facts: 'Бір ересек саңырауқұлақ тәулігіне 16 миллиардқа дейін спора шашуы мүмкін.' },
+                stipe: { title: 'Сабақ', desc: 'Жеміс денесінің тірек бөлігі, қалпақты жерден көтеріп тұрады. Бұл жел споралы ата-анадан алыс тасу үшін қажет. Сабақ тығыз өрілген гифалардан тұрады, қуыс немесе тұтас болуы мүмкін, кейде сақинасы немесе вольвасы болады.', facts: 'Сабақтағы сақина мен табанындағы вольва — маңызды белгілер. Өлімге әкелетін ақ шіркеудің сақинасы да, вольвасы да бар.' },
+                mycelium: { title: 'Мицелий (грибница)', desc: 'Саңырауқұлақтың топырақта немесе ағашта жасырын негізгі бөлігі. Кең желі құрайтын ең жұқа гифа-жіптерден тұрады. Дәл осы мицелий — саңырауқұлақтың өзі.', facts: 'Жер бетіндегі ең ірі тірі ағза — Орегондағы қара шіркеу саңырауқұлағы, оның мицелийі 9,7 км² аумақты алып, шамамен 600 тонна салмаққа жетеді. Жасы 2 400 жыл.' },
+                spores: { title: 'Споралар', desc: 'Саңырауқұлақтың көбею жасушалары. Әр спора — жаңа мицелийге өсе алатын саңырауқұлақтың «тұқымы». Споралар жел, жаңбыр, жәндіктер арқылы үлкен қашықтыққа тарайды.', facts: 'Бір спораның диаметрі небәрі 5–10 микрометр — адам шашынан 10 есе жұқа. Оның табақшадан «атылу» күші 25 000 g жетеді — зеңбірек ядросынан да көп.' }
+            }
+        },
+        en: {
+            page_title: 'Mushroom — Anatomical Model',
+            header_title: 'Cap Mushroom',
+            header_subtitle: 'Interactive model — 5 anatomical zones',
+            hint: 'Click any part of the mushroom to learn more',
+            reset_btn: '↺ Reset view', reset_btn_title: 'Reset view', close_btn_label: 'Close',
+            loading: 'Loading model…', error_load: 'Failed to load mushroom.glb', error_no_mesh: 'No mesh found in the model',
+            facts_label: 'Did you know?',
+            zones: {
+                cap: { title: 'Cap (Pileus)', desc: 'The upper part of the fruiting body, protecting the spore-bearing layer below. Covered by a cuticle of varied color, shape, and texture — the main feature for identifying species.', facts: 'The bright caps of poisonous mushrooms like fly agarics warn animals away. The death cap, however, mimics edible species — which makes it the most dangerous mushroom.' },
+                gills: { title: 'Gills / Tubes (Hymenophore)', desc: 'The underside of the cap with the spore-bearing layer. In some mushrooms it consists of radial gills (russulas, champignons); in others — tiny tubes (boletes). Millions of microscopic spores mature and shed here.', facts: 'A single adult mushroom can release up to 16 billion spores per day. Of all these, only a few will reach a suitable spot and grow into mycelium.' },
+                stipe: { title: 'Stipe (Stem)', desc: 'The supporting part of the fruiting body, lifting the cap above the ground so that wind can carry spores away from the parent. Sometimes bears a ring and a volva at the base.', facts: 'The ring (annulus) and volva are important features. The deadly death cap has both — a key warning to remember.' },
+                mycelium: { title: 'Mycelium', desc: 'The invisible main body of the fungus, hidden in soil or wood. Consists of fine hyphae forming an extensive network. The mycelium is the actual fungus; what we see above ground is only a temporary "fruit" for reproduction.', facts: 'The largest living organism on Earth is a honey mushroom in Oregon, whose mycelium covers 9.7 km² and weighs about 600 tons. Estimated age: 2,400 years.' },
+                spores: { title: 'Spores', desc: 'Microscopic cells by which the fungus reproduces. Each spore is the "seed" of the fungus, capable of growing into a new mycelium. Spores are carried by wind, rain, insects, and animals over huge distances.', facts: 'A single spore is only 5–10 micrometers across — 10 times thinner than a human hair. The force of its launch from the gill reaches 25,000 g — more than a cannonball.' }
+            }
+        }
+    };
+
+    const ZONES = [
+        { id: 'cap',      subtitle: 'Pileus',        color: 0xff6b6b },
+        { id: 'gills',    subtitle: 'Hymenophorum',  color: 0xff9f45 },
+        { id: 'stipe',    subtitle: 'Stipes',        color: 0xffd93d },
+        { id: 'mycelium', subtitle: 'Mycelium',      color: 0xc77dff },
+        { id: 'spores',   subtitle: 'Sporae',        color: 0x4d96ff }
+    ];
+    const SEEDS = {
+    "cap": [
+        [0.072, 0.755, -0.543],
+        [-0.493, 0.748, -0.261],
+        [0.483, 0.822, -0.126],
+        [-0.054, 0.955, -0.049],
+        [-0.001, 0.51, 0.038],
+        [0.401, 0.679, 0.5],
+        [0.053, 0.968, 0.294],
+        [-0.417, 0.73, 0.435]
+    ],
+    "gills": [
+        [-0.08, 0.12, 0.038],
+        [0.065, 0.115, 0.007],
+        [0.098, 0.358, 0.005],
+        [-0.009, 0.223, -0.069],
+        [0.066, 0.262, 0.087],
+        [-0.077, 0.251, 0.054],
+        [-0.079, 0.358, 0.064],
+        [-0.039, 0.37, -0.087]
+    ],
+    "stipe": [
+        [0.109, -0.389, 0.138],
+        [0.124, -0.423, -0.045],
+        [-0.128, -0.416, 0.09],
+        [-0.057, -0.397, -0.104],
+        [-0.097, -0.194, 0.093],
+        [0.084, -0.205, 0.054],
+        [-0.037, -0.05, -0.034],
+        [0.071, -0.037, 0.118]
+    ],
+    "mycelium": [
+        [-0.235, -0.698, -0.159],
+        [-0.264, -0.692, 0.152],
+        [-0.107, -0.876, 0.176],
+        [-0.047, -1.081, -0.035],
+        [0.059, -1.009, 0.169],
+        [0.194, -0.859, 0.176],
+        [0.186, -0.591, 0.085],
+        [0.295, -0.741, -0.128]
+    ],
+    "spores": [
+        [-0.141, 0.356, 0.111],
+        [-0.173, 0.347, -0.045],
+        [-0.118, 0.338, -0.135],
+        [-0.029, 0.328, -0.17],
+        [0.034, 0.139, 0.149],
+        [0.091, 0.332, -0.144],
+        [0.124, 0.351, 0.129],
+        [0.169, 0.348, -0.018]
+    ]
+};
+
+    initPoster({ modelFile: 'mushroom.glb', zones: ZONES, seeds: SEEDS, i18n: I18N });
+</script>
+</body>
+</html>

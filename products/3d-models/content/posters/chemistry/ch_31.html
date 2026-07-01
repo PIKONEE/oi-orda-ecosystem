@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="page_title">Кристаллические решётки металлов</title>
+<style>
+
+
+*{margin:0;padding:0;box-sizing:border-box;}
+
+:root{
+  --bg:#f5f4f0;
+  --surface:rgba(255,255,255,0.90);
+  --border:rgba(0,0,0,0.08);
+  --text:#1c1917;
+  --muted:#78716c;
+  --metal:#64748b;
+  --accent:#0d9488;
+  --ref:#f59e0b;
+  --neighbor:#3b82f6;
+  --edge:#94a3b8;
+  --shadow:0 2px 20px rgba(0,0,0,0.07);
+  --shadow-lg:0 8px 44px rgba(0,0,0,0.11);
+}
+
+body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);overflow:hidden;height:100vh;}
+
+body::before{
+  content:'';position:fixed;inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='%23f5f4f0'/%3E%3Ccircle cx='1' cy='1' r='0.6' fill='rgba(0,0,0,0.025)'/%3E%3C/svg%3E");
+  pointer-events:none;z-index:0;
+}
+
+#canvas-container{position:fixed;inset:0;z-index:1;}
+
+/* ── HEADER ── */
+.header{
+  position:fixed;top:0;left:0;right:0;z-index:200;
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  padding:0 48px;height:92px;
+  display:flex;align-items:center;gap:14px;
+  box-shadow:var(--shadow);
+}
+.h-icon{font-size:30px;}
+.header-title{font-size:25px;font-weight:700;}
+.header-sub{font-size:14.5px;color:var(--muted);margin-left:auto;text-align:right;line-height:1.4;}
+
+/* ── LEFT PANEL ── */
+.panel-left{
+  position:fixed;left:24px;top:108px;bottom:400px;z-index:100;
+  overflow-y:auto;
+  width:300px;
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:24px;
+  padding:20px 22px;box-shadow:var(--shadow-lg);
+}
+.panel-left h3{font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:14px;}
+.props-table{width:100%;border-collapse:collapse;}
+.props-table td{padding:8px 6px;border-bottom:1px solid rgba(0,0,0,0.05);font-size:14px;line-height:1.35;}
+.props-table tr:last-child td{border-bottom:none;}
+.props-table td:first-child{color:var(--muted);font-size:13px;width:52%;}
+.props-table td:last-child{font-weight:600;font-family:'DM Mono',monospace;font-size:13px;text-align:right;}
+
+/* ── RIGHT PANEL ── */
+.panel-right{
+  position:fixed;right:24px;top:108px;z-index:100;
+  width:288px;
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:24px;
+  padding:20px 22px;box-shadow:var(--shadow-lg);
+}
+.panel-right h3{font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:12px;}
+
+/* mode selector (inside right panel) */
+.mode-selector{display:flex;flex-direction:column;gap:8px;margin-bottom:8px;}
+.mode-btn{
+  width:100%;padding:11px 14px;border-radius:14px;text-align:left;
+  font-family:'Syne',sans-serif;font-weight:700;color:var(--text);cursor:pointer;
+  border:2px solid var(--border);background:rgba(0,0,0,0.02);
+  transition:all 0.2s;display:flex;align-items:center;gap:11px;
+}
+.mode-btn:hover{background:rgba(0,0,0,0.05);transform:translateY(-1px);}
+.mode-btn.sel{border-color:var(--accent);background:rgba(13,148,136,0.10);color:#0f766e;}
+.mode-dot{width:13px;height:13px;border-radius:50%;flex-shrink:0;}
+.mode-formula{font-family:'DM Mono',monospace;font-size:16px;font-weight:600;}
+.mode-sub{font-size:12px;font-weight:500;color:var(--muted);margin-left:auto;}
+.mode-btn.sel .mode-sub{color:#0f766e;}
+.panel-sep{height:1px;background:var(--border);margin:14px 0;}
+
+.ctrl-btn{
+  width:100%;padding:11px 16px;margin-bottom:10px;
+  background:rgba(0,0,0,0.04);border:1.5px solid var(--border);border-radius:14px;
+  font-family:'Syne',sans-serif;font-size:14px;font-weight:600;
+  color:var(--text);cursor:pointer;text-align:left;
+  transition:all 0.2s;display:flex;align-items:center;gap:8px;
+}
+.ctrl-btn:hover{background:rgba(0,0,0,0.07);transform:translateY(-1px);}
+.ctrl-btn.active{background:rgba(13,148,136,0.10);border-color:rgba(13,148,136,0.4);color:#0f766e;}
+
+/* ── LEGEND (clickable info chips) ── */
+.panel-legend{
+  position:fixed;left:24px;bottom:64px;z-index:100;
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:20px;
+  padding:14px 16px;box-shadow:var(--shadow);
+  display:flex;flex-direction:column;gap:6px;width:252px;
+}
+.legend-head{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:4px;display:flex;align-items:center;gap:6px;}
+.leg-item{
+  display:flex;align-items:center;gap:9px;font-size:13px;font-weight:600;
+  padding:8px 11px;border-radius:11px;cursor:pointer;
+  border:1px solid var(--border);background:rgba(0,0,0,0.025);
+  transition:all 0.16s;
+}
+.leg-item:hover{background:rgba(13,148,136,0.08);border-color:rgba(13,148,136,0.35);transform:translateX(3px);}
+.leg-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0;}
+.leg-info{
+  margin-left:auto;flex-shrink:0;
+  width:18px;height:18px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:700;font-style:italic;font-family:'DM Mono',monospace;
+  background:rgba(0,0,0,0.06);color:var(--muted);transition:all 0.16s;
+}
+.leg-item:hover .leg-info{background:var(--accent);color:#fff;}
+
+/* ── HINT ── */
+.hint-bar{
+  position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:100;
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:99px;
+  padding:9px 24px;font-size:13px;color:var(--muted);
+  box-shadow:var(--shadow);white-space:nowrap;
+}
+.hint-bar kbd{background:rgba(0,0,0,0.07);border-radius:5px;padding:2px 7px;font-family:'DM Mono',monospace;font-size:12px;}
+
+/* ── OVERLAY NAME ── */
+.overlay-name{
+  position:fixed;bottom:58px;right:28px;z-index:100;
+  font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:2px;
+  color:var(--muted);opacity:0.55;pointer-events:none;
+}
+
+/* ── INFO PANEL ── */
+#info-panel{
+  position:fixed;right:-460px;top:0;bottom:0;z-index:300;
+  width:420px;
+  background:rgba(255,255,255,0.97);
+  border-left:1px solid var(--border);
+  padding:32px 28px;overflow-y:auto;
+  box-shadow:-4px 0 40px rgba(0,0,0,0.10);
+  transition:right 0.38s cubic-bezier(0.4,0,0.2,1);
+}
+#info-panel.open{right:0;}
+#info-close{
+  position:absolute;top:20px;right:20px;
+  width:36px;height:36px;border-radius:50%;
+  background:rgba(0,0,0,0.07);border:none;cursor:pointer;
+  font-size:18px;display:flex;align-items:center;justify-content:center;
+}
+#info-close:hover{background:rgba(0,0,0,0.13);}
+.info-tag{display:inline-block;padding:4px 12px;border-radius:99px;font-size:12px;font-weight:700;letter-spacing:0.5px;margin-bottom:16px;}
+.info-title{font-size:22px;font-weight:800;margin-bottom:6px;line-height:1.2;}
+.info-section{margin-top:18px;}
+.info-section h4{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:6px;}
+.info-section p{font-size:14.5px;line-height:1.65;color:#292524;}
+
+@media (max-width:1100px){
+  .panel-left{width:260px;}
+  .panel-right{width:240px;}
+}
+</style>
+</head>
+<body>
+
+<div id="canvas-container"><canvas id="c"></canvas></div>
+
+<header class="header">
+  <div class="h-icon">🔩</div>
+  <div class="header-title" data-i18n="header_title">Кристаллические решётки металлов</div>
+  <div class="header-sub" data-i18n-html="header_sub">Упаковка атомов в металлах<br>кликните на атом или элемент</div>
+</header>
+
+<div class="panel-left">
+  <h3 data-i18n="props_title">Параметры</h3>
+  <table class="props-table"><tbody id="props-body"></tbody></table>
+</div>
+
+<div class="panel-right">
+  <h3 data-i18n="mode_title">Тип решётки</h3>
+  <div class="mode-selector">
+    <button class="mode-btn sel" data-id="bcc" onclick="switchTo('bcc')">
+      <span class="mode-dot" style="background:#0d9488"></span><span class="mode-formula" data-i18n="mf_bcc">ОЦК</span><span class="mode-sub" data-i18n="m_bcc">объёмноцентр.</span>
+    </button>
+    <button class="mode-btn" data-id="fcc" onclick="switchTo('fcc')">
+      <span class="mode-dot" style="background:#0ea5e9"></span><span class="mode-formula" data-i18n="mf_fcc">ГЦК</span><span class="mode-sub" data-i18n="m_fcc">гранецентр.</span>
+    </button>
+    <button class="mode-btn" data-id="hcp" onclick="switchTo('hcp')">
+      <span class="mode-dot" style="background:#6366f1"></span><span class="mode-formula" data-i18n="mf_hcp">ГПУ</span><span class="mode-sub" data-i18n="m_hcp">гексагон.</span>
+    </button>
+  </div>
+  <div class="panel-sep"></div>
+  <h3 data-i18n="ctrl_title">Управление</h3>
+  <button class="ctrl-btn active" id="btn-spin" onclick="toggleSpin()"><span data-i18n="btn_pause">⏸ Пауза</span></button>
+  <button class="ctrl-btn active" id="btn-cell" onclick="toggleCell()"><span data-i18n="btn_cell">📦 Элементарная ячейка</span></button>
+  <button class="ctrl-btn" id="btn-coord" onclick="toggleCoord()"><span data-i18n="btn_coord">🔗 Координация (соседи)</span></button>
+</div>
+
+<div class="panel-legend">
+  <div class="legend-head" data-i18n="legend_head">👆 Нажмите для описания</div>
+  <div class="leg-item" onclick="openInfo('atom')"><div class="leg-dot" style="background:#64748b;"></div><span data-i18n="leg_atom">Атом металла</span><span class="leg-info">i</span></div>
+  <div class="leg-item" onclick="openInfo('cell')"><div class="leg-dot" style="background:#94a3b8;"></div><span data-i18n="leg_cell">Элементарная ячейка</span><span class="leg-info">i</span></div>
+  <div class="leg-item" onclick="openInfo('coordination')"><div class="leg-dot" style="background:#3b82f6;"></div><span data-i18n="leg_coord">Координац. число</span><span class="leg-info">i</span></div>
+  <div class="leg-item" onclick="openInfo('packing')"><div class="leg-dot" style="background:#f59e0b;"></div><span data-i18n="leg_packing">Плотность упаковки</span><span class="leg-info">i</span></div>
+  <div class="leg-item" onclick="openInfo('bond')"><div class="leg-dot" style="background:#0d9488;"></div><span data-i18n="leg_bond">Металлическая связь</span><span class="leg-info">i</span></div>
+  <div class="leg-item" onclick="openInfo('polymorph')"><div class="leg-dot" style="background:#ef4444;"></div><span data-i18n="leg_poly">Полиморфизм</span><span class="leg-info">i</span></div>
+</div>
+
+<div class="overlay-name" id="overlay-name">ОЦК · Fe, W</div>
+
+<div class="hint-bar" data-i18n-html="hint">Перетащите — вращение · <kbd>Колесо</kbd> — масштаб · Клик — информация</div>
+
+<div id="info-panel">
+  <button id="info-close" onclick="closeInfo()">✕</button>
+  <div class="info-tag" id="info-tag"></div>
+  <div class="info-title" id="info-title"></div>
+  <div id="info-body"></div>
+</div>
+
+<script>
+const I18N={
+ru:{
+page_title:'Кристаллические решётки металлов',header_title:'Кристаллические решётки металлов',
+header_sub:'Упаковка атомов в металлах<br>кликните на атом или элемент',
+props_title:'Параметры',mode_title:'Тип решётки',ctrl_title:'Управление',legend_head:'👆 Нажмите для описания',
+mf_bcc:'ОЦК',mf_fcc:'ГЦК',mf_hcp:'ГПУ',
+m_bcc:'объёмноцентр.',m_fcc:'гранецентр.',m_hcp:'гексагон.',
+btn_pause:'⏸ Пауза',btn_resume:'▶ Вращение',btn_cell:'📦 Элементарная ячейка',btn_coord:'🔗 Координация (соседи)',
+leg_atom:'Атом металла',leg_cell:'Элементарная ячейка',leg_coord:'Координац. число',leg_packing:'Плотность упаковки',leg_bond:'Металлическая связь',leg_poly:'Полиморфизм',
+hint:'Перетащите — вращение · <kbd>Колесо</kbd> — масштаб · Клик — информация',
+modes:{
+  bcc:{overlay:'ОЦК · Fe, W',props:[['Решётка','ОЦК'],['Атомов в ячейке','2'],['Координац. число','8'],['Плотность упаковки','68 %'],['Параметры','a'],['Примеры','Fe(α), Cr, W, Na']]},
+  fcc:{overlay:'ГЦК · Cu, Al, Au',props:[['Решётка','ГЦК'],['Атомов в ячейке','4'],['Координац. число','12'],['Плотность упаковки','74 %'],['Параметры','a'],['Примеры','Cu, Al, Au, Ni']]},
+  hcp:{overlay:'ГПУ · Mg, Zn, Ti',props:[['Решётка','ГПУ'],['Атомов в ячейке','6'],['Координац. число','12'],['Плотность упаковки','74 %'],['Параметры','a, c'],['Примеры','Mg, Zn, Ti, Co']]}
+}},
+kz:{
+page_title:'Металдардың кристалдық торлары',header_title:'Металдардың кристалдық торлары',
+header_sub:'Металдардағы атомдар орналасуы<br>атомды немесе элементті басыңыз',
+props_title:'Параметрлер',mode_title:'Тор түрі',ctrl_title:'Басқару',legend_head:'👆 Сипаттама үшін басыңыз',
+mf_bcc:'КЦТ',mf_fcc:'ҚЦТ',mf_hcp:'ТТО',
+m_bcc:'көлемдік центрл.',m_fcc:'қырлық центрл.',m_hcp:'гексагон.',
+btn_pause:'⏸ Кідірту',btn_resume:'▶ Айналдыру',btn_cell:'📦 Элементар ұяшық',btn_coord:'🔗 Координация (көршілер)',
+leg_atom:'Метал атомы',leg_cell:'Элементар ұяшық',leg_coord:'Координац. саны',leg_packing:'Тығыздалу',leg_bond:'Металдық байланыс',leg_poly:'Полиморфизм',
+hint:'Сүйреңіз — айналдыру · <kbd>Дөңгелек</kbd> — масштаб · Басу — ақпарат',
+modes:{
+  bcc:{overlay:'КЦТ · Fe, W',props:[['Тор','КЦТ'],['Ұяшықтағы атом','2'],['Координац. саны','8'],['Тығыздалу','68 %'],['Параметрлер','a'],['Мысалдар','Fe(α), Cr, W, Na']]},
+  fcc:{overlay:'ҚЦТ · Cu, Al, Au',props:[['Тор','ҚЦТ'],['Ұяшықтағы атом','4'],['Координац. саны','12'],['Тығыздалу','74 %'],['Параметрлер','a'],['Мысалдар','Cu, Al, Au, Ni']]},
+  hcp:{overlay:'ТТО · Mg, Zn, Ti',props:[['Тор','ТТО'],['Ұяшықтағы атом','6'],['Координац. саны','12'],['Тығыздалу','74 %'],['Параметрлер','a, c'],['Мысалдар','Mg, Zn, Ti, Co']]}
+}},
+en:{
+page_title:'Metal Crystal Lattices',header_title:'Metal Crystal Lattices',
+header_sub:'Atom packing in metals<br>click on an atom or item',
+props_title:'Parameters',mode_title:'Lattice type',ctrl_title:'Controls',legend_head:'👆 Click for description',
+mf_bcc:'BCC',mf_fcc:'FCC',mf_hcp:'HCP',
+m_bcc:'body-centered',m_fcc:'face-centered',m_hcp:'hexagonal',
+btn_pause:'⏸ Pause',btn_resume:'▶ Rotate',btn_cell:'📦 Unit cell',btn_coord:'🔗 Coordination (neighbors)',
+leg_atom:'Metal atom',leg_cell:'Unit cell',leg_coord:'Coordination number',leg_packing:'Packing density',leg_bond:'Metallic bond',leg_poly:'Polymorphism',
+hint:'Drag — rotate · <kbd>Scroll</kbd> — zoom · Click — info',
+modes:{
+  bcc:{overlay:'BCC · Fe, W',props:[['Lattice','BCC'],['Atoms per cell','2'],['Coordination','8'],['Packing density','68 %'],['Parameters','a'],['Examples','Fe(α), Cr, W, Na']]},
+  fcc:{overlay:'FCC · Cu, Al, Au',props:[['Lattice','FCC'],['Atoms per cell','4'],['Coordination','12'],['Packing density','74 %'],['Parameters','a'],['Examples','Cu, Al, Au, Ni']]},
+  hcp:{overlay:'HCP · Mg, Zn, Ti',props:[['Lattice','HCP'],['Atoms per cell','6'],['Coordination','12'],['Packing density','74 %'],['Parameters','a, c'],['Examples','Mg, Zn, Ti, Co']]}
+}}
+};
+const LANG=(()=>{const q=new URLSearchParams(location.search).get('lang');return(q&&I18N[q])?q:'ru';})();
+const tr=(key)=>(I18N[LANG]&&I18N[LANG][key])??(I18N.ru[key]);
+function applyStaticI18N(){
+  document.documentElement.lang=LANG;
+  const tv=tr('page_title');if(tv)document.title=tv;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{const v=tr(el.getAttribute('data-i18n'));if(v)el.textContent=v;});
+  document.querySelectorAll('[data-i18n-html]').forEach(el=>{const v=tr(el.getAttribute('data-i18n-html'));if(v)el.innerHTML=v;});
+}
+applyStaticI18N();
+</script>
+
+<script type="importmap">
+{"imports":{"three":"../../libs/vendor/three-0.160.0/three.module.js"}}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+const canvas=document.getElementById('c');
+const renderer=new THREE.WebGLRenderer({canvas,antialias: true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+
+const scene=new THREE.Scene(); scene.background=null;
+const camera=new THREE.PerspectiveCamera(45,innerWidth/innerHeight,0.1,200);
+camera.position.set(0,2.5,15); camera.lookAt(0,0,0);
+
+scene.add(new THREE.AmbientLight(0xffffff,0.66));
+const dL=new THREE.DirectionalLight(0xffffff,1.05); dL.position.set(8,12,10); scene.add(dL);
+const dL2=new THREE.DirectionalLight(0xa5b4fc,0.3); dL2.position.set(-8,-4,-8); scene.add(dL2);
+
+const V=(x,y,z)=>new THREE.Vector3(x,y,z);
+const YUP=V(0,1,0);
+
+const root=new THREE.Group(); scene.add(root);
+const modelGroup=new THREE.Group(); root.add(modelGroup);
+
+const COL={metal:0x64748b, edge:0x94a3b8, ref:0xf59e0b, neighbor:0x3b82f6, bond:0x0d9488};
+
+let atoms=[];          // {mesh,pos}
+let cellGroup=null;    // unit cell edges
+let coordGroup=null;   // coordination bonds
+
+function makeSphere(r,color,opts={}){
+  const m=new THREE.MeshPhongMaterial({color,shininess:opts.shin||70,specular:0xaaaaaa,
+    emissive:opts.emissive||0x000000,emissiveIntensity:opts.emissiveI||0});
+  return new THREE.Mesh(new THREE.SphereGeometry(r,28,20),m);
+}
+function makeCyl(from,to,radius,color,opacity=1){
+  const dir=new THREE.Vector3().subVectors(to,from); const len=dir.length();
+  const m=new THREE.MeshPhongMaterial({color,opacity,transparent:opacity<1,shininess:30});
+  const mesh=new THREE.Mesh(new THREE.CylinderGeometry(radius,radius,len,10),m);
+  mesh.position.addVectors(from,to).multiplyScalar(0.5);
+  if(len>0.001) mesh.quaternion.setFromUnitVectors(YUP,dir.normalize());
+  return mesh;
+}
+
+function addAtom(pos,r){
+  const s=makeSphere(r,COL.metal,{shin:80});
+  s.position.copy(pos); s.userData={type:'atom'};
+  modelGroup.add(s); atoms.push({mesh:s,pos:pos.clone()});
+  return s;
+}
+function addEdges(pairs,color){
+  const g=new THREE.Group();
+  pairs.forEach(([a,b])=> g.add(makeCyl(a,b,0.045,color,0.85)));
+  modelGroup.add(g);
+  return g;
+}
+
+/* ── LATTICE BUILDERS ── */
+function buildBCC(){
+  const h=1.6, r=0.62;
+  const corners=[];
+  for(const x of [-h,h]) for(const y of [-h,h]) for(const z of [-h,h]) corners.push(V(x,y,z));
+  corners.forEach(c=>addAtom(c,r));
+  addAtom(V(0,0,0),r); // body center
+  cellGroup=addEdges(cubeEdges(h),COL.edge);
+}
+function buildFCC(){
+  const h=1.6, r=0.62;
+  const corners=[];
+  for(const x of [-h,h]) for(const y of [-h,h]) for(const z of [-h,h]) corners.push(V(x,y,z));
+  corners.forEach(c=>addAtom(c,r));
+  // 6 face centers
+  [V(h,0,0),V(-h,0,0),V(0,h,0),V(0,-h,0),V(0,0,h),V(0,0,-h)].forEach(c=>addAtom(c,r));
+  cellGroup=addEdges(cubeEdges(h),COL.edge);
+}
+function buildHCP(){
+  const R=1.75, hc=1.45, r=0.6;
+  const top=[], bot=[];
+  for(let k=0;k<6;k++){
+    const a=k*Math.PI/3;
+    top.push(V(R*Math.cos(a),hc,R*Math.sin(a)));
+    bot.push(V(R*Math.cos(a),-hc,R*Math.sin(a)));
+  }
+  top.forEach(c=>addAtom(c,r)); bot.forEach(c=>addAtom(c,r));
+  addAtom(V(0,hc,0),r); addAtom(V(0,-hc,0),r); // hex centers
+  // 3 middle-layer atoms in alternate interstitials
+  const rm=R*0.62;
+  [Math.PI/6, Math.PI/6+2*Math.PI/3, Math.PI/6+4*Math.PI/3].forEach(a=>{
+    addAtom(V(rm*Math.cos(a),0,rm*Math.sin(a)),r);
+  });
+  // edges: top hexagon, bottom hexagon, vertical
+  const pairs=[];
+  for(let k=0;k<6;k++){ pairs.push([top[k],top[(k+1)%6]]); pairs.push([bot[k],bot[(k+1)%6]]); pairs.push([top[k],bot[k]]); }
+  cellGroup=addEdges(pairs,COL.edge);
+}
+function cubeEdges(h){
+  const c=[];
+  for(const x of [-h,h]) for(const y of [-h,h]) for(const z of [-h,h]) c.push(V(x,y,z));
+  // connect corners that differ in exactly one coordinate
+  const pairs=[];
+  for(let i=0;i<c.length;i++) for(let j=i+1;j<c.length;j++){
+    let diff=0;
+    if(Math.abs(c[i].x-c[j].x)>0.01) diff++;
+    if(Math.abs(c[i].y-c[j].y)>0.01) diff++;
+    if(Math.abs(c[i].z-c[j].z)>0.01) diff++;
+    if(diff===1) pairs.push([c[i],c[j]]);
+  }
+  return pairs;
+}
+
+const BUILDERS={bcc:buildBCC,fcc:buildFCC,hcp:buildHCP};
+
+/* ── COORDINATION ── */
+function buildCoordination(){
+  if(coordGroup){ modelGroup.remove(coordGroup); coordGroup=null; }
+  if(atoms.length===0) return;
+  // reference = atom closest to origin
+  let ref=atoms[0], best=Infinity;
+  atoms.forEach(a=>{ const d=a.pos.length(); if(d<best){best=d; ref=a;} });
+  // nearest-neighbour distance
+  let dmin=Infinity;
+  atoms.forEach(a=>{ if(a===ref) return; const d=a.pos.distanceTo(ref.pos); if(d<dmin) dmin=d; });
+  const g=new THREE.Group();
+  atoms.forEach(a=>{
+    if(a===ref) return;
+    if(a.pos.distanceTo(ref.pos) < dmin*1.08){
+      g.add(makeCyl(ref.pos,a.pos,0.07,COL.bond,0.9));
+      a.mesh.material.emissive.setHex(COL.neighbor); a.mesh.material.emissiveIntensity=0.5;
+    }
+  });
+  ref.mesh.material.emissive.setHex(COL.ref); ref.mesh.material.emissiveIntensity=0.6;
+  modelGroup.add(g);
+  coordGroup=g;
+}
+function clearCoordHighlight(){
+  atoms.forEach(a=>{ a.mesh.material.emissive.setHex(0x000000); a.mesh.material.emissiveIntensity=0; });
+  if(coordGroup){ modelGroup.remove(coordGroup); coordGroup=null; }
+}
+
+/* ── PROPS ── */
+function renderProps(mode){
+  const m=(I18N[LANG]||I18N.ru).modes[mode];
+  document.getElementById('props-body').innerHTML=m.props.map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join('');
+  document.getElementById('overlay-name').textContent=m.overlay;
+}
+
+/* ── STATE ── */
+let current='bcc';
+let spinning=true, showCell=true, showCoord=false;
+
+function clearModel(){
+  while(modelGroup.children.length) modelGroup.remove(modelGroup.children[0]);
+  atoms=[]; cellGroup=null; coordGroup=null;
+}
+
+window.switchTo=function(mode){
+  current=mode;
+  document.querySelectorAll('.mode-btn').forEach(b=>b.classList.toggle('sel',b.dataset.id===mode));
+  clearModel();
+  BUILDERS[mode]();
+  cellGroup.visible=showCell;
+  if(showCoord) buildCoordination();
+  renderProps(mode);
+};
+
+window.toggleSpin=function(){
+  spinning=!spinning;
+  const b=document.getElementById('btn-spin');
+  b.classList.toggle('active',spinning);
+  b.querySelector('span').textContent=spinning?tr('btn_pause'):tr('btn_resume');
+};
+window.toggleCell=function(){
+  showCell=!showCell;
+  document.getElementById('btn-cell').classList.toggle('active',showCell);
+  if(cellGroup) cellGroup.visible=showCell;
+};
+window.toggleCoord=function(){
+  showCoord=!showCoord;
+  document.getElementById('btn-coord').classList.toggle('active',showCoord);
+  if(showCoord) buildCoordination(); else clearCoordHighlight();
+};
+
+/* ── INFO DB ── */
+const INFO_ALL={
+ru:{
+  atom:{tag:'Узел решётки',title:'Атом металла',sections:[
+    {h:'Положительный ион в решётке',p:'В металле атомы отдают валентные электроны в общее «электронное облако» и становятся положительными ионами (катионами). Эти ионы располагаются в строго упорядоченных узлах кристаллической решётки.'},
+    {h:'Шары одного размера',p:'Атомы металла одного элемента считают одинаковыми шарами. Задача природы — упаковать эти шары как можно плотнее, поэтому возникают регулярные решётки ОЦК, ГЦК и ГПУ.'},
+    {h:'Радиус и свойства',p:'От типа упаковки и расстояния между атомами зависят плотность, температура плавления, ковкость и электропроводность металла.'}
+  ]},
+  cell:{tag:'Наименьший повтор',title:'Элементарная ячейка',sections:[
+    {h:'Что это',p:'Наименьший «кирпичик», многократным повторением которого в трёх направлениях строится весь кристалл. Параметры ячейки (a, и для ГПУ — c) полностью задают структуру.'},
+    {h:'Сколько атомов в ячейке',p:'Атомы в вершинах и на гранях делятся между соседними ячейками. ОЦК: 8·⅛ + 1 = 2 атома. ГЦК: 8·⅛ + 6·½ = 4 атома. ГПУ — 6 атомов.'},
+    {h:'Зачем считать',p:'Зная число атомов в ячейке и её объём, можно вычислить плотность металла и сравнить её с табличной — классическая задача кристаллохимии.'}
+  ]},
+  coordination:{tag:'Число ближайших соседей',title:'Координационное число',sections:[
+    {h:'Определение',p:'Координационное число (КЧ) — это количество атомов, непосредственно касающихся данного атома (его ближайших соседей на минимальном расстоянии).'},
+    {h:'Значения',p:'ОЦК: КЧ = 8 (центральный атом касается 8 вершин куба). ГЦК и ГПУ: КЧ = 12 — это максимально возможное для шаров одного размера (плотнейшая упаковка).'},
+    {h:'Связь со свойствами',p:'Чем больше КЧ, тем плотнее упаковка и обычно выше пластичность. ГЦК-металлы (Cu, Al, Au) очень ковкие; ГПУ (Zn, Mg) — более хрупкие из-за ограниченного числа плоскостей скольжения.'}
+  ]},
+  packing:{tag:'Доля занятого объёма',title:'Плотность упаковки',sections:[
+    {h:'Что это',p:'Доля объёма ячейки, реально занятая атомами-шарами (остальное — пустоты). Показывает, насколько плотно упакованы атомы.'},
+    {h:'Значения',p:'ОЦК — 68 %. ГЦК и ГПУ — 74 % (это теоретический максимум для одинаковых шаров, плотнейшая упаковка). ГЦК и ГПУ отличаются лишь чередованием слоёв: ABCABC у ГЦК и ABAB у ГПУ.'},
+    {h:'Следствие',p:'При одинаковых атомах ГЦК- и ГПУ-металлы плотнее ОЦК. Поэтому переход железа из ОЦК (α) в ГЦК (γ) при нагреве сопровождается уплотнением структуры.'}
+  ]},
+  bond:{tag:'Природа металла',title:'Металлическая связь',sections:[
+    {h:'Электронный газ',p:'Положительные ионы в узлах решётки погружены в подвижное «облако» обобществлённых электронов. Притяжение ионов к этому облаку и удерживает кристалл — это металлическая связь.'},
+    {h:'Ненаправленность',p:'В отличие от ковалентной, металлическая связь ненаправленная: ионы-шары можно смещать, не разрывая связь. Отсюда ковкость, пластичность и способность вытягиваться в проволоку.'},
+    {h:'Электро- и теплопроводность',p:'Свободные электроны легко переносят заряд и энергию — поэтому металлы хорошо проводят ток и тепло, а также блестят (отражают свет).'}
+  ]},
+  polymorph:{tag:'Один металл — разные решётки',title:'Полиморфизм (аллотропия)',sections:[
+    {h:'Что это',p:'Способность одного и того же металла иметь разные кристаллические решётки при разных температурах. Классический пример — железо.'},
+    {h:'Железо',p:'До 911 °C железо имеет ОЦК-решётку (α-Fe, феррит). Выше — перестраивается в ГЦК (γ-Fe, аустенит), а при ещё более высокой температуре снова в ОЦК (δ-Fe).'},
+    {h:'Зачем это важно',p:'Именно полиморфизм железа лежит в основе закалки и отпуска стали: меняя решётку и растворимость углерода, металлурги управляют твёрдостью и прочностью сплавов.'}
+  ]}
+},
+kz:{
+  atom:{tag:'Тор торабы',title:'Метал атомы',sections:[
+    {h:'Тордағы оң ион',p:'Металда атомдар валенттік электрондарын ортақ «электрон бұлтына» беріп, оң иондарға (катиондарға) айналады. Бұл иондар кристалдық тордың реттелген тораптарында орналасады.'},
+    {h:'Бірдей шарлар',p:'Бір элементтің метал атомдарын бірдей шарлар деп есептейді. Табиғат бұл шарларды мүмкіндігінше тығыз орналастырады, сондықтан КЦТ, ҚЦТ және ТТО торлары пайда болады.'},
+    {h:'Радиус пен қасиеттер',p:'Орналасу түрі мен атомаралық қашықтық металдың тығыздығын, балқу температурасын, иілгіштігі мен электр өткізгіштігін анықтайды.'}
+  ]},
+  cell:{tag:'Ең кіші қайталану',title:'Элементар ұяшық',sections:[
+    {h:'Бұл не',p:'Үш бағытта қайталанғанда бүкіл кристалды құрайтын ең кіші «кірпіш». Ұяшық параметрлері (a, ТТО үшін — c) құрылымды толық анықтайды.'},
+    {h:'Ұяшықтағы атом саны',p:'Төбелердегі және қырлардағы атомдар көрші ұяшықтармен бөлінеді. КЦТ: 8·⅛ + 1 = 2 атом. ҚЦТ: 8·⅛ + 6·½ = 4 атом. ТТО — 6 атом.'},
+    {h:'Не үшін санаймыз',p:'Ұяшықтағы атом санын және оның көлемін біле отырып, металдың тығыздығын есептеуге болады — кристаллохимияның классикалық есебі.'}
+  ]},
+  coordination:{tag:'Жақын көршілер саны',title:'Координациялық сан',sections:[
+    {h:'Анықтамасы',p:'Координациялық сан (КС) — берілген атомға тікелей жанасатын атомдар саны (ең аз қашықтықтағы жақын көршілер).'},
+    {h:'Мәндері',p:'КЦТ: КС = 8 (орталық атом текшенің 8 төбесіне жанасады). ҚЦТ және ТТО: КС = 12 — бұл бірдей шарлар үшін ең үлкен мән (тығыз орналасу).'},
+    {h:'Қасиеттермен байланысы',p:'КС неғұрлым көп болса, орналасу тығыз әрі иілгіштік жоғары. ҚЦТ металдары (Cu, Al, Au) өте иілгіш; ТТО (Zn, Mg) — сырғу жазықтықтары аз болғандықтан сынғыш.'}
+  ]},
+  packing:{tag:'Толтырылған көлем үлесі',title:'Тығыздалу дәрежесі',sections:[
+    {h:'Бұл не',p:'Ұяшық көлемінің атом-шарлармен нақты толтырылған үлесі (қалғаны — қуыстар). Атомдардың қаншалықты тығыз орналасқанын көрсетеді.'},
+    {h:'Мәндері',p:'КЦТ — 68 %. ҚЦТ және ТТО — 74 % (бірдей шарлар үшін теориялық максимум). ҚЦТ мен ТТО тек қабаттардың кезектесуімен ерекшеленеді: ҚЦТ-да ABCABC, ТТО-да ABAB.'},
+    {h:'Салдары',p:'Бірдей атомдарда ҚЦТ және ТТО металдары КЦТ-дан тығыз. Сондықтан темірдің КЦТ (α) күйінен ҚЦТ (γ) күйіне қызғанда өтуі құрылымның тығыздалуымен жүреді.'}
+  ]},
+  bond:{tag:'Метал табиғаты',title:'Металдық байланыс',sections:[
+    {h:'Электрон газы',p:'Тор тораптарындағы оң иондар обобществленный электрондардың қозғалмалы «бұлтына» батырылған. Иондардың осы бұлтқа тартылуы кристалды ұстап тұрады — бұл металдық байланыс.'},
+    {h:'Бағытсыздығы',p:'Коваленттіден айырмашылығы, металдық байланыс бағытсыз: ион-шарларды байланысты үзбей жылжытуға болады. Осыдан иілгіштік, пластикалық және сымға созылу қабілеті.'},
+    {h:'Электр және жылу өткізгіштік',p:'Еркін электрондар зарядты әрі энергияны оңай тасымалдайды — сондықтан металдар токты, жылуды жақсы өткізеді және жылтырайды.'}
+  ]},
+  polymorph:{tag:'Бір метал — әртүрлі тор',title:'Полиморфизм (аллотропия)',sections:[
+    {h:'Бұл не',p:'Бір металдың әртүрлі температурада әртүрлі кристалдық торға ие болу қабілеті. Классикалық мысал — темір.'},
+    {h:'Темір',p:'911 °C-ге дейін темірде КЦТ-тор (α-Fe, феррит). Одан жоғары — ҚЦТ-ға (γ-Fe, аустенит), одан да жоғары температурада қайта КЦТ-ға (δ-Fe) ауысады.'},
+    {h:'Маңызы',p:'Дәл темірдің полиморфизмі болаттың шынықтыруы мен босаңсуының негізі: торды және көміртек ерігіштігін өзгерте отырып, металлургтер қорытпалардың қаттылығын басқарады.'}
+  ]}
+},
+en:{
+  atom:{tag:'Lattice node',title:'Metal Atom',sections:[
+    {h:'Positive ion in the lattice',p:'In a metal, atoms give up their valence electrons into a shared "electron cloud" and become positive ions (cations). These ions occupy strictly ordered nodes of the crystal lattice.'},
+    {h:'Equal spheres',p:'Atoms of one metal are treated as identical spheres. Nature packs these spheres as densely as possible, producing the regular BCC, FCC and HCP lattices.'},
+    {h:'Radius and properties',p:'The packing type and interatomic distance determine the metal\'s density, melting point, malleability and electrical conductivity.'}
+  ]},
+  cell:{tag:'Smallest repeat',title:'Unit Cell',sections:[
+    {h:'What it is',p:'The smallest "brick" that, repeated in three directions, builds the whole crystal. The cell parameters (a, and c for HCP) fully define the structure.'},
+    {h:'Atoms per cell',p:'Atoms at corners and faces are shared between neighbouring cells. BCC: 8·⅛ + 1 = 2 atoms. FCC: 8·⅛ + 6·½ = 4 atoms. HCP — 6 atoms.'},
+    {h:'Why count them',p:'Knowing the number of atoms per cell and its volume lets you calculate the metal\'s density — a classic crystal-chemistry problem.'}
+  ]},
+  coordination:{tag:'Number of nearest neighbours',title:'Coordination Number',sections:[
+    {h:'Definition',p:'The coordination number (CN) is how many atoms directly touch a given atom — its nearest neighbours at the minimum distance.'},
+    {h:'Values',p:'BCC: CN = 8 (the central atom touches the 8 cube corners). FCC and HCP: CN = 12 — the maximum possible for equal spheres (close packing).'},
+    {h:'Link to properties',p:'A higher CN means denser packing and usually greater ductility. FCC metals (Cu, Al, Au) are very malleable; HCP ones (Zn, Mg) are more brittle due to fewer slip planes.'}
+  ]},
+  packing:{tag:'Fraction of volume filled',title:'Packing Density',sections:[
+    {h:'What it is',p:'The fraction of the cell volume actually filled by the sphere-atoms (the rest is empty space). It shows how tightly the atoms are packed.'},
+    {h:'Values',p:'BCC — 68 %. FCC and HCP — 74 % (the theoretical maximum for equal spheres, close packing). FCC and HCP differ only in layer stacking: ABCABC for FCC, ABAB for HCP.'},
+    {h:'Consequence',p:'For equal atoms, FCC and HCP metals are denser than BCC. So iron\'s transition from BCC (α) to FCC (γ) on heating compacts the structure.'}
+  ]},
+  bond:{tag:'Nature of a metal',title:'Metallic Bond',sections:[
+    {h:'Electron gas',p:'The positive ions at the lattice nodes are immersed in a mobile "cloud" of shared electrons. The attraction of the ions to this cloud holds the crystal together — that is the metallic bond.'},
+    {h:'Non-directional',p:'Unlike a covalent bond, the metallic bond is non-directional: sphere-ions can be shifted without breaking it. Hence malleability, ductility and the ability to be drawn into wire.'},
+    {h:'Conductivity',p:'Free electrons easily carry charge and energy — so metals conduct electricity and heat well and are shiny (they reflect light).'}
+  ]},
+  polymorph:{tag:'One metal — different lattices',title:'Polymorphism (allotropy)',sections:[
+    {h:'What it is',p:'The ability of the same metal to adopt different crystal lattices at different temperatures. The classic example is iron.'},
+    {h:'Iron',p:'Below 911 °C iron is BCC (α-Fe, ferrite). Above it, it rearranges into FCC (γ-Fe, austenite), and at still higher temperature back into BCC (δ-Fe).'},
+    {h:'Why it matters',p:'Iron\'s polymorphism underlies the hardening and tempering of steel: by changing the lattice and carbon solubility, metallurgists control the hardness of alloys.'}
+  ]}
+}
+};
+const INFO=INFO_ALL[LANG]||INFO_ALL.ru;
+const TAGC={atom:{bg:'rgba(100,116,139,0.16)',c:'#475569'},cell:{bg:'rgba(148,163,184,0.18)',c:'#475569'},
+  coordination:{bg:'rgba(59,130,246,0.14)',c:'#2563eb'},packing:{bg:'rgba(245,158,11,0.16)',c:'#b45309'},
+  bond:{bg:'rgba(13,148,136,0.14)',c:'#0f766e'},polymorph:{bg:'rgba(239,68,68,0.14)',c:'#dc2626'}};
+
+window.openInfo=function(type){
+  const d=INFO[type]; if(!d) return;
+  const tagEl=document.getElementById('info-tag');
+  tagEl.textContent=d.tag;
+  const c=TAGC[type]||TAGC.atom;
+  tagEl.style.background=c.bg; tagEl.style.color=c.c;
+  document.getElementById('info-title').textContent=d.title;
+  document.getElementById('info-body').innerHTML=d.sections.map(s=>`<div class="info-section"><h4>${s.h}</h4><p>${s.p}</p></div>`).join('');
+  document.getElementById('info-panel').classList.add('open');
+};
+window.closeInfo=function(){document.getElementById('info-panel').classList.remove('open');};
+
+/* ── RAYCAST ── */
+const raycaster=new THREE.Raycaster();
+const mouse=new THREE.Vector2();
+canvas.addEventListener('click',e=>{
+  if(isDragging) return;
+  mouse.x=(e.clientX/innerWidth)*2-1; mouse.y=-(e.clientY/innerHeight)*2+1;
+  raycaster.setFromCamera(mouse,camera);
+  const hits=raycaster.intersectObjects(atoms.map(a=>a.mesh),true);
+  if(hits.length>0) openInfo('atom');
+});
+
+/* ── DRAG + ZOOM ── */
+let isDragging=false,dragStart=null,lastMouse={x:0,y:0},dragDelta=0,rotX=0.12;
+canvas.addEventListener('mousedown',e=>{dragStart={x:e.clientX,y:e.clientY};lastMouse={x:e.clientX,y:e.clientY};isDragging=false;dragDelta=0;});
+canvas.addEventListener('mousemove',e=>{
+  if(!dragStart) return;
+  dragDelta=Math.hypot(e.clientX-dragStart.x,e.clientY-dragStart.y);
+  if(dragDelta>4) isDragging=true;
+  if(isDragging){
+    root.rotation.y+=(e.clientX-lastMouse.x)*0.011;
+    rotX=Math.max(-0.9,Math.min(0.9,rotX+(e.clientY-lastMouse.y)*0.009));
+    root.rotation.x=rotX;
+  }
+  lastMouse={x:e.clientX,y:e.clientY};
+});
+canvas.addEventListener('mouseup',()=>{dragStart=null;});
+canvas.addEventListener('mouseleave',()=>{dragStart=null;isDragging=false;});
+canvas.addEventListener('wheel',e=>{e.preventDefault();camera.position.z=Math.max(8,Math.min(26,camera.position.z+e.deltaY*0.02));},{passive:false});
+window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+
+/* ── LOOP ── */
+function animate(){
+  requestAnimationFrame(animate);
+  if(spinning) root.rotation.y+=0.004;
+  root.rotation.x=rotX;
+  renderer.render(scene,camera);
+}
+
+// init
+root.rotation.x=rotX;
+switchTo('bcc');
+animate();
+</script>
+</body>
+</html>

@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="page_title">Лягушка — анатомическая модель</title>
+    <link rel="stylesheet" href="_poster.css">
+</head>
+<body>
+<div id="canvas-container"></div>
+<div id="header">
+    <h1 data-i18n="header_title">Лягушка</h1>
+    <p data-i18n="header_subtitle">Интерактивная модель — 6 анатомических зон</p>
+</div>
+<div id="hint" data-i18n="hint">Кликните по любой части тела, чтобы узнать больше</div>
+<button id="reset-btn" data-i18n="reset_btn" data-i18n-title="reset_btn_title" title="Сбросить вид">↺ Сбросить вид</button>
+<div id="info-panel" aria-hidden="true"></div>
+<div id="legend"></div>
+<div id="hover-label"></div>
+<div id="loading"><div class="spinner"></div><div id="loading-text" data-i18n="loading">Загрузка модели…</div></div>
+
+<script type="importmap">
+    { "imports": { "three": "../../libs/vendor/three-0.160.0/three.module.js", "three/addons/": "../../libs/vendor/three-0.160.0/addons/" } }
+</script>
+
+<script type="module">
+    import { initPoster } from './_poster_lib.js';
+
+    const I18N = {
+        ru: {
+            page_title: 'Лягушка — анатомическая модель',
+            header_title: 'Лягушка',
+            header_subtitle: 'Интерактивная модель — 6 анатомических зон',
+            hint: 'Кликните по любой части тела, чтобы узнать больше',
+            reset_btn: '↺ Сбросить вид', reset_btn_title: 'Сбросить вид', close_btn_label: 'Закрыть',
+            loading: 'Загрузка модели…', error_load: 'Не удалось загрузить frog.glb', error_no_mesh: 'В модели нет меша',
+            facts_label: 'Интересный факт',
+            zones: {
+                head: { title: 'Голова', desc: 'Широкая, треугольная голова с большой ротовой щелью. На верхней челюсти расположены мелкие зубы, на нижней зубов нет. Лягушка глотает добычу целиком, помогая глазами — она вдавливает их внутрь черепа, проталкивая еду в глотку.', facts: 'Лягушка использует свои глаза, чтобы глотать пищу — они опускаются в череп и буквально проталкивают добычу в горло.' },
+                eyes: { title: 'Глаза', desc: 'Крупные выпуклые глаза, расположенные на макушке, обеспечивают почти круговой обзор. Защищены тремя веками: верхним, нижним и прозрачным мигательным (никитирующая мембрана), которое закрывает глаз под водой.', facts: 'Лягушка может видеть одновременно вперёд, вверх и в стороны на 180°. Она отлично различает движение, но плохо видит неподвижные объекты.' },
+                forelegs: { title: 'Передние лапы', desc: 'Короткие передние конечности с 4 пальцами без перепонок. Используются для опоры, амортизации при приземлении после прыжка, а у самцов в период размножения — для удержания самки (брачные мозоли).', facts: 'У самцов лягушек в брачный период вырастают тёмные мозоли на больших пальцах передних лап — это нужно, чтобы крепко удерживать самку.' },
+                hindlegs: { title: 'Задние лапы', desc: 'Длинные, мощные задние конечности — главное оружие лягушки. 5 пальцев соединены плавательными перепонками. Длина задних ног может в 2 раза превышать длину тела, позволяя совершать прыжки до 2 м.', facts: 'Лягушка-бык может прыгать на расстояние, в 10 раз превышающее её собственную длину — это как если бы человек прыгал на 17 м.' },
+                body: { title: 'Туловище', desc: 'Короткое, без выраженной шеи. Кожа голая, влажная, обильно покрытая железами, выделяющими слизь. Она участвует в дыхании: до 50% кислорода поступает прямо через кожу, особенно во время зимовки под водой.', facts: 'Лягушка дышит через кожу — поэтому она должна оставаться постоянно влажной. На суше при пересыхании лягушка погибает от удушья.' },
+                spine: { title: 'Позвоночник', desc: 'Очень короткий по сравнению с другими позвоночными — всего 9 позвонков. Заканчивается длинной костью уростилем (сросшиеся хвостовые позвонки), которая придаёт жёсткость задней части тела при прыжках.', facts: 'У лягушки нет хвоста, но эволюционно от него осталась длинная кость — уростиль, которая работает как пружина при прыжке.' }
+            }
+        },
+        kz: {
+            page_title: 'Бақа — анатомиялық модель',
+            header_title: 'Бақа',
+            header_subtitle: 'Интерактивті модель — 6 анатомиялық аймақ',
+            hint: 'Толығырақ білу үшін дененің кез келген бөлігіне басыңыз',
+            reset_btn: '↺ Көріністі қалпына келтіру', reset_btn_title: 'Көріністі қалпына келтіру', close_btn_label: 'Жабу',
+            loading: 'Модель жүктелуде…', error_load: 'frog.glb файлын жүктеу мүмкін болмады', error_no_mesh: 'Модельде меш табылмады',
+            facts_label: 'Қызықты факт',
+            zones: {
+                head: { title: 'Бас', desc: 'Үлкен ауыз саңылауы бар үшбұрышты ені бас. Үстіңгі жақта майда тістер, астыңғы жақта тіс жоқ. Бақа олжасын тұтасымен жұтады, бұл үшін көздерін бас сүйегіне қарай батырып, тағамды жұтқыншаққа итереді.', facts: 'Бақа тағамды жұту үшін көздерін пайдаланады — олар бас сүйекке түсіп, олжаны жұтқыншаққа қарай итереді.' },
+                eyes: { title: 'Көздер', desc: 'Бастың төбесінде орналасқан ірі дөңес көздер шеңбер тәрізді шолу береді. Үш қабақпен қорғалған: үстіңгі, астыңғы және мөлдір мигай қабақ.', facts: 'Бақа алдын, жоғарын және 180°-қа бүйірлерін бір мезгілде көре алады. Қозғалысты жақсы ажыратады, ал қозғалмайтын заттарды нашар көреді.' },
+                forelegs: { title: 'Алдыңғы аяқтар', desc: 'Перделері жоқ 4 саусақты қысқа алдыңғы аяқтар. Секіруден кейінгі қону кезінде амортизация үшін, ал еркектерде көбею кезеңінде ұрғашысын ұстауға қолданылады.', facts: 'Көбею кезеңінде еркек бақалардың алдыңғы аяғының бас бармағында қара мозольдер пайда болады — бұл ұрғашысын мықтап ұстау үшін қажет.' },
+                hindlegs: { title: 'Артқы аяқтар', desc: 'Ұзын, қуатты артқы аяқтар — бақаның басты қаруы. 5 саусақты жүзу перделерімен жалғаған. Артқы аяқтарының ұзындығы дене ұзындығынан 2 есе көп болуы мүмкін, бұл 2 м-ге дейін секіруге мүмкіндік береді.', facts: 'Бақа-бұқа өзінің ұзындығынан 10 есе ұзақ қашықтыққа секіре алады — бұл адам 17 м-ге секіргенімен бірдей.' },
+                body: { title: 'Тұлға', desc: 'Қысқа, мойны айқын емес. Тері жалаңаш, ылғал, шырыш шығаратын бездермен жабылған. Ол тыныс алуға қатысады: оттегінің 50%-ы тікелей тері арқылы өтеді.', facts: 'Бақа тері арқылы тыныс алады — сондықтан тұрақты түрде ылғал болуы керек. Кепкенде бақа тұншығып өледі.' },
+                spine: { title: 'Омыртқа жотасы', desc: 'Басқа омыртқалылармен салыстырғанда өте қысқа — небәрі 9 омыртқа. Уростиль деген ұзын сүйекпен аяқталады (біріккен құйрық омыртқалар), ол секіру кезінде дененің артқы бөлігіне қаттылық береді.', facts: 'Бақаның құйрығы жоқ, бірақ эволюциялық тұрғыдан одан секіру кезінде серіппе ретінде жұмыс істейтін ұзын уростиль сүйегі қалған.' }
+            }
+        },
+        en: {
+            page_title: 'Frog — Anatomical Model',
+            header_title: 'Frog',
+            header_subtitle: 'Interactive model — 6 anatomical zones',
+            hint: 'Click any part of the body to learn more',
+            reset_btn: '↺ Reset view', reset_btn_title: 'Reset view', close_btn_label: 'Close',
+            loading: 'Loading model…', error_load: 'Failed to load frog.glb', error_no_mesh: 'No mesh found in the model',
+            facts_label: 'Did you know?',
+            zones: {
+                head: { title: 'Head', desc: 'A broad, triangular head with a wide mouth. Small teeth line the upper jaw; the lower jaw is toothless. The frog swallows prey whole, helped by its eyes — it presses them into the skull, pushing food into the throat.', facts: 'A frog uses its eyes to swallow — they retract into the skull and literally push prey down the throat.' },
+                eyes: { title: 'Eyes', desc: 'Large bulging eyes on top of the head provide near-panoramic vision. Protected by three eyelids: upper, lower, and a transparent nictitating membrane that covers the eye underwater.', facts: 'Frogs can see forward, upward, and sideways through 180° simultaneously. They detect movement excellently but see stationary objects poorly.' },
+                forelegs: { title: 'Forelegs', desc: 'Short forelimbs with 4 toes without webbing. Used for support and shock absorption when landing after a jump. In males during breeding — for clasping the female (nuptial pads).', facts: 'During breeding season, male frogs develop dark nuptial pads on the thumbs of the forelegs — needed to firmly grip the female.' },
+                hindlegs: { title: 'Hindlegs', desc: 'Long, powerful hindlimbs — the frog\'s main weapon. 5 toes connected by swimming webs. Hindleg length can be twice the body length, allowing jumps up to 2 m.', facts: 'A bullfrog can jump 10 times its own body length — like a human jumping 17 m.' },
+                body: { title: 'Body (Torso)', desc: 'Short, with no distinct neck. Bare moist skin with abundant glands secreting mucus. Skin participates in breathing: up to 50% of oxygen enters directly through the skin.', facts: 'Frogs breathe through their skin — so it must stay constantly moist. On dry land a frog dies of suffocation.' },
+                spine: { title: 'Spine', desc: 'Very short compared to other vertebrates — only 9 vertebrae. Ends with a long bone called the urostyle (fused tail vertebrae), which gives rigidity to the rear body during jumps.', facts: 'A frog has no tail, but evolutionarily a long bone — the urostyle — remains and works like a spring when jumping.' }
+            }
+        }
+    };
+
+    const ZONES = [
+        { id: 'head',     subtitle: 'Caput',           color: 0xff6b6b },
+        { id: 'eyes',     subtitle: 'Oculi',           color: 0xffd93d },
+        { id: 'forelegs', subtitle: 'Membra anteriora', color: 0x6bcb77 },
+        { id: 'hindlegs', subtitle: 'Membra posteriora', color: 0xff9f45 },
+        { id: 'body',     subtitle: 'Truncus',         color: 0x4d96ff },
+        { id: 'spine',    subtitle: 'Columna vertebralis', color: 0xc77dff }
+    ];
+    const SEEDS = {
+    "head": [
+        [-0.408, -0.633, 0.846],
+        [0.395, -0.589, 0.608],
+        [-0.425, -0.579, 0.559],
+        [0.454, -0.631, 0.887],
+        [0.223, -0.029, 0.631],
+        [-0.301, 0.071, 0.641],
+        [0.239, 0.455, 0.775],
+        [-0.204, 0.478, 0.814]
+    ],
+    "eyes": [
+        [-0.345, 0.372, 0.367],
+        [-0.301, 0.399, 0.257],
+        [-0.217, 0.489, 0.383],
+        [-0.113, 0.497, 0.279],
+        [0.059, 0.519, 0.334],
+        [0.272, 0.421, 0.253],
+        [0.271, 0.463, 0.396],
+        [0.357, 0.357, 0.35]
+    ],
+    "forelegs": [
+        [-0.826, -0.625, 0.078],
+        [-0.512, -0.239, 0.263],
+        [-0.512, -0.519, 0.374],
+        [-0.456, 0.119, 0.219],
+        [0.433, 0.194, 0.219],
+        [0.51, -0.415, 0.333],
+        [0.522, -0.166, 0.253],
+        [0.853, -0.625, 0.094]
+    ],
+    "hindlegs": [
+        [-0.66, -0.183, -0.487],
+        [-0.655, -0.571, -0.417],
+        [-0.365, 0.079, -0.474],
+        [-0.457, -0.374, -0.923],
+        [0.405, -0.277, -0.981],
+        [0.557, -0.49, -0.792],
+        [0.425, 0.019, -0.481],
+        [0.682, -0.543, -0.36]
+    ],
+    "body": [
+        [-0.069, -0.007, -0.849],
+        [0.121, 0.088, -0.741],
+        [-0.068, 0.214, -0.613],
+        [0.023, 0.358, -0.429],
+        [-0.433, 0.202, -0.099],
+        [0.005, 0.418, -0.138],
+        [0.437, 0.202, -0.09],
+        [-0.055, 0.434, 0.094]
+    ],
+    "spine": [
+        [-0.766, -0.609, -0.115],
+        [-0.506, -0.457, -0.121],
+        [-0.2, -0.507, 0.36],
+        [-0.001, -0.421, -0.714],
+        [0.17, -0.486, 0.308],
+        [0.361, -0.382, -0.147],
+        [0.599, -0.633, -0.095],
+        [0.812, -0.566, -0.125]
+    ]
+};
+
+    initPoster({ modelFile: 'frog.glb', zones: ZONES, seeds: SEEDS, i18n: I18N });
+</script>
+</body>
+</html>

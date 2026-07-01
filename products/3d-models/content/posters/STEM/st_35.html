@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Логические вентили</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { width: 100%; height: 100%; overflow: hidden; }
+        body { font-family: 'Segoe UI','Inter',system-ui,sans-serif; background: linear-gradient(135deg,#eef3fb 0%,#e6edf8 100%); color:#16233f; }
+        #canvas-container { position: absolute; inset: 0; }
+        #labels { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+        .label3d { position: absolute; transform: translate(-50%,-50%); font-size: 13px; font-weight: 800; padding: 2px 9px; border-radius: 7px; background: rgba(255,255,255,0.93); border: 1.5px solid rgba(150,170,205,0.6); box-shadow: 0 2px 8px rgba(40,60,110,0.16); white-space: nowrap; }
+        .label3d.hi { color:#16a34a; border-color:#9be0b0; } .label3d.lo { color:#94a3b8; }
+
+        .header { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); text-align: center; z-index: 6; pointer-events: none; width: 92%; }
+        .header h1 { font-size: 25px; font-weight: 800; color:#1b2a4a; text-shadow: 0 1px 0 rgba(255,255,255,0.7); }
+        .header p { font-size: 13.5px; color:#5a6b8c; margin-top: 4px; font-weight: 600; }
+
+        .panel { position: absolute; z-index: 7; background: rgba(255,255,255,0.82);   border: 1px solid rgba(150,170,205,0.5); border-radius: 16px; box-shadow: 0 10px 34px rgba(40,60,110,0.14); }
+        .control-panel { top: 88px; left: 22px; width: 314px; padding: 16px 18px; }
+        .info-panel { top: 88px; right: 22px; width: 280px; padding: 16px 18px; }
+
+        .sec-title { font-size: 12px; font-weight: 800; color:#33405e; text-transform: uppercase; letter-spacing: 0.6px; margin: 4px 0 8px; }
+        .gate-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-bottom: 12px; }
+        .gate-btn { padding: 9px 6px; border-radius: 9px; border: 1.5px solid rgba(150,170,205,0.6); background: rgba(255,255,255,0.55); color:#44537a; font-size: 12.5px; font-weight: 800; cursor: pointer; transition: all 0.16s; text-align:center; }
+        .gate-btn.active { background: linear-gradient(135deg,#2563eb,#1d4ed8); color:#fff; border-color:#2563eb; box-shadow:0 4px 12px rgba(37,99,235,0.28); }
+
+        .input-row { display:flex; gap:10px; margin-bottom: 12px; }
+        .in-toggle { flex:1; padding: 12px 6px; border-radius: 12px; border: 2px solid rgba(150,170,205,0.6); background: rgba(255,255,255,0.55); cursor:pointer; text-align:center; transition: all 0.16s; }
+        .in-toggle .nm { font-size: 12px; font-weight:700; color:#5a6b8c; }
+        .in-toggle .bit { font-size: 26px; font-weight: 900; font-family:'Consolas',monospace; color:#94a3b8; line-height:1; margin-top:3px; }
+        .in-toggle.on { border-color:#16a34a; background: rgba(22,163,74,0.12); }
+        .in-toggle.on .bit { color:#16a34a; }
+        .in-toggle.dis { opacity:0.35; pointer-events:none; }
+
+        .toggle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .toggle-btn { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 9px 6px; border-radius: 10px; border: 1.5px solid rgba(150,170,205,0.6); background: rgba(255,255,255,0.55); color:#44537a; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.16s; }
+        .toggle-btn .dot { width: 9px; height: 9px; border-radius: 50%; background:#b7c2d8; transition: all 0.16s; }
+        .toggle-btn.active { background: rgba(37,99,235,0.12); border-color:#2563eb; color:#1b2a4a; }
+        .toggle-btn.active .dot { background:#2563eb; box-shadow: 0 0 7px rgba(37,99,235,0.8); }
+
+        .info-title { font-size: 15px; font-weight: 800; color:#1b2a4a; margin-bottom: 8px; display: flex; align-items: center; gap: 7px; }
+        .expr { text-align:center; font-size: 19px; font-weight: 800; color:#1d4ed8; font-family:'Cambria Math','Times New Roman',serif; padding: 8px; background: rgba(37,99,235,0.08); border-radius: 10px; margin-bottom: 11px; }
+        table.tt { width:100%; border-collapse: collapse; font-family:'Consolas',monospace; }
+        table.tt th, table.tt td { text-align:center; padding: 6px 4px; font-size: 13.5px; }
+        table.tt th { color:#5a6b8c; font-weight:700; border-bottom: 2px solid rgba(150,170,205,0.45); }
+        table.tt td { color:#33405e; font-weight:800; border-bottom: 1px solid rgba(150,170,205,0.25); }
+        table.tt tr.cur td { background: rgba(37,99,235,0.14); color:#1b2a4a; }
+        table.tt td.q1 { color:#16a34a; } table.tt td.q0 { color:#cbd5e1; }
+
+        .formula-panel { position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 7; background: rgba(27,42,74,0.93); color:#eaf0fb; padding: 10px 22px; border-radius: 13px; box-shadow: 0 10px 30px rgba(20,35,70,0.34); text-align: center; max-width: 76%; }
+        .formula { font-size: 15px; font-weight: 600; }
+        .formula-note { font-size: 12px; color:#9fb2d8; margin-top: 4px; }
+        .hint { position: absolute; bottom: 16px; left: 22px; z-index: 7; font-size: 12px; color:#5a6b8c; background: rgba(255,255,255,0.72); padding: 7px 13px; border-radius: 9px; border: 1px solid rgba(150,170,205,0.45); }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div id="labels"></div>
+
+    <div class="header">
+        <h1>🔲 Логические вентили</h1>
+        <p><span id="h-sub">AND · OR · NOT · XOR … • входы A,B → выход Q</span></p>
+    </div>
+
+    <div class="panel control-panel">
+        <div class="sec-title" data-i18n="gatesTitle">Выберите вентиль</div>
+        <div class="gate-grid" id="gate-grid"></div>
+
+        <div class="sec-title" data-i18n="inputsTitle">Входы (нажмите)</div>
+        <div class="input-row">
+            <div class="in-toggle on" id="in-a"><div class="nm">A</div><div class="bit">1</div></div>
+            <div class="in-toggle" id="in-b"><div class="nm">B</div><div class="bit">0</div></div>
+        </div>
+
+        <div class="toggle-grid">
+            <button class="toggle-btn active" id="t-flow"><span class="dot"></span><span data-i18n="tFlow">Поток сигнала</span></button>
+            <button class="toggle-btn active" id="t-labels"><span class="dot"></span><span data-i18n="tLabels">Подписи</span></button>
+        </div>
+    </div>
+
+    <div class="panel info-panel">
+        <div class="info-title">📋 <span data-i18n="infoTitle">Таблица истинности</span></div>
+        <div class="expr" id="expr">Q = A · B</div>
+        <table class="tt" id="tt"></table>
+    </div>
+
+    <div class="formula-panel">
+        <div class="formula" id="verdict">A=1, B=0 → Q=0</div>
+        <div class="formula-note" id="gate-desc" data-i18n="dAnd">AND: выход 1 только если ОБА входа равны 1</div>
+    </div>
+
+    <div class="hint"><span data-i18n="hint">ЛКМ — вращение • ПКМ — перемещение • Колесо — зум</span></div>
+
+    <script src="../../libs/vendor/three-r128/three.min.js"></script>
+    <script>
+    const LANG = (new URLSearchParams(window.location.search).get('lang')) || 'ru';
+    const I18N = {
+        ru: { headH:'🔲 Логические вентили', headS:'AND · OR · NOT · XOR … • входы A,B → выход Q',
+              gatesTitle:'Выберите вентиль', inputsTitle:'Входы (нажмите)', tFlow:'Поток сигнала', tLabels:'Подписи', infoTitle:'Таблица истинности',
+              hint:'ЛКМ — вращение • ПКМ — перемещение • Колесо — зум',
+              dAnd:'AND (И): выход 1 только если ОБА входа равны 1', dOr:'OR (ИЛИ): выход 1, если хотя бы один вход равен 1',
+              dNot:'NOT (НЕ): инвертор — выход противоположен входу', dNand:'NAND (И-НЕ): инверсия AND', dNor:'NOR (ИЛИ-НЕ): инверсия OR',
+              dXor:'XOR (исключающее ИЛИ): 1, если входы РАЗНЫЕ', dXnor:'XNOR: 1, если входы ОДИНАКОВЫЕ',
+              lA:'Вход A', lB:'Вход B', lQ:'Выход Q', high:'ВЫС (1)', low:'НИЗ (0)' },
+        kz: { headH:'🔲 Логикалық вентильдер', headS:'AND · OR · NOT · XOR … • кірістер A,B → шығыс Q',
+              gatesTitle:'Вентильді таңдаңыз', inputsTitle:'Кірістер (басыңыз)', tFlow:'Сигнал ағыны', tLabels:'Жазулар', infoTitle:'Ақиқат кестесі',
+              hint:'СБ — айналдыру • ОБ — жылжыту • Дөңгелек — масштаб',
+              dAnd:'AND (ЖӘНЕ): шығыс 1 тек ЕКЕУІ де 1 болғанда', dOr:'OR (НЕМЕСЕ): кемі біреуі 1 болса, шығыс 1',
+              dNot:'NOT (ЕМЕС): инвертор — шығыс кіріске кері', dNand:'NAND: AND инверсиясы', dNor:'NOR: OR инверсиясы',
+              dXor:'XOR: кірістер ӘРТҮРЛІ болса 1', dXnor:'XNOR: кірістер БІРДЕЙ болса 1',
+              lA:'Кіріс A', lB:'Кіріс B', lQ:'Шығыс Q', high:'ЖОҒ (1)', low:'ТӨМ (0)' },
+        en: { headH:'🔲 Logic Gates', headS:'AND · OR · NOT · XOR … • inputs A,B → output Q',
+              gatesTitle:'Choose a gate', inputsTitle:'Inputs (click)', tFlow:'Signal flow', tLabels:'Labels', infoTitle:'Truth table',
+              hint:'LMB — rotate • RMB — pan • Wheel — zoom',
+              dAnd:'AND: output 1 only if BOTH inputs are 1', dOr:'OR: output 1 if at least one input is 1',
+              dNot:'NOT: inverter — output is the opposite of the input', dNand:'NAND: inverted AND', dNor:'NOR: inverted OR',
+              dXor:'XOR (exclusive OR): 1 if inputs DIFFER', dXnor:'XNOR: 1 if inputs are the SAME',
+              lA:'Input A', lB:'Input B', lQ:'Output Q', high:'HIGH (1)', low:'LOW (0)' },
+    };
+    const L = I18N[LANG] || I18N.ru;
+
+    const GATES = {
+        and:  { inputs:2, family:'and', bubble:false, fn:(a,b)=>a&&b,        expr:'Q = A · B',     desc:'dAnd' },
+        or:   { inputs:2, family:'or',  bubble:false, fn:(a,b)=>a||b,        expr:'Q = A + B',     desc:'dOr' },
+        not:  { inputs:1, family:'not', bubble:true,  fn:(a)=>!a,            expr:'Q = ¬A',        desc:'dNot' },
+        nand: { inputs:2, family:'and', bubble:true,  fn:(a,b)=>!(a&&b),     expr:'Q = ¬(A · B)',  desc:'dNand' },
+        nor:  { inputs:2, family:'or',  bubble:true,  fn:(a,b)=>!(a||b),     expr:'Q = ¬(A + B)',  desc:'dNor' },
+        xor:  { inputs:2, family:'xor', bubble:false, fn:(a,b)=>a!==b,       expr:'Q = A ⊕ B',     desc:'dXor' },
+        xnor: { inputs:2, family:'xor', bubble:true,  fn:(a,b)=>a===b,       expr:'Q = ¬(A ⊕ B)',  desc:'dXnor' },
+    };
+    const ORDER = ['and','or','not','nand','nor','xor','xnor'];
+    let gate = 'and', A = true, B = false, Q = false;
+    let showFlow = true, showLabels = true;
+
+    let scene, camera, renderer, root, gateMesh, bubbleMesh, xorArc;
+    let wireA, wireB, wireQ, ledA, ledB, ledQ, swA, swB;
+    let dotsA=[], dotsB=[], dotsQ=[];
+    const labelDefs = [];
+    const clock = new THREE.Clock();
+    const container = document.getElementById('canvas-container');
+    const labelLayer = document.getElementById('labels');
+    const raycaster = new THREE.Raycaster();
+    const ndc = new THREE.Vector2();
+
+    let camTheta = Math.PI/2, camPhi = 1.32, camRadius = 13;
+    const camTarget = new THREE.Vector3(0, 0, 0);
+    let dragMode = 0, lastX = 0, lastY = 0, downX=0, downY=0;
+
+    const GATE_X = 0, OUT_X = 3.0, IN_X = -4.2, AY = 0.85, BY = -0.85;
+    const HI = 0x16a34a, LO = 0xcbd5e1;
+
+    function init() {
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xeef3fb);
+        camera = new THREE.PerspectiveCamera(46, window.innerWidth/window.innerHeight, 0.1, 200);
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        container.appendChild(renderer.domElement);
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+        const key = new THREE.DirectionalLight(0xffffff, 0.55); key.position.set(4,8,12); scene.add(key);
+        const fill = new THREE.DirectionalLight(0xbcd4ff, 0.3); fill.position.set(-6,4,6); scene.add(fill);
+
+        root = new THREE.Group(); scene.add(root);
+        buildWiresAndIO();
+        buildGate(gate);
+        buildGateButtons();
+        makeLabels();
+        applyI18N();
+        setupControls();
+        compute();
+        updateCamera();
+        animate();
+    }
+    function mat(c,m,r,o){ return new THREE.MeshStandardMaterial(Object.assign({color:c,metalness:m,roughness:r},o||{})); }
+
+    function makeWire(pts){
+        const g = new THREE.BufferGeometry().setFromPoints(pts);
+        return new THREE.Line(g, new THREE.LineBasicMaterial({ color: LO, linewidth:2 }));
+    }
+    function makeDots(n){ const arr=[]; for(let i=0;i<n;i++){ const d=new THREE.Mesh(new THREE.SphereGeometry(0.11,10,8), new THREE.MeshBasicMaterial({color:HI})); d.visible=false; root.add(d); arr.push(d); } return arr; }
+
+    function buildWiresAndIO() {
+        // input switches
+        swA = buildSwitch(IN_X, AY); swB = buildSwitch(IN_X, BY);
+        ledA = swA.led; ledB = swB.led;
+        // output LED/lamp
+        const outG = new THREE.Group(); outG.position.set(OUT_X+1.6, 0, 0); root.add(outG);
+        const socket = new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.34,0.4,18), mat(0x556070,0.5,0.4)); socket.rotation.z=Math.PI/2; socket.position.x=-0.3; outG.add(socket);
+        ledQ = new THREE.Mesh(new THREE.SphereGeometry(0.42,24,18), new THREE.MeshStandardMaterial({color:0xdfe6ef, emissive:0x222, emissiveIntensity:0, roughness:0.3})); outG.add(ledQ);
+
+        // wires (rebuilt paths fixed; A/B from switch to gate input, Q from gate to LED)
+        wireA = makeWire([ new THREE.Vector3(IN_X+0.5,AY,0), new THREE.Vector3(-1.5,AY,0), new THREE.Vector3(-1.1,0.5,0) ]); root.add(wireA);
+        wireB = makeWire([ new THREE.Vector3(IN_X+0.5,BY,0), new THREE.Vector3(-1.5,BY,0), new THREE.Vector3(-1.1,-0.5,0) ]); root.add(wireB);
+        wireQ = makeWire([ new THREE.Vector3(1.6,0,0), new THREE.Vector3(OUT_X+1.3,0,0) ]); root.add(wireQ);
+        dotsA = makeDots(5); dotsB = makeDots(5); dotsQ = makeDots(5);
+
+        labelDefs.push({ key:'lA', kind:'A', pos:new THREE.Vector3(IN_X, AY+0.7,0) });
+        labelDefs.push({ key:'lB', kind:'B', pos:new THREE.Vector3(IN_X, BY-0.7,0) });
+        labelDefs.push({ key:'lQ', kind:'Q', pos:new THREE.Vector3(OUT_X+1.6, 0.9,0) });
+    }
+
+    function buildSwitch(x,y){
+        const g = new THREE.Group(); g.position.set(x,y,0); root.add(g);
+        const base = new THREE.Mesh(new THREE.BoxGeometry(0.7,0.7,0.5), mat(0x44506a,0.4,0.6)); g.add(base);
+        const led = new THREE.Mesh(new THREE.SphereGeometry(0.26,20,16), new THREE.MeshStandardMaterial({color:0xdfe6ef, emissive:0x111, emissiveIntensity:0, roughness:0.3})); led.position.x=0.0; led.position.z=0.3; g.add(led);
+        g.userData.clickable = true; g.userData.led = led;
+        return { group:g, led };
+    }
+
+    // ---- gate body shapes ----
+    function andShape(){ const s=new THREE.Shape(); const w=1.1,h=1.0; s.moveTo(-w,-h); s.lineTo(0,-h); s.absarc(0,0,h,-Math.PI/2,Math.PI/2,false); s.lineTo(-w,h); s.lineTo(-w,-h); return s; }
+    function orShape(){ const s=new THREE.Shape(); s.moveTo(-1.1,-1.0); s.quadraticCurveTo(0.2,-0.95, 1.5,0); s.quadraticCurveTo(0.2,0.95, -1.1,1.0); s.quadraticCurveTo(-0.45,0, -1.1,-1.0); return s; }
+    function notShape(){ const s=new THREE.Shape(); s.moveTo(-1.0,-1.0); s.lineTo(1.3,0); s.lineTo(-1.0,1.0); s.lineTo(-1.0,-1.0); return s; }
+
+    function buildGate(type){
+        // remove old
+        [gateMesh,bubbleMesh,xorArc].forEach(m=>{ if(m){ root.remove(m); if(m.geometry)m.geometry.dispose(); } });
+        xorArc = null; bubbleMesh = null;
+        const cfg = GATES[type];
+        let shape = cfg.family==='and'?andShape() : cfg.family==='not'?notShape() : orShape();
+        const geo = new THREE.ExtrudeGeometry(shape, { depth:0.5, bevelEnabled:true, bevelThickness:0.06, bevelSize:0.06, bevelSegments:2 });
+        geo.translate(0,0,-0.25);
+        gateMesh = new THREE.Mesh(geo, mat(0x9fb3d6, 0.3, 0.5, {emissive:0x16233f, emissiveIntensity:0.05}));
+        root.add(gateMesh);
+        // output bubble for inverting gates
+        const tipX = cfg.family==='and'?1.0 : cfg.family==='not'?1.3 : 1.5;
+        if (cfg.bubble){
+            bubbleMesh = new THREE.Mesh(new THREE.SphereGeometry(0.2,18,14), mat(0xeaf0f7,0.2,0.4,{emissive:0x16233f,emissiveIntensity:0.05}));
+            bubbleMesh.position.set(tipX+0.18, 0, 0); root.add(bubbleMesh);
+        }
+        // xor back arc
+        if (cfg.family==='xor'){
+            const pts=[]; for(let t=0;t<=1;t+=0.05){ const y=-1.0+2.0*t; pts.push(new THREE.Vector3(-1.35 - 0.4*Math.sin(t*Math.PI)+0.0, y, 0)); }
+            xorArc = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({color:0x5a6c8c})); root.add(xorArc);
+        }
+        // adjust output wire start to tip (+bubble)
+        const qStart = tipX + (cfg.bubble?0.4:0.05);
+        wireQ.geometry.setFromPoints([ new THREE.Vector3(qStart,0,0), new THREE.Vector3(OUT_X+1.3,0,0) ]);
+        // input B disabled for NOT
+        const bToggle = document.getElementById('in-b');
+        if (cfg.inputs===1){ bToggle.classList.add('dis'); swB.group.visible=false; wireB.visible=false; dotsB.forEach(d=>d.visible=false);
+            wireA.geometry.setFromPoints([ new THREE.Vector3(IN_X+0.5,AY,0), new THREE.Vector3(-1.5,AY,0), new THREE.Vector3(-1.0,0,0) ]);
+        } else { bToggle.classList.remove('dis'); swB.group.visible=true; wireB.visible=true;
+            wireA.geometry.setFromPoints([ new THREE.Vector3(IN_X+0.5,AY,0), new THREE.Vector3(-1.5,AY,0), new THREE.Vector3(-1.1,0.5,0) ]);
+        }
+    }
+
+    function buildGateButtons(){
+        const grid = document.getElementById('gate-grid');
+        ORDER.forEach(k=>{ const b=document.createElement('button'); b.className='gate-btn'+(k===gate?' active':''); b.textContent=k.toUpperCase(); b.dataset.gate=k;
+            b.addEventListener('click', ()=>{ gate=k; document.querySelectorAll('.gate-btn').forEach(x=>x.classList.toggle('active', x.dataset.gate===k)); buildGate(k); compute(); }); grid.appendChild(b); });
+    }
+
+    function makeLabels(){ labelDefs.forEach(d=>{ const el=document.createElement('div'); el.className='label3d'; labelLayer.appendChild(el); d.el=el; }); }
+    function updateLabels(){
+        labelDefs.forEach(d=>{
+            let txt = L[d.key]||d.key;
+            const val = d.kind==='A'?A : d.kind==='B'?B : Q;
+            txt += ' = ' + (val?1:0);
+            if(d.el.textContent!==txt) d.el.textContent=txt;
+            d.el.className = 'label3d ' + (val?'hi':'lo');
+            if(!showLabels || (d.kind==='B' && GATES[gate].inputs===1)){ d.el.style.display='none'; return; }
+            const v=d.pos.clone().project(camera); if(v.z>1){ d.el.style.display='none'; return; }
+            d.el.style.display='block'; d.el.style.left=(v.x*0.5+0.5)*window.innerWidth+'px'; d.el.style.top=(-v.y*0.5+0.5)*window.innerHeight+'px';
+        });
+    }
+
+    function compute() {
+        const cfg = GATES[gate];
+        Q = cfg.inputs===1 ? !!cfg.fn(A) : !!cfg.fn(A,B);
+        // UI: input toggles
+        const ia=document.getElementById('in-a'), ib=document.getElementById('in-b');
+        ia.classList.toggle('on', A); ia.querySelector('.bit').textContent = A?1:0;
+        ib.classList.toggle('on', B); ib.querySelector('.bit').textContent = B?1:0;
+        // expr + desc
+        document.getElementById('expr').textContent = cfg.expr;
+        document.getElementById('gate-desc').textContent = L[cfg.desc];
+        // verdict
+        const v = document.getElementById('verdict');
+        v.innerHTML = cfg.inputs===1 ? ('A='+(A?1:0)+' → Q='+(Q?1:0)) : ('A='+(A?1:0)+', B='+(B?1:0)+' → Q='+(Q?1:0));
+        v.style.color = '#eaf0fb';
+        // wire + led colors
+        setWire(wireA, A); setWire(wireB, B); setWire(wireQ, Q);
+        setLed(ledA, A); setLed(ledB, B); setLed(ledQ, Q, true);
+        buildTruthTable();
+    }
+    function setWire(w, on){ w.material.color.setHex(on?HI:LO); }
+    function setLed(led, on, big){ led.material.color.setHex(on?0x86efac:0xdfe6ef); led.material.emissive.setHex(on?(big?0x16a34a:0x16a34a):0x111111); led.material.emissiveIntensity = on?(big?1.3:0.9):0.0; }
+
+    function buildTruthTable(){
+        const cfg = GATES[gate];
+        const tt = document.getElementById('tt');
+        let html = '<tr><th>A</th>'+(cfg.inputs===2?'<th>B</th>':'')+'<th>Q</th></tr>';
+        const rows = cfg.inputs===1 ? [[0],[1]] : [[0,0],[0,1],[1,0],[1,1]];
+        rows.forEach(r=>{
+            const q = cfg.inputs===1 ? (cfg.fn(!!r[0])?1:0) : (cfg.fn(!!r[0],!!r[1])?1:0);
+            const cur = cfg.inputs===1 ? ((A?1:0)===r[0]) : ((A?1:0)===r[0] && (B?1:0)===r[1]);
+            html += '<tr class="'+(cur?'cur':'')+'"><td>'+r[0]+'</td>'+(cfg.inputs===2?'<td>'+r[1]+'</td>':'')+'<td class="'+(q?'q1':'q0')+'">'+q+'</td></tr>';
+        });
+        tt.innerHTML = html;
+    }
+
+    function setupControls() {
+        document.getElementById('in-a').addEventListener('click', ()=>{ A=!A; compute(); });
+        document.getElementById('in-b').addEventListener('click', ()=>{ if(GATES[gate].inputs===1) return; B=!B; compute(); });
+        const tog=(id,fn)=>{ const el=document.getElementById(id); el.addEventListener('click',()=>{ el.classList.toggle('active'); fn(el.classList.contains('active')); }); };
+        tog('t-flow', v=>showFlow=v);
+        tog('t-labels', v=>showLabels=v);
+
+        const el=renderer.domElement;
+        el.addEventListener('contextmenu', e=>e.preventDefault());
+        el.addEventListener('mousedown', e=>{ dragMode=(e.button===2||e.shiftKey)?2:1; lastX=e.clientX; lastY=e.clientY; downX=e.clientX; downY=e.clientY; });
+        window.addEventListener('mousemove', e=>{ if(!dragMode)return; const dx=e.clientX-lastX,dy=e.clientY-lastY; lastX=e.clientX; lastY=e.clientY; if(dragMode===1){camTheta-=dx*0.005; camPhi=Math.max(0.2,Math.min(Math.PI-0.2,camPhi-dy*0.005));} else {const ps=camRadius*0.0016; const right=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,0); const up=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,1); camTarget.addScaledVector(right,-dx*ps); camTarget.addScaledVector(up,dy*ps);} updateCamera(); });
+        window.addEventListener('mouseup', e=>{ if(dragMode===1 && Math.abs(e.clientX-downX)<5 && Math.abs(e.clientY-downY)<5) tryClick(e); dragMode=0; });
+        el.addEventListener('wheel', e=>{ e.preventDefault(); camRadius=Math.max(8,Math.min(26,camRadius+e.deltaY*0.012)); updateCamera(); }, {passive:false});
+        window.addEventListener('resize', ()=>{ camera.aspect=window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+    }
+
+    function tryClick(e){
+        ndc.x = (e.clientX/window.innerWidth)*2-1; ndc.y = -(e.clientY/window.innerHeight)*2+1;
+        raycaster.setFromCamera(ndc, camera);
+        const hits = raycaster.intersectObjects([swA.group, swB.group], true);
+        if (hits.length){ let o=hits[0].object; while(o && !o.userData.clickable) o=o.parent;
+            if (o===swA.group){ A=!A; compute(); } else if (o===swB.group && GATES[gate].inputs===2){ B=!B; compute(); } }
+    }
+
+    function updateCamera(){ const sp=Math.sin(camPhi),cp=Math.cos(camPhi),st=Math.sin(camTheta),ct=Math.cos(camTheta); camera.position.set(camTarget.x+camRadius*sp*ct, camTarget.y+camRadius*cp, camTarget.z+camRadius*sp*st); camera.lookAt(camTarget); camera.updateMatrixWorld(true); }
+
+    function applyI18N(){
+        document.querySelectorAll('[data-i18n]').forEach(el=>{ const k=el.getAttribute('data-i18n'); if(L[k]!=null) el.textContent=L[k]; });
+        document.querySelector('.header h1').textContent=L.headH;
+        document.getElementById('h-sub').textContent=L.headS;
+        document.title=L.headH.replace(/^[^\wА-Яа-яЁё]+/, ''); document.documentElement.lang=LANG;
+    }
+
+    function animateDots(dotArr, wire, on, dir){
+        const pos = wire.geometry.attributes.position; const segN = pos.count;
+        dotArr.forEach((d,i)=>{
+            if (!showFlow || !on || !wire.visible){ d.visible=false; return; }
+            d.visible=true;
+            let t = ((clock.elapsedTime*0.8 + i/dotArr.length) % 1);
+            if (dir<0) t = 1-t;
+            // sample polyline by segment
+            const ft = t*(segN-1); const i0=Math.floor(ft), i1=Math.min(segN-1,i0+1), f=ft-i0;
+            const x = pos.getX(i0)+(pos.getX(i1)-pos.getX(i0))*f;
+            const y = pos.getY(i0)+(pos.getY(i1)-pos.getY(i0))*f;
+            const z = pos.getZ(i0)+(pos.getZ(i1)-pos.getZ(i0))*f;
+            d.position.set(x,y,z);
+        });
+    }
+
+    function animate(){
+        requestAnimationFrame(animate);
+        animateDots(dotsA, wireA, A, 1);
+        animateDots(dotsB, wireB, B, 1);
+        animateDots(dotsQ, wireQ, Q, 1);
+        if (ledQ){ const t=clock.elapsedTime; ledQ.material.emissiveIntensity = Q ? (1.0+Math.sin(t*6)*0.3) : 0.0; }
+        updateLabels();
+        renderer.render(scene, camera);
+    }
+
+    init();
+    </script>
+</body>
+</html>

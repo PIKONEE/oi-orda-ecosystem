@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Строение Атома (Модель Бора)</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: radial-gradient(circle at center, #0b1021, #000000);
+        }
+
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+
+        /* Панель информации */
+        #info-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 320px;
+            background: rgba(16, 20, 35, 0.9);
+            
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 0 50px rgba(0, 100, 255, 0.2);
+            transform: translateX(120%);
+            transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+            border-left: 4px solid #00d2ff;
+            z-index: 10;
+            color: #d0d0d0;
+        }
+
+        #info-panel.active {
+            transform: translateX(0);
+        }
+
+        #info-title {
+            margin: 0 0 10px 0;
+            color: #ffffff;
+            font-size: 22px;
+            font-weight: 600;
+            border-bottom: 1px solid #444;
+            padding-bottom: 10px;
+            letter-spacing: 0.5px;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+        }
+
+        #info-desc {
+            color: #b0c4de;
+            font-size: 15px;
+            line-height: 1.6;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: transparent;
+            border: none;
+            color: #666;
+            font-size: 24px;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .close-btn:hover {
+            color: #fff;
+        }
+
+        /* Маркер элемента */
+        #zone-label {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 10, 30, 0.8);
+            color: #00d2ff;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+            border: 1px solid rgba(0, 210, 255, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 0 15px rgba(0, 210, 255, 0.2);
+        }
+
+        /* Легенда цветов */
+        #legend {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 15px;
+            border-radius: 8px;
+            color: #ccc;
+            font-size: 13px;
+            pointer-events: none;
+            border: 1px solid #333;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 10px;
+            box-shadow: 0 0 5px currentColor;
+        }
+    </style>
+</head>
+<body>
+
+
+
+
+<div id="canvas-container"></div>
+<div id="zone-label">Частица</div>
+
+<div id="legend">
+    <div class="legend-item">
+        <div class="dot" style="background:#ff3366; color:#ff3366"></div>
+        <span>Протон (+)</span>
+    </div>
+    <div class="legend-item">
+        <div class="dot" style="background:#3366ff; color:#3366ff"></div>
+        <span>Нейтрон (0)</span>
+    </div>
+    <div class="legend-item">
+        <div class="dot" style="background:#ffd700; color:#ffd700"></div>
+        <span>Электрон (-)</span>
+    </div>
+    <div class="legend-item">
+        <div class="dot" style="background:#bd00ff; color:#bd00ff; box-shadow: 0 0 5px #bd00ff;"></div>
+        <span>Магнитное поле</span>
+    </div>
+</div>
+
+<div id="info-panel">
+    <button class="close-btn" onclick="closePanel()">&times;</button>
+    <h2 id="info-title">Название</h2>
+    <p id="info-desc">Описание</p>
+</div>
+
+<script type="importmap">
+    {
+        "imports": {
+            "three": "../../libs/vendor/three-0.160.0/three.module.js",
+            "three/addons/": "../../libs/vendor/three-0.160.0/addons/"
+        }
+    }
+</script>
+
+<script type="module">
+    import * as THREE from 'three';
+    import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+
+    // --- I18N ---
+    const I18N = {
+        ru: { page_title: 'Строение Атома (Модель Бора)', legend_proton: 'Протон (+)', legend_neutron: 'Нейтрон (0)', legend_electron: 'Электрон (-)', legend_magnetic: 'Магнитное поле' },
+        kz: { page_title: 'Атом құрылысы (Бор моделі)', legend_proton: 'Протон (+)', legend_neutron: 'Нейтрон (0)', legend_electron: 'Электрон (-)', legend_magnetic: 'Магнит өрісі' },
+        en: { page_title: 'Atom Structure (Bohr Model)', legend_proton: 'Proton (+)', legend_neutron: 'Neutron (0)', legend_electron: 'Electron (-)', legend_magnetic: 'Magnetic Field' }
+    };
+
+    const atomDataI18N = {
+        ru: {
+            Proton: { title: "Протон (p⁺)", desc: "Положительно заряженная субатомная частица в ядре атома. Количество протонов определяет химический элемент (атомный номер). Масса протона примерно в 1836 раз больше массы электрона." },
+            Neutron: { title: "Нейтрон (n⁰)", desc: "Нейтральная субатомная частица в ядре. Имеет массу, близкую к массе протона. Нейтроны стабилизируют ядро, удерживая протоны вместе за счёт сильного ядерного взаимодействия." },
+            Electron: { title: "Электрон (e⁻)", desc: "Легчайшая элементарная частица с отрицательным зарядом. Электроны движутся вокруг ядра по определённым орбитам (энергетическим уровням). Именно электроны участвуют в образовании химических связей." },
+            Nucleus: { title: "Атомное ядро", desc: "Плотный центр атома, состоящий из нуклонов (протонов и нейтронов). В ядре сосредоточено более 99,9% всей массы атома." },
+            Shell: { title: "Электронная оболочка", desc: "Энергетический уровень, на котором электроны вращаются вокруг ядра. По модели Бора электроны могут находиться только на определённых орбитах с фиксированной энергией." },
+            MagneticField: { title: "Магнитное поле", desc: "Визуализация дипольного магнитного поля атома. Возникает вследствие движения заряженных частиц (орбитальный момент) и их спинов (собственный момент импульса)." }
+        },
+        kz: {
+            Proton: { title: "Протон (p⁺)", desc: "Атом ядросындағы оң зарядты субатомдық бөлшек. Протондар саны химиялық элементті анықтайды (атомдық нөмір). Протонның массасы электрон массасынан шамамен 1836 есе көп." },
+            Neutron: { title: "Нейтрон (n⁰)", desc: "Ядродағы бейтарап субатомдық бөлшек. Массасы протон массасына жақын. Нейтрондар күшті ядролық өзара әрекеттесу арқылы протондарды бірге ұстап, ядроны тұрақтандырады." },
+            Electron: { title: "Электрон (e⁻)", desc: "Теріс зарядты ең жеңіл элементар бөлшек. Электрондар ядро айналасында белгілі орбиталар бойынша қозғалады. Химиялық байланыстар түзуге электрондар қатысады." },
+            Nucleus: { title: "Атом ядросы", desc: "Нуклондардан (протондар мен нейтрондардан) тұратын атомның тығыз орталығы. Атомның жалпы массасының 99,9%-дан астамы ядрода шоғырланған." },
+            Shell: { title: "Электрондық қабықша", desc: "Электрондардың ядро айналасында айналатын энергетикалық деңгей. Бор моделі бойынша электрондар тек белгілі бір тұрақты энергиялы орбиталарда бола алады." },
+            MagneticField: { title: "Магнит өрісі", desc: "Атомның дипольдік магнит өрісінің визуализациясы. Зарядталған бөлшектердің қозғалысы (орбиталық момент) мен олардың спиндері (меншікті импульс моменті) нәтижесінде пайда болады." }
+        },
+        en: {
+            Proton: { title: "Proton (p⁺)", desc: "A positively charged subatomic particle in the nucleus. The number of protons determines the chemical element (atomic number). Proton mass is approximately 1836 times the electron mass." },
+            Neutron: { title: "Neutron (n⁰)", desc: "A neutral subatomic particle in the nucleus. Its mass is close to the proton mass. Neutrons stabilize the nucleus by holding protons together through the strong nuclear force." },
+            Electron: { title: "Electron (e⁻)", desc: "The lightest elementary particle with a negative charge. Electrons orbit the nucleus along specific energy levels. Electrons are responsible for forming chemical bonds." },
+            Nucleus: { title: "Atomic Nucleus", desc: "The dense center of an atom consisting of nucleons (protons and neutrons). More than 99.9% of the atom's total mass is concentrated in the nucleus." },
+            Shell: { title: "Electron Shell", desc: "An energy level at which electrons orbit the nucleus. According to the Bohr model, electrons can only exist in specific orbits with fixed energy." },
+            MagneticField: { title: "Magnetic Field", desc: "Visualization of the atom's dipole magnetic field. It arises from the motion of charged particles (orbital moment) and their spins (intrinsic angular momentum)." }
+        }
+    };
+
+    const urlParams = new URLSearchParams(window.location.search);
+    let currentLang = urlParams.get("lang") || "ru";
+
+    const atomColors = { Proton: 0xff3366, Neutron: 0x3366ff, Electron: 0xffd700, Nucleus: 0xffffff, Shell: 0x00d2ff, MagneticField: 0xbd00ff };
+    function getAtomData() {
+        const d = atomDataI18N[currentLang] || atomDataI18N.ru;
+        const result = {};
+        for (const key of Object.keys(d)) { result[key] = { title: d[key].title, desc: d[key].desc, color: atomColors[key] }; }
+        return result;
+    }
+    let atomData = getAtomData();
+    function onLangChanged(lang) { atomData = getAtomData(); }
+    function applyLang(lang) {
+        currentLang = lang;
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const key = el.getAttribute('data-i18n');
+            if (I18N[lang] && I18N[lang][key]) el.textContent = I18N[lang][key];
+        });
+        onLangChanged(lang);
+    }
+    applyLang(currentLang);
+
+    // --- ДАННЫЕ АТОМА (теперь из i18n) ---
+
+    // --- СЦЕНА ---
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    // Легкий туман для глубины космоса
+    scene.fog = new THREE.FogExp2(0x0b1021, 0.02);
+
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 15, 30);
+
+    const renderer = new THREE.WebGLRenderer({antialias: true, alpha: true});
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    // Включаем bloom-эффект (симуляция через emissive materials)
+    renderer.toneMapping = THREE.ReinhardToneMapping;
+    renderer.toneMappingExposure = 1.5;
+    container.appendChild(renderer.domElement);
+
+    // --- ОСВЕЩЕНИЕ ---
+    const ambientLight = new THREE.AmbientLight(0x404040, 2);
+    scene.add(ambientLight);
+
+    // Свет из центра (ядро светится)
+    const nucleusLight = new THREE.PointLight(0xffffff, 2, 50);
+    nucleusLight.position.set(0, 0, 0);
+    scene.add(nucleusLight);
+
+    const blueLight = new THREE.DirectionalLight(0x0055ff, 1);
+    blueLight.position.set(10, 10, 10);
+    scene.add(blueLight);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.autoRotate = true;
+    controls.autoRotateSpeed = 0.5;
+    controls.maxDistance = 100;
+    controls.minDistance = 5;
+
+    // --- ГЕНЕРАЦИЯ АТОМА ---
+    // Создадим атом углерода-12 (6 протонов, 6 нейтронов, 6 электронов)
+    const PROTON_COUNT = 6;
+    const NEUTRON_COUNT = 6;
+    const ELECTRONS_CONFIG = [2, 4]; // 2 на K-оболочке, 4 на L-оболочке
+
+    const atomGroup = new THREE.Group();
+    scene.add(atomGroup);
+
+    const nucleusGroup = new THREE.Group();
+    atomGroup.add(nucleusGroup);
+
+    // Материалы
+    const protonMat = new THREE.MeshPhysicalMaterial({
+        color: atomData.Proton.color,
+        roughness: 0.2,
+        metalness: 0.1,
+        emissive: atomData.Proton.color,
+        emissiveIntensity: 0.4,
+        clearcoat: 1.0
+    });
+
+    const neutronMat = new THREE.MeshPhysicalMaterial({
+        color: atomData.Neutron.color,
+        roughness: 0.2,
+        metalness: 0.1,
+        emissive: atomData.Neutron.color,
+        emissiveIntensity: 0.3,
+        clearcoat: 1.0
+    });
+
+    const electronMat = new THREE.MeshBasicMaterial({
+        color: atomData.Electron.color
+    });
+
+    // Свечение электрона (Sprite)
+    const spriteMaterial = new THREE.SpriteMaterial({
+        color: atomData.Electron.color,
+        transparent: true,
+        opacity: 0.8,
+        blending: THREE.AdditiveBlending
+    });
+
+    // Создаем текстуру для свечения программно
+    const canvas = document.createElement('canvas');
+    canvas.width = 32;
+    canvas.height = 32;
+    const context = canvas.getContext('2d');
+    const gradient = context.createRadialGradient(16, 16, 0, 16, 16, 16);
+    gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+    gradient.addColorStop(0.2, 'rgba(255, 215, 0, 1)');
+    gradient.addColorStop(0.5, 'rgba(255, 215, 0, 0.4)');
+    gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, 32, 32);
+    const glowTexture = new THREE.CanvasTexture(canvas);
+    spriteMaterial.map = glowTexture;
+
+    const particleGeo = new THREE.SphereGeometry(0.8, 32, 32);
+
+    // --- 1. ЯДРО (Упаковка сфер) ---
+    const nucleons = [];
+    const nucleusRadius = 2.5;
+
+    function addNucleon(type) {
+        const mesh = new THREE.Mesh(particleGeo, type === 'Proton' ? protonMat : neutronMat);
+
+        // Пытаемся найти позицию, не пересекающуюся с другими
+        let pos = new THREE.Vector3();
+        let safe = false;
+        let attempts = 0;
+
+        while (!safe && attempts < 100) {
+            pos.set(
+                    (Math.random() - 0.5) * nucleusRadius,
+                    (Math.random() - 0.5) * nucleusRadius,
+                    (Math.random() - 0.5) * nucleusRadius
+            );
+
+            safe = true;
+            for (let n of nucleons) {
+                if (pos.distanceTo(n.position) < 1.4) { // 1.4 = чуть меньше 2*radius, чтобы они "слипались"
+                    safe = false;
+                    break;
+                }
+            }
+            attempts++;
+        }
+
+        mesh.position.copy(pos);
+        mesh.name = type;
+        nucleusGroup.add(mesh);
+        nucleons.push(mesh);
+    }
+
+    for (let i = 0; i < PROTON_COUNT; i++) addNucleon('Proton');
+    for (let i = 0; i < NEUTRON_COUNT; i++) addNucleon('Neutron');
+
+    // Центрируем ядро
+    new THREE.Box3().setFromObject(nucleusGroup).getCenter(nucleusGroup.position).multiplyScalar(-1);
+
+
+    // --- 2. ЭЛЕКТРОННЫЕ ОБОЛОЧКИ ---
+    const electrons = [];
+    const shellRadii = [6, 10, 15]; // Радиусы орбит
+
+    ELECTRONS_CONFIG.forEach((count, shellIndex) => {
+        const radius = shellRadii[shellIndex];
+
+        // Визуализация орбиты (кольцо)
+        const curve = new THREE.EllipseCurve(
+                0, 0,            // ax, aY
+                radius, radius,  // xRadius, yRadius
+                0, 2 * Math.PI,  // aStartAngle, aEndAngle
+                false,           // aClockwise
+                0                // aRotation
+        );
+        const points = curve.getPoints(64);
+        const geometry = new THREE.BufferGeometry().setFromPoints(points);
+        const material = new THREE.LineBasicMaterial({
+            color: 0x00d2ff,
+            transparent: true,
+            opacity: 0.15
+        });
+        const orbit = new THREE.Line(geometry, material);
+        orbit.rotation.x = Math.PI / 2; // Кладем горизонтально
+        orbit.name = "Shell";
+        atomGroup.add(orbit);
+
+        // Создание электронов на этой оболочке
+        for (let i = 0; i < count; i++) {
+            const angle = (i / count) * Math.PI * 2;
+
+            const pivot = new THREE.Group();
+            pivot.rotation.x = (Math.random() - 0.5) * 0.5; // Небольшой наклон орбиты
+            pivot.rotation.y = (Math.random() - 0.5) * 0.5;
+
+            // Сам электрон
+            const electronGroup = new THREE.Group();
+
+            const core = new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 16), electronMat);
+            electronGroup.add(core);
+
+            const glow = new THREE.Sprite(spriteMaterial);
+            glow.scale.set(3, 3, 1);
+            electronGroup.add(glow);
+
+            electronGroup.position.set(Math.cos(angle) * radius, 0, Math.sin(angle) * radius);
+            electronGroup.name = "Electron";
+
+            pivot.add(electronGroup);
+            atomGroup.add(pivot);
+
+            electrons.push({
+                obj: electronGroup,
+                pivot: pivot,
+                speed: (3 - shellIndex) * 0.5 + Math.random() * 0.2, // Внутренние быстрее
+                angle: angle,
+                radius: radius
+            });
+        }
+    });
+
+    // --- 3. МАГНИТНЫЕ СИЛОВЫЕ ЛИНИИ ---
+    const magneticGroup = new THREE.Group();
+    atomGroup.add(magneticGroup);
+
+    const fieldMat = new THREE.LineBasicMaterial({
+        color: atomData.MagneticField.color,
+        transparent: true,
+        opacity: 0.15, // Полупрозрачные
+    });
+
+    // Создаем пучок силовых линий (диполь)
+    const linesCount = 12; // Количество меридианов
+    const loopsPerLine = 3; // Количество колец в одном направлении
+
+    for (let i = 0; i < linesCount; i++) {
+        const angle = (i / linesCount) * Math.PI * 2;
+        const meridianGroup = new THREE.Group();
+        meridianGroup.rotation.y = angle;
+
+        // Генерируем несколько эллипсов разного размера
+        [8, 14, 22].forEach(radius => {
+            const yStretch = 1.2; // Вытянутость по вертикали
+            const curve = new THREE.EllipseCurve(
+                    0, 0,              // ax, aY (центр)
+                    radius, radius * yStretch, // xRadius, yRadius
+                    0, 2 * Math.PI,
+                    false, 0
+            );
+            const points = curve.getPoints(64);
+            // Преобразуем 2D точки в 3D (в плоскости XY, затем повернем)
+            // Нам нужно, чтобы эллипс стоял вертикально, проходя через полюса
+            // Но EllipseCurve генерит в плоскости XY.
+            // Мы повернем meridianGroup, а внутри него положим эллипс вертикально.
+
+            const points3D = points.map(p => new THREE.Vector3(p.x, p.y, 0));
+            const geometry = new THREE.BufferGeometry().setFromPoints(points3D);
+
+            const line = new THREE.Line(geometry, fieldMat);
+            // Повернем так, чтобы он проходил через Y ось
+            line.rotation.y = Math.PI / 2;
+
+            // Имя для raycaster
+            line.name = "MagneticField";
+
+            // Чтобы raycaster легче ловил тонкие линии, можно добавить невидимую геометрию,
+            // но для простоты оставим как есть или будем ловить группу.
+
+            meridianGroup.add(line);
+        });
+
+        magneticGroup.add(meridianGroup);
+    }
+
+    // --- ИНТЕРАКТИВНОСТЬ ---
+    const raycaster = new THREE.Raycaster();
+    raycaster.params.Line.threshold = 1; // Увеличиваем чувствительность к линиям
+
+    const mouse = new THREE.Vector2();
+    let highlightedObj = null;
+
+    const panel = document.getElementById('info-panel');
+    const titleEl = document.getElementById('info-title');
+    const descEl = document.getElementById('info-desc');
+    const labelEl = document.getElementById('zone-label');
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('click', onClick);
+
+    function onMouseMove(event) {
+        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+        raycaster.setFromCamera(mouse, camera);
+
+        const intersects = raycaster.intersectObjects(scene.children, true);
+
+        let found = null;
+        for (let hit of intersects) {
+            if (hit.object.name && atomData[hit.object.name]) {
+                found = hit.object;
+                break;
+            }
+        }
+
+        if (found) {
+            labelEl.textContent = atomData[found.name].title;
+            labelEl.style.opacity = 1;
+            document.body.style.cursor = 'pointer';
+        } else {
+            labelEl.style.opacity = 0;
+            document.body.style.cursor = 'default';
+        }
+    }
+
+    function onClick(event) {
+        if (event.target.closest('#info-panel') || event.target.closest('.close-btn')) return;
+
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObjects(scene.children, true);
+
+        let found = null;
+        for (let hit of intersects) {
+            if (hit.object.name && atomData[hit.object.name]) {
+                found = hit.object;
+                break;
+            }
+        }
+
+        if (found) {
+            showInfo(found.name);
+
+            if (highlightedObj && highlightedObj.material.emissive) {
+                highlightedObj.material.emissiveIntensity = highlightedObj.userData.originalEmissive || 0.4;
+            }
+
+            highlightedObj = found;
+            if (found.material && found.material.emissive) {
+                found.userData.originalEmissive = found.material.emissiveIntensity;
+                found.material.emissiveIntensity = 1.0;
+            }
+            // Для магнитных линий отдельная подсветка
+            if (found.name === 'MagneticField') {
+                // Можно временно увеличить непрозрачность
+            }
+
+        } else {
+            closePanel();
+        }
+    }
+
+    function showInfo(key) {
+        const data = atomData[key];
+        titleEl.textContent = data.title;
+        descEl.textContent = data.desc;
+
+        const hexColor = '#' + data.color.toString(16).padStart(6, '0');
+        panel.style.borderLeftColor = hexColor;
+        panel.classList.add('active');
+    }
+
+    window.closePanel = function () {
+        panel.classList.remove('active');
+        if (highlightedObj && highlightedObj.material && highlightedObj.material.emissive) {
+            highlightedObj.material.emissiveIntensity = highlightedObj.userData.originalEmissive || 0.4;
+            highlightedObj = null;
+        }
+    };
+
+    // --- АНИМАЦИЯ ---
+    function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+
+        const time = Date.now() * 0.001;
+
+        // 1. Вибрация ядра
+        nucleusGroup.scale.setScalar(1 + Math.sin(time * 10) * 0.02);
+        nucleusGroup.rotation.y = Math.sin(time * 0.5) * 0.1;
+
+        // 2. Вращение электронов
+        electrons.forEach(e => {
+            e.angle += e.speed * 0.02;
+            e.obj.position.x = Math.cos(e.angle) * e.radius;
+            e.obj.position.z = Math.sin(e.angle) * e.radius;
+
+            const glow = e.obj.children[1];
+            if (glow) glow.material.opacity = 0.6 + Math.sin(time * 5 + e.angle) * 0.2;
+        });
+
+        // 3. Анимация магнитного поля (пульсация)
+        magneticGroup.children.forEach((meridian, i) => {
+            // Медленное вращение всего поля
+            // magneticGroup.rotation.y += 0.0001;
+
+            // Пульсация прозрачности
+            meridian.children.forEach(line => {
+                line.material.opacity = 0.15 + Math.sin(time * 2 + i) * 0.05;
+            });
+        });
+
+        renderer.render(scene, camera);
+    }
+
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    animate();
+</script>
+<script>
+(function() {
+    const TEXT_MAP = {
+    "Строение Атома (Модель Бора)": {
+        "kz": "Атом құрылысы (Бор моделі)",
+        "en": "Atom Structure (Bohr Model)"
+    },
+    "Протон (+)": {
+        "kz": "Протон (+)",
+        "en": "Proton (+)"
+    },
+    "Нейтрон (0)": {
+        "kz": "Нейтрон (0)",
+        "en": "Neutron (0)"
+    },
+    "Электрон (-)": {
+        "kz": "Электрон (-)",
+        "en": "Electron (-)"
+    },
+    "Магнитное поле": {
+        "kz": "Магнит өрісі",
+        "en": "Magnetic Field"
+    },
+    "Частица": {
+        "kz": "Бөлшек",
+        "en": "Particle"
+    },
+    "Название": {
+        "kz": "Атауы",
+        "en": "Name"
+    },
+    "Описание": {
+        "kz": "Сипаттама",
+        "en": "Description"
+    }
+};
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentLang = urlParams.get('lang') || 'ru';
+
+    if (currentLang === 'ru') return; // No translation needed
+
+    function translateTextNodes(root) {
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
+        const nodes = [];
+        while (walker.nextNode()) nodes.push(walker.currentNode);
+        
+        nodes.forEach(node => {
+            let text = node.textContent;
+            if (!text || !text.trim()) return;
+            
+            const trimmed = text.trim();
+            if (TEXT_MAP[trimmed] && TEXT_MAP[trimmed][currentLang]) {
+                node.textContent = text.replace(trimmed, TEXT_MAP[trimmed][currentLang]);
+            }
+        });
+    }
+
+    function translateAttributes(root) {
+        root.querySelectorAll('[title]').forEach(el => {
+            const t = el.getAttribute('title');
+            if (TEXT_MAP[t] && TEXT_MAP[t][currentLang]) {
+                el.setAttribute('title', TEXT_MAP[t][currentLang]);
+            }
+        });
+        root.querySelectorAll('[placeholder]').forEach(el => {
+            const t = el.getAttribute('placeholder');
+            if (TEXT_MAP[t] && TEXT_MAP[t][currentLang]) {
+                el.setAttribute('placeholder', TEXT_MAP[t][currentLang]);
+            }
+        });
+        // Translate page title
+        const titleText = document.title.trim();
+        if (TEXT_MAP[titleText] && TEXT_MAP[titleText][currentLang]) {
+            document.title = TEXT_MAP[titleText][currentLang];
+        }
+    }
+
+    
+    function translateData(lang) {
+        if (!window.atomDataI18N) return;
+        const d = window.atomDataI18N[lang] || window.atomDataI18N.ru;
+        if (d && window.atomData) {
+            for (const key of Object.keys(d)) {
+                if (window.atomData[key]) {
+                    window.atomData[key].title = d[key].title;
+                    window.atomData[key].desc = d[key].desc;
+                }
+            }
+        }
+    }
+
+
+    function applyTranslations() {
+        translateTextNodes(document.body);
+        translateAttributes(document);
+        if (typeof translateData === 'function') translateData(currentLang);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', applyTranslations);
+    } else {
+        applyTranslations();
+    }
+
+    // Re-translate after dynamic content changes
+    window.currentLang = currentLang;
+    window._currentLang = currentLang;
+    window._TEXT_MAP = TEXT_MAP;
+
+    // One-time delayed re-translate for dynamic content
+    let _tc=0;const _ti=setInterval(()=>{translateTextNodes(document.body);translateAttributes(document);if(++_tc>=20)clearInterval(_ti);},500);
+})();
+</script>
+</body>
+</html>

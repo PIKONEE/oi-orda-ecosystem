@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="page_title">Зуб в разрезе — анатомическая модель</title>
+    <link rel="stylesheet" href="_poster.css">
+</head>
+<body>
+<div id="canvas-container"></div>
+<div id="header">
+    <h1 data-i18n="header_title">Строение зуба</h1>
+    <p data-i18n="header_subtitle">Интерактивная модель в разрезе — 5 анатомических слоёв</p>
+</div>
+<div id="hint" data-i18n="hint">Кликните по любому слою зуба, чтобы узнать больше</div>
+<button id="reset-btn" data-i18n="reset_btn" data-i18n-title="reset_btn_title" title="Сбросить вид">↺ Сбросить вид</button>
+<div id="info-panel" aria-hidden="true">
+    <button class="close-btn" id="close-btn" data-i18n-aria-label="close_btn_label" aria-label="Закрыть">×</button>
+    <div class="info-header"><span class="info-dot" id="info-dot"></span><div><h2 id="info-title">Название</h2><span id="info-subtitle"></span></div></div>
+    <p id="info-desc">Описание</p>
+    <div id="info-facts"></div>
+</div>
+<div id="legend"></div>
+<div id="hover-label"></div>
+<div id="loading"><div class="spinner"></div><div id="loading-text" data-i18n="loading">Загрузка модели…</div></div>
+
+<script type="importmap">
+    { "imports": { "three": "../../libs/vendor/three-0.160.0/three.module.js", "three/addons/": "../../libs/vendor/three-0.160.0/addons/" } }
+</script>
+
+<script type="module">
+    import { initPoster } from './_poster_lib.js';
+
+    const I18N = {
+        ru: {
+            page_title: 'Зуб в разрезе — анатомическая модель',
+            header_title: 'Строение зуба',
+            header_subtitle: 'Интерактивная модель в разрезе — 5 анатомических слоёв',
+            hint: 'Кликните по любому слою зуба, чтобы узнать больше',
+            reset_btn: '↺ Сбросить вид', reset_btn_title: 'Сбросить вид', close_btn_label: 'Закрыть',
+            loading: 'Загрузка модели…', error_load: 'Не удалось загрузить tooth.glb', error_no_mesh: 'В модели нет меша',
+            facts_label: 'Интересный факт',
+            zones: {
+                enamel: { title: 'Эмаль', desc: 'Самая твёрдая ткань в организме человека, покрывающая коронку зуба. Состоит на 96–97% из неорганических веществ — кристаллов гидроксиапатита кальция. Не содержит клеток и нервов, поэтому не восстанавливается при повреждении. Толщина эмали на жевательной поверхности — 1,5–2 мм, на боковых поверхностях тоньше.', facts: 'Эмаль по твёрдости близка к кварцу (5 по шкале Мооса) и тверже стали, но при этом хрупкая — может расколоться при сильном ударе.' },
+                dentin: { title: 'Дентин', desc: 'Основная ткань зуба, составляющая 70–80% его объёма. Менее твёрдый, чем эмаль, но более прочный (упругий). Содержит дентинные канальцы — микроскопические трубочки, идущие от пульпы к эмали и придающие зубу чувствительность. В отличие от эмали, дентин может медленно образовываться в течение всей жизни.', facts: 'В одном квадратном миллиметре дентина содержится 30 000–75 000 дентинных канальцев — это объясняет, почему зуб становится чувствительным при стирании эмали.' },
+                pulp: { title: 'Пульпа коронки', desc: 'Мягкая ткань в центральной полости коронки зуба, содержащая нервы, кровеносные сосуды и лимфатические сосуды. Питает зуб изнутри, обеспечивает образование вторичного дентина и реагирует на внешние раздражители болью. Именно воспаление пульпы вызывает острую зубную боль (пульпит).', facts: 'В пульпе одного зуба находится в среднем 1500–2000 нервных волокон, что делает зуб одним из самых чувствительных органов в теле.' },
+                root_canal: { title: 'Корневой канал', desc: 'Продолжение пульпы внутри корня зуба, проходящее до отверстия на верхушке корня. Через это отверстие в зуб входят сосуды и нервы. При лечении кариеса в запущенной стадии стоматологи проводят эндодонтическое лечение — очистку и пломбировку корневых каналов.', facts: 'У моляров может быть от 3 до 5 корневых каналов, и их сложная анатомия — главная причина того, что эндодонтическое лечение требует от стоматолога мастерства и опыта.' },
+                cementum: { title: 'Цемент', desc: 'Минерализованная ткань, покрывающая корень зуба. По составу похож на кость: содержит около 65% неорганических веществ. К нему прикрепляются волокна периодонтальной связки, удерживающие зуб в лунке альвеолярного отростка челюсти. В отличие от эмали, цемент может образовываться в течение жизни.', facts: 'Толщина цемента у шейки зуба всего 20–50 мкм, а у верхушки корня может достигать 150–200 мкм — он становится толще с возрастом.' }
+            }
+        },
+        kz: {
+            page_title: 'Тіс кесіндіде — анатомиялық модель',
+            header_title: 'Тістің құрылысы',
+            header_subtitle: 'Кесінді бойынша интерактивті модель — 5 анатомиялық қабат',
+            hint: 'Толығырақ білу үшін тістің кез келген қабатына басыңыз',
+            reset_btn: '↺ Көріністі қалпына келтіру', reset_btn_title: 'Көріністі қалпына келтіру', close_btn_label: 'Жабу',
+            loading: 'Модель жүктелуде…', error_load: 'tooth.glb файлын жүктеу мүмкін болмады', error_no_mesh: 'Модельде меш табылмады',
+            facts_label: 'Қызықты факт',
+            zones: {
+                enamel: { title: 'Эмаль', desc: 'Тіс тәжін жабатын адам ағзасындағы ең қатты ұлпа. 96–97%-ы бейорганикалық заттардан — кальций гидроксиапатитінің кристалдарынан тұрады. Жасушалар мен жүйкелерді қамтымайды, сондықтан зақымдалғанда қалпына келмейді. Шайнау бетіндегі эмаль қалыңдығы 1,5–2 мм, бүйір беттерінде жұқа.', facts: 'Эмаль қаттылығы бойынша кварцке (Моос шкаласы бойынша 5) жақын және болаттан қаттырақ, бірақ сонымен бірге сынғыш — қатты соққыдан жарылуы мүмкін.' },
+                dentin: { title: 'Дентин', desc: 'Тістің негізгі ұлпасы, оның көлемінің 70–80%-ын құрайды. Эмальдан жұмсақтау, бірақ берікірек (серпімдірек). Пульпадан эмальға баратын микроскопиялық түтіктер — дентин түтікшелерін қамтиды, олар тіске сезімталдық береді. Эмальдан айырмашылығы, дентин бүкіл өмір бойы баяу түзілуі мүмкін.', facts: 'Бір шаршы миллиметр дентинде 30 000–75 000 дентин түтікшелері бар — бұл эмаль тозғанда тістің неге сезімтал болатынын түсіндіреді.' },
+                pulp: { title: 'Тәж пульпасы', desc: 'Тіс тәжінің орталық қуысында орналасқан жұмсақ ұлпа, жүйкелерді, қан тамырларын және лимфа тамырларын қамтиды. Тісті іштей қоректендіреді, екінші дентиннің түзілуін қамтамасыз етеді және сыртқы тітіркендіргіштерге ауырсынумен жауап береді. Пульпаның қабынуы өткір тіс ауруын (пульпитті) тудырады.', facts: 'Бір тістің пульпасында орта есеппен 1500–2000 жүйке талшықтары бар, бұл тісті дененің ең сезімтал органдарының біріне айналдырады.' },
+                root_canal: { title: 'Түбір каналы', desc: 'Тіс түбірінің ішіндегі пульпаның жалғасы, түбірдің ұшындағы тесікке дейін барады. Бұл тесік арқылы тіске тамырлар мен жүйкелер кіреді. Тіс жегісін асқынған сатыда емдеу кезінде стоматологтар эндодонтикалық емдеу — түбір каналдарын тазалап, пломбылайды.', facts: 'Моляр тістерде 3-тен 5-ке дейін түбір каналдары болуы мүмкін, ал олардың күрделі анатомиясы — эндодонтикалық емдеу стоматологтан шеберлік пен тәжірибе талап ететінінің басты себебі.' },
+                cementum: { title: 'Цемент', desc: 'Тіс түбірін жабатын минералданған ұлпа. Құрамы бойынша сүйекке ұқсас: шамамен 65% бейорганикалық заттарды қамтиды. Оған тісті жақ альвеолалық өсіндісінің ұясында ұстап тұратын периодонталь байламының талшықтары бекіген. Эмальдан айырмашылығы, цемент өмір бойы түзіле береді.', facts: 'Тіс мойнындағы цемент қалыңдығы небәрі 20–50 мкм, ал түбір ұшында 150–200 мкм-ге жетуі мүмкін — ол жасқа қарай қалыңдай түседі.' }
+            }
+        },
+        en: {
+            page_title: 'Tooth Cross-section — Anatomical Model',
+            header_title: 'Tooth Structure',
+            header_subtitle: 'Interactive cross-section model — 5 anatomical layers',
+            hint: 'Click any layer of the tooth to learn more',
+            reset_btn: '↺ Reset view', reset_btn_title: 'Reset view', close_btn_label: 'Close',
+            loading: 'Loading model…', error_load: 'Failed to load tooth.glb', error_no_mesh: 'No mesh found in the model',
+            facts_label: 'Did you know?',
+            zones: {
+                enamel: { title: 'Enamel', desc: 'The hardest tissue in the human body, covering the crown of the tooth. It consists of 96–97% inorganic substances — calcium hydroxyapatite crystals. It contains no cells or nerves, so it does not regenerate when damaged. The enamel thickness on the chewing surface is 1.5–2 mm, thinner on the sides.', facts: 'In hardness, enamel is close to quartz (5 on the Mohs scale) and harder than steel, but it is also brittle — it can crack under strong impact.' },
+                dentin: { title: 'Dentin', desc: 'The main tissue of the tooth, making up 70–80% of its volume. Softer than enamel but stronger (more elastic). Contains dentinal tubules — microscopic tubes running from the pulp to the enamel that give the tooth its sensitivity. Unlike enamel, dentin can slowly form throughout life.', facts: 'One square millimeter of dentin contains 30,000–75,000 dentinal tubules — which is why a tooth becomes sensitive when enamel wears down.' },
+                pulp: { title: 'Crown Pulp', desc: 'Soft tissue in the central cavity of the tooth crown containing nerves, blood and lymphatic vessels. It nourishes the tooth from within, provides for the formation of secondary dentin, and responds to external stimuli with pain. Pulp inflammation causes acute toothache (pulpitis).', facts: 'The pulp of a single tooth contains on average 1,500–2,000 nerve fibers, making the tooth one of the most sensitive organs in the body.' },
+                root_canal: { title: 'Root Canal', desc: 'The continuation of the pulp inside the root of the tooth, extending to an opening at the root apex. Vessels and nerves enter the tooth through this opening. In advanced caries treatment, dentists perform endodontic treatment — cleaning and filling root canals.', facts: 'Molars can have 3 to 5 root canals, and their complex anatomy is the main reason endodontic treatment requires great skill and experience from the dentist.' },
+                cementum: { title: 'Cementum', desc: 'A mineralized tissue covering the root of the tooth. Similar in composition to bone: contains about 65% inorganic substances. Fibers of the periodontal ligament attach to it, holding the tooth in the socket of the alveolar process of the jaw. Unlike enamel, cementum can form throughout life.', facts: 'The cementum at the tooth neck is only 20–50 μm thick, but at the root apex it can reach 150–200 μm — it gets thicker with age.' }
+            }
+        }
+    };
+
+    const ZONES = [
+        { id: 'enamel',     subtitle: 'Enamelum',        color: 0xffd93d },
+        { id: 'dentin',     subtitle: 'Dentinum',        color: 0xff9f45 },
+        { id: 'pulp',       subtitle: 'Pulpa coronalis', color: 0xff6b6b },
+        { id: 'root_canal', subtitle: 'Canalis radicis', color: 0xc77dff },
+        { id: 'cementum',   subtitle: 'Cementum',        color: 0x4d96ff }
+    ];
+
+    // classify(x, y, z): crown upper has enamel, root lower has cementum
+    function classify(x, y, z) {
+        const rad = Math.sqrt(x * x + z * z); // distance from vertical axis
+        if (rad < 0.18) return y > 0 ? 2 : 3; // pulp / root_canal
+        if (rad > 0.65) return y > 0 ? 0 : 4; // enamel / cementum
+        return 1; // dentin
+    }
+
+    initPoster({ modelFile: 'tooth.glb', zones: ZONES, classify, i18n: I18N });
+</script>
+</body>
+</html>

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="page_title">Хлоропласт — фотосинтетическая органелла</title>
+    <link rel="stylesheet" href="_poster.css">
+</head>
+<body>
+<div id="canvas-container"></div>
+<div id="header">
+    <h1 data-i18n="header_title">Хлоропласт</h1>
+    <p data-i18n="header_subtitle">Интерактивная модель — 5 структур фотосинтетической органеллы</p>
+</div>
+<div id="hint" data-i18n="hint">Кликните по любой части хлоропласта, чтобы узнать больше</div>
+<button id="reset-btn" data-i18n="reset_btn" data-i18n-title="reset_btn_title" title="Сбросить вид">↺ Сбросить вид</button>
+<div id="info-panel" aria-hidden="true">
+    <button class="close-btn" id="close-btn" data-i18n-aria-label="close_btn_label" aria-label="Закрыть">×</button>
+    <div class="info-header"><span class="info-dot" id="info-dot"></span><div><h2 id="info-title">Название</h2><span id="info-subtitle"></span></div></div>
+    <p id="info-desc">Описание</p>
+    <div id="info-facts"></div>
+</div>
+<div id="legend"></div>
+<div id="hover-label"></div>
+<div id="loading"><div class="spinner"></div><div id="loading-text" data-i18n="loading">Загрузка модели…</div></div>
+
+<script type="importmap">
+    { "imports": { "three": "../../libs/vendor/three-0.160.0/three.module.js", "three/addons/": "../../libs/vendor/three-0.160.0/addons/" } }
+</script>
+
+<script type="module">
+    import { initPoster } from './_poster_lib.js';
+
+    const I18N = {
+        ru: {
+            page_title: 'Хлоропласт — фотосинтетическая органелла',
+            header_title: 'Хлоропласт',
+            header_subtitle: 'Интерактивная модель — 5 структур фотосинтетической органеллы',
+            hint: 'Кликните по любой части хлоропласта, чтобы узнать больше',
+            reset_btn: '↺ Сбросить вид', reset_btn_title: 'Сбросить вид', close_btn_label: 'Закрыть',
+            loading: 'Загрузка модели…', error_load: 'Не удалось загрузить chloroplast.glb', error_no_mesh: 'В модели нет меша',
+            facts_label: 'Интересный факт',
+            zones: {
+                outer_membrane: { title: 'Внешняя мембрана', desc: 'Гладкая липидная двухслойная оболочка, окружающая хлоропласт. Свободно пропускает ионы и небольшие молекулы благодаря белкам-поринам. Отделяет содержимое хлоропласта от цитоплазмы клетки и регулирует обмен веществ с окружающей средой.', facts: 'У высших растений хлоропласты имеют две мембраны, а у водорослей и зелёных водорослей — три или четыре, что отражает их сложную эволюционную историю.' },
+                inner_membrane: { title: 'Внутренняя мембрана', desc: 'Селективно проницаемая мембрана, контролирующая транспорт веществ внутрь стромы. Содержит специфические транспортные белки для углеводов, аминокислот и липидов. В отличие от митохондрий, не содержит белков электрон-транспортной цепи — они находятся в тилакоидных мембранах.', facts: 'Внутренняя мембрана хлоропласта образует тилакоиды путём инвагинации (впячивания) во время развития органеллы.' },
+                stroma: { title: 'Строма', desc: 'Гелеобразное вещество, заполняющее внутреннее пространство хлоропласта вокруг тилакоидов. Содержит ферменты темновой фазы фотосинтеза (цикл Кальвина), собственную ДНК, рибосомы (70S, как у бактерий), крахмальные зёрна и липидные капли. Здесь происходит фиксация CO₂ и синтез глюкозы.', facts: 'В строме за один час один грамм хлорофилла может зафиксировать до 75 г углекислого газа, синтезируя сахара — основу всей пищевой цепи на Земле.' },
+                thylakoids: { title: 'Тилакоиды', desc: 'Уплощённые мембранные мешочки внутри хлоропласта, в мембранах которых протекают световые реакции фотосинтеза. Содержат фотосистемы I и II, цитохром b6/f-комплекс, АТФ-синтазу и пигменты (хлорофилл a, b, каротиноиды). Внутренняя полость тилакоидов называется люмен.', facts: 'Толщина тилакоидной мембраны всего около 7 нм, но именно здесь происходит превращение энергии света в химическую энергию АТФ и НАДФH.' },
+                grana: { title: 'Граны', desc: 'Стопки из 10–100 уплощённых тилакоидов, напоминающие монетные столбики. Соединены между собой ламеллами стромы — длинными плоскими тилакоидами. В одном хлоропласте может быть 40–60 гран. Их структура максимизирует площадь мембран для эффективного захвата света.', facts: 'Если развернуть все мембраны тилакоидов в одном листе шпината, их общая площадь составит около 400 м² — почти как баскетбольная площадка!' }
+            }
+        },
+        kz: {
+            page_title: 'Хлоропласт — фотосинтетикалық органелла',
+            header_title: 'Хлоропласт',
+            header_subtitle: 'Интерактивті модель — фотосинтетикалық органелланың 5 құрылымы',
+            hint: 'Толығырақ білу үшін хлоропласттың кез келген бөлігіне басыңыз',
+            reset_btn: '↺ Көріністі қалпына келтіру', reset_btn_title: 'Көріністі қалпына келтіру', close_btn_label: 'Жабу',
+            loading: 'Модель жүктелуде…', error_load: 'chloroplast.glb файлын жүктеу мүмкін болмады', error_no_mesh: 'Модельде меш табылмады',
+            facts_label: 'Қызықты факт',
+            zones: {
+                outer_membrane: { title: 'Сыртқы мембрана', desc: 'Хлоропласты қоршап тұрған тегіс липидтік қос қабатты қабық. Порин белоктарының арқасында иондар мен шағын молекулаларды еркін өткізеді. Хлоропласт ішіндегі заттарды жасуша цитоплазмасынан бөліп, қоршаған ортамен зат алмасуды реттейді.', facts: 'Жоғары сатыдағы өсімдіктерде хлоропласттарда екі мембрана бар, ал балдырлар мен жасыл балдырларда үш немесе төрт — бұл олардың күрделі эволюциялық тарихын көрсетеді.' },
+                inner_membrane: { title: 'Ішкі мембрана', desc: 'Стромаға заттардың тасымалдануын бақылайтын таңдамалы өткізгіш мембрана. Көмірсулар, аминқышқылдары мен липидтерге арналған арнайы тасымалдау белоктарын қамтиды. Митохондриялардан айырмашылығы, электрон-тасымалдау тізбегінің белоктарын қамтымайды — олар тилакоид мембраналарында орналасқан.', facts: 'Хлоропласттың ішкі мембранасы органелла дамыған кезде инвагинация (ішке қарай иілу) арқылы тилакоидтарды түзеді.' },
+                stroma: { title: 'Строма', desc: 'Тилакоидтардың айналасындағы хлоропласттың ішкі кеңістігін толтыратын гель тәрізді зат. Фотосинтездің қараңғы фазасының ферменттерін (Кальвин циклі), өз ДНҚ-сын, рибосомаларды (бактериялардағыдай 70S), крахмал дәндерін және липид тамшыларын қамтиды. CO₂ фиксациясы мен глюкоза синтезі осында жүреді.', facts: 'Стромада бір сағатта бір грамм хлорофилл 75 г-ға дейін көмірқышқыл газын фиксациялап, қанттарды синтездей алады — Жердегі бүкіл қоректік тізбектің негізі.' },
+                thylakoids: { title: 'Тилакоидтар', desc: 'Хлоропласт ішіндегі жалпақ мембраналы қапшықтар, олардың мембраналарында фотосинтездің жарық реакциялары жүреді. I және II фотожүйелерді, b6/f цитохром кешенін, АТФ-синтазаны және пигменттерді (a, b хлорофилл, каротиноидтар) қамтиды. Тилакоидтардың ішкі қуысы люмен деп аталады.', facts: 'Тилакоид мембранасының қалыңдығы небәрі шамамен 7 нм, бірақ дәл осында жарық энергиясы АТФ пен НАДФH химиялық энергиясына түрленеді.' },
+                grana: { title: 'Грандар', desc: 'Тиын бағаналарына ұқсайтын 10–100 жалпақ тилакоидтардан тұратын дестелер. Бір-бірімен строма ламеллалары — ұзын жалпақ тилакоидтармен қосылған. Бір хлоропластта 40–60 гран болуы мүмкін. Олардың құрылымы жарықты тиімді ұстау үшін мембраналар ауданын барынша арттырады.', facts: 'Шпинаттың бір жапырағындағы барлық тилакоид мембраналарын жайып тастаса, олардың жалпы ауданы шамамен 400 м² — баскетбол алаңындай!' }
+            }
+        },
+        en: {
+            page_title: 'Chloroplast — Photosynthetic Organelle',
+            header_title: 'Chloroplast',
+            header_subtitle: 'Interactive model — 5 structures of the photosynthetic organelle',
+            hint: 'Click any part of the chloroplast to learn more',
+            reset_btn: '↺ Reset view', reset_btn_title: 'Reset view', close_btn_label: 'Close',
+            loading: 'Loading model…', error_load: 'Failed to load chloroplast.glb', error_no_mesh: 'No mesh found in the model',
+            facts_label: 'Did you know?',
+            zones: {
+                outer_membrane: { title: 'Outer Membrane', desc: 'A smooth lipid bilayer envelope surrounding the chloroplast. It freely allows ions and small molecules to pass through thanks to porin proteins. Separates the contents of the chloroplast from the cell cytoplasm and regulates exchange of substances with the surrounding environment.', facts: 'Higher plants have chloroplasts with two membranes, while algae and green algae have three or four — reflecting their complex evolutionary history.' },
+                inner_membrane: { title: 'Inner Membrane', desc: 'A selectively permeable membrane that controls transport of substances into the stroma. Contains specific transport proteins for carbohydrates, amino acids and lipids. Unlike mitochondria, it does not contain electron transport chain proteins — these are located in the thylakoid membranes.', facts: 'The inner membrane of the chloroplast forms thylakoids through invagination during organelle development.' },
+                stroma: { title: 'Stroma', desc: 'A gel-like substance filling the internal space of the chloroplast around the thylakoids. Contains enzymes of the dark phase of photosynthesis (Calvin cycle), its own DNA, ribosomes (70S, like bacteria), starch granules and lipid droplets. CO₂ fixation and glucose synthesis occur here.', facts: 'In the stroma, one gram of chlorophyll can fix up to 75 g of carbon dioxide per hour, synthesizing sugars — the foundation of the entire food chain on Earth.' },
+                thylakoids: { title: 'Thylakoids', desc: 'Flattened membrane sacs inside the chloroplast where the light reactions of photosynthesis occur in their membranes. They contain photosystems I and II, cytochrome b6/f complex, ATP synthase and pigments (chlorophyll a, b, carotenoids). The inner cavity of the thylakoid is called the lumen.', facts: 'The thylakoid membrane is only about 7 nm thick, but this is where light energy is converted into the chemical energy of ATP and NADPH.' },
+                grana: { title: 'Grana', desc: 'Stacks of 10–100 flattened thylakoids resembling coin stacks. Connected by stroma lamellae — long flat thylakoids. A single chloroplast can contain 40–60 grana. Their structure maximizes membrane area for efficient light capture.', facts: 'If you unfolded all thylakoid membranes in a single spinach leaf, their total area would be about 400 m² — almost the size of a basketball court!' }
+            }
+        }
+    };
+
+    const ZONES = [
+        { id: 'outer_membrane', subtitle: 'Membrana externa', color: 0x6bcb77 },
+        { id: 'inner_membrane', subtitle: 'Membrana interna', color: 0x4d96ff },
+        { id: 'stroma',         subtitle: 'Stroma',           color: 0xffd93d },
+        { id: 'thylakoids',     subtitle: 'Thylakoides',      color: 0xff6b6b },
+        { id: 'grana',          subtitle: 'Grana',            color: 0xc77dff }
+    ];
+
+    // classify(x, y, z): concentric layers, thylakoids/grana in mid
+    function classify(x, y, z) {
+        const dc = Math.sqrt(x * x + y * y + z * z);
+        if (dc > 0.85) return 0; // outer_membrane
+        if (dc > 0.75) return 1; // inner_membrane
+        if (dc < 0.35) return 2; // stroma
+        if (y > 0) return 3;     // thylakoids
+        return 4;                 // grana
+    }
+
+    initPoster({ modelFile: 'chloroplast.glb', zones: ZONES, classify, i18n: I18N });
+</script>
+</body>
+</html>

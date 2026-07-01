@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="page_title">Нейрон — нервная клетка</title>
+    <link rel="stylesheet" href="_poster.css">
+</head>
+<body>
+<div id="canvas-container"></div>
+<div id="header">
+    <h1 data-i18n="header_title">Нейрон</h1>
+    <p data-i18n="header_subtitle">Интерактивная модель нервной клетки — 5 ключевых частей</p>
+</div>
+<div id="hint" data-i18n="hint">Кликните по любой части нейрона, чтобы узнать больше</div>
+<button id="reset-btn" data-i18n="reset_btn" data-i18n-title="reset_btn_title" title="Сбросить вид">↺ Сбросить вид</button>
+<div id="info-panel" aria-hidden="true"></div>
+<div id="legend"></div>
+<div id="hover-label"></div>
+<div id="loading"><div class="spinner"></div><div id="loading-text" data-i18n="loading">Загрузка модели…</div></div>
+
+<script type="importmap">
+    { "imports": { "three": "../../libs/vendor/three-0.160.0/three.module.js", "three/addons/": "../../libs/vendor/three-0.160.0/addons/" } }
+</script>
+
+<script type="module">
+    import { initPoster } from './_poster_lib.js';
+
+    const I18N = {
+        ru: {
+            page_title: 'Нейрон — нервная клетка',
+            header_title: 'Нейрон',
+            header_subtitle: 'Интерактивная модель нервной клетки — 5 ключевых частей',
+            hint: 'Кликните по любой части нейрона, чтобы узнать больше',
+            reset_btn: '↺ Сбросить вид', reset_btn_title: 'Сбросить вид', close_btn_label: 'Закрыть',
+            loading: 'Загрузка модели…', error_load: 'Не удалось загрузить neuron.glb', error_no_mesh: 'В модели нет меша',
+            facts_label: 'Интересный факт',
+            zones: {
+                dendrites: { title: 'Дендриты', desc: 'Древовидные ветвящиеся отростки, отходящие от тела нейрона. Принимают сигналы от тысяч других нейронов через синапсы и передают их к телу клетки. У одного нейрона может быть от нескольких до тысяч дендритов с миллионами синаптических контактов.', facts: 'Если все дендриты одного нейрона коры мозга разложить в линию, их длина составит до 10 метров, а количество шипиков (синапсов) — до 200 000.' },
+                soma: { title: 'Тело нейрона (сома)', desc: 'Центральная часть нервной клетки, содержащая ядро и большинство органелл (митохондрии, рибосомы, аппарат Гольджи). Здесь синтезируются все белки и нейромедиаторы. Сома интегрирует поступающие сигналы и решает, передать ли импульс дальше.', facts: 'Размер тела нейрона варьирует от 4 мкм (зернистые клетки мозжечка) до 130 мкм (мотонейроны спинного мозга) — в 30 раз!' },
+                axon_hillock: { title: 'Аксонный холмик', desc: 'Конусовидное возвышение, в месте отхождения аксона от тела нейрона. Это критическая зона интеграции сигналов: именно здесь решается, возникнет потенциал действия или нет. Имеет самый низкий порог возбудимости в нейроне.', facts: 'Если суммарный возбуждающий сигнал в аксонном холмике превышает порог в −55 мВ, генерируется нервный импульс, который летит по аксону со скоростью до 120 м/с.' },
+                axon: { title: 'Аксон с миелиновой оболочкой', desc: 'Длинный отросток нейрона, передающий электрические импульсы (потенциалы действия) от тела клетки к другим нейронам или мышцам. Большинство аксонов покрыто миелином — жировой изоляцией, образуемой шванновскими клетками и олигодендроцитами, что увеличивает скорость проведения сигнала.', facts: 'Самые длинные аксоны человека идут от спинного мозга до пальцев ног и достигают 1 метра в длину при толщине всего 5–25 мкм.' },
+                terminals: { title: 'Аксонные терминали (синапсы)', desc: 'Концевые разветвления аксона, образующие синаптические контакты с дендритами или сомами других нейронов. В пресинаптических окончаниях накапливаются везикулы с нейромедиаторами (дофамин, серотонин, глутамат и др.), которые выбрасываются в синаптическую щель при поступлении импульса.', facts: 'Один нейрон образует от 1000 до 10 000 синапсов с другими нейронами; всего в мозге человека около 100 триллионов синапсов.' }
+            }
+        },
+        kz: {
+            page_title: 'Нейрон — жүйке жасушасы',
+            header_title: 'Нейрон',
+            header_subtitle: 'Жүйке жасушасының интерактивті моделі — 5 негізгі бөлік',
+            hint: 'Толығырақ білу үшін нейронның кез келген бөлігіне басыңыз',
+            reset_btn: '↺ Көріністі қалпына келтіру', reset_btn_title: 'Көріністі қалпына келтіру', close_btn_label: 'Жабу',
+            loading: 'Модель жүктелуде…', error_load: 'neuron.glb файлын жүктеу мүмкін болмады', error_no_mesh: 'Модельде меш табылмады',
+            facts_label: 'Қызықты факт',
+            zones: {
+                dendrites: { title: 'Дендриттер', desc: 'Нейронның денесінен таралатын ағаш тәрізді тармақталған өсінділер. Синапстар арқылы мыңдаған басқа нейрондардан сигналдар қабылдап, оларды жасуша денесіне жеткізеді.', facts: 'Ми қыртысының бір нейронының барлық дендриттерін сызыққа жайса, ұзындығы 10 метрге дейін, ал тікенектерінің саны 200 000-ға жетеді.' },
+                soma: { title: 'Нейрон денесі (сома)', desc: 'Жүйке жасушасының орталық бөлігі, ядроны және органеллалардың көпшілігін қамтиды. Мұнда барлық белоктар мен нейромедиаторлар синтезделеді.', facts: 'Нейрон денесінің мөлшері 4 мкм-ден 130 мкм-ге дейін — 30 есе айырмашылықпен өзгереді!' },
+                axon_hillock: { title: 'Аксон төбешігі', desc: 'Аксонның нейрон денесінен шығатын жеріндегі конус тәрізді жоғарылау. Бұл сигналдарды интеграциялаудың сыни аймағы.', facts: 'Аксон төбешігіндегі жиынтық қоздырғыш сигнал −55 мВ шегінен асса, секундына 120 м-ге дейінгі жылдамдықпен жүйке импульсі түзіледі.' },
+                axon: { title: 'Аксон миелин қабығымен', desc: 'Нейронның ұзын өсіндісі, электрлік импульстерді жасуша денесінен басқа нейрондарға немесе бұлшықеттерге жеткізеді. Миелинмен қапталған.', facts: 'Адамның ең ұзын аксондары жұлыннан аяқтың саусақтарына дейін 1 метрге жетеді.' },
+                terminals: { title: 'Аксон терминальдары (синапстар)', desc: 'Басқа нейрондардың дендриттерімен синаптикалық байланыс жасайтын аксонның соңғы тармақтары. Нейромедиаторлар бөлінетін жер.', facts: 'Бір нейрон 1000-нан 10 000-ға дейін синапс түзеді; адамның миында жалпы шамамен 100 триллион синапс бар.' }
+            }
+        },
+        en: {
+            page_title: 'Neuron — Nerve Cell',
+            header_title: 'Neuron',
+            header_subtitle: 'Interactive model of a nerve cell — 5 key parts',
+            hint: 'Click any part of the neuron to learn more',
+            reset_btn: '↺ Reset view', reset_btn_title: 'Reset view', close_btn_label: 'Close',
+            loading: 'Loading model…', error_load: 'Failed to load neuron.glb', error_no_mesh: 'No mesh found in the model',
+            facts_label: 'Did you know?',
+            zones: {
+                dendrites: { title: 'Dendrites', desc: 'Tree-like branching extensions that receive signals from thousands of other neurons via synapses and transmit them to the cell body.', facts: 'If all dendrites of a single cortical neuron were laid out in a line, their length would reach up to 10 meters.' },
+                soma: { title: 'Soma (Cell Body)', desc: 'The central part of the nerve cell containing the nucleus and most organelles. All proteins and neurotransmitters are synthesized here.', facts: 'Neuron body size varies from 4 μm to 130 μm — a 30-fold difference!' },
+                axon_hillock: { title: 'Axon Hillock', desc: 'A cone-shaped elevation where the axon emerges from the neuron body. The critical zone for signal integration with the lowest excitability threshold.', facts: 'If the excitatory signal exceeds the −55 mV threshold, a nerve impulse is generated traveling at up to 120 m/s.' },
+                axon: { title: 'Axon with Myelin Sheath', desc: 'A long process that transmits electrical impulses from the cell body to other neurons or muscles. Covered with myelin for faster signal conduction.', facts: 'The longest human axons reach 1 meter in length while being only 5–25 μm thick.' },
+                terminals: { title: 'Axon Terminals (Synapses)', desc: 'Terminal branches forming synaptic contacts with other neurons. Contain vesicles with neurotransmitters released into the synaptic cleft.', facts: 'A single neuron forms 1,000 to 10,000 synapses; the human brain has about 100 trillion synapses total.' }
+            }
+        }
+    };
+
+    const ZONES = [
+        { id: 'dendrites',    subtitle: 'Dendritae',         color: 0xff6b6b },
+        { id: 'soma',         subtitle: 'Soma neuralis',     color: 0x4d96ff },
+        { id: 'axon_hillock', subtitle: 'Colliculus axonis', color: 0xffd93d },
+        { id: 'axon',         subtitle: 'Axon + Myelinum',   color: 0x6bcb77 },
+        { id: 'terminals',    subtitle: 'Telodendria',       color: 0xc77dff }
+    ];
+
+    // classify(x, y, z): x=right, y=up, z=front
+    // Neuron oriented vertically: dendrites at top, soma upper-center, axon hillock just below,
+    // axon extending down, terminals at very bottom
+    function classify(x, y, z) {
+        // Dendrites — top (branching)
+        if (y > 0.5) return 0;
+        // Soma — upper center, roughly spherical
+        if (y > -0.05 && y < 0.5 && Math.abs(x) < 0.4 && Math.abs(z) < 0.4) return 1;
+        // Axon hillock — transition zone just below soma
+        if (y > -0.25 && y < 0.0) return 2;
+        // Terminals — very bottom (branching)
+        if (y < -0.7) return 4;
+        // Axon — long middle section (default)
+        return 3;
+    }
+
+    initPoster({ modelFile: 'neuron.glb', zones: ZONES, classify, i18n: I18N });
+</script>
+</body>
+</html>

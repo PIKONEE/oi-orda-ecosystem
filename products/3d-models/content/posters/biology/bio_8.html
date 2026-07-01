@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="page_title">Лёгкие — анатомическая модель</title>
+    <link rel="stylesheet" href="_poster.css">
+</head>
+<body>
+<div id="canvas-container"></div>
+<div id="header">
+    <h1 data-i18n="header_title">Лёгкие человека</h1>
+    <p data-i18n="header_subtitle">Интерактивная анатомическая модель — 6 отделов дыхательной системы</p>
+</div>
+<div id="hint" data-i18n="hint">Кликните по любому отделу лёгких, чтобы узнать больше</div>
+<button id="reset-btn" data-i18n="reset_btn" data-i18n-title="reset_btn_title" title="Сбросить вид">↺ Сбросить вид</button>
+<div id="info-panel" aria-hidden="true"></div>
+<div id="legend"></div>
+<div id="hover-label"></div>
+<div id="loading"><div class="spinner"></div><div id="loading-text" data-i18n="loading">Загрузка модели…</div></div>
+
+<script type="importmap">
+    { "imports": { "three": "../../libs/vendor/three-0.160.0/three.module.js", "three/addons/": "../../libs/vendor/three-0.160.0/addons/" } }
+</script>
+
+<script type="module">
+    import { initPoster } from './_poster_lib.js';
+
+    const I18N = {
+        ru: {
+            page_title: 'Лёгкие — анатомическая модель',
+            header_title: 'Лёгкие человека',
+            header_subtitle: 'Интерактивная анатомическая модель — 6 отделов дыхательной системы',
+            hint: 'Кликните по любому отделу лёгких, чтобы узнать больше',
+            reset_btn: '↺ Сбросить вид', reset_btn_title: 'Сбросить вид', close_btn_label: 'Закрыть',
+            loading: 'Загрузка модели…', error_load: 'Не удалось загрузить lungs.glb', error_no_mesh: 'В модели нет меша',
+            facts_label: 'Интересный факт',
+            zones: {
+                trachea: { title: 'Трахея', desc: 'Дыхательная трубка длиной 10–12 см, соединяющая гортань с бронхами. Состоит из 16–20 С-образных хрящевых полуколец, обеспечивающих просвет дыхательных путей. Изнутри выстлана мерцательным эпителием — реснички двигают слизь вверх, очищая воздух от пыли и микробов.', facts: 'Реснички мерцательного эпителия совершают около 1000 движений в минуту, перемещая слизь со скоростью 1 см в минуту.' },
+                bronchi: { title: 'Главные бронхи', desc: 'Трахея делится на два главных бронха — правый и левый. Правый бронх короче, шире и идёт более вертикально, поэтому инородные тела чаще попадают именно в него. Бронхи многократно ветвятся внутри лёгких, образуя «бронхиальное дерево», заканчивающееся альвеолами.', facts: 'Если развернуть всё бронхиальное дерево с альвеолами, его поверхность составит около 70–90 м² — почти как теннисный корт.' },
+                lung_upper_r: { title: 'Правое лёгкое — верхняя доля', desc: 'Самая верхняя часть правого лёгкого, занимающая пространство выше горизонтальной междолевой щели. Содержит три сегмента: верхушечный, задний и передний. У детей и взрослых здесь чаще всего локализуется туберкулёз из-за лучшей вентиляции.', facts: 'Правое лёгкое больше левого по объёму примерно на 10%, потому что слева расположено сердце.' },
+                lung_lower_r: { title: 'Правое лёгкое — средняя и нижняя доли', desc: 'Объединённые средняя и нижняя доли правого лёгкого. Нижняя доля — самая большая, расположена снизу и сзади. Содержит 5 сегментов. При вдохе именно она расширяется сильнее всего, опускаясь вниз вместе с диафрагмой.', facts: 'Нижние доли лёгких опускаются при вдохе примерно на 6–7 см — это самое большое смещение среди органов грудной клетки.' },
+                lung_upper_l: { title: 'Левое лёгкое — верхняя доля', desc: 'Верхняя доля левого лёгкого, содержащая особый отросток — язычок (lingula), который компенсирует отсутствие средней доли. Содержит 5 сегментов.', facts: 'В левом лёгком всего 2 доли (не 3, как справа), потому что часть его пространства занимает сердце с перикардом.' },
+                lung_lower_l: { title: 'Левое лёгкое — нижняя доля', desc: 'Нижняя доля левого лёгкого, расположенная ниже косой междолевой щели. Содержит 4–5 сегментов. Прилегает к диафрагме и при дыхании активно меняет объём, обеспечивая основную часть вдоха.', facts: 'За день взрослый человек делает около 23 000 вдохов и пропускает через лёгкие 11 000 литров воздуха.' }
+            }
+        },
+        kz: {
+            page_title: 'Өкпе — анатомиялық модель',
+            header_title: 'Адам өкпесі',
+            header_subtitle: 'Интерактивті анатомиялық модель — тыныс алу жүйесінің 6 бөлімі',
+            hint: 'Толығырақ білу үшін өкпенің кез келген бөлігіне басыңыз',
+            reset_btn: '↺ Көріністі қалпына келтіру', reset_btn_title: 'Көріністі қалпына келтіру', close_btn_label: 'Жабу',
+            loading: 'Модель жүктелуде…', error_load: 'lungs.glb файлын жүктеу мүмкін болмады', error_no_mesh: 'Модельде меш табылмады',
+            facts_label: 'Қызықты факт',
+            zones: {
+                trachea: { title: 'Кеңірдек', desc: 'Көмекейді бронхпен жалғайтын ұзындығы 10–12 см тыныс алу түтігі. 16–20 С-тәрізді шеміршекті жартылай шеңберлерден тұрады. Іш жағынан кірпікшелі эпителиймен қапталған.', facts: 'Кірпікшелі эпителийдің кірпікшелері минутына шамамен 1000 қозғалыс жасап, шырышты минутына 1 см жылдамдықпен жылжытады.' },
+                bronchi: { title: 'Басты бронхтар', desc: 'Кеңірдек оң және сол басты бронхтарға бөлінеді. Оң бронх қысқа, кең және тігірек, сондықтан бөгде заттар жиі дәл соған түседі. Бронхтар өкпе ішінде көп рет тармақталып, альвеолалармен аяқталатын «бронх ағашын» құрайды.', facts: 'Бүкіл бронх ағашын альвеолалармен жайып тастаса, оның беті шамамен 70–90 м² болар еді.' },
+                lung_upper_r: { title: 'Оң өкпе — жоғарғы үлесі', desc: 'Оң өкпенің ең жоғарғы бөлігі, көлденең үлесаралық саңылаудың үстінде орналасқан. Үш сегментті қамтиды.', facts: 'Оң өкпе сол өкпеден көлемі бойынша шамамен 10%-ға үлкен.' },
+                lung_lower_r: { title: 'Оң өкпе — ортаңғы және төменгі үлесі', desc: 'Оң өкпенің біріктірілген ортаңғы және төменгі үлестері. Төменгі үлес — ең үлкені, 5 сегментті қамтиды.', facts: 'Өкпенің төменгі үлестері дем алу кезінде шамамен 6–7 см төмен түседі.' },
+                lung_upper_l: { title: 'Сол өкпе — жоғарғы үлесі', desc: 'Сол өкпенің жоғарғы үлесі, ортаңғы үлестің жоқтығын өтейтін ерекше өсінді — тілшікті (lingula) қамтиды. 5 сегментті қамтиды.', facts: 'Сол өкпеде тек 2 үлес бар (оң жақтағыдай 3 емес).' },
+                lung_lower_l: { title: 'Сол өкпе — төменгі үлесі', desc: 'Сол өкпенің төменгі үлесі, қиғаш үлесаралық саңылаудан төмен орналасқан. 4–5 сегменттен тұрады.', facts: 'Ересек адам тәулігіне шамамен 23 000 рет дем алып, өкпе арқылы 11 000 литр ауа өткізеді.' }
+            }
+        },
+        en: {
+            page_title: 'Lungs — Anatomical Model',
+            header_title: 'Human Lungs',
+            header_subtitle: 'Interactive anatomical model — 6 parts of the respiratory system',
+            hint: 'Click any part of the lungs to learn more',
+            reset_btn: '↺ Reset view', reset_btn_title: 'Reset view', close_btn_label: 'Close',
+            loading: 'Loading model…', error_load: 'Failed to load lungs.glb', error_no_mesh: 'No mesh found in the model',
+            facts_label: 'Did you know?',
+            zones: {
+                trachea: { title: 'Trachea', desc: 'A 10–12 cm respiratory tube connecting the larynx with the bronchi. Consists of 16–20 C-shaped cartilaginous half-rings. Interior lined with ciliated epithelium.', facts: 'Cilia beat about 1000 times per minute, moving mucus at 1 cm per minute.' },
+                bronchi: { title: 'Main Bronchi', desc: 'The trachea divides into two main bronchi. The right bronchus is shorter, wider and more vertical. They branch many times inside the lungs forming the bronchial tree ending in alveoli.', facts: 'The bronchial tree surface area is about 70–90 m² — almost the size of a tennis court.' },
+                lung_upper_r: { title: 'Right Lung — Upper Lobe', desc: 'The topmost part of the right lung above the horizontal interlobar fissure. Contains three segments. Tuberculosis often localizes here due to better ventilation.', facts: 'The right lung is about 10% larger than the left because the heart occupies space on the left.' },
+                lung_lower_r: { title: 'Right Lung — Middle & Lower Lobes', desc: 'The combined middle and lower lobes of the right lung. The lower lobe is the largest with 5 segments. Expands the most during inhalation.', facts: 'The lower lobes descend about 6–7 cm during inhalation — the largest displacement among chest organs.' },
+                lung_upper_l: { title: 'Left Lung — Upper Lobe', desc: 'The upper lobe of the left lung, containing the lingula which compensates for the absent middle lobe. Contains 5 segments.', facts: 'The left lung has only 2 lobes (not 3 like on the right) because of the heart.' },
+                lung_lower_l: { title: 'Left Lung — Lower Lobe', desc: 'The lower lobe below the oblique interlobar fissure. Contains 4–5 segments. Adjacent to the diaphragm, it provides the bulk of inhalation.', facts: 'An adult takes about 23,000 breaths per day and moves 11,000 liters of air through the lungs.' }
+            }
+        }
+    };
+
+    const ZONES = [
+        { id: 'trachea',      subtitle: 'Trachea',                 color: 0xffd93d },
+        { id: 'bronchi',      subtitle: 'Bronchi principales',     color: 0xff9f45 },
+        { id: 'lung_upper_r', subtitle: 'Lobus superior dexter',   color: 0xff6b6b },
+        { id: 'lung_lower_r', subtitle: 'Lobus inferior dexter',   color: 0xf472b6 },
+        { id: 'lung_upper_l', subtitle: 'Lobus superior sinister', color: 0x4d96ff },
+        { id: 'lung_lower_l', subtitle: 'Lobus inferior sinister', color: 0x6bcb77 }
+    ];
+
+    // classify(x, y, z): x=right, y=up, z=front
+    // Trachea+bronchi at top center, lungs left/right with upper/lower split
+    function classify(x, y, z) {
+        // Trachea — top center, narrow tube
+        if (y > 0.55 && Math.abs(x) < 0.2) return 0;
+        // Bronchi — branching region below trachea, still central
+        if (y > 0.25 && Math.abs(x) < 0.4) return 1;
+        // Right lung (x > 0)
+        if (x > 0.05) {
+            return y > -0.1 ? 2 : 3; // upper / lower
+        }
+        // Left lung (x <= 0)
+        return y > -0.1 ? 4 : 5; // upper / lower
+    }
+
+    initPoster({ modelFile: 'lungs.glb', zones: ZONES, classify, i18n: I18N });
+</script>
+</body>
+</html>

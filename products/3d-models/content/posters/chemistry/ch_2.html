@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="page_title">Структура атома углерода</title>
+    <script type="text/javascript" src="qrc:///qtwebchannel/qwebchannel.js"></script>
+    <script src="../../libs/vendor/three-r128/three.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #2a2f4a 100%);
+            overflow: hidden;
+            color: white;
+        }
+
+
+
+        .back-button:hover {
+            transform: translateX(-5px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .header {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            font-weight: 800;
+            text-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .info-panel {
+            position: fixed;
+            right: -420px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 400px;
+            max-height: 85vh;
+            background: rgba(255, 255, 255, 0.95);
+            
+            border-radius: 20px 0 0 20px;
+            padding: 30px;
+            box-shadow: -5px 0 30px rgba(0, 0, 0, 0.4);
+            transition: right 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            z-index: 500;
+            overflow-y: auto;
+            color: #333;
+        }
+
+        .info-panel.active {
+            right: 0;
+        }
+
+        .info-panel .close-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            background: #f44336;
+            color: white;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s;
+        }
+
+        .info-panel .close-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .info-panel h2 {
+            color: #2a2f4a;
+            font-size: 24px;
+            margin-bottom: 15px;
+            padding-right: 40px;
+        }
+
+        .info-panel .info-content {
+            line-height: 1.7;
+            font-size: 15px;
+        }
+
+        .info-section {
+            margin-bottom: 18px;
+            padding: 15px;
+            background: rgba(102, 126, 234, 0.05);
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+
+        .info-section strong {
+            color: #0a0e27;
+            display: block;
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+
+        .controls {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.12);
+            
+            border-radius: 15px;
+            padding: 15px 25px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .controls p {
+            font-size: 14px;
+            opacity: 0.95;
+            text-align: center;
+        }
+
+        .atom-info {
+            position: fixed;
+            top: 120px;
+            left: 30px;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.12);
+            
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            max-width: 280px;
+        }
+
+        .atom-info h3 {
+            font-size: 18px;
+            margin-bottom: 12px;
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+            font-size: 14px;
+        }
+
+        .info-row .label {
+            opacity: 0.85;
+        }
+
+        .info-row .value {
+            font-weight: 600;
+        }
+
+        .legend {
+            position: fixed;
+            bottom: 30px;
+            left: 30px;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.12);
+            
+            border-radius: 15px;
+            padding: 18px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            max-width: 280px;
+        }
+
+        .legend h3 {
+            font-size: 16px;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+            font-size: 13px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .legend-item:hover {
+            transform: translateX(5px);
+        }
+
+        .legend-sphere {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            margin-right: 12px;
+            border: 2px solid rgba(255, 255, 255, 0.6);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1 data-i18n="header_title">⚛️ Атом углерода (C)</h1>
+    <p data-i18n="header_subtitle">Интерактивная 3D модель</p>
+</div>
+<div id="canvas-container"></div>
+
+<div class="atom-info">
+    <h3 data-i18n="atom_info_heading">Углерод (Carbon)</h3>
+    <div class="info-row">
+        <span class="label" data-i18n="atom_info_number_label">Атомный номер:</span>
+        <span class="value">6</span>
+    </div>
+    <div class="info-row">
+        <span class="label" data-i18n="atom_info_mass_label">Атомная масса:</span>
+        <span class="value" data-i18n="atom_info_mass_value">12.011 а.е.м.</span>
+    </div>
+    <div class="info-row">
+        <span class="label" data-i18n="atom_info_protons_label">Протоны:</span>
+        <span class="value">6</span>
+    </div>
+    <div class="info-row">
+        <span class="label" data-i18n="atom_info_neutrons_label">Нейтроны:</span>
+        <span class="value">6</span>
+    </div>
+    <div class="info-row">
+        <span class="label" data-i18n="atom_info_electrons_label">Электроны:</span>
+        <span class="value">6</span>
+    </div>
+    <div class="info-row">
+        <span class="label" data-i18n="atom_info_config_label">Конфигурация:</span>
+        <span class="value">1s² 2s² 2p²</span>
+    </div>
+</div>
+
+<div class="info-panel" id="info-panel">
+    <button class="close-btn" data-i18n-aria-label="close_btn_label" aria-label="Закрыть" onclick="closeInfo()">×</button>
+    <h2 id="info-title" data-i18n="info_default_title">Выберите часть атома</h2>
+    <div class="info-content" id="info-content">
+        <p data-i18n="info_default_text">Кликните на протон, нейтрон или электрон, чтобы узнать подробнее.</p>
+    </div>
+</div>
+
+<div class="controls">
+    <p data-i18n="controls_hint">🖱️ Вращение: перетаскивание | 🔍 Масштаб: колесо мыши | Пробел: пауза/продолжить</p>
+</div>
+
+<div class="legend">
+    <h3 data-i18n="legend_heading">Частицы атома:</h3>
+    <div class="legend-item" onclick="focusPart('proton')">
+        <div class="legend-sphere" style="background: radial-gradient(circle at 30% 30%, #ff6b6b, #ee5a6f);"></div>
+        <span data-i18n="legend_proton">Протон (+)</span>
+    </div>
+    <div class="legend-item" onclick="focusPart('neutron')">
+        <div class="legend-sphere" style="background: radial-gradient(circle at 30% 30%, #95a5a6, #7f8c8d);"></div>
+        <span data-i18n="legend_neutron">Нейтрон (0)</span>
+    </div>
+    <div class="legend-item" onclick="focusPart('electron')">
+        <div class="legend-sphere" style="background: radial-gradient(circle at 30% 30%, #3498db, #2980b9);"></div>
+        <span data-i18n="legend_electron">Электрон (−)</span>
+    </div>
+</div>
+
+<script>
+    // QWebChannel Bridge
+    function goBack() {
+        if (typeof bridge !== 'undefined' && bridge) {
+            bridge.onBackClicked();
+        }
+    }
+
+    if (typeof QWebChannel !== 'undefined' && typeof qt !== 'undefined') {
+        try {
+            new QWebChannel(qt.webChannelTransport, function (channel) {
+                window.bridge = channel.objects.bridge;
+            });
+        } catch (e) {
+        }
+    }
+
+    // =====================================================================
+    //  I18N — встроенные переводы (RU / KZ / EN). Язык: ?lang=ru|kz|en.
+    // =====================================================================
+    const I18N = {
+        ru: {
+            page_title: 'Структура атома углерода',
+            header_title: '⚛️ Атом углерода (C)',
+            header_subtitle: 'Интерактивная 3D модель',
+            atom_info_heading: 'Углерод (Carbon)',
+            atom_info_number_label: 'Атомный номер:',
+            atom_info_mass_label: 'Атомная масса:',
+            atom_info_mass_value: '12.011 а.е.м.',
+            atom_info_protons_label: 'Протоны:',
+            atom_info_neutrons_label: 'Нейтроны:',
+            atom_info_electrons_label: 'Электроны:',
+            atom_info_config_label: 'Конфигурация:',
+            info_default_title: 'Выберите часть атома',
+            info_default_text: 'Кликните на протон, нейтрон или электрон, чтобы узнать подробнее.',
+            controls_hint: '🖱️ Вращение: перетаскивание | 🔍 Масштаб: колесо мыши | Пробел: пауза/продолжить',
+            legend_heading: 'Частицы атома:',
+            legend_proton: 'Протон (+)',
+            legend_neutron: 'Нейтрон (0)',
+            legend_electron: 'Электрон (−)',
+            close_btn_label: 'Закрыть',
+            particles: {
+                proton: {
+                    title: 'Протон (p⁺)',
+                    sections: [
+                        { strong: 'Описание:', body: '<p>Положительно заряженная элементарная частица, находящаяся в ядре атома.</p>' },
+                        { strong: 'Характеристики:', body: '<p>• Заряд: +1 (1.602 × 10⁻¹⁹ Кл)<br>• Масса: 1.6726 × 10⁻²⁷ кг<br>• Относительная масса: 1 а.е.м.<br>• Спин: ½</p>' },
+                        { strong: 'Роль в атоме:', body: '<p>Количество протонов определяет атомный номер элемента и его химические свойства. У углерода 6 протонов.</p>' },
+                        { strong: 'Состав:', body: '<p>Состоит из 2 верхних (up) кварков и 1 нижнего (down) кварка.</p>' }
+                    ]
+                },
+                neutron: {
+                    title: 'Нейтрон (n⁰)',
+                    sections: [
+                        { strong: 'Описание:', body: '<p>Нейтральная (незаряженная) элементарная частица, находящаяся в ядре атома.</p>' },
+                        { strong: 'Характеристики:', body: '<p>• Заряд: 0 (нейтральная)<br>• Масса: 1.6749 × 10⁻²⁷ кг<br>• Относительная масса: 1 а.е.м.<br>• Спин: ½</p>' },
+                        { strong: 'Роль в атоме:', body: '<p>Обеспечивает стабильность ядра, уменьшая отталкивание между протонами. У изотопа углерода-12 — 6 нейтронов.</p>' },
+                        { strong: 'Интересный факт:', body: '<p>Свободный нейтрон нестабилен и распадается за ~15 минут на протон, электрон и антинейтрино.</p>' }
+                    ]
+                },
+                electron: {
+                    title: 'Электрон (e⁻)',
+                    sections: [
+                        { strong: 'Описание:', body: '<p>Отрицательно заряженная элементарная частица, вращающаяся вокруг ядра атома на электронных оболочках.</p>' },
+                        { strong: 'Характеристики:', body: '<p>• Заряд: −1 (−1.602 × 10⁻¹⁹ Кл)<br>• Масса: 9.109 × 10⁻³¹ кг<br>• Относительная масса: 0.0005 а.е.м.<br>• Спин: ½</p>' },
+                        { strong: 'Электронная конфигурация углерода:', body: '<p>• K-оболочка (n=1): 2 электрона<br>• L-оболочка (n=2): 4 электрона<br>• Валентные электроны: 4</p>' },
+                        { strong: 'Роль в химии:', body: '<p>Электроны на внешней оболочке (валентные) участвуют в образовании химических связей. 4 валентных электрона углерода позволяют ему образовывать 4 ковалентные связи.</p>' }
+                    ]
+                },
+                nucleus: {
+                    title: 'Ядро атома',
+                    sections: [
+                        { strong: 'Описание:', body: '<p>Центральная часть атома, содержащая протоны и нейтроны (нуклоны).</p>' },
+                        { strong: 'Характеристики ядра углерода-12:', body: '<p>• Протоны: 6<br>• Нейтроны: 6<br>• Массовое число: 12<br>• Радиус: ~2.7 фм (фемтометров)</p>' },
+                        { strong: 'Ядерные силы:', body: '<p>Сильное взаимодействие удерживает протоны и нейтроны в ядре, преодолевая электростатическое отталкивание между протонами.</p>' },
+                        { strong: 'Изотопы углерода:', body: '<p>• Углерод-12 (6p, 6n) — 98.9%<br>• Углерод-13 (6p, 7n) — 1.1%<br>• Углерод-14 (6p, 8n) — радиоактивный</p>' }
+                    ]
+                }
+            }
+        },
+        kz: {
+            page_title: 'Көміртек атомының құрылымы',
+            header_title: '⚛️ Көміртек атомы (C)',
+            header_subtitle: 'Интерактивті 3D модель',
+            atom_info_heading: 'Көміртек (Carbon)',
+            atom_info_number_label: 'Атом нөмірі:',
+            atom_info_mass_label: 'Атом массасы:',
+            atom_info_mass_value: '12.011 а.б.м.',
+            atom_info_protons_label: 'Протондар:',
+            atom_info_neutrons_label: 'Нейтрондар:',
+            atom_info_electrons_label: 'Электрондар:',
+            atom_info_config_label: 'Конфигурация:',
+            info_default_title: 'Атомның бөлігін таңдаңыз',
+            info_default_text: 'Толығырақ білу үшін протон, нейтрон немесе электронға басыңыз.',
+            controls_hint: '🖱️ Айналдыру: тарту | 🔍 Масштаб: тінтуір дөңгелегі | Бос орын: кідіріс/жалғастыру',
+            legend_heading: 'Атом бөлшектері:',
+            legend_proton: 'Протон (+)',
+            legend_neutron: 'Нейтрон (0)',
+            legend_electron: 'Электрон (−)',
+            close_btn_label: 'Жабу',
+            particles: {
+                proton: {
+                    title: 'Протон (p⁺)',
+                    sections: [
+                        { strong: 'Сипаттамасы:', body: '<p>Атом ядросында орналасқан оң зарядты элементар бөлшек.</p>' },
+                        { strong: 'Сипаттамалары:', body: '<p>• Заряды: +1 (1.602 × 10⁻¹⁹ Кл)<br>• Массасы: 1.6726 × 10⁻²⁷ кг<br>• Салыстырмалы массасы: 1 а.б.м.<br>• Спин: ½</p>' },
+                        { strong: 'Атомдағы рөлі:', body: '<p>Протондар саны элементтің атом нөмірін және оның химиялық қасиеттерін анықтайды. Көміртекте 6 протон бар.</p>' },
+                        { strong: 'Құрамы:', body: '<p>2 жоғарғы (up) кварк пен 1 төменгі (down) кварктан тұрады.</p>' }
+                    ]
+                },
+                neutron: {
+                    title: 'Нейтрон (n⁰)',
+                    sections: [
+                        { strong: 'Сипаттамасы:', body: '<p>Атом ядросында орналасқан бейтарап (зарядсыз) элементар бөлшек.</p>' },
+                        { strong: 'Сипаттамалары:', body: '<p>• Заряды: 0 (бейтарап)<br>• Массасы: 1.6749 × 10⁻²⁷ кг<br>• Салыстырмалы массасы: 1 а.б.м.<br>• Спин: ½</p>' },
+                        { strong: 'Атомдағы рөлі:', body: '<p>Протондар арасындағы тебісуді азайтып, ядроның тұрақтылығын қамтамасыз етеді. Көміртек-12 изотопында 6 нейтрон бар.</p>' },
+                        { strong: 'Қызықты факт:', body: '<p>Еркін нейтрон тұрақсыз және шамамен 15 минут ішінде протонға, электронға және антинейтриноға ыдырайды.</p>' }
+                    ]
+                },
+                electron: {
+                    title: 'Электрон (e⁻)',
+                    sections: [
+                        { strong: 'Сипаттамасы:', body: '<p>Атом ядросының айналасында электрон қабықшаларында қозғалатын теріс зарядты элементар бөлшек.</p>' },
+                        { strong: 'Сипаттамалары:', body: '<p>• Заряды: −1 (−1.602 × 10⁻¹⁹ Кл)<br>• Массасы: 9.109 × 10⁻³¹ кг<br>• Салыстырмалы массасы: 0.0005 а.б.м.<br>• Спин: ½</p>' },
+                        { strong: 'Көміртектің электрондық конфигурациясы:', body: '<p>• K-қабықша (n=1): 2 электрон<br>• L-қабықша (n=2): 4 электрон<br>• Валенттік электрондар: 4</p>' },
+                        { strong: 'Химиядағы рөлі:', body: '<p>Сыртқы қабықшадағы электрондар (валенттік) химиялық байланыстар түзуге қатысады. Көміртектің 4 валенттік электроны оған 4 ковалентті байланыс түзуге мүмкіндік береді.</p>' }
+                    ]
+                },
+                nucleus: {
+                    title: 'Атом ядросы',
+                    sections: [
+                        { strong: 'Сипаттамасы:', body: '<p>Атомның протондар мен нейтрондардан (нуклондардан) тұратын орталық бөлігі.</p>' },
+                        { strong: 'Көміртек-12 ядросының сипаттамалары:', body: '<p>• Протондар: 6<br>• Нейтрондар: 6<br>• Массалық саны: 12<br>• Радиусы: ~2.7 фм (фемтометр)</p>' },
+                        { strong: 'Ядролық күштер:', body: '<p>Күшті өзара әрекеттесу протондар арасындағы электростатикалық тебісуді жеңіп, протондар мен нейтрондарды ядрода ұстап тұрады.</p>' },
+                        { strong: 'Көміртек изотоптары:', body: '<p>• Көміртек-12 (6p, 6n) — 98.9%<br>• Көміртек-13 (6p, 7n) — 1.1%<br>• Көміртек-14 (6p, 8n) — радиоактивті</p>' }
+                    ]
+                }
+            }
+        },
+        en: {
+            page_title: 'Carbon Atom Structure',
+            header_title: '⚛️ Carbon Atom (C)',
+            header_subtitle: 'Interactive 3D Model',
+            atom_info_heading: 'Carbon (C)',
+            atom_info_number_label: 'Atomic number:',
+            atom_info_mass_label: 'Atomic mass:',
+            atom_info_mass_value: '12.011 amu',
+            atom_info_protons_label: 'Protons:',
+            atom_info_neutrons_label: 'Neutrons:',
+            atom_info_electrons_label: 'Electrons:',
+            atom_info_config_label: 'Configuration:',
+            info_default_title: 'Select part of the atom',
+            info_default_text: 'Click on a proton, neutron, or electron to learn more.',
+            controls_hint: '🖱️ Rotate: drag | 🔍 Zoom: mouse wheel | Space: pause/resume',
+            legend_heading: 'Atomic particles:',
+            legend_proton: 'Proton (+)',
+            legend_neutron: 'Neutron (0)',
+            legend_electron: 'Electron (−)',
+            close_btn_label: 'Close',
+            particles: {
+                proton: {
+                    title: 'Proton (p⁺)',
+                    sections: [
+                        { strong: 'Description:', body: '<p>A positively charged elementary particle located in the atomic nucleus.</p>' },
+                        { strong: 'Properties:', body: '<p>• Charge: +1 (1.602 × 10⁻¹⁹ C)<br>• Mass: 1.6726 × 10⁻²⁷ kg<br>• Relative mass: 1 amu<br>• Spin: ½</p>' },
+                        { strong: 'Role in the atom:', body: '<p>The number of protons defines the atomic number of an element and its chemical properties. Carbon has 6 protons.</p>' },
+                        { strong: 'Composition:', body: '<p>Consists of 2 up quarks and 1 down quark.</p>' }
+                    ]
+                },
+                neutron: {
+                    title: 'Neutron (n⁰)',
+                    sections: [
+                        { strong: 'Description:', body: '<p>A neutral (uncharged) elementary particle located in the atomic nucleus.</p>' },
+                        { strong: 'Properties:', body: '<p>• Charge: 0 (neutral)<br>• Mass: 1.6749 × 10⁻²⁷ kg<br>• Relative mass: 1 amu<br>• Spin: ½</p>' },
+                        { strong: 'Role in the atom:', body: '<p>Provides stability to the nucleus by reducing repulsion between protons. Carbon-12 has 6 neutrons.</p>' },
+                        { strong: 'Fun fact:', body: '<p>A free neutron is unstable and decays in about 15 minutes into a proton, an electron, and an antineutrino.</p>' }
+                    ]
+                },
+                electron: {
+                    title: 'Electron (e⁻)',
+                    sections: [
+                        { strong: 'Description:', body: '<p>A negatively charged elementary particle that orbits the atomic nucleus in electron shells.</p>' },
+                        { strong: 'Properties:', body: '<p>• Charge: −1 (−1.602 × 10⁻¹⁹ C)<br>• Mass: 9.109 × 10⁻³¹ kg<br>• Relative mass: 0.0005 amu<br>• Spin: ½</p>' },
+                        { strong: 'Electron configuration of carbon:', body: '<p>• K-shell (n=1): 2 electrons<br>• L-shell (n=2): 4 electrons<br>• Valence electrons: 4</p>' },
+                        { strong: 'Role in chemistry:', body: '<p>Outer-shell (valence) electrons take part in forming chemical bonds. Carbon\'s 4 valence electrons let it form 4 covalent bonds.</p>' }
+                    ]
+                },
+                nucleus: {
+                    title: 'Atomic nucleus',
+                    sections: [
+                        { strong: 'Description:', body: '<p>The central part of the atom containing protons and neutrons (nucleons).</p>' },
+                        { strong: 'Carbon-12 nucleus properties:', body: '<p>• Protons: 6<br>• Neutrons: 6<br>• Mass number: 12<br>• Radius: ~2.7 fm (femtometers)</p>' },
+                        { strong: 'Nuclear forces:', body: '<p>The strong interaction holds protons and neutrons together in the nucleus, overcoming the electrostatic repulsion between protons.</p>' },
+                        { strong: 'Carbon isotopes:', body: '<p>• Carbon-12 (6p, 6n) — 98.9%<br>• Carbon-13 (6p, 7n) — 1.1%<br>• Carbon-14 (6p, 8n) — radioactive</p>' }
+                    ]
+                }
+            }
+        }
+    };
+
+    const LANG = (() => {
+        const q = new URLSearchParams(location.search).get('lang');
+        return (q && I18N[q]) ? q : 'ru';
+    })();
+    const t = (key) => (I18N[LANG] && I18N[LANG][key]) ?? I18N.ru[key];
+
+    function applyStaticI18N() {
+        document.documentElement.lang = LANG;
+        const titleVal = t('page_title');
+        if (titleVal) document.title = titleVal;
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const v = t(el.getAttribute('data-i18n'));
+            if (v) el.textContent = v;
+        });
+        document.querySelectorAll('[data-i18n-title]').forEach(el => {
+            const v = t(el.getAttribute('data-i18n-title'));
+            if (v) el.setAttribute('title', v);
+        });
+        document.querySelectorAll('[data-i18n-aria-label]').forEach(el => {
+            const v = t(el.getAttribute('data-i18n-aria-label'));
+            if (v) el.setAttribute('aria-label', v);
+        });
+    }
+
+    function getParticleInfo(name) {
+        const data = (I18N[LANG] && I18N[LANG].particles && I18N[LANG].particles[name]) || (I18N.ru.particles && I18N.ru.particles[name]);
+        if (!data) return null;
+        const content = data.sections.map(s =>
+            `<div class="info-section"><strong>${s.strong}</strong>${s.body}</div>`
+        ).join('');
+        return { title: data.title, content };
+    }
+
+    applyStaticI18N();
+// Three.js
+    let scene, camera, renderer;
+    let atomParts = {};
+    let atomGroup;
+    let electrons = [];
+    let raycaster, mouse;
+    let selectedPart = null;
+    let isDragging = false;
+    let previousMousePosition = {x: 0, y: 0};
+    let animationPaused = false;
+    let time = 0;
+
+    function init() {
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0a0e27);
+
+        camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 0, 8);
+
+        const container = document.getElementById('canvas-container');
+        renderer = new THREE.WebGLRenderer({antialias: true});
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        container.appendChild(renderer.domElement);
+
+        // Освещение
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
+
+        const light1 = new THREE.PointLight(0x667eea, 1, 100);
+        light1.position.set(10, 10, 10);
+        scene.add(light1);
+
+        const light2 = new THREE.PointLight(0x764ba2, 0.8, 100);
+        light2.position.set(-10, -5, 5);
+        scene.add(light2);
+
+        const light3 = new THREE.PointLight(0x3498db, 0.6, 100);
+        light3.position.set(0, -10, -10);
+        scene.add(light3);
+
+        atomGroup = new THREE.Group();
+        scene.add(atomGroup);
+
+        createAtom();
+
+        raycaster = new THREE.Raycaster();
+        mouse = new THREE.Vector2();
+
+        window.addEventListener('resize', onWindowResize);
+        renderer.domElement.addEventListener('click', onMouseClick);
+        renderer.domElement.addEventListener('mousemove', onMouseMove);
+        renderer.domElement.addEventListener('mousedown', onMouseDown);
+        renderer.domElement.addEventListener('mouseup', onMouseUp);
+        renderer.domElement.addEventListener('wheel', onWheel);
+        window.addEventListener('keydown', onKeyDown);
+
+        animate();
+    }
+
+    function createAtom() {
+        // ЯДРО
+        const nucleusGroup = new THREE.Group();
+        nucleusGroup.userData = {name: 'nucleus'};
+        atomGroup.add(nucleusGroup);
+
+        // Создаём 6 протонов
+        const protonGeom = new THREE.SphereGeometry(0.25, 32, 32);
+        const protonMat = new THREE.MeshPhongMaterial({
+            color: 0xff6b6b,
+            emissive: 0xff4444,
+            emissiveIntensity: 0.3,
+            shininess: 100,
+            specular: 0xffffff
+        });
+
+        const protonPositions = [
+            [0.3, 0.3, 0],
+            [-0.3, 0.3, 0],
+            [0.3, -0.3, 0],
+            [-0.3, -0.3, 0],
+            [0, 0, 0.4],
+            [0, 0, -0.4]
+        ];
+
+        protonPositions.forEach((pos, i) => {
+            const proton = new THREE.Mesh(protonGeom, protonMat.clone());
+            proton.position.set(pos[0], pos[1], pos[2]);
+            proton.userData = {name: 'proton', id: i};
+            nucleusGroup.add(proton);
+            atomParts[`proton_${i}`] = proton;
+        });
+
+        // Создаём 6 нейтронов
+        const neutronGeom = new THREE.SphereGeometry(0.25, 32, 32);
+        const neutronMat = new THREE.MeshPhongMaterial({
+            color: 0x95a5a6,
+            emissive: 0x7f8c8d,
+            emissiveIntensity: 0.2,
+            shininess: 80,
+            specular: 0xcccccc
+        });
+
+        const neutronPositions = [
+            [0, 0.3, 0.3],
+            [0, -0.3, 0.3],
+            [0, 0.3, -0.3],
+            [0, -0.3, -0.3],
+            [0.3, 0, 0],
+            [-0.3, 0, 0]
+        ];
+
+        neutronPositions.forEach((pos, i) => {
+            const neutron = new THREE.Mesh(neutronGeom, neutronMat.clone());
+            neutron.position.set(pos[0], pos[1], pos[2]);
+            neutron.userData = {name: 'neutron', id: i};
+            nucleusGroup.add(neutron);
+            atomParts[`neutron_${i}`] = neutron;
+        });
+
+        // Свечение ядра
+        const glowGeom = new THREE.SphereGeometry(0.9, 32, 32);
+        const glowMat = new THREE.MeshBasicMaterial({
+            color: 0xffaa44,
+            transparent: true,
+            opacity: 0.1,
+            side: THREE.BackSide
+        });
+        const glow = new THREE.Mesh(glowGeom, glowMat);
+        nucleusGroup.add(glow);
+
+        // ЭЛЕКТРОННЫЕ ОБОЛОЧКИ
+
+        // K-оболочка (n=1): 2 электрона
+        createElectronShell(1.8, 2, 0x3498db);
+
+        // L-оболочка (n=2): 4 электрона
+        createElectronShell(3.2, 4, 0x2ecc71);
+
+        // Визуализация орбит
+        createOrbitRings();
+    }
+
+    function createElectronShell(radius, count, color) {
+        const electronGeom = new THREE.SphereGeometry(0.15, 24, 24);
+        const electronMat = new THREE.MeshPhongMaterial({
+            color: color,
+            emissive: color,
+            emissiveIntensity: 0.5,
+            shininess: 100,
+            transparent: true,
+            opacity: 0.9
+        });
+
+        for (let i = 0; i < count; i++) {
+            const angle = (i / count) * Math.PI * 2;
+            const electron = new THREE.Mesh(electronGeom, electronMat.clone());
+
+            electron.userData = {
+                name: 'electron',
+                radius: radius,
+                angle: angle,
+                speed: 0.5 + Math.random() * 0.3,
+                id: electrons.length
+            };
+
+            atomGroup.add(electron);
+            electrons.push(electron);
+            atomParts[`electron_${electrons.length - 1}`] = electron;
+
+            // Добавляем свечение электронам
+            const electronGlow = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.25, 16, 16),
+                    new THREE.MeshBasicMaterial({
+                        color: color,
+                        transparent: true,
+                        opacity: 0.15
+                    })
+            );
+            electron.add(electronGlow);
+        }
+    }
+
+    function createOrbitRings() {
+        // K-оболочка
+        const ring1Geom = new THREE.TorusGeometry(1.8, 0.01, 16, 100);
+        const ring1Mat = new THREE.MeshBasicMaterial({
+            color: 0x3498db,
+            transparent: true,
+            opacity: 0.3
+        });
+        const ring1 = new THREE.Mesh(ring1Geom, ring1Mat);
+        ring1.rotation.x = Math.PI / 2;
+        atomGroup.add(ring1);
+
+        // L-оболочка
+        const ring2Geom = new THREE.TorusGeometry(3.2, 0.01, 16, 100);
+        const ring2Mat = new THREE.MeshBasicMaterial({
+            color: 0x2ecc71,
+            transparent: true,
+            opacity: 0.25
+        });
+        const ring2 = new THREE.Mesh(ring2Geom, ring2Mat);
+        ring2.rotation.x = Math.PI / 2;
+        atomGroup.add(ring2);
+    }
+
+    function updateElectrons() {
+        if (animationPaused) return;
+
+        electrons.forEach(electron => {
+            const data = electron.userData;
+            data.angle += 0.01 * data.speed;
+
+            // Орбитальное движение с небольшими колебаниями
+            const wobble = Math.sin(time * 2 + data.id) * 0.1;
+            electron.position.x = Math.cos(data.angle) * data.radius;
+            electron.position.z = Math.sin(data.angle) * data.radius;
+            electron.position.y = wobble;
+
+            // Вращение электрона вокруг своей оси
+            electron.rotation.y += 0.1;
+        });
+    }
+
+    function onMouseDown(e) {
+        isDragging = true;
+        previousMousePosition = {x: e.clientX, y: e.clientY};
+    }
+
+    function onMouseUp() {
+        isDragging = false;
+    }
+
+    function onMouseMove(e) {
+        mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+        if (isDragging) {
+            const deltaX = e.clientX - previousMousePosition.x;
+            const deltaY = e.clientY - previousMousePosition.y;
+            atomGroup.rotation.y += deltaX * 0.005;
+            atomGroup.rotation.x += deltaY * 0.005;
+            previousMousePosition = {x: e.clientX, y: e.clientY};
+        }
+
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObjects(Object.values(atomParts));
+        document.body.style.cursor = intersects.length > 0 ? 'pointer' : 'default';
+    }
+
+    function onMouseClick(e) {
+        mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObjects(Object.values(atomParts));
+
+        if (intersects.length > 0) {
+            const part = intersects[0].object;
+            const name = part.userData.name;
+            if (getParticleInfo(name)) {
+                showInfo(name);
+                highlightPart(part);
+            }
+        }
+    }
+
+    function onWheel(e) {
+        e.preventDefault();
+        camera.position.z += e.deltaY * 0.005;
+        camera.position.z = Math.max(4, Math.min(15, camera.position.z));
+    }
+
+    function onKeyDown(e) {
+        if (e.code === 'Space') {
+            e.preventDefault();
+            animationPaused = !animationPaused;
+        }
+    }
+
+    function showInfo(name) {
+        const info = getParticleInfo(name);
+        if (!info) return;
+        document.getElementById('info-title').textContent = info.title;
+        document.getElementById('info-content').innerHTML = info.content;
+        document.getElementById('info-panel').classList.add('active');
+    }
+
+    function closeInfo() {
+        document.getElementById('info-panel').classList.remove('active');
+        if (selectedPart) {
+            if (selectedPart.material.emissive) {
+                const originalColor = selectedPart.userData.name === 'proton' ? 0xff4444 :
+                        selectedPart.userData.name === 'neutron' ? 0x7f8c8d :
+                                selectedPart.material.color.getHex();
+                selectedPart.material.emissive.setHex(originalColor);
+                selectedPart.material.emissiveIntensity = 0.3;
+            }
+            selectedPart = null;
+        }
+    }
+
+    function highlightPart(part) {
+        if (selectedPart && selectedPart.material.emissive) {
+            const originalColor = selectedPart.userData.name === 'proton' ? 0xff4444 :
+                    selectedPart.userData.name === 'neutron' ? 0x7f8c8d :
+                            selectedPart.material.color.getHex();
+            selectedPart.material.emissive.setHex(originalColor);
+            selectedPart.material.emissiveIntensity = 0.3;
+        }
+        if (part.material.emissive) {
+            part.material.emissive.setHex(0xffffff);
+            part.material.emissiveIntensity = 0.8;
+        }
+        selectedPart = part;
+    }
+
+    function focusPart(name) {
+        showInfo(name);
+        // Находим первую частицу этого типа
+        const part = Object.values(atomParts).find(p => p.userData.name === name);
+        if (part) highlightPart(part);
+    }
+
+    function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+
+        if (!animationPaused) {
+            time += 0.016;
+            atomGroup.rotation.y += 0.003;
+            updateElectrons();
+        }
+
+        renderer.render(scene, camera);
+    }
+
+    window.addEventListener('load', init);
+</script>
+</body>
+</html>

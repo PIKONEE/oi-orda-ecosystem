@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Механическая передача — 3D Модель</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        /* Header */
+        .header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 20px 30px;
+            background: linear-gradient(180deg, rgba(0, 0, 0, 0.8) 0%, transparent 100%);
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .header h1 {
+            color: white;
+            font-size: 26px;
+            font-weight: 700;
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .header p {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        /* Control Panel */
+        .control-panel {
+            position: absolute;
+            top: 100px;
+            left: 20px;
+            width: 320px;
+            background: rgba(0, 0, 0, 0.85);
+            
+            border-radius: 16px;
+            padding: 20px;
+            z-index: 10;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-left: 4px solid #e74c3c;
+            max-height: calc(100vh - 140px);
+            overflow-y: auto;
+        }
+
+        .section-title {
+            color: #3498db;
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .section-title:first-child {
+            margin-top: 0;
+        }
+
+        /* Sliders */
+        .slider-group {
+            margin-bottom: 18px;
+        }
+
+        .slider-group label {
+            color: white;
+            font-size: 13px;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .slider-group label span {
+            font-weight: 600;
+        }
+
+        .slider-group label span.value {
+            color: #f39c12;
+        }
+
+        .slider-group input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+            height: 6px;
+            border-radius: 3px;
+            -webkit-appearance: none;
+            background: #444;
+        }
+
+        .slider-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: white;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+            transition: transform 0.1s;
+        }
+
+        .slider-group input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        .slider-group.red input[type="range"]::-webkit-slider-thumb {
+            background: #e74c3c;
+        }
+
+        .slider-group.blue input[type="range"]::-webkit-slider-thumb {
+            background: #3498db;
+        }
+
+        /* Checkboxes */
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 6px;
+            margin-bottom: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .checkbox-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .checkbox-item input {
+            cursor: pointer;
+            accent-color: #e74c3c;
+        }
+
+        .checkbox-item label {
+            color: #ddd;
+            font-size: 13px;
+            cursor: pointer;
+            flex: 1;
+        }
+
+        /* Info Panel */
+        .info-panel {
+            position: absolute;
+            top: 100px;
+            right: 20px;
+            width: 280px;
+            background: rgba(0, 0, 0, 0.85);
+            
+            border-radius: 16px;
+            padding: 20px;
+            z-index: 10;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-right: 4px solid #3498db;
+        }
+
+        .info-panel h3 {
+            color: white;
+            font-size: 16px;
+            margin: 0 0 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 10px;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            align-items: center;
+        }
+
+        .stat-label {
+            color: #aaa;
+            font-size: 13px;
+        }
+
+        .stat-value {
+            color: white;
+            font-weight: 700;
+            font-family: 'Consolas', monospace;
+            font-size: 15px;
+        }
+
+        .highlight-text {
+            color: #f39c12;
+        }
+
+        .red-text {
+            color: #e74c3c;
+        }
+
+        .blue-text {
+            color: #3498db;
+        }
+
+        /* Floating Labels */
+        .floating-label {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            pointer-events: none;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            font-family: 'Consolas', monospace;
+            transform: translate(-50%, -100%);
+            white-space: nowrap;
+        }
+
+        /* Formula Panel */
+        .formula-panel {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            
+            padding: 15px 30px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+            z-index: 10;
+        }
+
+        .formula {
+            color: white;
+            font-size: 20px;
+            font-family: 'Times New Roman', serif;
+            letter-spacing: 1px;
+        }
+
+        .formula sub {
+            font-size: 0.7em;
+            color: #aaa;
+        }
+
+        .formula .val {
+            color: #f39c12;
+        }
+
+        .hint {
+            position: absolute;
+            bottom: 10px;
+            right: 20px;
+            color: rgba(255, 255, 255, 0.3);
+            font-size: 11px;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+<script>
+/* i18n */
+(function(){
+  var lang=new URLSearchParams(location.search).get('lang')||'ru';
+  var T={
+    ru:{title:'⚙️ Зубчатая передача',subtitle:'Механика • Передаточное отношение • Кинематика',
+      sec1:'🛑 Ведущая шестерня (Красная)',sec2:'🔵 Ведомая шестерня (Синяя)',sec3:'👁️ Визуализация',
+      lbl_speed:'Скорость (n₁):',lbl_z1:'Зубьев (Z₁):',lbl_z2:'Зубьев (Z₂):',rpmUnit:' об/мин',
+      cb_arrows:'Векторы вращения',cb_zone:'Зона зацепления',cb_wire:'Каркасный режим',
+      info_h3:'📊 Расчеты',sl_ratio:'Передаточное число (i):',sl_n1:'Скорость входа (n₁):',
+      sl_n2:'Скорость выхода (n₂):',sl_torque:'Момент (T₂):',
+      hint:'ЛКМ - Вращение • ПКМ - Панорама • Колесо - Зум'},
+    kz:{title:'⚙️ Тісті берілісі',subtitle:'Механика • Берілісу саны • Кинематика',
+      sec1:'🛑 Жетекші тісті доңғалақ (Қызыл)',sec2:'🔵 Жетектелетін тісті доңғалақ (Көк)',sec3:'👁️ Визуализация',
+      lbl_speed:'Жылдамдық (n₁):',lbl_z1:'Тіс саны (Z₁):',lbl_z2:'Тіс саны (Z₂):',rpmUnit:' айн/мин',
+      cb_arrows:'Айналу векторлары',cb_zone:'Тістесу аймағы',cb_wire:'Сымкаркас режимі',
+      info_h3:'📊 Есептеулер',sl_ratio:'Берілісу саны (i):',sl_n1:'Кіріс жылдамдығы (n₁):',
+      sl_n2:'Шығыс жылдамдығы (n₂):',sl_torque:'Момент (T₂):',
+      hint:'СТ - Айналу • ОТ - Панорама • Доңғалақ - Зум'},
+    en:{title:'⚙️ Gear Transmission',subtitle:'Mechanics • Gear Ratio • Kinematics',
+      sec1:'🛑 Drive Gear (Red)',sec2:'🔵 Driven Gear (Blue)',sec3:'👁️ Visualization',
+      lbl_speed:'Speed (n₁):',lbl_z1:'Teeth (Z₁):',lbl_z2:'Teeth (Z₂):',rpmUnit:' RPM',
+      cb_arrows:'Rotation vectors',cb_zone:'Mesh zone',cb_wire:'Wireframe mode',
+      info_h3:'📊 Calculations',sl_ratio:'Gear ratio (i):',sl_n1:'Input speed (n₁):',
+      sl_n2:'Output speed (n₂):',sl_torque:'Torque (T₂):',
+      hint:'LMB - Rotate • RMB - Pan • Wheel - Zoom'}
+  };
+  window._t=T[lang]||T.ru;
+  document.addEventListener('DOMContentLoaded',function(){
+    var t=window._t;
+    var h1=document.querySelector('.header h1');if(h1)h1.textContent=t.title;
+    var p=document.querySelector('.header p');if(p)p.textContent=t.subtitle;
+    var secs=document.querySelectorAll('.section-title');
+    if(secs[0])secs[0].textContent=t.sec1;
+    if(secs[1])secs[1].textContent=t.sec2;
+    if(secs[2])secs[2].textContent=t.sec3;
+    var sl=document.querySelectorAll('.slider-group label > span:first-child');
+    if(sl[0])sl[0].textContent=t.lbl_speed;
+    if(sl[1])sl[1].textContent=t.lbl_z1;
+    if(sl[2])sl[2].textContent=t.lbl_z2;
+    var cb=document.querySelectorAll('.checkbox-item label');
+    if(cb[0])cb[0].textContent=t.cb_arrows;
+    if(cb[1])cb[1].textContent=t.cb_zone;
+    if(cb[2])cb[2].textContent=t.cb_wire;
+    var h3=document.querySelector('.info-panel h3');if(h3)h3.textContent=t.info_h3;
+    var sl2=document.querySelectorAll('.stat-label');
+    if(sl2[0])sl2[0].textContent=t.sl_ratio;
+    if(sl2[1])sl2[1].textContent=t.sl_n1;
+    if(sl2[2])sl2[2].textContent=t.sl_n2;
+    if(sl2[3])sl2[3].textContent=t.sl_torque;
+    var hint=document.querySelector('.hint');if(hint)hint.textContent=t.hint;
+  });
+})();
+</script>
+
+<div id="canvas-container"></div>
+
+<!-- Header -->
+<div class="header">
+    <h1>⚙️ Зубчатая передача</h1>
+    <p>Механика • Передаточное отношение • Кинематика</p>
+</div>
+
+<!-- Control Panel -->
+<div class="control-panel">
+    <div class="section-title">🛑 Ведущая шестерня (Красная)</div>
+    <div class="slider-group red">
+        <label>
+            <span>Скорость (n₁):</span>
+            <span class="value" id="val-speed">50 об/мин</span>
+        </label>
+        <input type="range" id="input-speed" min="0" max="70" value="50">
+    </div>
+    <div class="slider-group red">
+        <label>
+            <span>Зубьев (Z₁):</span>
+            <span class="value" id="val-z1">40</span>
+        </label>
+        <input type="range" id="input-z1" min="10" max="60" step="2" value="40">
+    </div>
+
+    <div class="section-title">🔵 Ведомая шестерня (Синяя)</div>
+    <div class="slider-group blue">
+        <label>
+            <span>Зубьев (Z₂):</span>
+            <span class="value" id="val-z2">20</span>
+        </label>
+        <input type="range" id="input-z2" min="10" max="60" step="2" value="20">
+    </div>
+
+    <div class="section-title">👁️ Визуализация</div>
+    <div class="checkbox-item">
+        <input type="checkbox" id="check-arrows" checked>
+        <label for="check-arrows">Векторы вращения</label>
+    </div>
+    <div class="checkbox-item">
+        <input type="checkbox" id="check-zone" checked>
+        <label for="check-zone">Зона зацепления</label>
+    </div>
+    <div class="checkbox-item">
+        <input type="checkbox" id="check-wireframe">
+        <label for="check-wireframe">Каркасный режим</label>
+    </div>
+</div>
+
+<!-- Info Panel -->
+<div class="info-panel">
+    <h3>📊 Расчеты</h3>
+
+    <div class="stat-row">
+        <span class="stat-label">Передаточное число (i):</span>
+        <span class="stat-value highlight-text" id="stat-ratio">0.50</span>
+    </div>
+    <div class="stat-row">
+        <span class="stat-label">Скорость входа (n₁):</span>
+        <span class="stat-value red-text" id="stat-n1">50 RPM</span>
+    </div>
+    <div class="stat-row">
+        <span class="stat-label">Скорость выхода (n₂):</span>
+        <span class="stat-value blue-text" id="stat-n2">100 RPM</span>
+    </div>
+    <div class="stat-row">
+        <span class="stat-label">Момент (T₂):</span>
+        <span class="stat-value" id="stat-torque">0.5 × T₁</span>
+    </div>
+</div>
+
+<!-- Formula -->
+<div class="formula-panel">
+    <div class="formula">
+        i = Z₂ / Z₁ = n₁ / n₂
+    </div>
+</div>
+
+<div class="hint">ЛКМ - Вращение • ПКМ - Панорама • Колесо - Зум</div>
+
+<!-- Labels Container -->
+<div id="labels"></div>
+
+<!-- Three.js -->
+<script src="../../libs/vendor/three-r128/three.min.js"></script>
+<script src="../../libs/vendor/three-0.128.0/OrbitControls.js"></script>
+
+<script>
+    // --- Configuration ---
+    const config = {
+        module: 0.35, // Размер зуба (модуль)
+        thickness: 2, // Толщина шестерни
+        shaftRadius: 1.0,
+        baseColor: 0x2c3e50,
+        gear1Color: 0xc0392b, // Red
+        gear2Color: 0x2980b9, // Blue
+        metalColor: 0x95a5a6
+    };
+
+    // --- State ---
+    let state = {
+        z1: 40,
+        z2: 20,
+        speed1: 50, // RPM (Updated default)
+        speed2: 100, // Calculated
+        angle1: 0,
+        angle2: 0,
+        ratio: 0.5
+    };
+
+    // --- Three.js Globals ---
+    let scene, camera, renderer, controls;
+    let assembly1, assembly2; // Groups containing Gear+Shaft
+    let arrow1, arrow2, contactPoint;
+    let labelsContainer;
+
+    // --- Initialization ---
+    function init() {
+        labelsContainer = document.getElementById('labels');
+
+        // Scene
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x1a1a2e);
+        // Fog for industrial depth
+        scene.fog = new THREE.FogExp2(0x16213e, 0.015);
+
+        // Camera (Isometric-ish)
+        const aspect = window.innerWidth / window.innerHeight;
+        camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 1000);
+        camera.position.set(20, 25, 30);
+        camera.lookAt(0, 0, 0);
+
+        // Renderer
+        renderer = new THREE.WebGLRenderer({antialias: true, alpha: true});
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = false;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        // Lights
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(10, 20, 10);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
+        scene.add(dirLight);
+
+        const pointLight = new THREE.PointLight(0x3498db, 0.5);
+        pointLight.position.set(-10, 10, -10);
+        scene.add(pointLight);
+
+        // Controls
+        controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.maxPolarAngle = Math.PI / 2 - 0.1; // Don't go below floor
+
+        // Build Scene
+        createBase();
+        updateGears(); // Initial build
+
+        // Listeners
+        window.addEventListener('resize', onWindowResize, false);
+        setupUI();
+
+        // Animation Loop
+        animate();
+    }
+
+    // --- Geometry Generation ---
+
+    // Procedural Gear Shape
+    function createGearShape(teeth, radius, holeRadius) {
+        const shape = new THREE.Shape();
+        const toothDepth = config.module * 2.25;
+        const rootRadius = radius - toothDepth;
+        const tipRadius = radius;
+
+        const stepsPerTooth = 4; // Simplification for performance
+        const stepAngle = (Math.PI * 2) / (teeth * stepsPerTooth);
+
+        shape.moveTo(rootRadius, 0);
+
+        for (let i = 0; i < teeth; i++) {
+            const angleStart = (i * Math.PI * 2) / teeth;
+
+            // Tooth profile approximation (Trapezoidal/Involute-ish)
+            // 1. Root
+            shape.lineTo(
+                    Math.cos(angleStart + stepAngle * 0.5) * rootRadius,
+                    Math.sin(angleStart + stepAngle * 0.5) * rootRadius
+            );
+            // 2. Rising Flank
+            shape.lineTo(
+                    Math.cos(angleStart + stepAngle * 1.5) * tipRadius,
+                    Math.sin(angleStart + stepAngle * 1.5) * tipRadius
+            );
+            // 3. Tip
+            shape.lineTo(
+                    Math.cos(angleStart + stepAngle * 2.5) * tipRadius,
+                    Math.sin(angleStart + stepAngle * 2.5) * tipRadius
+            );
+            // 4. Falling Flank
+            shape.lineTo(
+                    Math.cos(angleStart + stepAngle * 3.5) * rootRadius,
+                    Math.sin(angleStart + stepAngle * 3.5) * rootRadius
+            );
+        }
+
+        // Central Hole
+        const holePath = new THREE.Path();
+        holePath.moveTo(holeRadius, 0);
+        holePath.absarc(0, 0, holeRadius, 0, Math.PI * 2, true);
+        shape.holes.push(holePath);
+
+        return shape;
+    }
+
+    function createGearMesh(teeth, color) {
+        // Calculate radii based on module
+        const pitchDiameter = config.module * teeth;
+        const radius = pitchDiameter / 2;
+
+        const shape = createGearShape(teeth, radius + config.module, config.shaftRadius);
+
+        const extrudeSettings = {
+            steps: 1,
+            depth: config.thickness,
+            bevelEnabled: true,
+            bevelThickness: 0.1,
+            bevelSize: 0.1,
+            bevelSegments: 2
+        };
+
+        const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+        // Center the geometry
+        geometry.translate(0, 0, -config.thickness / 2);
+
+        const material = new THREE.MeshStandardMaterial({
+            color: color,
+            metalness: 0.7,
+            roughness: 0.3,
+            side: THREE.DoubleSide
+        });
+
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+
+        // Add hub (Central cylinder)
+        const hubGeo = new THREE.CylinderGeometry(config.shaftRadius * 1.8, config.shaftRadius * 1.8, config.thickness + 0.5, 32);
+        const hubMat = new THREE.MeshStandardMaterial({color: color, metalness: 0.6, roughness: 0.4});
+        const hub = new THREE.Mesh(hubGeo, hubMat);
+        hub.rotation.x = Math.PI / 2;
+        mesh.add(hub);
+
+        // No positioning here, will be done via group
+        return {mesh, radius};
+    }
+
+    function createShaft(length) {
+        const geometry = new THREE.CylinderGeometry(config.shaftRadius - 0.05, config.shaftRadius - 0.05, length, 32);
+        const material = new THREE.MeshStandardMaterial({
+            color: 0xbdc3c7,
+            metalness: 0.8,
+            roughness: 0.2
+        });
+        const shaft = new THREE.Mesh(geometry, material);
+
+        // Rotate shaft to align with Z axis (Cylinder creates along Y)
+        shaft.rotation.x = Math.PI / 2;
+
+        shaft.castShadow = true;
+        return shaft;
+    }
+
+    function createArrow(color, radius, isClockwise) {
+        const group = new THREE.Group();
+
+        // Arc
+        const curve = new THREE.EllipseCurve(
+                0, 0, radius, radius,
+                0, Math.PI, // 180 degrees
+                !isClockwise, 0
+        );
+        const points = curve.getPoints(50);
+        const geometry = new THREE.BufferGeometry().setFromPoints(points);
+        const material = new THREE.LineBasicMaterial({color: color, linewidth: 3});
+        const arc = new THREE.Line(geometry, material);
+        group.add(arc);
+
+        // Cone Tip
+        const coneGeo = new THREE.ConeGeometry(0.5, 1.5, 16);
+        const coneMat = new THREE.MeshBasicMaterial({color: color});
+        const cone = new THREE.Mesh(coneGeo, coneMat);
+
+        // Position cone at end of arc
+        const endPoint = points[points.length - 1];
+        cone.position.set(endPoint.x, endPoint.y, 0);
+
+        // Calculate tangent for rotation
+        const prevPoint = points[points.length - 5];
+        const tangent = new THREE.Vector3().subVectors(new THREE.Vector3(endPoint.x, endPoint.y, 0), new THREE.Vector3(prevPoint.x, prevPoint.y, 0)).normalize();
+
+        // Align cone
+        const axis = new THREE.Vector3(0, 1, 0);
+        cone.quaternion.setFromUnitVectors(axis, tangent);
+
+        group.add(cone);
+        return group;
+    }
+
+    function createBase() {
+        // Base Plate
+        const baseGeo = new THREE.BoxGeometry(40, 2, 20);
+        const baseMat = new THREE.MeshStandardMaterial({color: 0x34495e, roughness: 0.8});
+        const base = new THREE.Mesh(baseGeo, baseMat);
+        base.position.y = -1;
+        base.receiveShadow = true;
+        scene.add(base);
+
+        // We don't know exact positions yet, so we'll recreate/move bearings in updateGears
+        // Placeholder for persistent objects
+        scene.userData.bearings = new THREE.Group();
+        scene.add(scene.userData.bearings);
+    }
+
+    function updateGears() {
+        // Cleanup old
+        if (assembly1) scene.remove(assembly1);
+        if (assembly2) scene.remove(assembly2);
+        if (arrow1) scene.remove(arrow1);
+        if (arrow2) scene.remove(arrow2);
+        if (contactPoint) scene.remove(contactPoint);
+        scene.userData.bearings.clear();
+
+        // Calculations
+        const r1 = (config.module * state.z1) / 2;
+        const r2 = (config.module * state.z2) / 2;
+        const distance = r1 + r2; // Center distance
+
+        // Position: Gear 1 at -distance/2, Gear 2 at +distance/2 to center the system
+        const x1 = -distance / 2;
+        const x2 = distance / 2;
+        const yPos = config.shaftRadius + 4;
+
+        // --- Gear Assembly 1 ---
+        assembly1 = new THREE.Group();
+        assembly1.position.set(x1, yPos, 0);
+
+        const g1Obj = createGearMesh(state.z1, config.gear1Color);
+        assembly1.add(g1Obj.mesh);
+
+        const shaft1 = createShaft(10);
+        assembly1.add(shaft1);
+
+        scene.add(assembly1);
+
+        // --- Gear Assembly 2 ---
+        assembly2 = new THREE.Group();
+        assembly2.position.set(x2, yPos, 0);
+
+        const g2Obj = createGearMesh(state.z2, config.gear2Color);
+        // Rotate Gear 2 slightly so teeth mesh (offset by half tooth pitch)
+        const stepAngle2 = (Math.PI * 2) / state.z2;
+        g2Obj.mesh.rotation.z = stepAngle2 / 2;
+        assembly2.add(g2Obj.mesh);
+
+        const shaft2 = createShaft(10);
+        assembly2.add(shaft2);
+
+        scene.add(assembly2);
+
+        // Bearings (Static)
+        const createBearingPair = (x) => {
+            const h = new THREE.Mesh(new THREE.BoxGeometry(3, 5, 2), new THREE.MeshStandardMaterial({color: 0x7f8c8d}));
+            h.position.set(x, 1.5, 4);
+            h.castShadow = true;
+            scene.userData.bearings.add(h);
+
+            const h2 = h.clone();
+            h2.position.set(x, 1.5, -4);
+            scene.userData.bearings.add(h2);
+        };
+        createBearingPair(x1);
+        createBearingPair(x2);
+
+        // Arrows (Static relative to gear, but floating)
+        arrow1 = createArrow(0xf1c40f, r1 * 0.7, true); // Clockwise
+        arrow1.position.set(x1, yPos, 6);
+        scene.add(arrow1);
+
+        arrow2 = createArrow(0xf1c40f, r2 * 0.7, false); // Counter-Clockwise
+        arrow2.position.set(x2, yPos, 6);
+        scene.add(arrow2);
+
+        // Contact Point Zone
+        const cpGeo = new THREE.SphereGeometry(0.5, 16, 16);
+        const cpMat = new THREE.MeshBasicMaterial({color: 0x2ecc71, transparent: true, opacity: 0.6});
+        contactPoint = new THREE.Mesh(cpGeo, cpMat);
+        contactPoint.position.set(0, yPos, 0); // Origin is center of mesh
+        // Contact is at intersection.
+        contactPoint.position.x = x1 + r1;
+        scene.add(contactPoint);
+
+        // Update Labels position logic
+        createLabels(x1, x2, r1, r2);
+    }
+
+    function createLabels(x1, x2, r1, r2) {
+        labelsContainer.innerHTML = '';
+        const yPos = config.shaftRadius + 4 + Math.max(r1, r2) + 2;
+
+        const l1 = document.createElement('div');
+        l1.className = 'floating-label';
+        l1.id = 'label-n1';
+        l1.textContent = `n₁ = ${state.speed1} RPM`;
+        labelsContainer.appendChild(l1);
+        l1.dataset.pos = JSON.stringify({x: x1, y: yPos, z: 0});
+
+        const l2 = document.createElement('div');
+        l2.className = 'floating-label';
+        l2.id = 'label-n2';
+        l2.textContent = `n₂ = ${state.speed2} RPM`;
+        labelsContainer.appendChild(l2);
+        l2.dataset.pos = JSON.stringify({x: x2, y: yPos, z: 0});
+    }
+
+    function updateLabelsPosition() {
+        const labels = document.querySelectorAll('.floating-label');
+        labels.forEach(label => {
+            const pos = JSON.parse(label.dataset.pos);
+            const vector = new THREE.Vector3(pos.x, pos.y, pos.z);
+
+            // Move label slightly up if arrow is visible to avoid overlap
+            if (label.id === 'label-n1') vector.y += 2;
+            if (label.id === 'label-n2') vector.y += 2;
+
+            vector.project(camera);
+
+            const x = (vector.x * .5 + .5) * window.innerWidth;
+            const y = (-(vector.y * .5) + .5) * window.innerHeight;
+
+            label.style.left = `${x}px`;
+            label.style.top = `${y}px`;
+
+            // Hide if behind camera
+            if (vector.z > 1) {
+                label.style.display = 'none';
+            } else {
+                label.style.display = 'block';
+            }
+        });
+    }
+
+    // --- Animation & Logic ---
+    function updatePhysics() {
+        // Calculate Ratio
+        state.ratio = state.z2 / state.z1; // Reduction ratio definition often z2/z1
+        // Speed relationship: n1 * z1 = n2 * z2 => n2 = n1 * (z1/z2)
+        state.speed2 = Math.round(state.speed1 * (state.z1 / state.z2));
+
+        // Update UI Text
+        document.getElementById('stat-ratio').innerText = (state.z2 / state.z1).toFixed(2);
+        document.getElementById('stat-n1').innerText = state.speed1 + " RPM";
+        document.getElementById('stat-n2').innerText = state.speed2 + " RPM";
+        document.getElementById('label-n1').innerText = `n₁ = ${state.speed1} RPM`;
+        document.getElementById('label-n2').innerText = `n₂ = ${state.speed2} RPM`;
+
+        // Torque is inversely proportional to speed
+        const torqueRatio = (state.z2 / state.z1).toFixed(2);
+        document.getElementById('stat-torque').innerText = `${torqueRatio} × T₁`;
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+
+        // Rotation logic
+        // Convert RPM to rad/frame (approximate)
+        const speedFactor = 0.001;
+        const delta1 = state.speed1 * speedFactor;
+        const delta2 = state.speed2 * speedFactor;
+
+        if (assembly1 && assembly2) {
+            // Rotate the entire assembly group around Z axis
+            assembly1.rotation.z -= delta1; // Clockwise
+            assembly2.rotation.z += delta2; // Counter-Clockwise
+
+            // Rotate arrows for dynamic effect (optional, or just keep them static indicating direction)
+            // Let's make them pulse opacity
+            const time = Date.now() * 0.005;
+            arrow1.children.forEach(c => {
+                if (c.material) c.material.opacity = 0.5 + Math.sin(time) * 0.3;
+            });
+            arrow2.children.forEach(c => {
+                if (c.material) c.material.opacity = 0.5 + Math.sin(time) * 0.3;
+            });
+
+            // Contact point pulse
+            contactPoint.scale.setScalar(1 + Math.sin(time * 2) * 0.2);
+        }
+
+        controls.update();
+        updateLabelsPosition();
+        renderer.render(scene, camera);
+    }
+
+    // --- UI Setup ---
+    function setupUI() {
+        // Speed Input
+        const inputSpeed = document.getElementById('input-speed');
+        inputSpeed.addEventListener('input', (e) => {
+            state.speed1 = parseInt(e.target.value);
+            document.getElementById('val-speed').innerText = state.speed1 + (window._t ? window._t.rpmUnit : ' об/мин');
+            updatePhysics();
+        });
+
+        // Teeth Inputs (Debounced to prevent lag on rapid drag)
+        let timeout;
+        const updateTeeth = () => {
+            state.z1 = parseInt(document.getElementById('input-z1').value);
+            state.z2 = parseInt(document.getElementById('input-z2').value);
+            document.getElementById('val-z1').innerText = state.z1;
+            document.getElementById('val-z2').innerText = state.z2;
+            updateGears();
+            updatePhysics();
+        };
+
+        document.getElementById('input-z1').addEventListener('input', (e) => {
+            document.getElementById('val-z1').innerText = e.target.value;
+            clearTimeout(timeout);
+            timeout = setTimeout(updateTeeth, 100);
+        });
+
+        document.getElementById('input-z2').addEventListener('input', (e) => {
+            document.getElementById('val-z2').innerText = e.target.value;
+            clearTimeout(timeout);
+            timeout = setTimeout(updateTeeth, 100);
+        });
+
+        // Toggles
+        document.getElementById('check-arrows').addEventListener('change', (e) => {
+            arrow1.visible = e.target.checked;
+            arrow2.visible = e.target.checked;
+            document.querySelectorAll('.floating-label').forEach(el => el.style.opacity = e.target.checked ? 1 : 0);
+        });
+
+        document.getElementById('check-zone').addEventListener('change', (e) => {
+            contactPoint.visible = e.target.checked;
+        });
+
+        document.getElementById('check-wireframe').addEventListener('change', (e) => {
+            // Need to traverse group to find meshes
+            assembly1.children.forEach(child => {
+                if (child.isMesh && child.geometry.type === 'ExtrudeGeometry') child.material.wireframe = e.target.checked;
+            });
+            assembly2.children.forEach(child => {
+                if (child.isMesh && child.geometry.type === 'ExtrudeGeometry') child.material.wireframe = e.target.checked;
+            });
+        });
+    }
+
+    function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    // Start
+    init();
+    updatePhysics();
+
+</script>
+</body>
+</html>

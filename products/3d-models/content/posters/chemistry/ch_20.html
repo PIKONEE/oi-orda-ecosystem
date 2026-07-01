@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="page_title">Аллотропия кислорода — O₂ и O₃</title>
+    <style>
+        
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg: #f5f4f0;
+            --surface: rgba(255,255,255,0.90);
+            --border: rgba(0,0,0,0.08);
+            --text: #1c1917;
+            --muted: #78716c;
+            --o2: #dc2626;
+            --o3: #7c3aed;
+            --shadow: 0 2px 20px rgba(0,0,0,0.07);
+            --shadow-lg: 0 8px 44px rgba(0,0,0,0.11);
+        }
+
+        body {
+            font-family: 'Syne', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='%23f5f4f0'/%3E%3Ccircle cx='1' cy='1' r='0.6' fill='rgba(0,0,0,0.025)'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        #canvas-container { position: fixed; inset: 0; z-index: 1; }
+
+        /* ── HEADER ─────────────────────────────────── */
+        .header {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            z-index: 200;
+            background: var(--surface);
+            
+            border-bottom: 1px solid var(--border);
+            padding: 0 48px;
+            height: 92px;
+            display: flex;
+            align-items: center;
+            gap: 28px;
+            box-shadow: var(--shadow);
+        }
+
+        .header-symbol {
+            font-family: 'DM Mono', monospace;
+            font-size: 38px;
+            font-weight: 500;
+            color: var(--text);
+            letter-spacing: -1px;
+        }
+
+        .header-title {
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: -0.4px;
+        }
+
+        .header-sub {
+            font-size: 17px;
+            color: var(--muted);
+            margin-left: auto;
+            font-weight: 400;
+        }
+
+        /* ── SWITCHER ──────────────────────────────── */
+        .switcher {
+            position: fixed;
+            top: 108px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 200;
+            display: flex;
+            gap: 10px;
+            background: var(--surface);
+            padding: 9px;
+            border-radius: 26px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .sw-btn {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 17px 40px;
+            border-radius: 20px;
+            border: none;
+            background: transparent;
+            font-family: 'Syne', sans-serif;
+            font-size: 20px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.25s;
+            color: var(--muted);
+            white-space: nowrap;
+        }
+
+        .sw-btn:hover { background: rgba(0,0,0,0.04); color: var(--text); }
+
+        .sw-btn.active[data-id="o2"] {
+            background: rgba(220,38,38,0.10);
+            color: #b91c1c;
+        }
+        .sw-btn.active[data-id="o3"] {
+            background: rgba(124,58,237,0.10);
+            color: #6d28d9;
+        }
+
+        .sw-dot {
+            width: 16px; height: 16px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        /* ── PROPS PANEL ───────────────────────────── */
+        .props-panel {
+            position: fixed;
+            top: 212px;
+            left: 32px;
+            z-index: 200;
+            background: var(--surface);
+            
+            border: 1px solid var(--border);
+            border-radius: 26px;
+            padding: 28px 30px;
+            width: 330px;
+            box-shadow: var(--shadow);
+            transition: all 0.3s;
+        }
+
+        .panel-label {
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            color: var(--muted);
+            margin-bottom: 18px;
+        }
+
+        .prop-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(0,0,0,0.04);
+            font-size: 17px;
+        }
+
+        .prop-row:last-child { border: none; }
+        .prop-key { color: var(--muted); }
+        .prop-val {
+            font-family: 'DM Mono', monospace;
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--text);
+        }
+
+        /* ── VIEW PANEL ────────────────────────────── */
+        .view-panel {
+            position: fixed;
+            top: 212px;
+            right: 32px;
+            z-index: 200;
+            background: var(--surface);
+            
+            border: 1px solid var(--border);
+            border-radius: 26px;
+            padding: 26px;
+            width: 285px;
+            box-shadow: var(--shadow);
+        }
+
+        .v-btn {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+            padding: 15px 18px;
+            margin: 7px 0;
+            background: rgba(0,0,0,0.03);
+            border: 1px solid transparent;
+            border-radius: 15px;
+            font-family: 'Syne', sans-serif;
+            font-size: 17px;
+            font-weight: 600;
+            color: var(--text);
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+        }
+
+        .v-btn:hover { background: rgba(0,0,0,0.06); }
+        .v-btn.active { border-color: rgba(0,0,0,0.12); background: rgba(0,0,0,0.06); }
+
+        /* ── OVERLAY NAME ──────────────────────────── */
+        .overlay-name {
+            position: fixed;
+            bottom: 72px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 150;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2.5px;
+            color: var(--muted);
+            opacity: 0.45;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+
+        /* ── HINT ──────────────────────────────────── */
+        .hint {
+            position: fixed;
+            bottom: 28px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 200;
+            background: var(--surface);
+            
+            border: 1px solid var(--border);
+            border-radius: 60px;
+            padding: 15px 36px;
+            font-size: 16px;
+            color: var(--muted);
+            box-shadow: var(--shadow);
+            white-space: nowrap;
+        }
+
+        .hint kbd {
+            background: rgba(0,0,0,0.07);
+            border-radius: 6px;
+            padding: 2px 10px;
+            font-family: 'DM Mono', monospace;
+            font-size: 14px;
+            color: var(--text);
+        }
+
+        /* ── INFO PANEL ────────────────────────────── */
+        .info-panel {
+            position: fixed;
+            top: 0; bottom: 0;
+            right: -460px;
+            width: 420px;
+            background: rgba(255,255,255,0.97);
+            
+            border-left: 1px solid var(--border);
+            box-shadow: -8px 0 48px rgba(0,0,0,0.08);
+            z-index: 500;
+            overflow-y: auto;
+            transition: right 0.4s cubic-bezier(0.34,1.56,0.64,1);
+            padding: 32px;
+        }
+
+        .info-panel.open { right: 0; }
+
+        .ip-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .ip-title { font-size: 28px; font-weight: 700; line-height: 1.3; }
+
+        .close-btn {
+            width: 42px; height: 42px;
+            border-radius: 12px;
+            background: rgba(0,0,0,0.05);
+            border: none;
+            font-size: 22px;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: background 0.2s;
+            flex-shrink: 0;
+            color: var(--text);
+        }
+
+        .close-btn:hover { background: rgba(0,0,0,0.1); }
+
+        .ip-tag {
+            display: inline-block;
+            font-size: 14px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            padding: 5px 16px;
+            border-radius: 20px;
+            margin-bottom: 24px;
+        }
+
+        .ip-tag.o2 { background: rgba(220,38,38,0.10); color: #b91c1c; }
+        .ip-tag.o3 { background: rgba(124,58,237,0.10); color: #6d28d9; }
+
+        .ip-sec {
+            padding: 18px 20px;
+            border-radius: 16px;
+            background: rgba(0,0,0,0.02);
+            border-left: 3px solid #e5e7eb;
+            margin-bottom: 16px;
+        }
+
+        .ip-sec.o2 { border-color: #dc2626; }
+        .ip-sec.o3 { border-color: #7c3aed; }
+
+        .ip-sec strong {
+            display: block;
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            color: var(--muted);
+            margin-bottom: 8px;
+        }
+
+        .ip-sec p { font-size: 17px; line-height: 1.75; color: var(--text); font-weight: 400; }
+
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <span class="header-symbol">O</span>
+    <span class="header-title" data-i18n="header_title">Аллотропия кислорода</span>
+    <span class="header-sub" data-i18n="header_sub">Два аллотропа — один элемент · кликните на молекулу</span>
+</div>
+
+<div class="switcher">
+    <button class="sw-btn active" data-id="o2" onclick="switchTo('o2')">
+        <span class="sw-dot" style="background:#dc2626"></span>🔴 O₂ — Кислород
+    </button>
+    <button class="sw-btn" data-id="o3" onclick="switchTo('o3')">
+        <span class="sw-dot" style="background:#7c3aed"></span>💜 O₃ — Озон
+    </button>
+</div>
+
+<div class="props-panel" id="props-panel">
+    <div class="panel-label" data-i18n="props_title">Свойства</div>
+    <div id="props-content"></div>
+</div>
+
+<div class="view-panel">
+    <div class="panel-label" data-i18n="view_title">Вид</div>
+    <button class="v-btn active" id="btn-spin"   onclick="toggleSpin()"><span data-i18n="btn_pause">⏸ Пауза</span></button>
+    <button class="v-btn active" id="btn-bonds"  onclick="toggleBonds()"><span data-i18n="btn_bonds">🔗 Связи</span></button>
+    <button class="v-btn"        id="btn-angles" onclick="toggleAngles()"><span data-i18n="btn_angles">📐 Угол связи</span></button>
+    <button class="v-btn"        id="btn-lone"   onclick="toggleLone()"><span data-i18n="btn_lone">🔵 Неподелённые пары</span></button>
+</div>
+
+<div class="overlay-name" id="overlay-name">O₂ — Кислород</div>
+
+<div class="hint" data-i18n-html="hint">🖱 Перетащить — вращать &nbsp;·&nbsp; <kbd>Scroll</kbd> — масштаб &nbsp;·&nbsp; Нажмите на молекулу для информации</div>
+
+<div id="canvas-container"></div>
+
+<div class="info-panel" id="info-panel">
+    <div class="ip-header">
+        <div class="ip-title" id="ip-title">—</div>
+        <button class="close-btn" onclick="closeInfo()">✕</button>
+    </div>
+    <div id="ip-tag" class="ip-tag">—</div>
+    <div id="ip-body"></div>
+</div>
+
+<script>
+const I18N={
+ru:{
+page_title:'Аллотропия кислорода — O₂ и O₃',header_title:'Аллотропия кислорода',header_sub:'Два аллотропа — один элемент · кликните на молекулу',
+props_title:'Свойства',view_title:'Вид',
+btn_pause:'⏸ Пауза',btn_start:'▶ Старт',btn_bonds:'🔗 Связи',btn_angles:'📐 Угол связи',btn_lone:'🔵 Неподелённые пары',
+hint:'🖱 Перетащить — вращать &nbsp;·&nbsp; <kbd>Scroll</kbd> — масштаб &nbsp;·&nbsp; Нажмите на молекулу для информации'
+},
+kz:{
+page_title:'Оттектің аллотропиясы — O₂ және O₃',header_title:'Оттектің аллотропиясы',header_sub:'Екі аллотроп — бір элемент · молекуланы басыңыз',
+props_title:'Қасиеттері',view_title:'Көрініс',
+btn_pause:'⏸ Кідірту',btn_start:'▶ Бастау',btn_bonds:'🔗 Байланыстар',btn_angles:'📐 Байланыс бұрышы',btn_lone:'🔵 Бөлінбеген жұптар',
+hint:'🖱 Сүйреу — айналдыру &nbsp;·&nbsp; <kbd>Scroll</kbd> — масштаб &nbsp;·&nbsp; Ақпарат үшін молекуланы басыңыз'
+},
+en:{
+page_title:'Oxygen Allotropy — O₂ and O₃',header_title:'Oxygen Allotropy',header_sub:'Two allotropes — one element · click on a molecule',
+props_title:'Properties',view_title:'View',
+btn_pause:'⏸ Pause',btn_start:'▶ Start',btn_bonds:'🔗 Bonds',btn_angles:'📐 Bond angle',btn_lone:'🔵 Lone pairs',
+hint:'🖱 Drag — rotate &nbsp;·&nbsp; <kbd>Scroll</kbd> — zoom &nbsp;·&nbsp; Click molecule for info'
+}
+};
+const LANG=(()=>{const q=new URLSearchParams(location.search).get('lang');return(q&&I18N[q])?q:'ru';})();
+const t=(key)=>(I18N[LANG]&&I18N[LANG][key])??(I18N.ru[key]);
+function applyStaticI18N(){
+  document.documentElement.lang=LANG;
+  const tv=t('page_title');if(tv)document.title=tv;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{const v=t(el.getAttribute('data-i18n'));if(v)el.textContent=v;});
+  document.querySelectorAll('[data-i18n-html]').forEach(el=>{const v=t(el.getAttribute('data-i18n-html'));if(v)el.innerHTML=v;});
+}
+applyStaticI18N();
+</script>
+
+<script type="importmap">
+{
+    "imports": {
+        "three": "../../libs/vendor/three-0.160.0/three.module.js"
+    }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+// ─── ALLOTROPE DATA ───────────────────────────────────────────────────────────
+const PROPS_ALL = {
+  ru: {
+    o2: { name:'O₂ — Кислород', rows:[['Формула','O₂'],['Геометрия','линейная'],['Порядок связи','2 (двойная)'],['Длина O=O','1.21 Å'],['Т. кипения','−183 °C'],['Т. плавления','−219 °C'],['Магнетизм','парамагнитен'],['Цвет (жидк.)','бледно-голубой']], tagClass:'o2' },
+    o3: { name:'O₃ — Озон', rows:[['Формула','O₃'],['Геометрия','угловая (V)'],['Угол O–O–O','116.8°'],['Длина O–O','1.28 Å'],['Порядок связи','1.5 (резонанс)'],['Т. кипения','−112 °C'],['Т. плавления','−193 °C'],['Запах','резкий']], tagClass:'o3' }
+  },
+  kz: {
+    o2: { name:'O₂ — Оттек', rows:[['Формула','O₂'],['Геометриясы','сызықтық'],['Байланыс реті','2 (қос)'],['O=O ұзындығы','1.21 Å'],['Қайнау т.','−183 °C'],['Балқу т.','−219 °C'],['Магнетизмі','парамагниттік'],['Түсі (сұйық)','ашық көк']], tagClass:'o2' },
+    o3: { name:'O₃ — Озон', rows:[['Формула','O₃'],['Геометриясы','бұрыштық (V)'],['O–O–O бұрышы','116.8°'],['O–O ұзындығы','1.28 Å'],['Байланыс реті','1.5 (резонанс)'],['Қайнау т.','−112 °C'],['Балқу т.','−193 °C'],['Иісі','өткір']], tagClass:'o3' }
+  },
+  en: {
+    o2: { name:'O₂ — Oxygen', rows:[['Formula','O₂'],['Geometry','linear'],['Bond order','2 (double)'],['O=O length','1.21 Å'],['Boiling point','−183 °C'],['Melting point','−219 °C'],['Magnetism','paramagnetic'],['Color (liq.)','pale blue']], tagClass:'o2' },
+    o3: { name:'O₃ — Ozone', rows:[['Formula','O₃'],['Geometry','angular (V)'],['Angle O–O–O','116.8°'],['O–O length','1.28 Å'],['Bond order','1.5 (resonance)'],['Boiling point','−112 °C'],['Melting point','−193 °C'],['Odor','pungent']], tagClass:'o3' }
+  }
+};
+const PROPS = PROPS_ALL[LANG] || PROPS_ALL.ru;
+
+const INFO_ALL = {
+  ru: {
+    o2: { title:'O₂ — Молекулярный кислород', tag:'Кислород · линейная', tagClass:'o2', body:`<div class="ip-sec o2"><strong>Строение и связь</strong><p>Два атома кислорода соединены <b>двойной ковалентной связью</b> (σ + π). Длина связи 1.21 Å, порядок связи = 2. Молекула неполярна.</p></div><div class="ip-sec o2"><strong>Парамагнетизм</strong><p>O₂ — <b>парамагнитен</b>: два электрона на разрыхляющих π*-орбиталях с параллельными спинами. Жидкий кислород притягивается к магниту.</p></div><div class="ip-sec o2"><strong>Жизнь и атмосфера</strong><p>21% атмосферы. Источник — фотосинтез. Основа клеточного дыхания, горения, коррозии.</p></div>` },
+    o3: { title:'O₃ — Озон', tag:'Озон · угловая', tagClass:'o3', body:`<div class="ip-sec o3"><strong>Угловая форма</strong><p>Центральный O: <b>sp²-гибридизация</b>. 2 связывающие + 1 неподелённая пара. Угол 116.8° (ниже 120° из-за отталкивания).</p></div><div class="ip-sec o3"><strong>Резонанс</strong><p>Обе связи O–O равнозначны — 1.28 Å. Электронная плотность делокализована. Формулы Льюиса — лишь резонансные структуры.</p></div><div class="ip-sec o3"><strong>Озоновый слой</strong><p>Стратосферный озон (20–30 км) поглощает 97–99% жёсткого УФ. Один атом Cl уничтожает 100 000 молекул O₃.</p></div>` }
+  },
+  kz: {
+    o2: { title:'O₂ — Молекулалық оттек', tag:'Оттек · сызықтық', tagClass:'o2', body:`<div class="ip-sec o2"><strong>Құрылымы және байланысы</strong><p>Екі оттек атомы <b>қос ковалентті байланыспен</b> (σ + π) қосылған. Байланыс ұзындығы 1.21 Å, реті = 2. Молекула полярсыз.</p></div><div class="ip-sec o2"><strong>Парамагнетизм</strong><p>O₂ — <b>парамагниттік</b>: екі электрон босатқыш π*-орбитальдарда параллель спиндермен орналасқан. Сұйық оттек магнитке тартылады.</p></div><div class="ip-sec o2"><strong>Тіршілік және атмосфера</strong><p>Атмосфераның 21%-ы. Көзі — фотосинтез. Жасушалық тыныс алу, жану, коррозия негізі.</p></div>` },
+    o3: { title:'O₃ — Озон', tag:'Озон · бұрыштық', tagClass:'o3', body:`<div class="ip-sec o3"><strong>Бұрыштық пішін</strong><p>Орталық O: <b>sp²-гибридизация</b>. 2 байланыс жұбы + 1 бөлінбеген жұп. Бұрышы 116.8° (тебілу салдарынан 120°-тан аз).</p></div><div class="ip-sec o3"><strong>Резонанс</strong><p>Екі O–O байланысы тең — 1.28 Å. Электрон тығыздығы делокализацияланған. Льюис формулалары — тек резонанстық құрылымдар.</p></div><div class="ip-sec o3"><strong>Озон қабаты</strong><p>Стратосфералық озон (20–30 км) қатты УК-тің 97–99%-ын жұтады. Бір Cl атомы 100 000 O₃ молекуласын жояды.</p></div>` }
+  },
+  en: {
+    o2: { title:'O₂ — Molecular Oxygen', tag:'Oxygen · linear', tagClass:'o2', body:`<div class="ip-sec o2"><strong>Structure & bonding</strong><p>Two oxygen atoms joined by a <b>double covalent bond</b> (σ + π). Bond length 1.21 Å, bond order = 2. Molecule is nonpolar.</p></div><div class="ip-sec o2"><strong>Paramagnetism</strong><p>O₂ is <b>paramagnetic</b>: two electrons on degenerate antibonding π*-orbitals with parallel spins. Liquid oxygen is attracted to magnets.</p></div><div class="ip-sec o2"><strong>Life & atmosphere</strong><p>21% of atmosphere. Source — photosynthesis. Basis of cellular respiration, combustion, corrosion.</p></div>` },
+    o3: { title:'O₃ — Ozone', tag:'Ozone · angular', tagClass:'o3', body:`<div class="ip-sec o3"><strong>Angular shape</strong><p>Central O: <b>sp² hybridization</b>. 2 bonding pairs + 1 lone pair. Angle 116.8° (less than 120° due to repulsion).</p></div><div class="ip-sec o3"><strong>Resonance</strong><p>Both O–O bonds are equivalent — 1.28 Å. Electron density is delocalized. Lewis formulas are merely resonance structures.</p></div><div class="ip-sec o3"><strong>Ozone layer</strong><p>Stratospheric ozone (20–30 km) absorbs 97–99% of hard UV. One Cl atom destroys 100,000 O₃ molecules.</p></div>` }
+  }
+};
+const INFO = INFO_ALL[LANG] || INFO_ALL.ru;
+
+// ─── SCENE ────────────────────────────────────────────────────────────────────
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf5f4f0);
+
+const camera = new THREE.PerspectiveCamera(48, innerWidth / innerHeight, 0.1, 200);
+camera.position.set(0, 0, 14);
+camera.lookAt(0, 0, 0);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = false;
+document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+// ─── LIGHTING ─────────────────────────────────────────────────────────────────
+scene.add(new THREE.AmbientLight(0xffffff, 1.3));
+const sun = new THREE.DirectionalLight(0xfff6f0, 1.6);
+sun.position.set(10, 16, 10);
+sun.castShadow = true;
+scene.add(sun);
+const fill = new THREE.DirectionalLight(0xf0e8ff, 0.5);
+fill.position.set(-8, 4, -6);
+scene.add(fill);
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let currentId  = 'o2';
+let spinning   = true;
+let showBonds  = true;
+let showAngles = false;
+let showLone   = false;
+let isDragging = false;
+let dragStart  = { x: 0, y: 0 };
+
+const mainGroup   = new THREE.Group();
+scene.add(mainGroup);
+
+let atomMeshes  = [];
+let bondMeshes  = [];
+let angleMeshes = [];
+let loneMeshes  = [];
+let clickables  = [];
+
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
+function makeBond(p1, p2, r, color) {
+    const dir = new THREE.Vector3().subVectors(p2, p1);
+    const len = dir.length();
+    const mid = new THREE.Vector3().addVectors(p1, p2).multiplyScalar(0.5);
+    const geo = new THREE.CylinderGeometry(r, r, len, 18);
+    const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.45 });
+    const m   = new THREE.Mesh(geo, mat);
+    m.position.copy(mid);
+    m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize());
+    return m;
+}
+
+function makeAtom(r, color) {
+    const geo = new THREE.SphereGeometry(r, 36, 36);
+    const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.22, metalness: 0.06 });
+    return new THREE.Mesh(geo, mat);
+}
+
+function makeLobe(r, color) {
+    const geo = new THREE.SphereGeometry(r, 18, 18);
+    const mat = new THREE.MeshStandardMaterial({
+        color,
+        transparent: true,
+        opacity: 0.52,
+        roughness: 0.85
+    });
+    return new THREE.Mesh(geo, mat);
+}
+
+// ─── BUILD O₂ ─────────────────────────────────────────────────────────────────
+function buildO2() {
+    const g = new THREE.Group();
+    atomMeshes = []; bondMeshes = []; angleMeshes = []; loneMeshes = []; clickables = [];
+
+    const L = 3.0;
+    const pA = new THREE.Vector3(-L / 2, 0, 0);
+    const pB = new THREE.Vector3( L / 2, 0, 0);
+
+    [pA, pB].forEach((pos, i) => {
+        const m = makeAtom(0.74, i === 0 ? 0xdc2626 : 0xb91c1c);
+        m.position.copy(pos);
+        m.userData  = { allotrope: 'o2', type: 'oxygen' };
+        m.castShadow = true;
+        g.add(m);
+        atomMeshes.push(m);
+        clickables.push(m);
+    });
+
+    // Double bond: two offset cylinders
+    [0.24, -0.24].forEach(dy => {
+        const b = makeBond(
+            pA.clone().add(new THREE.Vector3(0, dy, 0)),
+            pB.clone().add(new THREE.Vector3(0, dy, 0)),
+            0.10, 0xe53e3e
+        );
+        g.add(b);
+        bondMeshes.push(b);
+    });
+
+    // Lone pair lobes — 2 pairs per atom, perpendicular to bond axis
+    [pA, pB].forEach((pos, ai) => {
+        const outDir = ai === 0 ? -1 : 1; // pointing away from molecule centre
+        const outerPos = pos.clone().add(new THREE.Vector3(outDir * 0.8, 0, 0));
+        // lobe 1: above
+        const lp1 = makeLobe(0.32, 0x6366f1);
+        lp1.position.copy(pos).add(new THREE.Vector3(0,  0.72, 0.45));
+        lp1.visible = false;
+        g.add(lp1); loneMeshes.push(lp1);
+        // lobe 2: below
+        const lp2 = makeLobe(0.32, 0x6366f1);
+        lp2.position.copy(pos).add(new THREE.Vector3(0, -0.72, 0.45));
+        lp2.visible = false;
+        g.add(lp2); loneMeshes.push(lp2);
+        // lobe 3: outer z-side
+        const lp3 = makeLobe(0.32, 0x6366f1);
+        lp3.position.copy(outerPos);
+        lp3.visible = false;
+        g.add(lp3); loneMeshes.push(lp3);
+    });
+
+    return g;
+}
+
+// ─── BUILD O₃ ─────────────────────────────────────────────────────────────────
+function buildO3() {
+    const g = new THREE.Group();
+    atomMeshes = []; bondMeshes = []; angleMeshes = []; loneMeshes = []; clickables = [];
+
+    const L    = 2.8;
+    const half = (116.8 / 2) * (Math.PI / 180); // half-angle in radians
+
+    // Bisector along +y; terminals spread to left and right
+    const pC  = new THREE.Vector3( 0,                        0,                0); // central
+    const pL  = new THREE.Vector3(-Math.sin(half) * L,  Math.cos(half) * L, 0); // left terminal
+    const pR  = new THREE.Vector3( Math.sin(half) * L,  Math.cos(half) * L, 0); // right terminal
+
+    // Centre of mass (equal atomic masses)
+    const com = new THREE.Vector3().add(pC).add(pL).add(pR).divideScalar(3);
+    [pC, pL, pR].forEach(p => p.sub(com));
+
+    // Central O (slightly larger — carries lone pair)
+    const mC = makeAtom(0.78, 0xb91c1c);
+    mC.position.copy(pC);
+    mC.userData  = { allotrope: 'o3', type: 'central' };
+    mC.castShadow = true;
+    g.add(mC); atomMeshes.push(mC); clickables.push(mC);
+
+    [pL, pR].forEach((pos, i) => {
+        const m = makeAtom(0.70, 0xdc2626);
+        m.position.copy(pos);
+        m.userData  = { allotrope: 'o3', type: 'terminal', index: i };
+        m.castShadow = true;
+        g.add(m); atomMeshes.push(m); clickables.push(m);
+    });
+
+    // Bonds (order 1.5 — shown as one thick bond + a second thin parallel)
+    [pL, pR].forEach(pos => {
+        const main = makeBond(pC, pos, 0.13, 0xe53e3e);
+        g.add(main); bondMeshes.push(main);
+        // thin second line offset to hint at partial double-bond
+        const perp = new THREE.Vector3().subVectors(pos, pC)
+            .cross(new THREE.Vector3(0, 0, 1)).normalize().multiplyScalar(0.22);
+        const side = makeBond(
+            pC.clone().add(perp),
+            pos.clone().add(perp),
+            0.055, 0xf87171
+        );
+        side.userData.isSecondBond = true;
+        g.add(side); bondMeshes.push(side);
+    });
+
+    // Angle arc at central atom
+    const d1 = pL.clone().sub(pC).normalize().multiplyScalar(1.4);
+    const d2 = pR.clone().sub(pC).normalize().multiplyScalar(1.4);
+    const arcPts = [];
+    for (let i = 0; i <= 36; i++) {
+        const s   = i / 36;
+        const dir = new THREE.Vector3().lerpVectors(d1, d2, s).normalize().multiplyScalar(1.4);
+        arcPts.push(pC.clone().add(dir));
+    }
+    const arcGeo  = new THREE.BufferGeometry().setFromPoints(arcPts);
+    const arcLine = new THREE.Line(arcGeo,
+        new THREE.LineBasicMaterial({ color: 0x7c3aed, transparent: true, opacity: 0.85 })
+    );
+    arcLine.visible = false;
+    g.add(arcLine); angleMeshes.push(arcLine);
+
+    // Lone pair on central O — bisector reversed (downward = negative y direction)
+    const bisDir = new THREE.Vector3().addVectors(
+        pL.clone().sub(pC).normalize(),
+        pR.clone().sub(pC).normalize()
+    ).normalize();
+    const lpCentral = makeLobe(0.44, 0x8b5cf6);
+    lpCentral.position.copy(pC).addScaledVector(bisDir.clone().negate(), 1.25);
+    lpCentral.visible = false;
+    g.add(lpCentral); loneMeshes.push(lpCentral);
+
+    // Lone pairs on terminal atoms (2 each — out-of-plane and outward)
+    [pL, pR].forEach((pos, ti) => {
+        const outward = pos.clone().sub(pC).normalize();
+        const sign    = ti === 0 ? 1 : -1;
+        // lobe 1: slightly outward along bond direction
+        const lp1 = makeLobe(0.30, 0x8b5cf6);
+        lp1.position.copy(pos).addScaledVector(outward, 1.1);
+        lp1.visible = false;
+        g.add(lp1); loneMeshes.push(lp1);
+        // lobe 2: out of molecular plane (±z)
+        const lp2 = makeLobe(0.30, 0x8b5cf6);
+        lp2.position.copy(pos).add(new THREE.Vector3(0, 0, sign * 1.0));
+        lp2.visible = false;
+        g.add(lp2); loneMeshes.push(lp2);
+    });
+
+    return g;
+}
+
+// ─── SWITCH ───────────────────────────────────────────────────────────────────
+const builders = { o2: buildO2, o3: buildO3 };
+
+function rebuildProps(id) {
+    const d = PROPS[id];
+    document.getElementById('props-content').innerHTML = d.rows
+        .map(([k, v]) =>
+            `<div class="prop-row"><span class="prop-key">${k}</span><span class="prop-val">${v}</span></div>`)
+        .join('');
+}
+
+window.switchTo = function(id) {
+    if (id === currentId) return;
+    currentId = id;
+
+    while (mainGroup.children.length) mainGroup.remove(mainGroup.children[0]);
+    const g = builders[id]();
+    mainGroup.add(g);
+    mainGroup.rotation.set(0, 0, 0);
+
+    // Restore toggle states
+    bondMeshes.forEach(m  => m.visible = showBonds);
+    angleMeshes.forEach(m => m.visible = showAngles && id === 'o3');
+    loneMeshes.forEach(m  => m.visible = showLone);
+
+    // Disable angle arc button for linear O₂
+    const btnA = document.getElementById('btn-angles');
+    btnA.style.opacity    = id === 'o2' ? '0.4' : '1';
+    btnA.style.pointerEvents = id === 'o2' ? 'none' : 'auto';
+    if (id === 'o2') { showAngles = false; btnA.classList.remove('active'); }
+
+    document.querySelectorAll('.sw-btn')
+        .forEach(b => b.classList.toggle('active', b.dataset.id === id));
+    document.getElementById('overlay-name').textContent = PROPS[id].name;
+    rebuildProps(id);
+    closeInfo();
+};
+
+// ─── TOGGLE CONTROLS ──────────────────────────────────────────────────────────
+window.toggleSpin = function() {
+    spinning = !spinning;
+    const b = document.getElementById('btn-spin');
+    b.textContent = spinning ? '⏸ Пауза' : '▶ Старт';
+    b.classList.toggle('active', !spinning);
+};
+
+window.toggleBonds = function() {
+    showBonds = !showBonds;
+    bondMeshes.forEach(m => m.visible = showBonds);
+    document.getElementById('btn-bonds').classList.toggle('active', showBonds);
+};
+
+window.toggleAngles = function() {
+    if (currentId === 'o2') return;
+    showAngles = !showAngles;
+    angleMeshes.forEach(m => m.visible = showAngles);
+    document.getElementById('btn-angles').classList.toggle('active', showAngles);
+};
+
+window.toggleLone = function() {
+    showLone = !showLone;
+    loneMeshes.forEach(m => m.visible = showLone);
+    document.getElementById('btn-lone').classList.toggle('active', showLone);
+};
+
+// ─── INFO PANEL ───────────────────────────────────────────────────────────────
+window.closeInfo = function() {
+    document.getElementById('info-panel').classList.remove('open');
+};
+
+function openInfo(id) {
+    const d = INFO[id];
+    if (!d) return;
+    document.getElementById('ip-title').textContent = d.title;
+    const tag = document.getElementById('ip-tag');
+    tag.textContent = d.tag;
+    tag.className   = 'ip-tag ' + d.tagClass;
+    document.getElementById('ip-body').innerHTML = d.body;
+    document.getElementById('info-panel').classList.add('open');
+}
+
+// ─── MOUSE ────────────────────────────────────────────────────────────────────
+const raycaster = new THREE.Raycaster();
+const mouse2    = new THREE.Vector2();
+
+renderer.domElement.addEventListener('mousedown', e => {
+    isDragging = false;
+    dragStart  = { x: e.clientX, y: e.clientY };
+});
+
+renderer.domElement.addEventListener('mousemove', e => {
+    if (e.buttons === 1) {
+        const dx = e.clientX - dragStart.x;
+        const dy = e.clientY - dragStart.y;
+        if (Math.abs(dx) + Math.abs(dy) > 3) isDragging = true;
+        mainGroup.rotation.y += dx * 0.009;
+        mainGroup.rotation.x += dy * 0.009;
+        dragStart = { x: e.clientX, y: e.clientY };
+    }
+    mouse2.x = (e.clientX / innerWidth)  * 2 - 1;
+    mouse2.y = -(e.clientY / innerHeight) * 2 + 1;
+    raycaster.setFromCamera(mouse2, camera);
+    renderer.domElement.style.cursor =
+        raycaster.intersectObjects(clickables).length ? 'pointer' : 'default';
+});
+
+renderer.domElement.addEventListener('click', e => {
+    if (isDragging) return;
+    openInfo(currentId);
+});
+
+renderer.domElement.addEventListener('wheel', e => {
+    e.preventDefault();
+    camera.position.z = Math.max(6, Math.min(26, camera.position.z + e.deltaY * 0.013));
+}, { passive: false });
+
+window.addEventListener('resize', () => {
+    camera.aspect = innerWidth / innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+});
+
+// ─── ANIMATION ────────────────────────────────────────────────────────────────
+let t = 0;
+function animate() {
+    requestAnimationFrame(animate);
+    t += 0.016;
+    if (spinning) mainGroup.rotation.y += 0.0018; // slow rotation
+    // gentle breathe for O₃
+    if (currentId === 'o3') {
+        mainGroup.scale.setScalar(1 + Math.sin(t * 0.9) * 0.014);
+    } else {
+        mainGroup.scale.setScalar(1);
+    }
+    renderer.render(scene, camera);
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+const initG = buildO2();
+mainGroup.add(initG);
+rebuildProps('o2');
+document.getElementById('overlay-name').textContent = 'O₂ — Кислород';
+
+animate();
+</script>
+</body>
+</html>

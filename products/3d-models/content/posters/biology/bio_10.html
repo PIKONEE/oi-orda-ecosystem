@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="page_title">Митохондрия — энергетическая станция клетки</title>
+    <link rel="stylesheet" href="_poster.css">
+</head>
+<body>
+<div id="canvas-container"></div>
+<div id="header">
+    <h1 data-i18n="header_title">Митохондрия</h1>
+    <p data-i18n="header_subtitle">Интерактивная модель — 5 ключевых структур клеточной органеллы</p>
+</div>
+<div id="hint" data-i18n="hint">Кликните по любой части митохондрии, чтобы узнать больше</div>
+<button id="reset-btn" data-i18n="reset_btn" data-i18n-title="reset_btn_title" title="Сбросить вид">↺ Сбросить вид</button>
+<div id="info-panel" aria-hidden="true">
+    <button class="close-btn" id="close-btn" data-i18n-aria-label="close_btn_label" aria-label="Закрыть">×</button>
+    <div class="info-header"><span class="info-dot" id="info-dot"></span><div><h2 id="info-title">Название</h2><span id="info-subtitle"></span></div></div>
+    <p id="info-desc">Описание</p>
+    <div id="info-facts"></div>
+</div>
+<div id="legend"></div>
+<div id="hover-label"></div>
+<div id="loading"><div class="spinner"></div><div id="loading-text" data-i18n="loading">Загрузка модели…</div></div>
+
+<script type="importmap">
+    { "imports": { "three": "../../libs/vendor/three-0.160.0/three.module.js", "three/addons/": "../../libs/vendor/three-0.160.0/addons/" } }
+</script>
+
+<script type="module">
+    import { initPoster } from './_poster_lib.js';
+
+    const I18N = {
+        ru: {
+            page_title: 'Митохондрия — энергетическая станция клетки',
+            header_title: 'Митохондрия',
+            header_subtitle: 'Интерактивная модель — 5 ключевых структур клеточной органеллы',
+            hint: 'Кликните по любой части митохондрии, чтобы узнать больше',
+            reset_btn: '↺ Сбросить вид', reset_btn_title: 'Сбросить вид', close_btn_label: 'Закрыть',
+            loading: 'Загрузка модели…', error_load: 'Не удалось загрузить mitochondria.glb', error_no_mesh: 'В модели нет меша',
+            facts_label: 'Интересный факт',
+            zones: {
+                outer_membrane: { title: 'Внешняя мембрана', desc: 'Гладкая липидная двухслойная оболочка, отделяющая митохондрию от цитоплазмы клетки. Содержит белки-порины, которые делают её проницаемой для молекул размером до 10 кДа: ионов, АТФ, АДФ, нуклеотидов, ферментов. Через неё свободно проходят почти все мелкие метаболиты.', facts: 'Внешняя мембрана митохондрии похожа по составу на мембрану бактерий — это одно из доказательств теории эндосимбиоза.' },
+                intermembrane: { title: 'Межмембранное пространство', desc: 'Узкое пространство (около 60–80 ангстрем) между внешней и внутренней мембранами митохондрии. Здесь накапливаются протоны (ионы H⁺), создавая электрохимический градиент — главную движущую силу для синтеза АТФ. Также содержит ферменты, активирующие нуклеотиды.', facts: 'Разность концентрации протонов между межмембранным пространством и матриксом достигает 10:1 — это сила, эквивалентная напряжению в 200 мВ.' },
+                inner_membrane: { title: 'Внутренняя мембрана', desc: 'Плотная мембрана, образующая множественные складки — кристы. Содержит ферменты дыхательной цепи (комплексы I–IV) и АТФ-синтазу. Непроницаема для большинства ионов и молекул, что позволяет создавать протонный градиент для синтеза АТФ.', facts: 'Внутренняя мембрана содержит уникальный фосфолипид — кардиолипин, который встречается практически только в митохондриях и почти отсутствует в других мембранах клетки.' },
+                cristae: { title: 'Кристы', desc: 'Складки внутренней мембраны, проникающие в матрикс. Увеличивают площадь поверхности внутренней мембраны в 5–10 раз, что критически важно для размещения белков дыхательной цепи и АТФ-синтаз. Количество крист зависит от энергопотребности клетки: в мышечных и сердечных клетках их больше всего.', facts: 'Кристы митохондрий клеток сердечной мышцы могут занимать до 50% объёма клетки — поэтому сердечная мышца такая «выносливая».' },
+                matrix: { title: 'Матрикс', desc: 'Внутреннее пространство митохондрии, заполненное гелеобразным веществом. Содержит ферменты цикла Кребса, окисления жирных кислот, собственную ДНК (мтДНК), рибосомы и тРНК. Здесь же происходит синтез АТФ. Митохондриальная ДНК наследуется только по материнской линии.', facts: 'В одной митохондрии находится 2–10 копий мтДНК. У человека мтДНК — это кольцевая молекула из 16 569 пар нуклеотидов, кодирующая 37 генов.' }
+            }
+        },
+        kz: {
+            page_title: 'Митохондрия — жасушаның энергия стансасы',
+            header_title: 'Митохондрия',
+            header_subtitle: 'Интерактивті модель — жасуша органеллаларының 5 негізгі құрылымы',
+            hint: 'Толығырақ білу үшін митохондрияның кез келген бөлігіне басыңыз',
+            reset_btn: '↺ Көріністі қалпына келтіру', reset_btn_title: 'Көріністі қалпына келтіру', close_btn_label: 'Жабу',
+            loading: 'Модель жүктелуде…', error_load: 'mitochondria.glb файлын жүктеу мүмкін болмады', error_no_mesh: 'Модельде меш табылмады',
+            facts_label: 'Қызықты факт',
+            zones: {
+                outer_membrane: { title: 'Сыртқы мембрана', desc: 'Митохондрияны жасуша цитоплазмасынан бөлетін тегіс липидтік қос қабатты қабық. Оны 10 кДа-ға дейінгі молекулаларға: иондарға, АТФ, АДФ, нуклеотидтерге, ферменттерге өткізетін порин белоктарын қамтиды. Ол арқылы барлық дерлік ұсақ метаболиттер еркін өтеді.', facts: 'Митохондрияның сыртқы мембранасы құрамы жағынан бактериялардың мембранасына ұқсас — бұл эндосимбиоз теориясының бір дәлелі.' },
+                intermembrane: { title: 'Мембрана аралық кеңістік', desc: 'Митохондрияның сыртқы және ішкі мембраналары арасындағы тар кеңістік (шамамен 60–80 ангстрем). Мұнда протондар (H⁺ иондары) жинақталып, АТФ синтезінің негізгі қозғаушы күші — электрохимиялық градиент түзіледі. Сонымен қатар нуклеотидтерді белсендіретін ферменттерді қамтиды.', facts: 'Мембрана аралық кеңістік пен матрикс арасындағы протон концентрациясының айырмасы 10:1-ге жетеді — бұл 200 мВ кернеуге пара-пар күш.' },
+                inner_membrane: { title: 'Ішкі мембрана', desc: 'Көптеген қатпарлар — кристер құрайтын тығыз мембрана. Тыныс алу тізбегінің ферменттерін (I–IV кешендер) және АТФ-синтазаны қамтиды. Иондар мен молекулалардың көпшілігіне өтпейтін, бұл АТФ синтезі үшін протон градиентін жасауға мүмкіндік береді.', facts: 'Ішкі мембрана дерлік тек митохондрияларда кездесетін және жасушаның басқа мембраналарында іс жүзінде жоқ ерекше фосфолипид — кардиолипинді қамтиды.' },
+                cristae: { title: 'Кристер', desc: 'Матрикске енетін ішкі мембрананың қатпарлары. Ішкі мембрананың бетін 5–10 есеге арттырады, бұл тыныс алу тізбегінің белоктары мен АТФ-синтазаларын орналастыру үшін өте маңызды. Кристер саны жасушаның энергия қажеттілігіне байланысты: бұлшықет пен жүрек жасушаларында ең көп.', facts: 'Жүрек бұлшықеті жасушаларының митохондрия кристері жасуша көлемінің 50%-ына дейін ала алады — сондықтан жүрек бұлшықеті осындай «төзімді».' },
+                matrix: { title: 'Матрикс', desc: 'Гель тәрізді заттпен толтырылған митохондрияның ішкі кеңістігі. Кребс циклі, май қышқылдарының тотығу ферменттерін, өз ДНҚ-сын (мтДНҚ), рибосомалар мен тРНҚ-ны қамтиды. АТФ синтезі дәл осында жүреді. Митохондриялық ДНҚ тек ана арқылы беріледі.', facts: 'Бір митохондрияда мтДНҚ-ның 2–10 көшірмесі бар. Адамда мтДНҚ — 37 генді кодтайтын 16 569 нуклеотид жұбынан тұратын сақина тәрізді молекула.' }
+            }
+        },
+        en: {
+            page_title: 'Mitochondrion — the Powerhouse of the Cell',
+            header_title: 'Mitochondrion',
+            header_subtitle: 'Interactive model — 5 key structures of the cellular organelle',
+            hint: 'Click any part of the mitochondrion to learn more',
+            reset_btn: '↺ Reset view', reset_btn_title: 'Reset view', close_btn_label: 'Close',
+            loading: 'Loading model…', error_load: 'Failed to load mitochondria.glb', error_no_mesh: 'No mesh found in the model',
+            facts_label: 'Did you know?',
+            zones: {
+                outer_membrane: { title: 'Outer Membrane', desc: 'A smooth lipid bilayer that separates the mitochondrion from the cell cytoplasm. Contains porin proteins that make it permeable to molecules up to 10 kDa: ions, ATP, ADP, nucleotides, enzymes. Almost all small metabolites pass through it freely.', facts: 'The outer membrane is similar in composition to bacterial membranes — one piece of evidence for the endosymbiotic theory.' },
+                intermembrane: { title: 'Intermembrane Space', desc: 'A narrow space (about 60–80 Å) between the outer and inner membranes of the mitochondrion. Protons (H⁺ ions) accumulate here, creating the electrochemical gradient — the main driving force for ATP synthesis. Also contains enzymes that activate nucleotides.', facts: 'The proton concentration difference between the intermembrane space and the matrix reaches 10:1 — a force equivalent to 200 mV.' },
+                inner_membrane: { title: 'Inner Membrane', desc: 'A dense membrane that forms numerous folds — cristae. Contains the enzymes of the electron transport chain (complexes I–IV) and ATP synthase. Impermeable to most ions and molecules, which allows the proton gradient to be created for ATP synthesis.', facts: 'The inner membrane contains the unique phospholipid cardiolipin, found almost exclusively in mitochondria and largely absent from other cell membranes.' },
+                cristae: { title: 'Cristae', desc: 'Folds of the inner membrane that project into the matrix. They increase the surface area of the inner membrane 5–10 times, which is critical for housing the proteins of the electron transport chain and ATP synthases. The number of cristae depends on the energy demand of the cell — muscle and heart cells have the most.', facts: 'Cristae of mitochondria in heart muscle cells can occupy up to 50% of the cell volume — which is why the heart muscle is so "tireless".' },
+                matrix: { title: 'Matrix', desc: 'The internal space of the mitochondrion filled with a gel-like substance. Contains enzymes of the Krebs cycle, fatty acid oxidation, its own DNA (mtDNA), ribosomes and tRNA. ATP synthesis takes place here. Mitochondrial DNA is inherited only from the mother.', facts: 'A single mitochondrion contains 2–10 copies of mtDNA. In humans, mtDNA is a circular molecule of 16,569 nucleotide pairs encoding 37 genes.' }
+            }
+        }
+    };
+
+    const ZONES = [
+        { id: 'outer_membrane', subtitle: 'Membrana externa',         color: 0xff6b6b },
+        { id: 'intermembrane',  subtitle: 'Spatium intermembranosum', color: 0xffd93d },
+        { id: 'inner_membrane', subtitle: 'Membrana interna',         color: 0x4d96ff },
+        { id: 'cristae',        subtitle: 'Cristae',                  color: 0x6bcb77 },
+        { id: 'matrix',         subtitle: 'Matrix mitochondrialis',   color: 0xc77dff }
+    ];
+
+    // classify(x, y, z): concentric layers by distance from center
+    function classify(x, y, z) {
+        const dc = Math.sqrt(x * x + y * y + z * z);
+        if (dc > 0.85) return 0; // outer_membrane
+        if (dc > 0.72) return 1; // intermembrane
+        if (dc > 0.6)  return 2; // inner_membrane
+        if (dc > 0.3)  return 3; // cristae
+        return 4; // matrix
+    }
+
+    initPoster({ modelFile: 'mitochondria.glb', zones: ZONES, classify, i18n: I18N });
+</script>
+</body>
+</html>

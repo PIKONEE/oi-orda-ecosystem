@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="page_title">Молекула бензола (C₆H₆)</title>
+    <style>
+        
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg: #f0f2f5;
+            --surface: rgba(255,255,255,0.82);
+            --surface-border: rgba(0,0,0,0.07);
+            --text: #1a1f36;
+            --text-muted: #6b7280;
+            --accent: #f59e0b;
+            --accent2: #3b82f6;
+            --accent3: #10b981;
+            --carbon: #374151;
+            --hydrogen: #93c5fd;
+            --shadow: 0 4px 24px rgba(0,0,0,0.08);
+            --shadow-lg: 0 12px 48px rgba(0,0,0,0.12);
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* Subtle grid background */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px);
+            background-size: 32px 32px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        #canvas-container {
+            position: fixed;
+            inset: 0;
+            z-index: 1;
+        }
+
+        /* HEADER */
+        .header {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            z-index: 100;
+            background: var(--surface);
+            
+            border-bottom: 1px solid var(--surface-border);
+            padding: 16px 36px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            box-shadow: var(--shadow);
+            height: 76px;
+        }
+
+        .header-badge {
+            background: var(--accent);
+            color: white;
+            font-family: 'DM Mono', monospace;
+            font-size: 16px;
+            font-weight: 500;
+            padding: 6px 14px;
+            border-radius: 8px;
+            letter-spacing: 0.5px;
+        }
+
+        .header h1 {
+            font-size: 26px;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .header p {
+            font-size: 16px;
+            color: var(--text-muted);
+            margin-left: auto;
+        }
+
+        /* LEFT PANEL — molecule info */
+        .mol-info {
+            position: fixed;
+            top: 92px;
+            left: 28px;
+            z-index: 100;
+            background: var(--surface);
+            
+            border: 1px solid var(--surface-border);
+            border-radius: 20px;
+            padding: 24px;
+            width: 280px;
+            box-shadow: var(--shadow);
+        }
+
+        .mol-info-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 16px;
+        }
+
+        .mol-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 9px 0;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            font-size: 16px;
+        }
+
+        .mol-row:last-child { border-bottom: none; }
+
+        .mol-row .key { color: var(--text-muted); }
+        .mol-row .val {
+            font-weight: 600;
+            color: var(--text);
+            font-family: 'DM Mono', monospace;
+            font-size: 15px;
+        }
+
+        /* LEGEND */
+        .legend {
+            position: fixed;
+            bottom: 90px;
+            left: 28px;
+            z-index: 100;
+            background: var(--surface);
+            
+            border: 1px solid var(--surface-border);
+            border-radius: 18px;
+            padding: 20px 24px;
+            box-shadow: var(--shadow);
+        }
+
+        .legend-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 12px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 16px;
+            font-weight: 500;
+            margin: 8px 0;
+            cursor: pointer;
+            transition: transform 0.2s;
+            color: var(--text);
+        }
+
+        .legend-item:hover { transform: translateX(3px); }
+
+        .legend-dot {
+            width: 22px; height: 22px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+
+        /* VIEW CONTROLS */
+        .view-controls {
+            position: fixed;
+            top: 92px;
+            right: 28px;
+            z-index: 100;
+            background: var(--surface);
+            
+            border: 1px solid var(--surface-border);
+            border-radius: 20px;
+            padding: 20px;
+            width: 260px;
+            box-shadow: var(--shadow);
+        }
+
+        .vc-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 12px;
+        }
+
+        .vc-btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            padding: 12px 14px;
+            margin: 6px 0;
+            background: rgba(0,0,0,0.04);
+            border: 1px solid transparent;
+            border-radius: 12px;
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+        }
+
+        .vc-btn:hover { background: rgba(0,0,0,0.07); }
+
+        .vc-btn.active {
+            background: rgba(245,158,11,0.12);
+            border-color: rgba(245,158,11,0.4);
+            color: #d97706;
+        }
+
+        .vc-btn .icon { font-size: 18px; }
+
+        /* CONTROLS hint */
+        .controls-hint {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            background: var(--surface);
+            
+            border: 1px solid var(--surface-border);
+            border-radius: 50px;
+            padding: 13px 28px;
+            font-size: 15px;
+            color: var(--text-muted);
+            box-shadow: var(--shadow);
+            white-space: nowrap;
+        }
+
+        .controls-hint kbd {
+            background: rgba(0,0,0,0.08);
+            border-radius: 5px;
+            padding: 2px 8px;
+            font-family: 'DM Mono', monospace;
+            font-size: 13px;
+            color: var(--text);
+        }
+
+        /* INFO PANEL (slide-in) */
+        .info-panel {
+            position: fixed;
+            top: 0; bottom: 0;
+            right: -420px;
+            width: 380px;
+            background: rgba(255,255,255,0.97);
+            
+            border-left: 1px solid var(--surface-border);
+            box-shadow: -8px 0 40px rgba(0,0,0,0.1);
+            z-index: 500;
+            overflow-y: auto;
+            transition: right 0.4s cubic-bezier(0.34,1.56,0.64,1);
+            padding: 32px 28px;
+            color: var(--text);
+        }
+
+        .info-panel.active { right: 0; }
+
+        .info-panel-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin-bottom: 24px;
+        }
+
+        .info-panel h2 {
+            font-size: 26px;
+            font-weight: 600;
+            line-height: 1.3;
+        }
+
+        .close-btn {
+            width: 38px; height: 38px;
+            border-radius: 10px;
+            background: rgba(0,0,0,0.06);
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: background 0.2s;
+            color: var(--text);
+        }
+
+        .close-btn:hover { background: rgba(0,0,0,0.12); }
+
+        .info-tag {
+            display: inline-block;
+            background: rgba(245,158,11,0.12);
+            color: #d97706;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 4px 14px;
+            border-radius: 20px;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .info-section {
+            margin-bottom: 18px;
+            padding: 16px 18px;
+            background: rgba(0,0,0,0.02);
+            border-radius: 14px;
+            border-left: 3px solid var(--accent);
+        }
+
+        .info-section strong {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 7px;
+        }
+
+        .info-section p {
+            font-size: 16px;
+            line-height: 1.7;
+            color: var(--text);
+        }
+
+
+        /* pi-cloud toggle */
+        .pi-indicator {
+            position: fixed;
+            bottom: 90px;
+            right: 28px;
+            z-index: 100;
+            background: var(--surface);
+            
+            border: 1px solid var(--surface-border);
+            border-radius: 18px;
+            padding: 16px 22px;
+            box-shadow: var(--shadow);
+            font-size: 16px;
+            color: var(--text-muted);
+        }
+
+        .pi-indicator strong {
+            display: block;
+            font-size: 28px;
+            font-weight: 600;
+            color: var(--accent2);
+            font-family: 'DM Mono', monospace;
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <div class="header-badge">C₆H₆</div>
+    <h1 data-i18n="header_title">Молекула бензола</h1>
+    <p data-i18n="header_sub">Интерактивная 3D‑модель · кликните на атом</p>
+</div>
+
+<div class="mol-info">
+    <div class="mol-info-title" data-i18n="props_title">Свойства</div>
+    <div class="mol-row"><span class="key" data-i18n="k_formula">Формула</span><span class="val">C₆H₆</span></div>
+    <div class="mol-row"><span class="key" data-i18n="k_molar">Молярная масса</span><span class="val" data-i18n="v_molar">78.11 г/моль</span></div>
+    <div class="mol-row"><span class="key" data-i18n="k_shape">Форма</span><span class="val" data-i18n="v_shape">Плоский гексагон</span></div>
+    <div class="mol-row"><span class="key" data-i18n="k_cc">C–C связь</span><span class="val">1.40 Å</span></div>
+    <div class="mol-row"><span class="key" data-i18n="k_ch">C–H связь</span><span class="val">1.08 Å</span></div>
+    <div class="mol-row"><span class="key" data-i18n="k_angle">Угол C–C–C</span><span class="val">120°</span></div>
+    <div class="mol-row"><span class="key" data-i18n="k_hybrid">Гибридизация C</span><span class="val">sp²</span></div>
+    <div class="mol-row"><span class="key" data-i18n="k_type">Тип</span><span class="val" data-i18n="v_type">Ароматический</span></div>
+</div>
+
+<div class="legend">
+    <div class="legend-title" data-i18n="legend_title">Атомы</div>
+    <div class="legend-item" onclick="highlightType('carbon')">
+        <div class="legend-dot" style="background:#374151;"></div>
+        <span data-i18n="leg_carbon">Углерод (C) × 6</span>
+    </div>
+    <div class="legend-item" onclick="highlightType('hydrogen')">
+        <div class="legend-dot" style="background:#93c5fd;"></div>
+        <span data-i18n="leg_hydrogen">Водород (H) × 6</span>
+    </div>
+</div>
+
+<div class="view-controls">
+    <div class="vc-title" data-i18n="view_title">Визуализация</div>
+    <button class="vc-btn active" id="btn-ring" onclick="toggleView('ring')">
+        <span class="icon">⬡</span> <span data-i18n="btn_ring">π-кольцо (облако)</span>
+    </button>
+    <button class="vc-btn" id="btn-angles" onclick="toggleView('angles')">
+        <span class="icon">📐</span> <span data-i18n="btn_angles">Углы 120°</span>
+    </button>
+    <button class="vc-btn" id="btn-kekulé" onclick="toggleView('kekule')">
+        <span class="icon">↔</span> <span data-i18n="btn_kekule">Формула Кекуле</span>
+    </button>
+    <button class="vc-btn" id="btn-spin" onclick="toggleSpin()">
+        <span class="icon">⏸</span> <span data-i18n="btn_pause">Пауза вращения</span>
+    </button>
+</div>
+
+<div class="pi-indicator">
+    <span data-i18n="pi_label">π-электронов:</span><br>
+    <strong>6</strong>
+</div>
+
+<div class="controls-hint" data-i18n-html="hint">🖱 Перетащить — вращать &nbsp;·&nbsp; <kbd>Scroll</kbd> — масштаб &nbsp;·&nbsp; <kbd>Пробел</kbd> — пауза</div>
+
+<div id="canvas-container"></div>
+
+<!-- INFO PANEL -->
+<div class="info-panel" id="info-panel">
+    <div class="info-panel-header">
+        <h2 id="info-title">Название</h2>
+        <button class="close-btn" onclick="closeInfo()">✕</button>
+    </div>
+    <div id="info-tag" class="info-tag">атом</div>
+    <div id="info-content"></div>
+</div>
+
+<script>
+const I18N={
+ru:{
+page_title:'Молекула бензола (C₆H₆)',header_title:'Молекула бензола',header_sub:'Интерактивная 3D‑модель · кликните на атом',
+props_title:'Свойства',k_formula:'Формула',k_molar:'Молярная масса',v_molar:'78.11 г/моль',
+k_shape:'Форма',v_shape:'Плоский гексагон',k_cc:'C–C связь',k_ch:'C–H связь',
+k_angle:'Угол C–C–C',k_hybrid:'Гибридизация C',k_type:'Тип',v_type:'Ароматический',
+legend_title:'Атомы',leg_carbon:'Углерод (C) × 6',leg_hydrogen:'Водород (H) × 6',
+view_title:'Визуализация',btn_ring:'π-кольцо (облако)',btn_angles:'Углы 120°',
+btn_kekule:'Формула Кекуле',btn_pause:'Пауза вращения',btn_resume:'Продолжить',
+pi_label:'π-электронов:',
+hint:'🖱 Перетащить — вращать &nbsp;·&nbsp; <kbd>Scroll</kbd> — масштаб &nbsp;·&nbsp; <kbd>Пробел</kbd> — пауза'
+},
+kz:{
+page_title:'Бензол молекуласы (C₆H₆)',header_title:'Бензол молекуласы',header_sub:'Интерактивті 3D‑модель · атомды басыңыз',
+props_title:'Қасиеттері',k_formula:'Формула',k_molar:'Молярлық масса',v_molar:'78.11 г/моль',
+k_shape:'Пішіні',v_shape:'Жазық алтыбұрыш',k_cc:'C–C байланыс',k_ch:'C–H байланыс',
+k_angle:'C–C–C бұрышы',k_hybrid:'C гибридизациясы',k_type:'Түрі',v_type:'Ароматты',
+legend_title:'Атомдар',leg_carbon:'Көміртек (C) × 6',leg_hydrogen:'Сутек (H) × 6',
+view_title:'Визуализация',btn_ring:'π-сақина (бұлт)',btn_angles:'120° бұрыштар',
+btn_kekule:'Кекуле формуласы',btn_pause:'Айналуды тоқтату',btn_resume:'Жалғастыру',
+pi_label:'π-электрондар:',
+hint:'🖱 Сүйреу — айналдыру &nbsp;·&nbsp; <kbd>Scroll</kbd> — масштаб &nbsp;·&nbsp; <kbd>Бос орын</kbd> — кідірту'
+},
+en:{
+page_title:'Benzene Molecule (C₆H₆)',header_title:'Benzene Molecule',header_sub:'Interactive 3D model · click on an atom',
+props_title:'Properties',k_formula:'Formula',k_molar:'Molar mass',v_molar:'78.11 g/mol',
+k_shape:'Shape',v_shape:'Planar hexagon',k_cc:'C–C bond',k_ch:'C–H bond',
+k_angle:'Angle C–C–C',k_hybrid:'C hybridization',k_type:'Type',v_type:'Aromatic',
+legend_title:'Atoms',leg_carbon:'Carbon (C) × 6',leg_hydrogen:'Hydrogen (H) × 6',
+view_title:'Visualization',btn_ring:'π-ring (cloud)',btn_angles:'120° Angles',
+btn_kekule:'Kekulé formula',btn_pause:'Pause rotation',btn_resume:'Resume',
+pi_label:'π-electrons:',
+hint:'🖱 Drag — rotate &nbsp;·&nbsp; <kbd>Scroll</kbd> — zoom &nbsp;·&nbsp; <kbd>Space</kbd> — pause'
+}
+};
+const LANG=(()=>{const q=new URLSearchParams(location.search).get('lang');return(q&&I18N[q])?q:'ru';})();
+const t=(key)=>(I18N[LANG]&&I18N[LANG][key])??(I18N.ru[key]);
+function applyStaticI18N(){
+  document.documentElement.lang=LANG;
+  const tv=t('page_title');if(tv)document.title=tv;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{const v=t(el.getAttribute('data-i18n'));if(v)el.textContent=v;});
+  document.querySelectorAll('[data-i18n-html]').forEach(el=>{const v=t(el.getAttribute('data-i18n-html'));if(v)el.innerHTML=v;});
+}
+applyStaticI18N();
+</script>
+
+<script type="importmap">
+{
+    "imports": {
+        "three": "../../libs/vendor/three-0.160.0/three.module.js",
+        "three/addons/": "../../libs/vendor/three-0.160.0/addons/"
+    }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+// ─── DATA ────────────────────────────────────────────────────────────────────
+const INFO_ALL = {
+  ru: {
+    carbon: { title:'Атом углерода (C)', tag:'Углерод · sp²', content:`<div class="info-section"><strong>Гибридизация</strong><p>Каждый атом углерода в бензоле имеет <b>sp²-гибридизацию</b>. Три гибридные орбитали лежат в одной плоскости под углом 120° и образуют σ-связи. Негибридизованная p-орбиталь перпендикулярна плоскости и участвует в π-системе.</p></div><div class="info-section"><strong>Делокализация</strong><p>Шесть p-орбиталей всех атомов C объединяются в единую делокализованную π-систему. Электроны не «принадлежат» конкретным связям — они равномерно распределены по всему кольцу.</p></div><div class="info-section"><strong>Длина связи C–C</strong><p>1.40 Å — промежуточное значение между одинарной (1.54 Å) и двойной (1.34 Å) связью. Это прямое следствие делокализации.</p></div>` },
+    hydrogen: { title:'Атом водорода (H)', tag:'Водород · σ-связь', content:`<div class="info-section"><strong>Связь C–H</strong><p>Каждый атом H связан с одним атомом углерода σ-связью длиной <b>1.08 Å</b>. Связь направлена радиально от кольца в плоскости молекулы.</p></div><div class="info-section"><strong>Ароматические реакции</strong><p>В реакциях бензол предпочитает <b>электрофильное замещение</b>, а не присоединение — атомы H заменяются, но ароматическая π-система сохраняется.</p></div>` },
+    molecule: { title:'Молекула бензола C₆H₆', tag:'Ароматическое соединение', content:`<div class="info-section"><strong>Ароматичность</strong><p>Бензол — классический пример ароматического соединения. Критерии Хюккеля: плоская кольцевая π-система с <b>4n+2</b> π-электронами (n=1, итого 6).</p></div><div class="info-section"><strong>История открытия</strong><p>Обнаружен Майклом Фарадеем в 1825 г. Структуру кольца предложил Август Кекуле в 1865 г. По легенде — вдохновившись сном о змее, кусающей себя за хвост.</p></div><div class="info-section"><strong>Применение</strong><p>Сырьё для производства пластмасс, красителей, медикаментов (аспирин, парацетамол), взрывчатых веществ (TNT), синтетических волокон (нейлон). Растворитель в промышленности.</p></div><div class="info-section"><strong>Резонансные структуры</strong><p>В формуле Кекуле изображают чередующиеся двойные и одинарные связи — но это условность. Реальная молекула — среднее двух структур Кекуле: все связи равнозначны.</p></div>` }
+  },
+  kz: {
+    carbon: { title:'Көміртек атомы (C)', tag:'Көміртек · sp²', content:`<div class="info-section"><strong>Гибридизация</strong><p>Бензолдағы әрбір көміртек атомы <b>sp²-гибридизацияға</b> ие. Үш гибридті орбиталь бір жазықтықта 120° бұрышпен орналасып, σ-байланыс түзеді. Гибридизацияланбаған p-орбиталь жазықтыққа перпендикуляр және π-жүйеге қатысады.</p></div><div class="info-section"><strong>Делокализация</strong><p>Алты C атомының p-орбитальдары біртұтас делокализацияланған π-жүйе құрайды. Электрондар белгілі бір байланысқа «тиесілі» емес — олар бүкіл сақина бойынша біркелкі таралған.</p></div><div class="info-section"><strong>C–C байланыс ұзындығы</strong><p>1.40 Å — жай (1.54 Å) мен қос (1.34 Å) байланыс арасындағы аралық мән. Бұл делокализацияның тікелей салдары.</p></div>` },
+    hydrogen: { title:'Сутек атомы (H)', tag:'Сутек · σ-байланыс', content:`<div class="info-section"><strong>C–H байланысы</strong><p>Әрбір H атомы бір көміртек атомымен ұзындығы <b>1.08 Å</b> σ-байланыспен байланысқан. Байланыс молекула жазықтығында сақинадан радиалды бағытталған.</p></div><div class="info-section"><strong>Ароматты реакциялар</strong><p>Бензол реакцияларда қосылудан гөрі <b>электрофильді алмасуды</b> қалайды — H атомдары ауыстырылады, бірақ ароматты π-жүйе сақталады.</p></div>` },
+    molecule: { title:'Бензол молекуласы C₆H₆', tag:'Ароматты қосылыс', content:`<div class="info-section"><strong>Ароматтылық</strong><p>Бензол — ароматты қосылыстың классикалық мысалы. Хюккель критерийлері: <b>4n+2</b> π-электроны бар жазық сақиналы π-жүйе (n=1, барлығы 6).</p></div><div class="info-section"><strong>Ашылу тарихы</strong><p>1825 ж. Майкл Фарадей тапқан. Сақина құрылымын 1865 ж. Август Кекуле ұсынған. Аңыз бойынша — өз құйрығын тістеген жылан туралы түстен шабыт алған.</p></div><div class="info-section"><strong>Қолданылуы</strong><p>Пластмасса, бояу, дәрі-дәрмек (аспирин, парацетамол), жарылғыш заттар (TNT), синтетикалық талшықтар (нейлон) өндірісінің шикізаты. Өнеркәсіпте еріткіш.</p></div><div class="info-section"><strong>Резонанстық құрылымдар</strong><p>Кекуле формуласында кезектесетін қос және жай байланыстар бейнеленеді — бірақ бұл шартты. Нақты молекула — екі Кекуле құрылымының ортасы: барлық байланыстар тең.</p></div>` }
+  },
+  en: {
+    carbon: { title:'Carbon Atom (C)', tag:'Carbon · sp²', content:`<div class="info-section"><strong>Hybridization</strong><p>Each carbon atom in benzene has <b>sp² hybridization</b>. Three hybrid orbitals lie in one plane at 120° and form σ-bonds. The unhybridized p-orbital is perpendicular to the plane and participates in the π-system.</p></div><div class="info-section"><strong>Delocalization</strong><p>Six p-orbitals of all C atoms combine into a single delocalized π-system. Electrons don't "belong" to specific bonds — they are evenly distributed around the entire ring.</p></div><div class="info-section"><strong>C–C bond length</strong><p>1.40 Å — intermediate between single (1.54 Å) and double (1.34 Å) bonds. This is a direct consequence of delocalization.</p></div>` },
+    hydrogen: { title:'Hydrogen Atom (H)', tag:'Hydrogen · σ-bond', content:`<div class="info-section"><strong>C–H Bond</strong><p>Each H atom is bonded to one carbon by a σ-bond of length <b>1.08 Å</b>. The bond points radially outward from the ring in the molecular plane.</p></div><div class="info-section"><strong>Aromatic Reactions</strong><p>In reactions, benzene prefers <b>electrophilic substitution</b> over addition — H atoms are replaced, but the aromatic π-system is preserved.</p></div>` },
+    molecule: { title:'Benzene Molecule C₆H₆', tag:'Aromatic compound', content:`<div class="info-section"><strong>Aromaticity</strong><p>Benzene is a classic example of an aromatic compound. Hückel's criteria: a planar cyclic π-system with <b>4n+2</b> π-electrons (n=1, total 6).</p></div><div class="info-section"><strong>Discovery</strong><p>Discovered by Michael Faraday in 1825. The ring structure was proposed by August Kekulé in 1865 — reportedly inspired by a dream of a snake biting its own tail.</p></div><div class="info-section"><strong>Applications</strong><p>Raw material for plastics, dyes, pharmaceuticals (aspirin, paracetamol), explosives (TNT), synthetic fibers (nylon). Industrial solvent.</p></div><div class="info-section"><strong>Resonance Structures</strong><p>Kekulé's formula shows alternating double and single bonds — but this is a convention. The real molecule is an average of two Kekulé structures: all bonds are equivalent.</p></div>` }
+  }
+};
+const INFO = INFO_ALL[LANG] || INFO_ALL.ru;
+
+// ─── THREE.JS SETUP ──────────────────────────────────────────────────────────
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf0f2f5);
+
+const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 200);
+camera.position.set(0, 1, 14);
+camera.lookAt(0, 0, 0);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = false;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+// Subtle grid backdrop plane
+const gridHelper = new THREE.GridHelper(30, 30, 0x000000, 0x000000);
+gridHelper.material.opacity = 0.04;
+gridHelper.material.transparent = true;
+gridHelper.position.y = -3.5;
+scene.add(gridHelper);
+
+// ─── LIGHTING ────────────────────────────────────────────────────────────────
+scene.add(new THREE.AmbientLight(0xffffff, 1.2));
+
+const sun = new THREE.DirectionalLight(0xffffff, 1.5);
+sun.position.set(8, 12, 8);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+scene.add(sun);
+
+const fill = new THREE.DirectionalLight(0xdbeafe, 0.6);
+fill.position.set(-6, 4, -4);
+scene.add(fill);
+
+const rimAmber = new THREE.PointLight(0xfbbf24, 0.8, 25);
+rimAmber.position.set(0, 6, 0);
+scene.add(rimAmber);
+
+// ─── MOLECULE GROUP ──────────────────────────────────────────────────────────
+const mol = new THREE.Group();
+scene.add(mol);
+
+const RING_R   = 2.4;   // C–C ring radius
+const H_DIST   = 3.9;   // H distance from center
+const C_COLOR  = 0x374151;
+const H_COLOR  = 0xbfdbfe;
+const BOND_COLOR = 0x9ca3af;
+
+let carbonAtoms    = [];
+let hydrogenAtoms  = [];
+let bondMeshes     = [];
+let piCloud        = null;
+let angleLabels    = [];
+let kekuleDbl      = [];
+let clickableObjs  = [];
+
+// Shared materials
+const cMat = new THREE.MeshStandardMaterial({ color: C_COLOR, roughness: 0.35, metalness: 0.1 });
+const hMat = new THREE.MeshStandardMaterial({ color: H_COLOR, roughness: 0.3, metalness: 0.05 });
+
+function makeCylinder(p1, p2, radius, color) {
+    const dir = new THREE.Vector3().subVectors(p2, p1);
+    const len = dir.length();
+    const mid = new THREE.Vector3().addVectors(p1, p2).multiplyScalar(0.5);
+
+    const geo = new THREE.CylinderGeometry(radius, radius, len, 12);
+    const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.5 });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.copy(mid);
+    mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), dir.normalize());
+    return mesh;
+}
+
+function buildMolecule() {
+    // ── Carbon atoms ──────────────────────────────────────────────────
+    for (let i = 0; i < 6; i++) {
+        const angle = (i / 6) * Math.PI * 2 - Math.PI / 2;
+        const x = Math.cos(angle) * RING_R;
+        const z = Math.sin(angle) * RING_R;
+
+        const geo = new THREE.SphereGeometry(0.38, 32, 32);
+        const mat = cMat.clone();
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.set(x, 0, z);
+        mesh.userData = { type: 'carbon', index: i, origColor: C_COLOR };
+        mesh.castShadow = true;
+        mol.add(mesh);
+        carbonAtoms.push(mesh);
+        clickableObjs.push(mesh);
+    }
+
+    // ── Hydrogen atoms ────────────────────────────────────────────────
+    for (let i = 0; i < 6; i++) {
+        const angle = (i / 6) * Math.PI * 2 - Math.PI / 2;
+        const x = Math.cos(angle) * H_DIST;
+        const z = Math.sin(angle) * H_DIST;
+
+        const geo = new THREE.SphereGeometry(0.22, 32, 32);
+        const mat = hMat.clone();
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.set(x, 0, z);
+        mesh.userData = { type: 'hydrogen', index: i, origColor: H_COLOR };
+        mesh.castShadow = true;
+        mol.add(mesh);
+        hydrogenAtoms.push(mesh);
+        clickableObjs.push(mesh);
+    }
+
+    // ── C–C bonds ─────────────────────────────────────────────────────
+    for (let i = 0; i < 6; i++) {
+        const a = carbonAtoms[i].position;
+        const b = carbonAtoms[(i + 1) % 6].position;
+        const bond = makeCylinder(a, b, 0.1, BOND_COLOR);
+        mol.add(bond);
+        bondMeshes.push(bond);
+    }
+
+    // ── C–H bonds ─────────────────────────────────────────────────────
+    for (let i = 0; i < 6; i++) {
+        const a = carbonAtoms[i].position;
+        const b = hydrogenAtoms[i].position;
+        const bond = makeCylinder(a, b, 0.07, 0xd1d5db);
+        mol.add(bond);
+    }
+
+    // ── π-electron cloud (torus) ──────────────────────────────────────
+    buildPiCloud();
+
+    // ── Kekule double bonds ────────────────────────────────────────────
+    buildKekule();
+}
+
+function buildPiCloud() {
+    const torusGeo = new THREE.TorusGeometry(RING_R, 0.55, 24, 100);
+    const torusMat = new THREE.MeshStandardMaterial({
+        color: 0x3b82f6,
+        transparent: true,
+        opacity: 0.18,
+        roughness: 0.4,
+        metalness: 0.1,
+        side: THREE.DoubleSide
+    });
+    piCloud = new THREE.Mesh(torusGeo, torusMat);
+    piCloud.rotation.x = Math.PI / 2;
+
+    // Glow ring
+    const glowGeo = new THREE.TorusGeometry(RING_R, 0.72, 12, 100);
+    const glowMat = new THREE.MeshBasicMaterial({
+        color: 0x3b82f6,
+        transparent: true,
+        opacity: 0.07,
+        side: THREE.DoubleSide
+    });
+    const glow = new THREE.Mesh(glowGeo, glowMat);
+    glow.rotation.x = Math.PI / 2;
+    mol.add(glow);
+
+    mol.add(piCloud);
+}
+
+function buildKekule() {
+    // Alternating double bonds offset slightly
+    const offset = 0.18;
+    for (let i = 0; i < 3; i++) {
+        const idx1 = i * 2;
+        const idx2 = (i * 2 + 1) % 6;
+        const p1 = carbonAtoms[idx1].position.clone();
+        const p2 = carbonAtoms[idx2].position.clone();
+
+        // perpendicular offset
+        const perp = new THREE.Vector3()
+            .subVectors(p2, p1)
+            .cross(new THREE.Vector3(0,1,0))
+            .normalize()
+            .multiplyScalar(offset);
+
+        const a1 = p1.clone().add(perp);
+        const b1 = p2.clone().add(perp);
+        const a2 = p1.clone().sub(perp);
+        const b2 = p2.clone().sub(perp);
+
+        const d1 = makeCylinder(a1, b1, 0.06, 0xf59e0b);
+        const d2 = makeCylinder(a2, b2, 0.06, 0xf59e0b);
+        d1.visible = false; d2.visible = false;
+        mol.add(d1); mol.add(d2);
+        kekuleDbl.push(d1, d2);
+    }
+}
+
+// ─── ANGLE INDICATORS ────────────────────────────────────────────────────────
+let angleGroup = new THREE.Group();
+mol.add(angleGroup);
+
+function buildAngles() {
+    // Draw arc arcs at each carbon showing 120°
+    for (let i = 0; i < 6; i++) {
+        const center = carbonAtoms[i].position.clone();
+        const prev   = carbonAtoms[(i + 5) % 6].position.clone();
+        const next   = carbonAtoms[(i + 1) % 6].position.clone();
+
+        const d1 = prev.clone().sub(center).normalize().multiplyScalar(0.7);
+        const d2 = next.clone().sub(center).normalize().multiplyScalar(0.7);
+
+        // Arc
+        const points = [];
+        for (let t = 0; t <= 20; t++) {
+            const s = t / 20;
+            const dir = new THREE.Vector3().lerpVectors(d1, d2, s).normalize().multiplyScalar(0.65);
+            points.push(center.clone().add(dir));
+        }
+        const arcGeo = new THREE.BufferGeometry().setFromPoints(points);
+        const arcLine = new THREE.Line(arcGeo, new THREE.LineBasicMaterial({ color: 0x10b981, linewidth: 2 }));
+        arcLine.visible = false;
+        angleGroup.add(arcLine);
+        angleLabels.push(arcLine);
+    }
+}
+
+buildMolecule();
+buildAngles();
+
+// ─── INTERACTION STATE ────────────────────────────────────────────────────────
+let spinning = true;
+let showRing = true;
+let showAngles = false;
+let showKekule = false;
+let isDragging = false;
+let prevMouse = { x: 0, y: 0 };
+let selectedMesh = null;
+
+const raycaster = new THREE.Raycaster();
+const mouse2d = new THREE.Vector2();
+
+// ─── MOUSE / TOUCH ────────────────────────────────────────────────────────────
+renderer.domElement.addEventListener('mousedown', e => {
+    isDragging = false;
+    prevMouse = { x: e.clientX, y: e.clientY };
+});
+
+renderer.domElement.addEventListener('mousemove', e => {
+    if (e.buttons === 1) {
+        isDragging = true;
+        const dx = e.clientX - prevMouse.x;
+        const dy = e.clientY - prevMouse.y;
+        mol.rotation.y += dx * 0.01;
+        mol.rotation.x += dy * 0.01;
+        prevMouse = { x: e.clientX, y: e.clientY };
+    }
+
+    // hover highlight
+    mouse2d.x = (e.clientX / window.innerWidth) * 2 - 1;
+    mouse2d.y = -(e.clientY / window.innerHeight) * 2 + 1;
+    raycaster.setFromCamera(mouse2d, camera);
+    const hits = raycaster.intersectObjects(clickableObjs);
+    renderer.domElement.style.cursor = hits.length ? 'pointer' : 'default';
+});
+
+renderer.domElement.addEventListener('click', e => {
+    if (isDragging) return;
+    mouse2d.x = (e.clientX / window.innerWidth) * 2 - 1;
+    mouse2d.y = -(e.clientY / window.innerHeight) * 2 + 1;
+    raycaster.setFromCamera(mouse2d, camera);
+    const hits = raycaster.intersectObjects(clickableObjs);
+    if (hits.length) {
+        const obj = hits[0].object;
+        showInfo(obj.userData.type, obj);
+    } else {
+        showInfo('molecule', null);
+    }
+});
+
+renderer.domElement.addEventListener('wheel', e => {
+    e.preventDefault();
+    camera.position.z = Math.max(6, Math.min(22, camera.position.z + e.deltaY * 0.01));
+}, { passive: false });
+
+window.addEventListener('keydown', e => {
+    if (e.code === 'Space') { e.preventDefault(); toggleSpin(); }
+});
+
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ─── UI FUNCTIONS ─────────────────────────────────────────────────────────────
+window.showInfo = function(type, mesh) {
+    // Reset previous highlight
+    if (selectedMesh) {
+        selectedMesh.material.emissive?.setHex(0x000000);
+        selectedMesh.material.emissiveIntensity = 0;
+    }
+    // Highlight selected
+    if (mesh) {
+        mesh.material.emissive = new THREE.Color(0xf59e0b);
+        mesh.material.emissiveIntensity = 0.5;
+        selectedMesh = mesh;
+    }
+    const d = INFO[type];
+    if (!d) return;
+    document.getElementById('info-title').textContent = d.title;
+    document.getElementById('info-tag').textContent = d.tag;
+    document.getElementById('info-content').innerHTML = d.content;
+    document.getElementById('info-panel').classList.add('active');
+};
+
+window.closeInfo = function() {
+    document.getElementById('info-panel').classList.remove('active');
+    if (selectedMesh) {
+        selectedMesh.material.emissive?.setHex(0x000000);
+        selectedMesh.material.emissiveIntensity = 0;
+        selectedMesh = null;
+    }
+};
+
+window.toggleView = function(key) {
+    if (key === 'ring') {
+        showRing = !showRing;
+        piCloud && (piCloud.visible = showRing);
+        document.getElementById('btn-ring').classList.toggle('active', showRing);
+    }
+    if (key === 'angles') {
+        showAngles = !showAngles;
+        angleLabels.forEach(l => l.visible = showAngles);
+        document.getElementById('btn-angles').classList.toggle('active', showAngles);
+    }
+    if (key === 'kekule') {
+        showKekule = !showKekule;
+        kekuleDbl.forEach(m => m.visible = showKekule);
+        // hide default C–C bonds to avoid overlap
+        bondMeshes.forEach(m => m.visible = !showKekule);
+        document.getElementById('btn-kekulé').classList.toggle('active', showKekule);
+    }
+};
+
+window.toggleSpin = function() {
+    spinning = !spinning;
+    const btn = document.getElementById('btn-spin');
+    btn.querySelector('.icon').textContent = spinning ? '⏸' : '▶';
+    btn.textContent = '';
+    btn.innerHTML = `<span class="icon">${spinning ? '⏸' : '▶'}</span> <span data-i18n="${spinning ? 'btn_pause' : 'btn_resume'}">${spinning ? t('btn_pause') : t('btn_resume')}</span>`;
+    btn.classList.toggle('active', !spinning);
+};
+
+window.highlightType = function(type) {
+    const arr = type === 'carbon' ? carbonAtoms : hydrogenAtoms;
+    arr.forEach(m => {
+        m.material.emissive = new THREE.Color(0xf59e0b);
+        m.material.emissiveIntensity = 0.6;
+    });
+    setTimeout(() => {
+        arr.forEach(m => {
+            m.material.emissive?.setHex(0x000000);
+            m.material.emissiveIntensity = 0;
+        });
+    }, 800);
+};
+
+// ─── ANIMATION ────────────────────────────────────────────────────────────────
+let t = 0;
+function animate() {
+    requestAnimationFrame(animate);
+    t += 0.016;
+
+    if (spinning) {
+        mol.rotation.y += 0.004;
+    }
+
+    // Subtle pi-cloud breathe
+    if (piCloud && showRing) {
+        piCloud.material.opacity = 0.14 + Math.sin(t * 1.2) * 0.04;
+    }
+
+    // Gentle bob
+    mol.position.y = Math.sin(t * 0.6) * 0.08;
+
+    renderer.render(scene, camera);
+}
+
+animate();
+</script>
+</body>
+</html>

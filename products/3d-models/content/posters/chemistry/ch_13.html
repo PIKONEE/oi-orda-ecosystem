@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="page_title">Гальванический элемент — Работа батарейки</title>
+<script src="../../libs/vendor/three-r128/three.min.js"></script>
+<style>
+
+
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --blue:#38bdf8;--purple:#a78bfa;--orange:#fb923c;--green:#4ade80;--red:#f87171;
+  --yellow:#facc15;--cyan:#22d3ee;--pink:#f472b6;--zinc:#94a3b8;--copper:#f59e0b;
+  --glass-bg:rgba(10,14,32,0.65);--glass-border:rgba(255,255,255,0.1);
+  --text:#e2e8f0;--text-dim:#94a3b8;
+  --mono:'JetBrains Mono',monospace;--serif:'Playfair Display',serif;--sans:'Nunito',sans-serif;
+}
+body{background:radial-gradient(ellipse at 35% 25%,#0c1024 0%,#030712 55%,#000 100%);color:var(--text);font-family:var(--sans);overflow:hidden;height:100vh;width:100vw;}
+#canvas-container{position:absolute;inset:0;z-index:0;}
+canvas{display:block;}
+.glass{background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,0.5),inset 0 1px 0 rgba(255,255,255,0.04);}
+::-webkit-scrollbar{width:5px;}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.12);border-radius:3px;}
+
+#left-panel{position:absolute;top:56px;left:16px;width:370px;z-index:10;padding:24px;display:flex;flex-direction:column;gap:16px;max-height:calc(100vh - 72px);overflow-y:auto;}
+.panel-title{font-family:var(--serif);font-size:28px;font-weight:700;background:linear-gradient(135deg,var(--zinc),var(--copper));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.panel-subtitle{font-size:15px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1.5px;}
+.separator{height:1px;background:linear-gradient(90deg,transparent,var(--glass-border),transparent);}
+
+.control-group{display:flex;flex-direction:column;gap:8px;}
+.control-label{display:flex;justify-content:space-between;align-items:baseline;font-size:18px;color:var(--text-dim);}
+.control-value{font-family:var(--mono);font-weight:600;font-size:20px;color:var(--yellow);}
+
+input[type="range"]{-webkit-appearance:none;width:100%;height:10px;border-radius:5px;background:rgba(255,255,255,0.08);outline:none;cursor:pointer;}
+input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:28px;height:28px;border-radius:50%;background:var(--yellow);box-shadow:0 0 12px rgba(251,191,36,0.5);cursor:pointer;transition:transform .15s;}
+input[type="range"]::-webkit-slider-thumb:hover{transform:scale(1.2);}
+.slider-blue::-webkit-slider-thumb{background:var(--blue);box-shadow:0 0 12px rgba(56,189,248,0.5);}
+.slider-purple::-webkit-slider-thumb{background:var(--purple);box-shadow:0 0 12px rgba(167,139,250,0.5);}
+.slider-green::-webkit-slider-thumb{background:var(--green);box-shadow:0 0 12px rgba(74,222,128,0.5);}
+
+.btn{padding:14px 20px;border:none;border-radius:14px;font-family:var(--sans);font-weight:700;font-size:20px;cursor:pointer;transition:all .2s;letter-spacing:.5px;width:100%;}
+.btn-start{background:linear-gradient(135deg,var(--green),#16a34a);color:#052e16;box-shadow:0 4px 20px rgba(74,222,128,0.3);}
+.btn-start:hover{transform:translateY(-1px);box-shadow:0 6px 24px rgba(74,222,128,0.45);}
+.btn-stop{background:linear-gradient(135deg,var(--red),#dc2626);color:#450a0a;box-shadow:0 4px 20px rgba(248,113,113,0.3);}
+.btn-reset{background:rgba(255,255,255,0.08);color:var(--text);border:1px solid var(--glass-border);margin-top:4px;font-size:18px;padding:12px 16px;}
+.btn-reset:hover{background:rgba(255,255,255,0.14);}
+
+.toggle-row{display:flex;align-items:center;justify-content:space-between;font-size:18px;color:var(--text-dim);}
+.toggle{width:52px;height:28px;border-radius:14px;background:rgba(255,255,255,0.1);position:relative;cursor:pointer;transition:background .3s;}
+.toggle.active{background:var(--blue);}
+.toggle::after{content:'';position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:white;transition:transform .3s;}
+.toggle.active::after{transform:translateX(24px);}
+
+/* CELL TYPE SELECTOR */
+.cell-selector{display:flex;gap:6px;flex-wrap:wrap;}
+.cell-btn{padding:10px 8px;border:1px solid var(--glass-border);border-radius:10px;background:rgba(255,255,255,0.03);color:var(--text-dim);font-size:15px;cursor:pointer;transition:all .2s;text-align:center;flex:1;min-width:100px;font-family:var(--mono);}
+.cell-btn.active{background:rgba(56,189,248,0.12);border-color:var(--blue);color:var(--blue);}
+.cell-btn:hover{background:rgba(255,255,255,0.07);}
+.cell-btn .name{font-family:var(--sans);font-size:12px;display:block;margin-top:2px;color:var(--text-dim);}
+
+/* RIGHT PANEL */
+#right-panel{position:absolute;top:16px;right:16px;width:400px;z-index:10;padding:24px;display:flex;flex-direction:column;gap:14px;max-height:calc(100vh - 32px);overflow-y:auto;}
+.stat-row{display:flex;justify-content:space-between;align-items:baseline;}
+.stat-label{font-size:17px;color:var(--text-dim);}
+.stat-value{font-family:var(--mono);font-weight:600;font-size:22px;}
+
+.reaction-box{background:rgba(0,0,0,0.35);border-radius:14px;padding:16px 18px;border:1px solid rgba(255,255,255,0.06);}
+.reaction-title{font-size:18px;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:8px;}
+.reaction-eq{font-family:var(--serif);font-size:20px;line-height:2;color:var(--text);font-style:italic;}
+.reaction-eq .note{font-family:var(--sans);font-size:15px;font-style:normal;color:var(--text-dim);display:block;margin-top:2px;}
+
+.formula-box{background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:14px 16px;font-family:var(--serif);font-size:20px;line-height:1.9;color:var(--text-dim);}
+.formula-box .f{color:var(--text);font-style:italic;}
+
+.info-box{background:rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.05);border-radius:12px;padding:14px 16px;font-size:17px;line-height:1.7;color:var(--text-dim);}
+.info-box b{color:var(--text);font-weight:600;}
+
+.legend-item{display:flex;align-items:center;gap:10px;font-size:16px;color:var(--text-dim);}
+.legend-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0;}
+
+/* BOTTOM */
+#bottom-panel{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);z-index:10;padding:16px 36px;display:flex;gap:44px;align-items:center;white-space:nowrap;}
+.bottom-stat{display:flex;flex-direction:column;align-items:center;gap:3px;}
+.bottom-stat .label{font-size:14px;text-transform:uppercase;letter-spacing:1.2px;color:var(--text-dim);}
+.bottom-stat .value{font-family:var(--mono);font-size:26px;font-weight:700;}
+
+/* STATUS */
+#status-bar{position:absolute;top:16px;left:50%;transform:translateX(-50%);z-index:10;padding:12px 28px;display:flex;align-items:center;gap:14px;font-size:20px;font-weight:700;letter-spacing:1px;}
+.status-dot{width:16px;height:16px;border-radius:50%;flex-shrink:0;}
+.status-dot.on{background:var(--green);animation:blink 1s infinite;}
+.status-dot.off{background:var(--text-dim);}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.4;}}
+
+/* VOLTAGE METER */
+.voltmeter{background:rgba(0,0,0,0.4);border:2px solid var(--yellow);border-radius:14px;padding:16px;text-align:center;}
+.voltmeter .vm-label{font-size:14px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;}
+.voltmeter .vm-value{font-family:var(--mono);font-size:42px;font-weight:700;color:var(--yellow);text-shadow:0 0 20px rgba(251,191,36,0.3);}
+.voltmeter .vm-unit{font-size:20px;color:var(--text-dim);}
+
+.electrode-label{position:absolute;z-index:5;font-family:var(--mono);font-size:22px;font-weight:700;pointer-events:none;text-shadow:0 0 16px rgba(0,0,0,0.9);padding:6px 14px;border-radius:10px;}
+
+</style>
+</head>
+<body>
+<div id="canvas-container"></div>
+
+<!-- STATUS -->
+<div id="status-bar" class="glass">
+  <div class="status-dot off" id="status-dot"></div>
+  <span id="status-text" style="color:var(--text-dim);" data-i18n="status_off">ЦЕПЬ РАЗОМКНУТА</span>
+</div>
+
+<!-- LEFT PANEL -->
+<div id="left-panel" class="glass">
+  <div>
+    <div class="panel-title" data-i18n="panel_title">Гальванический элемент</div>
+    <div class="panel-subtitle" data-i18n="panel_subtitle">Работа батарейки</div>
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="panel-subtitle" data-i18n="cell_type">Тип элемента</div>
+  <div class="cell-selector">
+    <div class="cell-btn active" data-cell="zn_cu">Zn | Cu<span class="name" data-i18n="cell_zncu">элемент Даниэля</span></div>
+    <div class="cell-btn" data-cell="fe_cu">Fe | Cu<span class="name" data-i18n="cell_fecu">железо-медь</span></div>
+    <div class="cell-btn" data-cell="zn_ag">Zn | Ag<span class="name" data-i18n="cell_znag">цинк-серебро</span></div>
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="control-group">
+    <div class="control-label">
+      <span data-i18n="conc_anode">Концентрация (анод)</span>
+      <span class="control-value" id="conc-a-val" style="color:var(--zinc);">1.0 М</span>
+    </div>
+    <input type="range" id="conc-a-slider" class="slider-blue" min="1" max="30" value="10" step="1">
+  </div>
+
+  <div class="control-group">
+    <div class="control-label">
+      <span data-i18n="conc_cathode">Концентрация (катод)</span>
+      <span class="control-value" id="conc-c-val" style="color:var(--copper);">1.0 М</span>
+    </div>
+    <input type="range" id="conc-c-slider" min="1" max="30" value="10" step="1">
+  </div>
+
+  <div class="control-group">
+    <div class="control-label">
+      <span data-i18n="temperature">Температура</span>
+      <span class="control-value" id="temp-val" style="color:var(--green);">25 °C</span>
+    </div>
+    <input type="range" id="temp-slider" class="slider-green" min="10" max="80" value="25" step="1">
+  </div>
+
+  <div class="control-group">
+    <div class="control-label">
+      <span data-i18n="resistance">Сопротивление нагрузки</span>
+      <span class="control-value" id="resist-val" style="color:var(--purple);">10 Ом</span>
+    </div>
+    <input type="range" id="resist-slider" class="slider-purple" min="1" max="100" value="10" step="1">
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="toggle-row">
+    <span data-i18n="toggle_ions">Движение ионов</span>
+    <div class="toggle active" id="toggle-ions"></div>
+  </div>
+  <div class="toggle-row">
+    <span data-i18n="toggle_electrons">Электроны в цепи</span>
+    <div class="toggle active" id="toggle-electrons"></div>
+  </div>
+  <div class="toggle-row">
+    <span data-i18n="toggle_bridge">Солевой мостик (поток)</span>
+    <div class="toggle active" id="toggle-bridge"></div>
+  </div>
+
+  <div class="separator"></div>
+
+  <button class="btn btn-start" id="btn-start" data-i18n="btn_start">⚡ Замкнуть цепь</button>
+  <button class="btn btn-reset" id="btn-reset" data-i18n="btn_reset">↺ Сброс</button>
+</div>
+
+<!-- RIGHT PANEL -->
+<div id="right-panel" class="glass">
+  <!-- VOLTMETER -->
+  <div class="voltmeter">
+    <div class="vm-label" data-i18n="emf_label">ЭДС элемента</div>
+    <div class="vm-value" id="emf-display">0.00 <span class="vm-unit">В</span></div>
+  </div>
+
+  <!-- ANODE -->
+  <div class="reaction-box" style="border-left:3px solid var(--zinc);">
+    <div class="reaction-title" style="color:var(--zinc);" data-i18n="anode_title">⊖ Анод (окисление)</div>
+    <div class="reaction-eq" id="anode-reaction">
+      Zn⁰ − 2e⁻ → Zn²⁺
+      <span class="note" id="anode-note">Цинк растворяется, отдавая электроны</span>
+    </div>
+  </div>
+
+  <!-- CATHODE -->
+  <div class="reaction-box" style="border-left:3px solid var(--copper);">
+    <div class="reaction-title" style="color:var(--copper);" data-i18n="cathode_title">⊕ Катод (восстановление)</div>
+    <div class="reaction-eq" id="cathode-reaction">
+      Cu²⁺ + 2e⁻ → Cu⁰
+      <span class="note" id="cathode-note">Медь осаждается, принимая электроны</span>
+    </div>
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="stat-row">
+    <span class="stat-label" data-i18n="stat_current">Сила тока</span>
+    <span class="stat-value" id="stat-current" style="color:var(--yellow);">0.00 А</span>
+  </div>
+  <div class="stat-row">
+    <span class="stat-label" data-i18n="stat_power">Мощность</span>
+    <span class="stat-value" id="stat-power" style="color:var(--orange);">0.00 Вт</span>
+  </div>
+  <div class="stat-row">
+    <span class="stat-label" data-i18n="stat_anode_mass">Масса анода (потеря)</span>
+    <span class="stat-value" id="stat-anode-mass" style="color:var(--zinc);">0 мг</span>
+  </div>
+  <div class="stat-row">
+    <span class="stat-label" data-i18n="stat_cathode_mass">Масса катода (прирост)</span>
+    <span class="stat-value" id="stat-cathode-mass" style="color:var(--copper);">0 мг</span>
+  </div>
+  <div class="stat-row">
+    <span class="stat-label" data-i18n="stat_time">Время работы</span>
+    <span class="stat-value" id="stat-time" style="color:var(--blue);">0 с</span>
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="panel-subtitle" data-i18n="nernst_title">Уравнение Нернста</div>
+  <div class="formula-box">
+    <div><span class="f">E</span> = <span class="f">E</span>° − (<span class="f">RT</span> / <span class="f">nF</span>) · ln <span class="f">Q</span></div>
+    <div style="font-size:16px;margin-top:8px;font-family:var(--sans);font-style:normal;">
+      <span style="color:var(--text);">E°</span> — стандартная ЭДС<br>
+      <span style="color:var(--text);">R</span> = 8.314 Дж/(моль·К)<br>
+      <span style="color:var(--text);">n</span> — число электронов<br>
+      <span style="color:var(--text);">F</span> = 96 485 Кл/моль<br>
+      <span style="color:var(--text);">Q</span> = [окисл.] / [восстан.]
+    </div>
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="panel-subtitle" data-i18n="legend_title">Легенда частиц</div>
+  <div style="display:flex;flex-direction:column;gap:8px;">
+    <div class="legend-item"><div class="legend-dot" style="background:#94a3b8;"></div><span id="leg-anode">Анод (Zn) — растворяется</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:#f59e0b;"></div><span id="leg-cathode">Катод (Cu) — осаждение</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:#facc15;"></div>Электроны e⁻ (внешняя цепь)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#4ade80;"></div><span id="leg-cation">Zn²⁺ — катионы анода</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:#38bdf8;"></div><span id="leg-cation2">Cu²⁺ — катионы катода</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:#fb923c;"></div><span id="leg-anion">SO₄²⁻ — анионы</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:#a78bfa;"></div>K⁺ / NO₃⁻ — солевой мостик</div>
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="panel-subtitle" data-i18n="how_title">Как это работает</div>
+  <div class="info-box" data-i18n-html="info_cell">
+    Более <b>активный</b> металл (анод) самопроизвольно <b>окисляется</b>, отдавая электроны во внешнюю цепь.<br><br>
+    <b>Электроны</b> движутся по проводу от анода к катоду, создавая <b>электрический ток</b>.<br><br>
+    На <b>катоде</b> ионы менее активного металла <b>восстанавливаются</b>, осаждаясь из раствора.<br><br>
+    <b>Солевой мостик</b> замыкает цепь внутри раствора — ионы соли (K⁺, NO₃⁻) поддерживают электронейтральность.
+  </div>
+</div>
+
+<!-- BOTTOM -->
+<div id="bottom-panel" class="glass">
+  <div class="bottom-stat">
+    <span class="label" data-i18n="b_emf">ЭДС</span>
+    <span class="value" id="b-emf" style="color:var(--yellow);">0.00 В</span>
+  </div>
+  <div class="bottom-stat">
+    <span class="label" data-i18n="b_current">Ток</span>
+    <span class="value" id="b-current" style="color:var(--orange);">0.00 А</span>
+  </div>
+  <div class="bottom-stat">
+    <span class="label" data-i18n="b_power">Мощность</span>
+    <span class="value" id="b-power" style="color:var(--green);">0.00 Вт</span>
+  </div>
+  <div class="bottom-stat">
+    <span class="label" data-i18n="b_resist">R нагр.</span>
+    <span class="value" id="b-resist" style="color:var(--purple);">10 Ом</span>
+  </div>
+  <div class="bottom-stat">
+    <span class="label" data-i18n="b_time">Время</span>
+    <span class="value" id="b-time" style="color:var(--blue);">0 с</span>
+  </div>
+</div>
+
+<script>
+// =====================================================================
+//  I18N — встроенные переводы (RU / KZ / EN). Язык: ?lang=ru|kz|en.
+// =====================================================================
+const I18N = {
+  ru: {
+    page_title:'Гальванический элемент — Работа батарейки',panel_title:'Гальванический элемент',panel_subtitle:'Работа батарейки',
+    cell_type:'Тип элемента',cell_zncu:'элемент Даниэля',cell_fecu:'железо-медь',cell_znag:'цинк-серебро',
+    conc_anode:'Концентрация (анод)',conc_cathode:'Концентрация (катод)',temperature:'Температура',resistance:'Сопротивление нагрузки',
+    toggle_ions:'Движение ионов',toggle_electrons:'Электроны в цепи',toggle_bridge:'Солевой мостик (поток)',
+    btn_start:'⚡ Замкнуть цепь',btn_stop:'⏹ Разомкнуть цепь',btn_reset:'↺ Сброс',
+    emf_label:'ЭДС элемента',anode_title:'⊖ Анод (окисление)',cathode_title:'⊕ Катод (восстановление)',
+    stat_current:'Сила тока',stat_power:'Мощность',stat_anode_mass:'Масса анода (потеря)',stat_cathode_mass:'Масса катода (прирост)',stat_time:'Время работы',
+    nernst_title:'Уравнение Нернста',legend_title:'Легенда частиц',
+    how_title:'Как это работает',
+    info_cell:'Более <b>активный</b> металл (анод) самопроизвольно <b>окисляется</b>, отдавая электроны во внешнюю цепь.<br><br><b>Электроны</b> движутся по проводу от анода к катоду, создавая <b>электрический ток</b>.<br><br>На <b>катоде</b> ионы менее активного металла <b>восстанавливаются</b>, осаждаясь из раствора.<br><br><b>Солевой мостик</b> замыкает цепь внутри раствора — ионы соли (K⁺, NO₃⁻) поддерживают электронейтральность.',
+    b_emf:'ЭДС',b_current:'Ток',b_power:'Мощность',b_resist:'R нагр.',b_time:'Время',
+    status_off:'ЦЕПЬ РАЗОМКНУТА',status_on:'⚡ ЦЕПЬ ЗАМКНУТА — ТОК ИДЁТ',
+    label_anode:'⊖ АНОД',label_cathode:'⊕ КАТОД',label_bridge:'Солевой мостик (KNO₃)',
+    leg_anode_tpl:'Анод ({m}) — растворяется',leg_cathode_tpl:'Катод ({m}) — осаждение',
+    leg_cation_tpl:'{ion} — катионы анода',leg_cation2_tpl:'{ion} — катионы катода',leg_anion_tpl:'{ion} — анионы',
+    leg_electrons:'Электроны e⁻ (внешняя цепь)',leg_bridge:'K⁺ / NO₃⁻ — солевой мостик',
+    unit_v:'В',unit_a:'А',unit_w:'Вт',unit_m:'М',unit_ohm:'Ом',unit_s:'с',unit_mg:'мг'
+  },
+  kz: {
+    page_title:'Гальваникалық элемент — Батарейка жұмысы',panel_title:'Гальваникалық элемент',panel_subtitle:'Батарейка жұмысы',
+    cell_type:'Элемент түрі',cell_zncu:'Даниэль элементі',cell_fecu:'темір-мыс',cell_znag:'мырыш-күміс',
+    conc_anode:'Концентрация (анод)',conc_cathode:'Концентрация (катод)',temperature:'Температура',resistance:'Жүктеме кедергісі',
+    toggle_ions:'Иондар қозғалысы',toggle_electrons:'Тізбектегі электрондар',toggle_bridge:'Тұз көпірі (ағын)',
+    btn_start:'⚡ Тізбекті тұйықтау',btn_stop:'⏹ Тізбекті ажырату',btn_reset:'↺ Қалпына келтіру',
+    emf_label:'Элемент ЭҚК',anode_title:'⊖ Анод (тотығу)',cathode_title:'⊕ Катод (тотықсыздану)',
+    stat_current:'Ток күші',stat_power:'Қуат',stat_anode_mass:'Анод массасы (жоғалту)',stat_cathode_mass:'Катод массасы (өсу)',stat_time:'Жұмыс уақыты',
+    nernst_title:'Нернст теңдеуі',legend_title:'Бөлшектер шартты белгілері',
+    how_title:'Бұл қалай жұмыс істейді',
+    info_cell:'Неғұрлым <b>белсенді</b> металл (анод) өздігінен <b>тотығады</b>, электрондарды сыртқы тізбекке береді.<br><br><b>Электрондар</b> сым арқылы анодтан катодқа жылжиды, <b>электр тогын</b> жасайды.<br><br><b>Катодта</b> белсенділігі аз металл иондары ерітіндіден шөге отырып <b>тотықсызданады</b>.<br><br><b>Тұз көпірі</b> ерітінді ішінде тізбекті тұйықтайды — тұз иондары (K⁺, NO₃⁻) электронейтралдылықты сақтайды.',
+    b_emf:'ЭҚК',b_current:'Ток',b_power:'Қуат',b_resist:'R жүкт.',b_time:'Уақыт',
+    status_off:'ТІЗБЕК АЖЫРАТЫЛҒАН',status_on:'⚡ ТІЗБЕК ТҰЙЫҚ — ТОК ЖҮРІП ЖАТЫР',
+    label_anode:'⊖ АНОД',label_cathode:'⊕ КАТОД',label_bridge:'Тұз көпірі (KNO₃)',
+    leg_anode_tpl:'Анод ({m}) — ериді',leg_cathode_tpl:'Катод ({m}) — шөгу',
+    leg_cation_tpl:'{ion} — анод катиондары',leg_cation2_tpl:'{ion} — катод катиондары',leg_anion_tpl:'{ion} — аниондар',
+    leg_electrons:'Электрондар e⁻ (сыртқы тізбек)',leg_bridge:'K⁺ / NO₃⁻ — тұз көпірі',
+    unit_v:'В',unit_a:'А',unit_w:'Вт',unit_m:'М',unit_ohm:'Ом',unit_s:'с',unit_mg:'мг'
+  },
+  en: {
+    page_title:'Galvanic Cell — How a Battery Works',panel_title:'Galvanic Cell',panel_subtitle:'How a battery works',
+    cell_type:'Cell type',cell_zncu:'Daniell cell',cell_fecu:'iron-copper',cell_znag:'zinc-silver',
+    conc_anode:'Concentration (anode)',conc_cathode:'Concentration (cathode)',temperature:'Temperature',resistance:'Load resistance',
+    toggle_ions:'Ion movement',toggle_electrons:'Electrons in circuit',toggle_bridge:'Salt bridge (flow)',
+    btn_start:'⚡ Close circuit',btn_stop:'⏹ Open circuit',btn_reset:'↺ Reset',
+    emf_label:'Cell EMF',anode_title:'⊖ Anode (oxidation)',cathode_title:'⊕ Cathode (reduction)',
+    stat_current:'Current',stat_power:'Power',stat_anode_mass:'Anode mass (loss)',stat_cathode_mass:'Cathode mass (gain)',stat_time:'Operating time',
+    nernst_title:'Nernst Equation',legend_title:'Particle legend',
+    how_title:'How it works',
+    info_cell:'The more <b>active</b> metal (anode) spontaneously <b>oxidizes</b>, releasing electrons into the external circuit.<br><br><b>Electrons</b> travel through the wire from anode to cathode, creating an <b>electric current</b>.<br><br>At the <b>cathode</b>, ions of the less active metal are <b>reduced</b>, depositing from solution.<br><br>The <b>salt bridge</b> completes the circuit inside the solution — salt ions (K⁺, NO₃⁻) maintain electroneutrality.',
+    b_emf:'EMF',b_current:'Current',b_power:'Power',b_resist:'R load',b_time:'Time',
+    status_off:'CIRCUIT OPEN',status_on:'⚡ CIRCUIT CLOSED — CURRENT FLOWING',
+    label_anode:'⊖ ANODE',label_cathode:'⊕ CATHODE',label_bridge:'Salt bridge (KNO₃)',
+    leg_anode_tpl:'Anode ({m}) — dissolves',leg_cathode_tpl:'Cathode ({m}) — deposition',
+    leg_cation_tpl:'{ion} — anode cations',leg_cation2_tpl:'{ion} — cathode cations',leg_anion_tpl:'{ion} — anions',
+    leg_electrons:'Electrons e⁻ (external circuit)',leg_bridge:'K⁺ / NO₃⁻ — salt bridge',
+    unit_v:'V',unit_a:'A',unit_w:'W',unit_m:'M',unit_ohm:'Ω',unit_s:'s',unit_mg:'mg'
+  }
+};
+const LANG=(()=>{const q=new URLSearchParams(location.search).get('lang');return(q&&I18N[q])?q:'ru';})();
+const t=(key)=>(I18N[LANG]&&I18N[LANG][key])??(I18N.ru&&I18N.ru[key]);
+
+function applyStaticI18N(){
+  document.documentElement.lang=LANG;
+  const tv=t('page_title');if(tv)document.title=tv;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{const v=t(el.getAttribute('data-i18n'));if(v)el.textContent=v;});
+  document.querySelectorAll('[data-i18n-html]').forEach(el=>{const v=t(el.getAttribute('data-i18n-html'));if(v)el.innerHTML=v;});
+}
+applyStaticI18N();
+// ═══════════════════════════════════════
+// CELL DATA
+// ═══════════════════════════════════════
+const CELLS = {
+  zn_cu: {
+    name: 'Элемент Даниэля',
+    anodeMetal: 'Zn', cathodeMetal: 'Cu',
+    anodeColor: 0x94a3b8, cathodeColor: 0xc87533,
+    anodeIonColor: 0x4ade80, anodeIonLabel: 'Zn²⁺',
+    cathodeIonColor: 0x38bdf8, cathodeIonLabel: 'Cu²⁺',
+    anionColor: 0xfb923c, anionLabel: 'SO₄²⁻',
+    solAnodeColor: 0x1a2e40, solCathodeColor: 0x0c3a5e,
+    anodeRx: 'Zn⁰ − 2e⁻ → Zn²⁺', anodeNote: 'Цинк растворяется, отдавая электроны в цепь',
+    cathodeRx: 'Cu²⁺ + 2e⁻ → Cu⁰', cathodeNote: 'Ионы меди восстанавливаются, осаждаясь на электроде',
+    E0: 1.10, nElectrons: 2,
+    anodeMolarMass: 65.4, cathodeMolarMass: 63.5,
+    anodeE0: -0.76, cathodeE0: 0.34,
+  },
+  fe_cu: {
+    name: 'Железо — Медь',
+    anodeMetal: 'Fe', cathodeMetal: 'Cu',
+    anodeColor: 0x78716c, cathodeColor: 0xc87533,
+    anodeIonColor: 0x4ade80, anodeIonLabel: 'Fe²⁺',
+    cathodeIonColor: 0x38bdf8, cathodeIonLabel: 'Cu²⁺',
+    anionColor: 0xfb923c, anionLabel: 'SO₄²⁻',
+    solAnodeColor: 0x1c2922, solCathodeColor: 0x0c3a5e,
+    anodeRx: 'Fe⁰ − 2e⁻ → Fe²⁺', anodeNote: 'Железо растворяется, отдавая электроны',
+    cathodeRx: 'Cu²⁺ + 2e⁻ → Cu⁰', cathodeNote: 'Медь осаждается из раствора',
+    E0: 0.78, nElectrons: 2,
+    anodeMolarMass: 55.8, cathodeMolarMass: 63.5,
+    anodeE0: -0.44, cathodeE0: 0.34,
+  },
+  zn_ag: {
+    name: 'Цинк — Серебро',
+    anodeMetal: 'Zn', cathodeMetal: 'Ag',
+    anodeColor: 0x94a3b8, cathodeColor: 0xd1d5db,
+    anodeIonColor: 0x4ade80, anodeIonLabel: 'Zn²⁺',
+    cathodeIonColor: 0x8b5cf6, cathodeIonLabel: 'Ag⁺',
+    anionColor: 0xfb923c, anionLabel: 'NO₃⁻',
+    solAnodeColor: 0x1a2e40, solCathodeColor: 0x1e1b2e,
+    anodeRx: 'Zn⁰ − 2e⁻ → Zn²⁺', anodeNote: 'Цинк окисляется',
+    cathodeRx: 'Ag⁺ + e⁻ → Ag⁰', cathodeNote: 'Серебро восстанавливается',
+    E0: 1.56, nElectrons: 2,
+    anodeMolarMass: 65.4, cathodeMolarMass: 107.9,
+    anodeE0: -0.76, cathodeE0: 0.80,
+  }
+};
+
+// ═══════════════════════════════════════
+// SCENE
+// ═══════════════════════════════════════
+const container = document.getElementById('canvas-container');
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x030712, 0.005);
+
+const camera = new THREE.PerspectiveCamera(50, innerWidth/innerHeight, 0.1, 300);
+const renderer = new THREE.WebGLRenderer({antialias: true, alpha:true});
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = false;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+container.appendChild(renderer.domElement);
+
+scene.add(new THREE.AmbientLight(0x334466, 0.5));
+const dirLight = new THREE.DirectionalLight(0xffeedd, 0.7);
+dirLight.position.set(10, 20, 12);dirLight.castShadow=true;dirLight.shadow.mapSize.set(2048,2048);
+scene.add(dirLight);
+
+const pLight1 = new THREE.PointLight(0x94a3b8, 0.3, 30);
+pLight1.position.set(-8, 8, 5);scene.add(pLight1);
+const pLight2 = new THREE.PointLight(0xf59e0b, 0.3, 30);
+pLight2.position.set(8, 8, 5);scene.add(pLight2);
+
+// Floor
+const flMesh = new THREE.Mesh(
+  new THREE.PlaneGeometry(100,100),
+  new THREE.MeshStandardMaterial({color:0x080e1e, roughness:0.9})
+);
+flMesh.rotation.x=-Math.PI/2; flMesh.position.y=-0.5; flMesh.receiveShadow=true;
+scene.add(flMesh);
+
+// ═══════════════════════════════════════
+// BEAKERS
+// ═══════════════════════════════════════
+const bkW=6, bkH=7, bkD=5, gap=3;
+const glassMat = new THREE.MeshStandardMaterial({color:0x88aacc, transparent:true, opacity:0.12, roughness:0.05, metalness:0.1, side:THREE.DoubleSide});
+const edgeMat = new THREE.LineBasicMaterial({color:0x88aacc, transparent:true, opacity:0.25});
+
+function makeBeaker(cx){
+  const g = new THREE.Group();
+  // front/back
+  const fb = new THREE.PlaneGeometry(bkW, bkH);
+  const f = new THREE.Mesh(fb, glassMat); f.position.set(cx, bkH/2, bkD/2); g.add(f);
+  const b = f.clone(); b.position.z=-bkD/2; g.add(b);
+  // sides
+  const sg = new THREE.PlaneGeometry(bkD, bkH);
+  const l = new THREE.Mesh(sg, glassMat); l.rotation.y=Math.PI/2; l.position.set(cx-bkW/2, bkH/2, 0); g.add(l);
+  const r = l.clone(); r.position.x=cx+bkW/2; g.add(r);
+  // bottom
+  const bg2 = new THREE.PlaneGeometry(bkW, bkD);
+  const bt = new THREE.Mesh(bg2, new THREE.MeshStandardMaterial({color:0x1e293b, roughness:0.5, metalness:0.3}));
+  bt.rotation.x=-Math.PI/2; bt.position.set(cx, 0, 0); g.add(bt);
+  // edges
+  const pts = [
+    [cx-bkW/2,0,-bkD/2],[cx-bkW/2,0,bkD/2],[cx-bkW/2,bkH,bkD/2],[cx-bkW/2,bkH,-bkD/2],[cx-bkW/2,0,-bkD/2],
+    [cx+bkW/2,0,-bkD/2],[cx+bkW/2,0,bkD/2],[cx+bkW/2,bkH,bkD/2],[cx+bkW/2,bkH,-bkD/2],[cx+bkW/2,0,-bkD/2],
+  ];
+  g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts.map(p=>new THREE.Vector3(...p))), edgeMat));
+  [[[cx-bkW/2,bkH,bkD/2],[cx+bkW/2,bkH,bkD/2]],
+   [[cx-bkW/2,bkH,-bkD/2],[cx+bkW/2,bkH,-bkD/2]],
+   [[cx-bkW/2,0,bkD/2],[cx+bkW/2,0,bkD/2]]].forEach(pr=>{
+    g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pr.map(p=>new THREE.Vector3(...p))), edgeMat));
+  });
+  scene.add(g);
+  return g;
+}
+
+const anodeCX = -(bkW/2 + gap/2);
+const cathodeCX = (bkW/2 + gap/2);
+const beakerL = makeBeaker(anodeCX);
+const beakerR = makeBeaker(cathodeCX);
+
+// Solutions
+const solH = bkH * 0.78;
+const solAnodeGeo = new THREE.BoxGeometry(bkW-0.3, solH, bkD-0.3);
+const solAnodeMat = new THREE.MeshStandardMaterial({color:0x1a2e40, transparent:true, opacity:0.25, roughness:0.1, side:THREE.DoubleSide});
+const solAnode = new THREE.Mesh(solAnodeGeo, solAnodeMat);
+solAnode.position.set(anodeCX, solH/2, 0);
+scene.add(solAnode);
+
+const solCathodeMat = new THREE.MeshStandardMaterial({color:0x0c3a5e, transparent:true, opacity:0.28, roughness:0.1, side:THREE.DoubleSide});
+const solCathode = new THREE.Mesh(solAnodeGeo.clone(), solCathodeMat);
+solCathode.position.set(cathodeCX, solH/2, 0);
+scene.add(solCathode);
+
+// ═══════════════════════════════════════
+// ELECTRODES
+// ═══════════════════════════════════════
+const elH=6, elW=0.35, elD=3;
+const anodeGeo = new THREE.BoxGeometry(elW, elH, elD);
+const anodeMat = new THREE.MeshStandardMaterial({color:0x94a3b8, roughness:0.3, metalness:0.8});
+const anodeMesh = new THREE.Mesh(anodeGeo, anodeMat);
+anodeMesh.position.set(anodeCX, elH/2, 0); anodeMesh.castShadow=true;
+scene.add(anodeMesh);
+
+const anodeGlowMat = new THREE.MeshBasicMaterial({color:0x94a3b8, transparent:true, opacity:0});
+const anodeGlow = new THREE.Mesh(new THREE.BoxGeometry(elW+0.4, elH+0.1, elD+0.4), anodeGlowMat);
+anodeMesh.add(anodeGlow);
+
+const cathodeMat = new THREE.MeshStandardMaterial({color:0xc87533, roughness:0.3, metalness:0.8});
+const cathodeMesh = new THREE.Mesh(anodeGeo.clone(), cathodeMat);
+cathodeMesh.position.set(cathodeCX, elH/2, 0); cathodeMesh.castShadow=true;
+scene.add(cathodeMesh);
+
+const cathodeGlowMat = new THREE.MeshBasicMaterial({color:0xf59e0b, transparent:true, opacity:0});
+const cathodeGlow = new THREE.Mesh(new THREE.BoxGeometry(elW+0.4, elH+0.1, elD+0.4), cathodeGlowMat);
+cathodeMesh.add(cathodeGlow);
+
+// Deposit layer on cathode
+const depositMat = new THREE.MeshStandardMaterial({color:0xd97706, roughness:0.3, metalness:0.9, transparent:true, opacity:0});
+const depositMesh = new THREE.Mesh(new THREE.BoxGeometry(0.1, elH-0.5, elD-0.3), depositMat);
+depositMesh.position.set(cathodeCX-0.25, elH/2, 0);
+scene.add(depositMesh);
+
+// ═══════════════════════════════════════
+// SALT BRIDGE
+// ═══════════════════════════════════════
+const bridgeGroup = new THREE.Group();
+scene.add(bridgeGroup);
+
+// U-tube shape
+const bridgeMat = new THREE.MeshStandardMaterial({color:0x6b7280, transparent:true, opacity:0.35, roughness:0.2, metalness:0.3});
+const bridgeTubeMat = new THREE.MeshStandardMaterial({color:0x374151, roughness:0.3, metalness:0.5});
+
+// Left vertical
+const bvGeo = new THREE.CylinderGeometry(0.4, 0.4, 3, 12);
+const bvL = new THREE.Mesh(bvGeo, bridgeTubeMat);
+bvL.position.set(anodeCX + bkW/2 - 0.5, bkH + 0.5, 0);
+bridgeGroup.add(bvL);
+// Right vertical
+const bvR = new THREE.Mesh(bvGeo.clone(), bridgeTubeMat);
+bvR.position.set(cathodeCX - bkW/2 + 0.5, bkH + 0.5, 0);
+bridgeGroup.add(bvR);
+// Horizontal
+const bhGeo = new THREE.CylinderGeometry(0.4, 0.4, gap + 2, 12);
+const bh = new THREE.Mesh(bhGeo, bridgeTubeMat);
+bh.rotation.z = Math.PI/2;
+bh.position.set(0, bkH + 2, 0);
+bridgeGroup.add(bh);
+
+// Bridge filling (gel/agar)
+const gelMat = new THREE.MeshBasicMaterial({color:0xa78bfa, transparent:true, opacity:0.2});
+const gelL = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 2.8, 12), gelMat);
+gelL.position.copy(bvL.position);
+bridgeGroup.add(gelL);
+const gelR = gelL.clone();
+gelR.position.copy(bvR.position);
+bridgeGroup.add(gelR);
+const gelH = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, gap+1.8, 12), gelMat);
+gelH.rotation.z=Math.PI/2; gelH.position.copy(bh.position);
+bridgeGroup.add(gelH);
+
+// Bridge label
+const bridgeLabelDiv = document.createElement('div');
+bridgeLabelDiv.style.cssText='position:absolute;z-index:5;font-family:var(--sans);font-size:18px;font-weight:700;color:var(--purple);pointer-events:none;text-shadow:0 0 12px rgba(0,0,0,0.9);';
+bridgeLabelDiv.textContent=t('label_bridge');
+document.body.appendChild(bridgeLabelDiv);
+
+// ═══════════════════════════════════════
+// WIRES + LOAD (LAMP)
+// ═══════════════════════════════════════
+const wireM = new THREE.MeshStandardMaterial({color:0x94a3b8, roughness:0.3, metalness:0.8});
+const wr = 0.08;
+
+// Anode wire up
+const awUp = new THREE.Mesh(new THREE.CylinderGeometry(wr,wr,4,8), wireM);
+awUp.position.set(anodeCX, elH+2, 0); scene.add(awUp);
+// Cathode wire up
+const cwUp = new THREE.Mesh(new THREE.CylinderGeometry(wr,wr,4,8), wireM);
+cwUp.position.set(cathodeCX, elH+2, 0); scene.add(cwUp);
+
+// Horizontal wires to center
+const hwL = new THREE.Mesh(new THREE.CylinderGeometry(wr,wr,Math.abs(anodeCX)+1,8), wireM);
+hwL.rotation.z=Math.PI/2; hwL.position.set(anodeCX/2, elH+4, 0); scene.add(hwL);
+const hwR = new THREE.Mesh(new THREE.CylinderGeometry(wr,wr,Math.abs(cathodeCX)+1,8), wireM);
+hwR.rotation.z=Math.PI/2; hwR.position.set(cathodeCX/2, elH+4, 0); scene.add(hwR);
+
+// Load (lamp bulb)
+const bulbGeo = new THREE.SphereGeometry(0.7, 16, 16);
+const bulbMat = new THREE.MeshStandardMaterial({color:0x374151, roughness:0.2, metalness:0.3, transparent:true, opacity:0.6});
+const bulb = new THREE.Mesh(bulbGeo, bulbMat);
+bulb.position.set(0, elH+4, 0);
+scene.add(bulb);
+
+const bulbGlowMat = new THREE.MeshBasicMaterial({color:0xfacc15, transparent:true, opacity:0});
+const bulbGlow = new THREE.Mesh(new THREE.SphereGeometry(1.0, 16,16), bulbGlowMat);
+bulb.add(bulbGlow);
+
+const bulbLight = new THREE.PointLight(0xfacc15, 0, 15);
+bulbLight.position.copy(bulb.position);
+scene.add(bulbLight);
+
+// Voltmeter visual (small box on wire)
+const vmGeo = new THREE.BoxGeometry(1.2, 0.8, 0.6);
+const vmMat = new THREE.MeshStandardMaterial({color:0x1e293b, roughness:0.4, metalness:0.6});
+const vmMesh = new THREE.Mesh(vmGeo, vmMat);
+vmMesh.position.set(0, elH+5.2, 0);
+scene.add(vmMesh);
+// V label
+const vmLabelDiv = document.createElement('div');
+vmLabelDiv.style.cssText='position:absolute;z-index:5;font-family:var(--mono);font-size:18px;font-weight:700;color:var(--yellow);pointer-events:none;text-shadow:0 0 12px rgba(0,0,0,0.9);';
+vmLabelDiv.textContent='V';
+document.body.appendChild(vmLabelDiv);
+
+// ═══════════════════════════════════════
+// ELECTRODE LABELS
+// ═══════════════════════════════════════
+const anodeLabelDiv = document.createElement('div');
+anodeLabelDiv.className='electrode-label';
+anodeLabelDiv.style.color='var(--zinc)';
+anodeLabelDiv.style.background='rgba(148,163,184,0.1)';
+anodeLabelDiv.style.border='1px solid rgba(148,163,184,0.3)';
+anodeLabelDiv.innerHTML=t('label_anode')+' (Zn)';
+document.body.appendChild(anodeLabelDiv);
+
+const cathodeLabelDiv = document.createElement('div');
+cathodeLabelDiv.className='electrode-label';
+cathodeLabelDiv.style.color='var(--copper)';
+cathodeLabelDiv.style.background='rgba(245,158,11,0.1)';
+cathodeLabelDiv.style.border='1px solid rgba(245,158,11,0.3)';
+cathodeLabelDiv.innerHTML=t('label_cathode')+' (Cu)';
+document.body.appendChild(cathodeLabelDiv);
+
+function projLabel(div, pos, offsetX){
+  const v=pos.clone().project(camera);
+  const hw=innerWidth/2, hh=innerHeight/2;
+  const rect = div.getBoundingClientRect();
+  const w = rect.width || 120;
+  div.style.left=(v.x*hw+hw - w/2 + (offsetX||0))+'px';
+  div.style.top=(-v.y*hh+hh)+'px';
+  div.style.display=v.z<1?'block':'none';
+}
+
+// ═══════════════════════════════════════
+// IONS
+// ═══════════════════════════════════════
+let ions = [];
+
+function spawnIons(cellData, count){
+  ions.forEach(i=>{scene.remove(i.mesh);});
+  ions=[];
+  const half = Math.floor(count/2);
+  // Anode side: anodeIons + anions
+  for(let i=0;i<half;i++){
+    const m = new THREE.Mesh(new THREE.SphereGeometry(0.32,10,10),
+      new THREE.MeshStandardMaterial({color:cellData.anodeIonColor, emissive:cellData.anodeIonColor, emissiveIntensity:0.2, roughness:0.4}));
+    const x = anodeCX + (Math.random()-0.5)*(bkW-2);
+    const y = 0.5+Math.random()*(solH-1);
+    const z = (Math.random()-0.5)*(bkD-2);
+    m.position.set(x,y,z);scene.add(m);
+    ions.push({mesh:m,side:'anode',type:'cation',vx:0,vy:0,vz:0,alive:true});
+  }
+  for(let i=0;i<half/2;i++){
+    const m=new THREE.Mesh(new THREE.SphereGeometry(0.36,10,10),
+      new THREE.MeshStandardMaterial({color:cellData.anionColor, emissive:cellData.anionColor, emissiveIntensity:0.15, roughness:0.4}));
+    m.position.set(anodeCX+(Math.random()-0.5)*(bkW-2), 0.5+Math.random()*(solH-1), (Math.random()-0.5)*(bkD-2));
+    scene.add(m);
+    ions.push({mesh:m,side:'anode',type:'anion',vx:0,vy:0,vz:0,alive:true});
+  }
+  // Cathode side: cathodeIons + anions
+  for(let i=0;i<half;i++){
+    const m=new THREE.Mesh(new THREE.SphereGeometry(0.32,10,10),
+      new THREE.MeshStandardMaterial({color:cellData.cathodeIonColor, emissive:cellData.cathodeIonColor, emissiveIntensity:0.2, roughness:0.4}));
+    m.position.set(cathodeCX+(Math.random()-0.5)*(bkW-2),0.5+Math.random()*(solH-1),(Math.random()-0.5)*(bkD-2));
+    scene.add(m);
+    ions.push({mesh:m,side:'cathode',type:'cation',vx:0,vy:0,vz:0,alive:true});
+  }
+  for(let i=0;i<half/2;i++){
+    const m=new THREE.Mesh(new THREE.SphereGeometry(0.36,10,10),
+      new THREE.MeshStandardMaterial({color:cellData.anionColor, emissive:cellData.anionColor, emissiveIntensity:0.15, roughness:0.4}));
+    m.position.set(cathodeCX+(Math.random()-0.5)*(bkW-2),0.5+Math.random()*(solH-1),(Math.random()-0.5)*(bkD-2));
+    scene.add(m);
+    ions.push({mesh:m,side:'cathode',type:'anion',vx:0,vy:0,vz:0,alive:true});
+  }
+}
+
+// ═══════════════════════════════════════
+// BRIDGE IONS
+// ═══════════════════════════════════════
+const bridgeIons = [];
+function initBridgeIons(){
+  bridgeIons.forEach(b=>{scene.remove(b.mesh);});
+  bridgeIons.length=0;
+  for(let i=0;i<12;i++){
+    const isK = i<6;
+    const m=new THREE.Mesh(new THREE.SphereGeometry(0.22,8,8),
+      new THREE.MeshBasicMaterial({color:isK?0xa78bfa:0xfb923c}));
+    const t = i/12;
+    m.visible = false;
+    scene.add(m);
+    bridgeIons.push({mesh:m,t,isK,speed:0.1+Math.random()*0.1});
+  }
+}
+initBridgeIons();
+
+function getBridgePos(t, goRight){
+  // t: 0→1 along bridge path
+  const lx=anodeCX+bkW/2-0.5, rx=cathodeCX-bkW/2+0.5;
+  const topY=bkH+2, botY=bkH-1;
+  if(!goRight){ // K+ goes left to right (anode side → cathode side)
+    if(t<0.3){const f=t/0.3;return{x:lx,y:botY+(topY-botY)*f,z:0};}
+    else if(t<0.7){const f=(t-0.3)/0.4;return{x:lx+(rx-lx)*f,y:topY,z:0};}
+    else{const f=(t-0.7)/0.3;return{x:rx,y:topY-(topY-botY)*f,z:0};}
+  } else { // NO3- goes right to left
+    if(t<0.3){const f=t/0.3;return{x:rx,y:botY+(topY-botY)*f,z:0};}
+    else if(t<0.7){const f=(t-0.3)/0.4;return{x:rx+(lx-rx)*f,y:topY,z:0};}
+    else{const f=(t-0.7)/0.3;return{x:lx,y:topY-(topY-botY)*f,z:0};}
+  }
+}
+
+// ═══════════════════════════════════════
+// ELECTRONS
+// ═══════════════════════════════════════
+const electronMeshes=[];
+for(let i=0;i<24;i++){
+  const m=new THREE.Mesh(new THREE.SphereGeometry(0.2,8,8),new THREE.MeshBasicMaterial({color:0xfacc15}));
+  m.visible=false;scene.add(m);
+  electronMeshes.push({mesh:m, phase:i/24});
+}
+
+function getElectronPos(t){
+  t=((t%1)+1)%1;
+  const topY=elH+4;
+  const botY=elH;
+  if(t<0.2){const f=t/0.2;return{x:anodeCX,y:botY+(topY-botY)*f,z:0};}
+  else if(t<0.5){const f=(t-0.2)/0.3;return{x:anodeCX+(cathodeCX-anodeCX)*f,y:topY,z:0};}
+  else if(t<0.7){const f=(t-0.5)/0.2;
+    // Pass through bulb area
+    return{x:cathodeCX*(1-f*0.0)+anodeCX*0+cathodeCX*1,y:topY,z:0};}
+  else{const f=(t-0.7)/0.3;return{x:cathodeCX,y:topY-(topY-botY)*f,z:0};}
+}
+// Fix: simpler electron path anode→top→cathode→top
+function getElPos(t){
+  t=((t%1)+1)%1;
+  const topY=elH+4,botY=elH;
+  if(t<0.25){const f=t/0.25;return{x:anodeCX,y:botY+(topY-botY)*f,z:0};}
+  else if(t<0.75){const f=(t-0.25)/0.5;return{x:anodeCX+(cathodeCX-anodeCX)*f,y:topY,z:0};}
+  else{const f=(t-0.75)/0.25;return{x:cathodeCX,y:topY-(topY-botY)*f,z:0};}
+}
+
+// ═══════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════
+const state = {
+  running:false, cellType:'zn_cu',
+  concAnode:1.0, concCathode:1.0, temp:25, resistance:10,
+  emf:0, current:0, time:0, anodeLoss:0, cathodeGain:0,
+  showIons:true, showElectrons:true, showBridge:true,
+};
+
+// ═══════════════════════════════════════
+// INIT CELL
+// ═══════════════════════════════════════
+function initCell(key){
+  state.cellType = key;
+  const d = CELLS[key];
+
+  anodeMat.color.setHex(d.anodeColor);
+  cathodeMat.color.setHex(d.cathodeColor);
+  solAnodeMat.color.setHex(d.solAnodeColor);
+  solCathodeMat.color.setHex(d.solCathodeColor);
+
+  document.getElementById('anode-reaction').innerHTML =
+    d.anodeRx+`<span class="note">${d.anodeNote}</span>`;
+  document.getElementById('cathode-reaction').innerHTML =
+    d.cathodeRx+`<span class="note">${d.cathodeNote}</span>`;
+
+  anodeLabelDiv.innerHTML = t('label_anode')+` (${d.anodeMetal})`;
+  cathodeLabelDiv.innerHTML = t('label_cathode')+` (${d.cathodeMetal})`;
+
+  // Update legend
+  document.getElementById('leg-anode').textContent = t('leg_anode_tpl').replace('{m}',d.anodeMetal);
+  document.getElementById('leg-cathode').textContent = t('leg_cathode_tpl').replace('{m}',d.cathodeMetal);
+  document.getElementById('leg-cation').textContent = t('leg_cation_tpl').replace('{ion}',d.anodeIonLabel);
+  document.getElementById('leg-cation2').textContent = t('leg_cation2_tpl').replace('{ion}',d.cathodeIonLabel);
+  document.getElementById('leg-anion').textContent = t('leg_anion_tpl').replace('{ion}',d.anionLabel);
+
+  depositMat.opacity = 0;
+  state.anodeLoss=0; state.cathodeGain=0;
+
+  const count = Math.round(state.concAnode*12+8);
+  spawnIons(d, Math.min(count, 60));
+  initBridgeIons();
+  computeEMF();
+}
+
+function computeEMF(){
+  const d=CELLS[state.cellType];
+  const R=8.314, T=state.temp+273.15, n=d.nElectrons, F=96485;
+  const Q = state.concAnode / Math.max(0.01, state.concCathode);
+  state.emf = d.E0 - (R*T)/(n*F) * Math.log(Q);
+  state.emf = Math.max(0, state.emf);
+  state.current = state.running ? state.emf / state.resistance : 0;
+}
+
+initCell('zn_cu');
+
+// ═══════════════════════════════════════
+// UI
+// ═══════════════════════════════════════
+document.getElementById('conc-a-slider').addEventListener('input',e=>{
+  state.concAnode=+e.target.value/10;
+  document.getElementById('conc-a-val').textContent=state.concAnode.toFixed(1)+' '+t('unit_m');
+  computeEMF();
+});
+document.getElementById('conc-c-slider').addEventListener('input',e=>{
+  state.concCathode=+e.target.value/10;
+  document.getElementById('conc-c-val').textContent=state.concCathode.toFixed(1)+' '+t('unit_m');
+  computeEMF();
+});
+document.getElementById('temp-slider').addEventListener('input',e=>{
+  state.temp=+e.target.value;
+  document.getElementById('temp-val').textContent=state.temp+' °C';
+  computeEMF();
+});
+document.getElementById('resist-slider').addEventListener('input',e=>{
+  state.resistance=+e.target.value;
+  document.getElementById('resist-val').textContent=state.resistance+' '+t('unit_ohm');
+  computeEMF();
+});
+
+document.querySelectorAll('.cell-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.cell-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const was=state.running; if(was)stopCell();
+    initCell(btn.dataset.cell);
+    if(was)startCell();
+  });
+});
+
+document.getElementById('toggle-ions').addEventListener('click',function(){this.classList.toggle('active');state.showIons=this.classList.contains('active');});
+document.getElementById('toggle-electrons').addEventListener('click',function(){this.classList.toggle('active');state.showElectrons=this.classList.contains('active');});
+document.getElementById('toggle-bridge').addEventListener('click',function(){this.classList.toggle('active');state.showBridge=this.classList.contains('active');});
+
+const btnStart=document.getElementById('btn-start');
+btnStart.addEventListener('click',()=>{if(!state.running)startCell();else stopCell();});
+document.getElementById('btn-reset').addEventListener('click',resetAll);
+
+function startCell(){
+  state.running=true;state.time=0;state.anodeLoss=0;state.cathodeGain=0;
+  computeEMF();
+  btnStart.textContent=t('btn_stop');btnStart.className='btn btn-stop';
+  document.getElementById('status-dot').className='status-dot on';
+  document.getElementById('status-text').style.color='var(--green)';
+  document.getElementById('status-text').textContent=t('status_on');
+}
+function stopCell(){
+  state.running=false;state.current=0;
+  btnStart.textContent=t('btn_start');btnStart.className='btn btn-start';
+  document.getElementById('status-dot').className='status-dot off';
+  document.getElementById('status-text').style.color='var(--text-dim)';
+  document.getElementById('status-text').textContent=t('status_off');
+  anodeGlowMat.opacity=0;cathodeGlowMat.opacity=0;bulbGlowMat.opacity=0;bulbLight.intensity=0;
+}
+function resetAll(){
+  stopCell();state.time=0;state.anodeLoss=0;state.cathodeGain=0;
+  depositMat.opacity=0;
+  anodeMesh.scale.x=1;
+  initCell(state.cellType);
+  camSph={r:30,theta:Math.PI*0.5,phi:Math.PI*0.42};
+  camTarget.set(0,4,0);updateCam();updateUI();
+}
+
+function updateUI(){
+  computeEMF();
+  const d=CELLS[state.cellType];
+  document.getElementById('emf-display').innerHTML=state.emf.toFixed(2)+' <span class="vm-unit">'+t('unit_v')+'</span>';
+  document.getElementById('stat-current').textContent=state.current.toFixed(3)+' '+t('unit_a');
+  const power=state.emf*state.current;
+  document.getElementById('stat-power').textContent=power.toFixed(3)+' '+t('unit_w');
+  document.getElementById('stat-anode-mass').textContent=state.anodeLoss.toFixed(1)+' '+t('unit_mg');
+  document.getElementById('stat-cathode-mass').textContent=state.cathodeGain.toFixed(1)+' '+t('unit_mg');
+  document.getElementById('stat-time').textContent=state.time.toFixed(0)+' '+t('unit_s');
+
+  document.getElementById('b-emf').textContent=state.emf.toFixed(2)+' '+t('unit_v');
+  document.getElementById('b-current').textContent=state.current.toFixed(2)+' '+t('unit_a');
+  document.getElementById('b-power').textContent=power.toFixed(2)+' '+t('unit_w');
+  document.getElementById('b-resist').textContent=state.resistance+' '+t('unit_ohm');
+  document.getElementById('b-time').textContent=state.time.toFixed(0)+' '+t('unit_s');
+}
+
+// ═══════════════════════════════════════
+// CAMERA
+// ═══════════════════════════════════════
+let isDrag=false,isPan=false,prevM={x:0,y:0};
+let camSph={r:30,theta:Math.PI*0.5,phi:Math.PI*0.42};
+let camTarget=new THREE.Vector3(0,4,0);
+
+function updateCam(){
+  camera.position.set(
+    camTarget.x+camSph.r*Math.sin(camSph.phi)*Math.cos(camSph.theta),
+    camTarget.y+camSph.r*Math.cos(camSph.phi),
+    camTarget.z+camSph.r*Math.sin(camSph.phi)*Math.sin(camSph.theta)
+  );camera.lookAt(camTarget);
+}
+updateCam();
+
+renderer.domElement.addEventListener('mousedown',e=>{if(e.button===0)isDrag=true;if(e.button===2)isPan=true;prevM={x:e.clientX,y:e.clientY};});
+renderer.domElement.addEventListener('mousemove',e=>{
+  const dx=e.clientX-prevM.x,dy=e.clientY-prevM.y;prevM={x:e.clientX,y:e.clientY};
+  if(isDrag){camSph.theta-=dx*0.005;camSph.phi=Math.max(0.1,Math.min(Math.PI*0.48,camSph.phi+dy*0.005));updateCam();}
+  if(isPan){const r=new THREE.Vector3();camera.getWorldDirection(r);r.cross(new THREE.Vector3(0,1,0)).normalize();camTarget.addScaledVector(r,-dx*0.04);camTarget.y=Math.max(-2,camTarget.y+dy*0.04);updateCam();}
+});
+renderer.domElement.addEventListener('mouseup',()=>{isDrag=false;isPan=false;});
+renderer.domElement.addEventListener('contextmenu',e=>e.preventDefault());
+renderer.domElement.addEventListener('wheel',e=>{camSph.r=Math.max(8,Math.min(80,camSph.r+e.deltaY*0.03));updateCam();});
+
+// ═══════════════════════════════════════
+// ANIMATE
+// ═══════════════════════════════════════
+const clock=new THREE.Clock();
+
+function animate(){
+  requestAnimationFrame(animate);
+  const dt=Math.min(clock.getDelta(),0.05);
+  const d=CELLS[state.cellType];
+  const speedFactor = state.current * 5 + 0.1;
+
+  if(state.running){
+    state.time+=dt;
+    computeEMF();
+
+    // Faraday mass
+    const dm = (d.anodeMolarMass*state.current*dt)/(d.nElectrons*96485)*1e3*30;
+    state.anodeLoss+=dm;
+    state.cathodeGain+=(d.cathodeMolarMass/d.anodeMolarMass)*dm;
+
+    // Anode dissolution visual
+    anodeMesh.scale.x = Math.max(0.3, 1 - state.anodeLoss*0.0001);
+
+    // Cathode deposit
+    depositMat.opacity = Math.min(0.9, state.cathodeGain * 0.0005);
+
+    // Glow
+    const pulse=0.06+0.03*Math.sin(performance.now()*0.004);
+    anodeGlowMat.opacity=pulse;
+    cathodeGlowMat.opacity=pulse;
+
+    // Bulb glow
+    const brightness=Math.min(1, state.current*3);
+    bulbGlowMat.opacity=brightness*0.4;
+    bulbLight.intensity=brightness*1.5;
+    bulbMat.emissive = new THREE.Color(0xfacc15);
+    bulbMat.emissiveIntensity=brightness*0.5;
+
+    // ─── Ions ───
+    ions.forEach(ion=>{
+      if(!ion.alive)return;
+      ion.mesh.visible=state.showIons;
+      const m=ion.mesh;
+      const cx=ion.side==='anode'?anodeCX:cathodeCX;
+      const hw=bkW/2-0.5,hd=bkD/2-0.5;
+
+      // Drift: cathode-side cations move toward cathode electrode
+      if(ion.side==='cathode'&&ion.type==='cation'){
+        const dx=cathodeCX-m.position.x;
+        ion.vx+=Math.sign(dx)*speedFactor*0.3*dt;
+        // Absorbed at cathode
+        if(Math.abs(m.position.x-cathodeCX)<0.6&&Math.random()<dt*1.5){
+          ion.alive=false;m.visible=false;
+          setTimeout(()=>{if(state.running){
+            ion.alive=true;
+            m.position.set(cathodeCX+(Math.random()-0.5)*(bkW-2),0.5+Math.random()*(solH-1),(Math.random()-0.5)*(bkD-2));
+            ion.vx=0;ion.vy=0;ion.vz=0;
+          }},3000+Math.random()*2000);
+        }
+      }
+
+      // Thermal motion
+      ion.vx+=(Math.random()-0.5)*1.5*dt;
+      ion.vy+=(Math.random()-0.5)*1.2*dt;
+      ion.vz+=(Math.random()-0.5)*1.5*dt;
+      ion.vx*=0.96;ion.vy*=0.96;ion.vz*=0.96;
+      m.position.x+=ion.vx*dt;m.position.y+=ion.vy*dt;m.position.z+=ion.vz*dt;
+
+      // Bounds
+      if(m.position.x<cx-hw){m.position.x=cx-hw;ion.vx*=-0.5;}
+      if(m.position.x>cx+hw){m.position.x=cx+hw;ion.vx*=-0.5;}
+      if(m.position.y<0.5){m.position.y=0.5;ion.vy*=-0.5;}
+      if(m.position.y>solH-0.3){m.position.y=solH-0.3;ion.vy*=-0.5;}
+      if(m.position.z<-hd){m.position.z=-hd;ion.vz*=-0.5;}
+      if(m.position.z>hd){m.position.z=hd;ion.vz*=-0.5;}
+    });
+
+    // ─── Electrons ───
+    electronMeshes.forEach(e=>{
+      e.phase=(e.phase+dt*speedFactor*0.2)%1;
+      if(state.showElectrons){
+        e.mesh.visible=true;
+        const p=getElPos(e.phase);
+        e.mesh.position.set(p.x,p.y,p.z);
+      } else e.mesh.visible=false;
+    });
+
+    // ─── Bridge ions ───
+    bridgeIons.forEach(b=>{
+      b.t=(b.t+dt*b.speed*speedFactor*0.5)%1;
+      if(state.showBridge){
+        b.mesh.visible=true;
+        const p=getBridgePos(b.t,!b.isK);
+        b.mesh.position.set(p.x,p.y,p.z);
+      } else {b.mesh.visible=false;}
+    });
+
+  } else {
+    // Idle: thermal motion only
+    ions.forEach(ion=>{
+      if(!ion.alive)return;
+      ion.mesh.visible=state.showIons;
+      const m=ion.mesh;
+      const cx=ion.side==='anode'?anodeCX:cathodeCX;
+      const hw=bkW/2-0.5,hd=bkD/2-0.5;
+      ion.vx+=(Math.random()-0.5)*0.5*dt;ion.vy+=(Math.random()-0.5)*0.4*dt;ion.vz+=(Math.random()-0.5)*0.5*dt;
+      ion.vx*=0.97;ion.vy*=0.97;ion.vz*=0.97;
+      m.position.x+=ion.vx*dt;m.position.y+=ion.vy*dt;m.position.z+=ion.vz*dt;
+      if(m.position.x<cx-hw){m.position.x=cx-hw;ion.vx*=-0.5;}
+      if(m.position.x>cx+hw){m.position.x=cx+hw;ion.vx*=-0.5;}
+      if(m.position.y<0.5){m.position.y=0.5;ion.vy*=-0.5;}
+      if(m.position.y>solH-0.3){m.position.y=solH-0.3;ion.vy*=-0.5;}
+      if(m.position.z<-hd){m.position.z=-hd;ion.vz*=-0.5;}
+      if(m.position.z>hd){m.position.z=hd;ion.vz*=-0.5;}
+    });
+    electronMeshes.forEach(e=>e.mesh.visible=false);
+    bridgeIons.forEach(b=>{b.mesh.visible=false;});
+    bulbMat.emissiveIntensity=0;
+  }
+
+  // Electrode labels — below beakers
+  projLabel(anodeLabelDiv, new THREE.Vector3(anodeCX, -0.8, 0));
+  projLabel(cathodeLabelDiv, new THREE.Vector3(cathodeCX, -0.8, 0));
+  // Bridge label
+  const blv=new THREE.Vector3(0,bkH+3.5,0).project(camera);
+  bridgeLabelDiv.style.left=(blv.x*innerWidth/2+innerWidth/2-100)+'px';
+  bridgeLabelDiv.style.top=(-blv.y*innerHeight/2+innerHeight/2)+'px';
+  bridgeLabelDiv.style.display=blv.z<1?'block':'none';
+  // VM label
+  const vmv=vmMesh.position.clone().project(camera);
+  vmLabelDiv.style.left=(vmv.x*innerWidth/2+innerWidth/2-6)+'px';
+  vmLabelDiv.style.top=(-vmv.y*innerHeight/2+innerHeight/2-10)+'px';
+  vmLabelDiv.style.display=vmv.z<1?'block':'none';
+
+  updateUI();
+  renderer.render(scene, camera);
+}
+
+animate();
+updateUI();
+
+window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+</script>
+</body>
+</html>

@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Червячная передача</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #eef2f7; overflow: hidden; width: 100vw; height: 100vh; color: #1e293b; }
+        #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+
+        .header { position: absolute; top: 0; left: 0; right: 0; padding: 22px 36px; background: linear-gradient(180deg, rgba(255,255,255,0.97) 0%, rgba(255,255,255,0) 100%); z-index: 10; pointer-events: none; }
+        .header h1 { color: #1e40af; font-size: 32px; font-weight: 800; margin: 0; }
+        .header p { color: #64748b; font-size: 17px; margin-top: 4px; }
+
+        #lang-switcher { position: absolute; top: 22px; right: 24px; display: flex; gap: 6px; z-index: 20; background: rgba(255,255,255,0.9); padding: 5px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 2px 10px rgba(0,0,0,0.06); }
+        #lang-switcher button { border: none; background: transparent; padding: 7px 13px; border-radius: 8px; font-size: 14px; font-weight: 700; color: #64748b; cursor: pointer; transition: all 0.15s; }
+        #lang-switcher button:hover { background: #eff6ff; color: #3b82f6; }
+        #lang-switcher button.active { background: #3b82f6; color: #fff; }
+
+        .control-panel { position: absolute; top: 100px; left: 24px; width: 340px; background: rgba(255,255,255,0.96);  border-radius: 18px; padding: 24px; z-index: 10; border: 1px solid #e2e8f0; box-shadow: 0 4px 24px rgba(0,0,0,0.08); max-height: calc(100vh - 130px); overflow-y: auto; }
+        .control-panel::-webkit-scrollbar { width: 4px; }
+        .control-panel::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+        .section-label { color: #64748b; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px; margin: 18px 0 10px; }
+        .section-label:first-child { margin-top: 0; }
+
+        .param-group { background: #f8fafc; border-radius: 12px; padding: 16px; border: 1px solid #e2e8f0; margin-bottom: 10px; }
+        .param-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .param-name { color: #475569; font-size: 15px; font-weight: 600; }
+        .param-value { color: #1d4ed8; font-size: 20px; font-weight: 700; font-family: 'Consolas', monospace; }
+        .param-hint { text-align: right; font-size: 12px; color: #94a3b8; margin-top: 4px; }
+
+        input[type="range"] { width: 100%; height: 8px; border-radius: 4px; -webkit-appearance: none; appearance: none; background: #e2e8f0; cursor: pointer; }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 24px; height: 24px; border-radius: 50%; background: #3b82f6; cursor: pointer; box-shadow: 0 2px 8px rgba(59,130,246,0.4); }
+
+        .checkbox-item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; margin-bottom: 8px; cursor: pointer; transition: background 0.2s; }
+        .checkbox-item:hover { background: #eff6ff; }
+        .checkbox-item input { accent-color: #3b82f6; cursor: pointer; width: 18px; height: 18px; }
+        .checkbox-item label { cursor: pointer; font-size: 14px; color: #334155; font-weight: 500; flex: 1; }
+
+        .info-panel { position: absolute; top: 100px; right: 24px; width: 330px; background: rgba(255,255,255,0.96);  border-radius: 18px; padding: 24px; z-index: 10; border: 1px solid #e2e8f0; box-shadow: 0 4px 24px rgba(0,0,0,0.08); max-height: calc(100vh - 130px); overflow-y: auto; }
+        .info-panel::-webkit-scrollbar { width: 4px; }
+        .info-panel::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .info-panel h3 { color: #1e40af; font-size: 20px; font-weight: 800; margin: 0 0 16px; }
+        .stat-row { display: flex; justify-content: space-between; margin-bottom: 11px; align-items: center; gap: 10px; }
+        .stat-label { color: #64748b; font-size: 14px; font-weight: 500; }
+        .stat-value { color: #1e293b; font-weight: 700; font-family: 'Consolas', monospace; font-size: 15px; text-align: right; }
+
+        .phase-badge { display: inline-block; padding: 5px 12px; border-radius: 999px; font-size: 13px; font-weight: 700; color: #fff; white-space: nowrap; }
+
+        .formula-box { background: #0f172a; border-radius: 12px; padding: 14px 16px; margin-top: 8px; }
+        .formula-box code { font-family: 'Consolas', monospace; font-size: 15px; color: #7dd3fc; display: block; text-align: center; }
+        .formula-box .fnote { font-size: 11px; color: #94a3b8; text-align: center; margin-top: 6px; }
+
+        .desc-box { margin-top: 14px; background: #eff6ff; border-radius: 12px; padding: 14px 16px; border: 1px solid #dbeafe; }
+        .desc-box p { font-size: 13px; color: #1e40af; line-height: 1.6; margin: 0; }
+
+        .legend { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 20px; background: rgba(255,255,255,0.95); padding: 14px 30px; border-radius: 14px; z-index: 10; border: 1px solid #e2e8f0; box-shadow: 0 2px 12px rgba(0,0,0,0.06); flex-wrap: wrap; justify-content: center; max-width: 90vw; }
+        .legend-item { display: flex; align-items: center; gap: 6px; font-size: 15px; color: #475569; font-weight: 600; }
+        .legend-dot { width: 14px; height: 14px; border-radius: 50%; }
+
+        .btn-row { display: flex; gap: 8px; }
+        .btn { flex: 1; padding: 11px; border: 1px solid #e2e8f0; background: #f8fafc; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 600; color: #334155; transition: all 0.15s; }
+        .btn:hover { background: #eff6ff; border-color: #bfdbfe; }
+        .btn.active { background: #3b82f6; color: #fff; border-color: #3b82f6; }
+    </style>
+</head>
+<body>
+
+<div id="canvas-container"></div>
+
+<div id="lang-switcher">
+    <button data-lang="ru">RU</button>
+    <button data-lang="kz">KZ</button>
+    <button data-lang="en">EN</button>
+</div>
+
+<div class="header">
+    <h1 data-i18n="title">Червячная передача</h1>
+    <p data-i18n="subtitle">Большое передаточное число и самоторможение в компактном корпусе</p>
+</div>
+
+<div class="control-panel">
+    <div class="section-label" data-i18n="ctrl">Управление</div>
+
+    <div class="param-group">
+        <div class="param-header">
+            <span class="param-name" data-i18n="rpm">Обороты червяка</span>
+            <span class="param-value" id="val-rpm">60</span>
+        </div>
+        <input type="range" id="input-rpm" min="0" max="240" step="10" value="60">
+        <div class="param-hint" data-i18n="rpmUnit">об/мин</div>
+    </div>
+
+    <div class="btn-row" style="margin-bottom:10px;">
+        <button class="btn active" id="btn-play" data-i18n="pause">⏸ Пауза</button>
+        <button class="btn" id="btn-reverse" data-i18n="reverse">⇄ Реверс</button>
+    </div>
+
+    <div class="section-label" data-i18n="geometry">Геометрия зацепления</div>
+
+    <div class="param-group">
+        <div class="param-header">
+            <span class="param-name" data-i18n="starts">Заходы червяка z₁</span>
+            <span class="param-value" id="val-z1">1</span>
+        </div>
+        <input type="range" id="input-z1" min="1" max="4" step="1" value="1">
+        <div class="param-hint" data-i18n="startsHint">1 заход → самоторможение</div>
+    </div>
+
+    <div class="param-group">
+        <div class="param-header">
+            <span class="param-name" data-i18n="teeth">Зубья колеса z₂</span>
+            <span class="param-value" id="val-z2">30</span>
+        </div>
+        <input type="range" id="input-z2" min="20" max="50" step="1" value="30">
+    </div>
+
+    <div class="section-label" data-i18n="visualization">Визуализация</div>
+    <div class="checkbox-item">
+        <input type="checkbox" id="check-housing">
+        <label for="check-housing" data-i18n="vHousing">Корпус редуктора</label>
+    </div>
+    <div class="checkbox-item">
+        <input type="checkbox" id="check-contact" checked>
+        <label for="check-contact" data-i18n="vContact">Точка зацепления</label>
+    </div>
+    <div class="checkbox-item">
+        <input type="checkbox" id="check-arrows" checked>
+        <label for="check-arrows" data-i18n="vArrows">Стрелки вращения</label>
+    </div>
+</div>
+
+<div class="info-panel">
+    <h3 data-i18n="state">Характеристики</h3>
+    <div class="stat-row">
+        <span class="stat-label" data-i18n="ratioLabel">Передаточное число i:</span>
+        <span class="stat-value" id="stat-ratio">30</span>
+    </div>
+    <div class="stat-row">
+        <span class="stat-label" data-i18n="n2Label">Обороты колеса n₂:</span>
+        <span class="stat-value" id="stat-n2">2.0</span>
+    </div>
+    <div class="stat-row">
+        <span class="stat-label" data-i18n="torqueLabel">Усиление момента:</span>
+        <span class="stat-value" id="stat-torque">30×</span>
+    </div>
+    <div class="stat-row">
+        <span class="stat-label" data-i18n="leadLabel">Угол подъёма γ:</span>
+        <span class="stat-value" id="stat-lead">~5°</span>
+    </div>
+    <div class="stat-row">
+        <span class="stat-label" data-i18n="selfLockLabel">Самоторможение:</span>
+        <span class="phase-badge" id="stat-lock" style="background:#10b981">Да</span>
+    </div>
+
+    <div class="formula-box">
+        <code>i = z₂ / z₁</code>
+        <div class="fnote" data-i18n="fnote">червяк ведущий · колесо ведомое</div>
+    </div>
+
+    <div class="desc-box">
+        <p data-i18n="descText">За один оборот червяк сдвигает колесо всего на z₁ зубьев. Поэтому колесо вращается в i = z₂/z₁ раз медленнее, но во столько же раз растёт крутящий момент. При малом угле подъёма витка (z₁=1) передача самотормозящая: колесо не может раскрутить червяк обратно — это удерживает груз без тормоза.</p>
+    </div>
+</div>
+
+<div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#5b6675"></div><span data-i18n="legWorm">Червяк (винт)</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:#e0a92e"></div><span data-i18n="legWheel">Червячное колесо</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div><span data-i18n="legShaft">Валы</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:#16a34a"></div><span data-i18n="legContact">Зона контакта</span></div>
+</div>
+
+<script type="importmap">
+    {
+        "imports": {
+            "three": "../../libs/vendor/three-0.160.0/three.module.js",
+            "three/addons/": "../../libs/vendor/three-0.160.0/addons/"
+        }
+    }
+</script>
+
+<script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    // ============================ ЛОКАЛИЗАЦИЯ ============================
+    const I18N = {
+        ru: {
+            title: 'Червячная передача',
+            subtitle: 'Большое передаточное число и самоторможение в компактном корпусе',
+            ctrl: 'Управление', rpm: 'Обороты червяка', rpmUnit: 'об/мин', pause: '⏸ Пауза', play: '▶ Пуск', reverse: '⇄ Реверс',
+            geometry: 'Геометрия зацепления', starts: 'Заходы червяка z₁', startsHint: '1 заход → самоторможение', teeth: 'Зубья колеса z₂',
+            visualization: 'Визуализация', vHousing: 'Корпус редуктора', vContact: 'Точка зацепления', vArrows: 'Стрелки вращения',
+            state: 'Характеристики', ratioLabel: 'Передаточное число i:', n2Label: 'Обороты колеса n₂:',
+            torqueLabel: 'Усиление момента:', leadLabel: 'Угол подъёма γ:', selfLockLabel: 'Самоторможение:',
+            fnote: 'червяк ведущий · колесо ведомое',
+            descText: 'За один оборот червяк сдвигает колесо всего на z₁ зубьев. Поэтому колесо вращается в i = z₂/z₁ раз медленнее, но во столько же раз растёт крутящий момент. При малом угле подъёма витка (z₁=1) передача самотормозящая: колесо не может раскрутить червяк обратно — это удерживает груз без тормоза.',
+            legWorm: 'Червяк (винт)', legWheel: 'Червячное колесо', legShaft: 'Валы', legContact: 'Зона контакта',
+            rpm2Unit: 'об/мин', yes: 'Да', no: 'Нет'
+        },
+        kz: {
+            title: 'Червяктіқ беріліс',
+            subtitle: 'Ықшам корпуста үлкен беру қатынасы мен өздігінен тежелу',
+            ctrl: 'Басқару', rpm: 'Червяк айналымы', rpmUnit: 'айн/мин', pause: '⏸ Кідіріс', play: '▶ Бастау', reverse: '⇄ Реверс',
+            geometry: 'Түйісу геометриясы', starts: 'Червяк кірулері z₁', startsHint: '1 кіру → өздігінен тежелу', teeth: 'Дөңгелек тістері z₂',
+            visualization: 'Көрнекілік', vHousing: 'Редуктор корпусы', vContact: 'Түйісу нүктесі', vArrows: 'Айналу бағдаршалары',
+            state: 'Сипаттамалар', ratioLabel: 'Беру қатынасы i:', n2Label: 'Дөңгелек айналымы n₂:',
+            torqueLabel: 'Момент күшеюі:', leadLabel: 'Көтерілу бұрышы γ:', selfLockLabel: 'Өздігінен тежелу:',
+            fnote: 'червяк жетекші · дөңгелек жетектегі',
+            descText: 'Бір айналымда червяк дөңгелекті небәрі z₁ тіске жылжытады. Сондықтан дөңгелек i = z₂/z₁ есе баяу айналады, бірақ момент сонша есе артады. Кіші көтерілу бұрышында (z₁=1) беріліс өздігінен тежеледі: дөңгелек червякті кері айналдыра алмайды — бұл жүкті тежеусіз ұстайды.',
+            legWorm: 'Червяк (бұранда)', legWheel: 'Червяк дөңгелегі', legShaft: 'Біліктер', legContact: 'Түйісу аймағы',
+            rpm2Unit: 'айн/мин', yes: 'Иә', no: 'Жоқ'
+        },
+        en: {
+            title: 'Worm Gear',
+            subtitle: 'High gear ratio and self-locking in a compact housing',
+            ctrl: 'Controls', rpm: 'Worm speed', rpmUnit: 'rpm', pause: '⏸ Pause', play: '▶ Play', reverse: '⇄ Reverse',
+            geometry: 'Mesh geometry', starts: 'Worm starts z₁', startsHint: '1 start → self-locking', teeth: 'Wheel teeth z₂',
+            visualization: 'Visualization', vHousing: 'Gearbox housing', vContact: 'Mesh point', vArrows: 'Rotation arrows',
+            state: 'Characteristics', ratioLabel: 'Gear ratio i:', n2Label: 'Wheel speed n₂:',
+            torqueLabel: 'Torque gain:', leadLabel: 'Lead angle γ:', selfLockLabel: 'Self-locking:',
+            fnote: 'worm drives · wheel is driven',
+            descText: 'In one revolution the worm advances the wheel by only z₁ teeth. So the wheel turns i = z₂/z₁ times slower, while torque grows by the same factor. At a small lead angle (z₁=1) the drive is self-locking: the wheel cannot back-drive the worm — holding a load without a brake.',
+            legWorm: 'Worm (screw)', legWheel: 'Worm wheel', legShaft: 'Shafts', legContact: 'Contact zone',
+            rpm2Unit: 'rpm', yes: 'Yes', no: 'No'
+        }
+    };
+
+    let lang = (new URLSearchParams(location.search).get('lang') || 'ru').toLowerCase();
+    if (!I18N[lang]) lang = 'ru';
+    let T = I18N[lang];
+
+    // ============================ ПАРАМЕТРЫ ============================
+    const P = { rpm: 60, z1: 1, z2: 30, housing: false, contact: true, arrows: true };
+    let isPlaying = true, reverse = false;
+    let wormAngle = 0, wheelAngle = 0;
+
+    // геометрия сцены
+    const WORM_CORE_R = 1.2;     // радиус сердечника червяка
+    const WORM_OUT_R = 2.1;      // наружный радиус витка
+    const WORM_LEN = 16;         // длина червяка (вдоль X)
+    const WHEEL_R = 7.0;         // делительный радиус колеса
+    const WHEEL_W = 2.6;         // ширина колеса
+    const MODULE = 1.0;          // модуль (визуальный)
+
+    let scene, camera, renderer, controls, clock;
+    let wormGroup, wheelGroup, threadMesh, housingGroup;
+    let contactMarker, wormArrow, wheelArrow;
+
+    const matWormCore = new THREE.MeshStandardMaterial({ color: 0x5b6675, metalness: 0.9, roughness: 0.25 });
+    const matThread = new THREE.MeshStandardMaterial({ color: 0x7f8c9b, metalness: 0.95, roughness: 0.2 });
+    const matWheel = new THREE.MeshStandardMaterial({ color: 0xe0a92e, metalness: 0.6, roughness: 0.35 });
+    const matTooth = new THREE.MeshStandardMaterial({ color: 0xc89b2a, metalness: 0.65, roughness: 0.32 });
+    const matShaft = new THREE.MeshStandardMaterial({ color: 0x3b82f6, metalness: 0.7, roughness: 0.3 });
+    const matBearing = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.6, roughness: 0.5 });
+
+    function init() {
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xeef2f7);
+        scene.fog = new THREE.Fog(0xeef2f7, 55, 120);
+        clock = new THREE.Clock();
+
+        camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 400);
+        camera.position.set(16, 14, 26);
+
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = false;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+        const key = new THREE.DirectionalLight(0xffffff, 1.05);
+        key.position.set(14, 24, 16); key.castShadow = true;
+        key.shadow.mapSize.set(2048, 2048);
+        key.shadow.camera.left = -20; key.shadow.camera.right = 20;
+        key.shadow.camera.top = 20; key.shadow.camera.bottom = -20;
+        key.shadow.bias = -0.0004;
+        scene.add(key);
+        const fill = new THREE.DirectionalLight(0xcfe0ff, 0.4);
+        fill.position.set(-16, 8, -12); scene.add(fill);
+
+        const floor = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.95 }));
+        floor.rotation.x = -Math.PI / 2; floor.position.y = -12; floor.receiveShadow = true; scene.add(floor);
+        const grid = new THREE.GridHelper(120, 60, 0xcbd5e1, 0xe2e8f0);
+        grid.position.y = -11.99; scene.add(grid);
+
+        controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true; controls.dampingFactor = 0.08;
+        controls.target.set(0, -1, 0);
+        controls.minDistance = 14; controls.maxDistance = 70;
+        controls.maxPolarAngle = Math.PI * 0.92;
+
+        buildWorm();
+        buildWheel();
+        buildHousing();
+        buildHelpers();
+        setupUI();
+        applyLang();
+        updateDerived();
+        animate();
+
+        window.addEventListener('resize', onResize);
+    }
+
+    function onResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    // червяк расположен горизонтально (ось X), над колесом
+    function buildWorm() {
+        wormGroup = new THREE.Group();
+        wormGroup.position.set(0, WHEEL_R + WORM_OUT_R - 0.4, 0);
+        scene.add(wormGroup);
+
+        // сердечник
+        const core = new THREE.Mesh(new THREE.CylinderGeometry(WORM_CORE_R, WORM_CORE_R, WORM_LEN, 32), matWormCore);
+        core.rotation.z = Math.PI / 2;
+        core.castShadow = true;
+        wormGroup.add(core);
+
+        buildThread();
+
+        // валы червяка
+        for (const sx of [-1, 1]) {
+            const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 5, 20), matShaft);
+            shaft.rotation.z = Math.PI / 2;
+            shaft.position.x = sx * (WORM_LEN / 2 + 2.5);
+            shaft.castShadow = true;
+            wormGroup.add(shaft);
+            const brg = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 1.2, 24), matBearing);
+            brg.rotation.z = Math.PI / 2;
+            brg.position.x = sx * (WORM_LEN / 2 + 0.9);
+            wormGroup.add(brg);
+        }
+        // приводной торец (шлиц)
+        const drive = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, 1.4, 6), matShaft);
+        drive.rotation.z = Math.PI / 2;
+        drive.position.x = -(WORM_LEN / 2 + 5);
+        wormGroup.add(drive);
+    }
+
+    function buildThread() {
+        if (threadMesh) { wormGroup.remove(threadMesh); threadMesh.geometry.dispose(); }
+        // спираль витка вокруг оси X. z1 заходов = z1 параллельных спиралей
+        const turns = 5;                       // число витков по длине
+        const lead = WORM_LEN / turns;         // осевой шаг одной винтовой линии
+        const rThread = (WORM_CORE_R + WORM_OUT_R) / 2;
+        const tubeR = (WORM_OUT_R - WORM_CORE_R) / 2 + 0.15;
+
+        const group = new THREE.Group();
+        for (let s = 0; s < P.z1; s++) {
+            const pts = [];
+            const steps = 240;
+            const phase = (s / P.z1) * Math.PI * 2;
+            for (let i = 0; i <= steps; i++) {
+                const t = i / steps;
+                const x = -WORM_LEN / 2 + t * WORM_LEN;
+                const ang = t * turns * Math.PI * 2 + phase;
+                pts.push(new THREE.Vector3(x, Math.cos(ang) * rThread, Math.sin(ang) * rThread));
+            }
+            const curve = new THREE.CatmullRomCurve3(pts);
+            const tube = new THREE.Mesh(new THREE.TubeGeometry(curve, steps, tubeR, 10, false), matThread);
+            tube.castShadow = true;
+            group.add(tube);
+        }
+        threadMesh = group;
+        wormGroup.add(threadMesh);
+    }
+
+    // колесо: ось вращения Z, в плоскости XY, под червяком
+    function buildWheel() {
+        if (wheelGroup) { scene.remove(wheelGroup); disposeGroup(wheelGroup); }
+        wheelGroup = new THREE.Group();
+        wheelGroup.position.set(0, 0, 0);
+        scene.add(wheelGroup);
+
+        // обод (с вогнутой проточкой под червяк — имитируем тором)
+        const rim = new THREE.Mesh(new THREE.CylinderGeometry(WHEEL_R - 0.6, WHEEL_R - 0.6, WHEEL_W, 64), matWheel);
+        rim.rotation.x = Math.PI / 2;
+        rim.castShadow = true; rim.receiveShadow = true;
+        wheelGroup.add(rim);
+
+        // зубья по ободу — наклонные, чтобы входить в зацепление с витком
+        const teeth = P.z2;
+        const helix = 0.32; // наклон зуба
+        for (let i = 0; i < teeth; i++) {
+            const ang = (i / teeth) * Math.PI * 2;
+            const tooth = new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.6, WHEEL_W + 0.2), matWheel);
+            const r = WHEEL_R - 0.1;
+            tooth.position.set(Math.cos(ang) * r, Math.sin(ang) * r, 0);
+            tooth.rotation.z = ang + Math.PI / 2;
+            tooth.rotation.y = helix;
+            tooth.castShadow = true;
+            wheelGroup.add(tooth);
+        }
+
+        // ступица и спицы
+        const hub = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 1.8, WHEEL_W + 1.4, 28), matWheel);
+        hub.rotation.x = Math.PI / 2; wheelGroup.add(hub);
+        for (let i = 0; i < 5; i++) {
+            const a = (i / 5) * Math.PI * 2;
+            const spoke = new THREE.Mesh(new THREE.BoxGeometry(WHEEL_R - 2.2, 0.9, WHEEL_W - 0.6), matWheel);
+            spoke.position.set(Math.cos(a) * (WHEEL_R - 2.2) / 2, Math.sin(a) * (WHEEL_R - 2.2) / 2, 0);
+            spoke.rotation.z = a;
+            wheelGroup.add(spoke);
+        }
+
+        // выходной вал (вдоль Z)
+        const outShaft = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, WHEEL_W + 10, 24), matShaft);
+        outShaft.rotation.x = Math.PI / 2; outShaft.castShadow = true;
+        wheelGroup.add(outShaft);
+        for (const sz of [-1, 1]) {
+            const brg = new THREE.Mesh(new THREE.CylinderGeometry(1.7, 1.7, 1.3, 24), matBearing);
+            brg.rotation.x = Math.PI / 2; brg.position.z = sz * (WHEEL_W / 2 + 3.5);
+            wheelGroup.add(brg);
+        }
+    }
+
+    function buildHousing() {
+        housingGroup = new THREE.Group();
+        scene.add(housingGroup);
+        const w = WORM_LEN + 8, h = WHEEL_R * 2 + WORM_OUT_R * 2 + 3, d = WHEEL_W + 8;
+        const box = new THREE.Mesh(
+            new THREE.BoxGeometry(w, h, d),
+            new THREE.MeshPhysicalMaterial({ color: 0x9aa7b5, metalness: 0.3, roughness: 0.5, transparent: true, opacity: 0.16, depthWrite: false })
+        );
+        box.position.y = (WHEEL_R + WORM_OUT_R - 0.4) / 2 - 1;
+        housingGroup.add(box);
+        const edges = new THREE.LineSegments(new THREE.EdgesGeometry(box.geometry), new THREE.LineBasicMaterial({ color: 0x64748b }));
+        edges.position.copy(box.position);
+        housingGroup.add(edges);
+        housingGroup.visible = P.housing;
+    }
+
+    function buildHelpers() {
+        // маркер точки зацепления (между червяком и колесом сверху колеса)
+        contactMarker = new THREE.Mesh(
+            new THREE.SphereGeometry(0.7, 20, 20),
+            new THREE.MeshBasicMaterial({ color: 0x16a34a, transparent: true, opacity: 0.85 })
+        );
+        contactMarker.position.set(0, WHEEL_R + 0.2, 0);
+        scene.add(contactMarker);
+        const halo = new THREE.Mesh(
+            new THREE.RingGeometry(0.9, 1.3, 28),
+            new THREE.MeshBasicMaterial({ color: 0x16a34a, transparent: true, opacity: 0.4, side: THREE.DoubleSide })
+        );
+        halo.position.copy(contactMarker.position);
+        halo.lookAt(camera.position);
+        contactMarker.userData.halo = halo;
+        scene.add(halo);
+
+        // стрелки вращения
+        wormArrow = new THREE.ArrowHelper(new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, WHEEL_R + WORM_OUT_R - 0.4, 3.2), 3, 0x3b82f6, 0.9, 0.6);
+        scene.add(wormArrow);
+        wheelArrow = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(WHEEL_R + 1.5, 0, 0), 3, 0xe0a92e, 0.9, 0.6);
+        scene.add(wheelArrow);
+    }
+
+    function disposeGroup(group) {
+        group.traverse(o => {
+            if (o.geometry) o.geometry.dispose();
+        });
+    }
+
+    function updateDerived() {
+        const i = P.z2 / P.z1;
+        const n2 = P.rpm / i;
+        document.getElementById('stat-ratio').textContent = i.toFixed(1);
+        document.getElementById('stat-n2').textContent = n2.toFixed(1) + ' ' + T.rpm2Unit;
+        document.getElementById('stat-torque').textContent = i.toFixed(1) + '×';
+
+        // угол подъёма винтовой линии: tan γ = z1·m / (d1) ; берём упрощённо
+        const lead = P.z1 * MODULE * Math.PI;
+        const d1 = (WORM_CORE_R + WORM_OUT_R); // ~ делит. диаметр (усл.)
+        const gamma = Math.atan(lead / (Math.PI * d1 * 2)) * 180 / Math.PI;
+        document.getElementById('stat-lead').textContent = '~' + gamma.toFixed(1) + '°';
+
+        const lock = document.getElementById('stat-lock');
+        const selfLock = P.z1 === 1; // одно/малозаходные самотормозящие
+        lock.textContent = selfLock ? T.yes : T.no;
+        lock.style.background = selfLock ? '#10b981' : '#ef4444';
+    }
+
+    function updateSim(dt) {
+        if (isPlaying && P.rpm > 0) {
+            const sgn = reverse ? -1 : 1;
+            const dWorm = sgn * (P.rpm * 2 * Math.PI / 60) * dt;
+            wormAngle += dWorm;
+            const i = P.z2 / P.z1;
+            wheelAngle += dWorm / i;   // колесо медленнее в i раз
+        }
+        wormGroup.rotation.x = wormAngle;
+        wheelGroup.rotation.z = wheelAngle;
+
+        // маркер контакта пульсирует
+        if (contactMarker.visible) {
+            const s = 1 + 0.18 * Math.sin(performance.now() * 0.006);
+            contactMarker.scale.setScalar(s);
+            if (contactMarker.userData.halo) {
+                contactMarker.userData.halo.lookAt(camera.position);
+                contactMarker.userData.halo.material.opacity = 0.25 + 0.2 * Math.sin(performance.now() * 0.006);
+            }
+        }
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+        const dt = Math.min(clock.getDelta(), 0.05);
+        updateSim(dt);
+        controls.update();
+        renderer.render(scene, camera);
+    }
+
+    // ============================ UI ============================
+    function setupUI() {
+        document.getElementById('input-rpm').addEventListener('input', e => {
+            P.rpm = parseInt(e.target.value);
+            document.getElementById('val-rpm').textContent = P.rpm;
+            updateDerived();
+        });
+        document.getElementById('input-z1').addEventListener('input', e => {
+            P.z1 = parseInt(e.target.value);
+            document.getElementById('val-z1').textContent = P.z1;
+            buildThread();
+            updateDerived();
+        });
+        document.getElementById('input-z2').addEventListener('input', e => {
+            P.z2 = parseInt(e.target.value);
+            document.getElementById('val-z2').textContent = P.z2;
+            buildWheel();
+            updateDerived();
+        });
+
+        document.getElementById('btn-play').addEventListener('click', () => {
+            isPlaying = !isPlaying;
+            const b = document.getElementById('btn-play');
+            b.textContent = isPlaying ? T.pause : T.play;
+            b.classList.toggle('active', isPlaying);
+        });
+        document.getElementById('btn-reverse').addEventListener('click', () => { reverse = !reverse; });
+
+        document.getElementById('check-housing').addEventListener('change', e => { P.housing = e.target.checked; housingGroup.visible = P.housing; });
+        document.getElementById('check-contact').addEventListener('change', e => {
+            P.contact = e.target.checked;
+            contactMarker.visible = P.contact;
+            contactMarker.userData.halo.visible = P.contact;
+        });
+        document.getElementById('check-arrows').addEventListener('change', e => {
+            P.arrows = e.target.checked;
+            wormArrow.visible = P.arrows; wheelArrow.visible = P.arrows;
+        });
+
+        document.querySelectorAll('#lang-switcher button').forEach(b => {
+            if (b.dataset.lang === lang) b.classList.add('active');
+            b.addEventListener('click', () => {
+                lang = b.dataset.lang; T = I18N[lang];
+                document.querySelectorAll('#lang-switcher button').forEach(x => x.classList.remove('active'));
+                b.classList.add('active');
+                applyLang(); updateDerived();
+                const pb = document.getElementById('btn-play');
+                pb.textContent = isPlaying ? T.pause : T.play;
+            });
+        });
+    }
+
+    function applyLang() {
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const key = el.getAttribute('data-i18n');
+            if (T[key]) el.textContent = T[key];
+        });
+    }
+
+    init();
+</script>
+</body>
+</html>

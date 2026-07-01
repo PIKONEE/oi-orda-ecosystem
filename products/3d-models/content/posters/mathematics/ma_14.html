@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="page_title">Графический способ решения систем</title>
+<style>
+
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#f1f3f6;--surface:rgba(255,255,255,0.94);--border:rgba(20,30,55,0.08);
+  --text:#161e2c;--muted:#5e6a7a;--faint:#9aa6b4;
+  --l1:#2563eb;--l1-dim:rgba(37,99,235,0.10);
+  --l2:#e11d48;--l2-dim:rgba(225,29,72,0.10);
+  --sol:#16a34a;
+  --accent:#4f46e5;--accent-dim:rgba(79,70,229,0.10);
+  --shadow:0 2px 22px rgba(20,30,60,0.07);--shadow-lg:0 18px 56px rgba(20,30,70,0.15);
+}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);overflow:hidden;height:100vh;}
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(1200px 760px at 70% 30%, rgba(99,102,241,0.10), transparent 60%),radial-gradient(820px 560px at 16% 84%, rgba(225,29,72,0.05), transparent 55%);}
+#canvas-container{position:fixed;inset:0;z-index:1;}
+#labels-layer{position:fixed;inset:0;z-index:40;pointer-events:none;overflow:hidden;}
+.dim-label{position:absolute;transform:translate(-50%,-50%);font-family:'Roboto Mono',monospace;font-size:13.5px;font-weight:600;padding:3px 9px;border-radius:9px;white-space:nowrap;letter-spacing:-0.3px;background:rgba(255,255,255,0.97);box-shadow:0 3px 12px rgba(20,30,60,0.13);transition:opacity 0.18s;}
+.dim-label.hidden{opacity:0;}
+.dim-label.lsol{background:var(--sol);color:#fff;border:none;box-shadow:0 4px 14px rgba(22,163,74,0.4);font-weight:700;}
+.dim-label.l1{color:var(--l1);border:1px solid rgba(37,99,235,0.3);}
+.dim-label.l2{color:var(--l2);border:1px solid rgba(225,29,72,0.3);}
+.header{position:fixed;top:0;left:0;right:0;z-index:200;background:var(--surface);border-bottom:1px solid var(--border);padding:0 38px;height:84px;display:flex;align-items:center;gap:15px;box-shadow:var(--shadow);}
+.h-badge{width:46px;height:46px;border-radius:14px;flex-shrink:0;background:linear-gradient(135deg,#4f46e5,#818cf8);display:flex;align-items:center;justify-content:center;box-shadow:0 7px 20px rgba(79,70,229,0.36);}
+.h-badge svg{width:25px;height:25px;}
+.header-title{font-size:22px;font-weight:800;letter-spacing:-0.5px;}
+.header-tag{font-family:'Roboto Mono',monospace;font-size:13px;color:var(--accent);background:var(--accent-dim);padding:4px 11px;border-radius:8px;}
+.header-sub{font-size:14px;color:var(--muted);margin-left:auto;text-align:right;line-height:1.45;}
+.eq-banner{position:fixed;top:96px;left:50%;transform:translateX(-50%);z-index:150;background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-lg);padding:9px 22px;font-family:'Roboto Mono',monospace;font-size:15px;font-weight:600;pointer-events:none;display:flex;gap:18px;align-items:center;}
+.eq-banner .e1{color:var(--l1);} .eq-banner .e2{color:var(--l2);} .eq-banner .es{color:var(--sol);font-weight:700;}
+.panel{position:fixed;z-index:100;background:var(--surface);border:1px solid var(--border);border-radius:22px;box-shadow:var(--shadow-lg);}
+.panel h3{font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;color:var(--faint);}
+.panel-left{left:22px;top:98px;width:332px;padding:18px 18px;overflow:hidden;min-height:300px;}
+.ld-list,.ld-detail{transition:transform 0.4s cubic-bezier(0.4,0,0.2,1),opacity 0.28s;}
+.ld-list h3{margin-bottom:12px;padding-left:4px;}
+.ld-detail{position:absolute;inset:18px 18px;transform:translateX(26px);opacity:0;pointer-events:none;overflow-y:auto;}
+.panel-left.detail .ld-list{transform:translateX(-26px);opacity:0;pointer-events:none;}
+.panel-left.detail .ld-detail{transform:translateX(0);opacity:1;pointer-events:auto;}
+.metric{display:flex;align-items:center;gap:12px;padding:13px 12px;border-radius:14px;cursor:pointer;border:1px solid transparent;transition:all 0.15s;margin-bottom:2px;}
+.metric:hover{background:rgba(20,30,60,0.04);}
+.metric.active{background:var(--accent-dim);border-color:rgba(79,70,229,0.22);}
+.metric-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0;}
+.metric-main{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;}
+.metric-name{font-size:15px;font-weight:700;line-height:1.15;}
+.metric-sub{font-family:'Roboto Mono',monospace;font-size:13px;color:var(--muted);}
+.metric-val{font-family:'Roboto Mono',monospace;font-size:21px;font-weight:500;color:var(--accent);letter-spacing:-1px;flex-shrink:0;}
+.ld-back{display:inline-flex;align-items:center;gap:5px;cursor:pointer;border:none;background:none;font-family:'Inter',sans-serif;font-size:14px;font-weight:700;color:var(--accent);padding:4px 6px 4px 0;margin-bottom:12px;}
+.d-tag{display:inline-block;padding:4px 12px;border-radius:99px;font-size:13px;font-weight:700;margin-bottom:10px;background:var(--accent-dim);color:var(--accent);}
+.d-title{font-size:22px;font-weight:800;letter-spacing:-0.4px;line-height:1.15;margin-bottom:14px;}
+.d-bigval{display:flex;align-items:baseline;gap:9px;margin-bottom:4px;}
+.d-bigval b{font-family:'Roboto Mono',monospace;font-size:33px;font-weight:500;color:var(--accent);letter-spacing:-1px;line-height:1;}
+.d-bigval span{font-size:14px;color:var(--muted);font-weight:600;}
+.d-formula{margin:13px 0 4px;padding:13px 15px;border-radius:13px;background:linear-gradient(135deg,rgba(99,102,241,0.10),rgba(79,70,229,0.05));border:1px solid rgba(79,70,229,0.16);font-family:'Roboto Mono',monospace;font-size:14px;color:#3730a3;font-weight:500;line-height:1.95;white-space:pre-line;}
+.d-para{font-size:15px;line-height:1.62;color:#2c3744;margin-top:13px;}
+.panel-right{right:22px;top:98px;width:300px;padding:18px;}
+.eq-card{border-radius:15px;padding:11px 14px;margin-bottom:12px;border:1px solid;}
+.eq-card.c1{background:var(--l1-dim);border-color:rgba(37,99,235,0.18);}
+.eq-card.c2{background:var(--l2-dim);border-color:rgba(225,29,72,0.18);}
+.ec-title{font-family:'Roboto Mono',monospace;font-size:15px;font-weight:700;margin-bottom:9px;}
+.c1 .ec-title{color:var(--l1);} .c2 .ec-title{color:var(--l2);}
+.ec-row{display:flex;align-items:center;gap:8px;margin-bottom:5px;}
+.ec-lab{font-family:'Roboto Mono',monospace;font-size:13px;color:var(--muted);width:16px;}
+.ec-row input[type=range]{-webkit-appearance:none;appearance:none;flex:1;height:5px;border-radius:3px;outline:none;cursor:pointer;}
+.c1 .ec-row input[type=range]{background:linear-gradient(90deg,var(--l1) var(--fill,50%),rgba(37,99,235,0.16) var(--fill,50%));}
+.c2 .ec-row input[type=range]{background:linear-gradient(90deg,var(--l2) var(--fill,50%),rgba(225,29,72,0.16) var(--fill,50%));}
+.ec-row input::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:16px;height:16px;border-radius:50%;background:#fff;cursor:pointer;}
+.c1 .ec-row input::-webkit-slider-thumb{border:2.5px solid var(--l1);}
+.c2 .ec-row input::-webkit-slider-thumb{border:2.5px solid var(--l2);}
+.ec-num{font-family:'Roboto Mono',monospace;font-size:13.5px;font-weight:600;width:32px;text-align:right;}
+.show-label{font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;color:var(--faint);margin:6px 0 10px 2px;}
+.show-chip{display:flex;align-items:center;gap:11px;width:100%;padding:11px 14px;margin-bottom:8px;border-radius:14px;cursor:pointer;background:rgba(20,30,60,0.035);border:1.5px solid transparent;transition:all 0.16s;}
+.show-chip:hover{background:rgba(20,30,60,0.06);}
+.show-chip.on{background:var(--accent-dim);border-color:rgba(79,70,229,0.30);}
+.chip-ico{width:32px;height:32px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:16px;background:rgba(79,70,229,0.10);transition:all 0.16s;}
+.show-chip.on .chip-ico{background:var(--accent);}
+.chip-text{flex:1;min-width:0;}.chip-name{font-size:14.5px;font-weight:700;}.chip-sub{font-size:12.5px;color:var(--muted);font-family:'Roboto Mono',monospace;}
+.chip-state{width:21px;height:21px;border-radius:50%;flex-shrink:0;border:2px solid rgba(20,30,60,0.16);display:flex;align-items:center;justify-content:center;transition:all 0.16s;}
+.show-chip.on .chip-state{background:var(--accent);border-color:var(--accent);}
+.show-chip.on .chip-state::after{content:'✓';color:#fff;font-size:13px;font-weight:700;}
+.hint-bar{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:100;background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:9px 22px;font-size:13.5px;color:var(--muted);box-shadow:var(--shadow);white-space:nowrap;display:flex;align-items:center;gap:9px;}
+.hint-grab{color:var(--accent);font-weight:700;}.hint-dot{color:var(--faint);}
+@media (max-width:1180px){.panel-left{width:300px;}.panel-right{width:272px;}}
+</style>
+</head>
+<body>
+<div id="canvas-container"><canvas id="c"></canvas></div>
+<div id="labels-layer"></div>
+<header class="header">
+  <div class="h-badge"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"><path d="M4 18 L20 8 M4 9 L20 17"/><circle cx="12.7" cy="12.9" r="1.7" fill="#fff" stroke="none"/></svg></div>
+  <div class="header-title" data-i18n="header_title">Графический способ решения систем</div>
+  <div class="header-tag">y=k₁x+b₁ · y=k₂x+b₂</div>
+  <div class="header-sub" data-i18n-html="header_sub">Точка пересечения двух прямых = решение системы<br>меняйте коэффициенты ползунками</div>
+</header>
+<div class="eq-banner" id="eq-banner"></div>
+<div class="panel panel-left" id="panel-left">
+  <div class="ld-list"><h3 data-i18n="props_title">Решение системы</h3><div id="metrics"></div></div>
+  <div class="ld-detail"><button class="ld-back" onclick="window.showList()"><span>‹</span> <span data-i18n="back">Назад</span></button><div id="detail-content"></div></div>
+</div>
+<div class="panel panel-right">
+  <div class="eq-card c1">
+    <div class="ec-title">① y = k₁x + b₁</div>
+    <div class="ec-row"><span class="ec-lab">k₁</span><input type="range" min="-4" max="4" step="0.25" value="1" id="sl-k1" oninput="window.setDim('k1',+this.value)"><span class="ec-num" id="n-k1">1</span></div>
+    <div class="ec-row"><span class="ec-lab">b₁</span><input type="range" min="-8" max="8" step="0.5" value="-1" id="sl-b1" oninput="window.setDim('b1',+this.value)"><span class="ec-num" id="n-b1">-1</span></div>
+  </div>
+  <div class="eq-card c2">
+    <div class="ec-title">② y = k₂x + b₂</div>
+    <div class="ec-row"><span class="ec-lab">k₂</span><input type="range" min="-4" max="4" step="0.25" value="-0.5" id="sl-k2" oninput="window.setDim('k2',+this.value)"><span class="ec-num" id="n-k2">-0.5</span></div>
+    <div class="ec-row"><span class="ec-lab">b₂</span><input type="range" min="-8" max="8" step="0.5" value="2" id="sl-b2" oninput="window.setDim('b2',+this.value)"><span class="ec-num" id="n-b2">2</span></div>
+  </div>
+  <div class="show-label" data-i18n="show_title">Показать</div>
+  <div class="show-chip on" id="chip-proj" onclick="window.toggleProj()"><div class="chip-ico">📍</div><div class="chip-text"><span class="chip-name" data-i18n="ch_proj">Координаты решения</span><span class="chip-sub" data-i18n="ch_proj_sub">пунктир к осям</span></div><div class="chip-state"></div></div>
+  <div class="show-chip on" id="chip-grid" onclick="window.toggleGrid()"><div class="chip-ico">▦</div><div class="chip-text"><span class="chip-name" data-i18n="ch_grid">Сетка</span><span class="chip-sub" data-i18n="ch_grid_sub">координатная плоскость</span></div><div class="chip-state"></div></div>
+</div>
+<div class="hint-bar" data-i18n-html="hint"><span class="hint-grab">Двигайте ползунки</span><span class="hint-dot">·</span><span>фон — поворот</span><span class="hint-dot">·</span><span>клик по строке — пояснение</span></div>
+
+<script>
+const I18N={
+ru:{page_title:'Графический способ решения систем',header_title:'Графический способ решения систем',header_sub:'Точка пересечения двух прямых = решение системы<br>меняйте коэффициенты ползунками',
+  props_title:'Решение системы',back:'Назад',show_title:'Показать',ch_proj:'Координаты решения',ch_proj_sub:'пунктир к осям',ch_grid:'Сетка',ch_grid_sub:'координатная плоскость',
+  hint:'<span class="hint-grab">Двигайте ползунки</span><span class="hint-dot">·</span><span>фон — поворот</span><span class="hint-dot">·</span><span>клик по строке — пояснение</span>',
+  m_x:'Решение: x',m_y:'Решение: y',m_type:'Число решений',m_d:'k₁ − k₂',
+  sub_x:'абсцисса пересечения',sub_y:'ордината пересечения',sub_type:'по взаимному положению',sub_d:'наклоны прямых',
+  t_one:'одно',t_none:'нет',t_inf:'бесконечно',
+  case_one:'Прямые пересекаются в одной точке — у системы одно решение.',
+  case_none:'Прямые параллельны (k₁ = k₂, но b₁ ≠ b₂) — общих точек нет, решений нет.',
+  case_inf:'Прямые совпадают (k₁ = k₂ и b₁ = b₂) — любая точка прямой является решением.',
+  u_none:'',dash:'—'},
+kz:{page_title:'Жүйелерді графиктік шешу',header_title:'Жүйелерді графиктік шешу',header_sub:'Екі түзудің қиылысу нүктесі = жүйенің шешімі<br>коэффициенттерді жүгірткілермен өзгертіңіз',
+  props_title:'Жүйе шешімі',back:'Артқа',show_title:'Көрсету',ch_proj:'Шешім координаталары',ch_proj_sub:'осьтерге пунктир',ch_grid:'Тор',ch_grid_sub:'координаталық жазықтық',
+  hint:'<span class="hint-grab">Жүгірткілерді жылжытыңыз</span><span class="hint-dot">·</span><span>фон — бұру</span><span class="hint-dot">·</span><span>жолды басу — түсіндірме</span>',
+  m_x:'Шешім: x',m_y:'Шешім: y',m_type:'Шешім саны',m_d:'k₁ − k₂',
+  sub_x:'қиылысу абсциссасы',sub_y:'қиылысу ординатасы',sub_type:'өзара орналасуы бойынша',sub_d:'түзу көлбеуліктері',
+  t_one:'біреу',t_none:'жоқ',t_inf:'шексіз',
+  case_one:'Түзулер бір нүктеде қиылысады — жүйенің бір шешімі бар.',
+  case_none:'Түзулер параллель (k₁ = k₂, бірақ b₁ ≠ b₂) — ортақ нүкте жоқ, шешім жоқ.',
+  case_inf:'Түзулер беттеседі (k₁ = k₂ және b₁ = b₂) — түзудің кез келген нүктесі шешім.',
+  u_none:'',dash:'—'},
+en:{page_title:'Systems of Linear Equations',header_title:'Systems — Graphical Method',header_sub:'The intersection of two lines = solution of the system<br>change the coefficients with the sliders',
+  props_title:'System solution',back:'Back',show_title:'Show',ch_proj:'Solution coordinates',ch_proj_sub:'dashed lines to axes',ch_grid:'Grid',ch_grid_sub:'coordinate plane',
+  hint:'<span class="hint-grab">Move the sliders</span><span class="hint-dot">·</span><span>background — rotate</span><span class="hint-dot">·</span><span>click a row — explanation</span>',
+  m_x:'Solution: x',m_y:'Solution: y',m_type:'Number of solutions',m_d:'k₁ − k₂',
+  sub_x:'x of the intersection',sub_y:'y of the intersection',sub_type:'by relative position',sub_d:'slopes of the lines',
+  t_one:'one',t_none:'none',t_inf:'infinite',
+  case_one:'The lines cross at one point — the system has exactly one solution.',
+  case_none:'The lines are parallel (k₁ = k₂ but b₁ ≠ b₂) — no common points, no solution.',
+  case_inf:'The lines coincide (k₁ = k₂ and b₁ = b₂) — every point of the line is a solution.',
+  u_none:'',dash:'—'}
+};
+const LANG=(()=>{const q=new URLSearchParams(location.search).get('lang');return(q&&I18N[q])?q:'ru';})();
+const tr=key=>(I18N[LANG]&&I18N[LANG][key])!==undefined?I18N[LANG][key]:I18N.ru[key];
+function applyStaticI18N(){document.documentElement.lang=LANG;const tv=tr('page_title');if(tv)document.title=tv;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{const v=tr(el.getAttribute('data-i18n'));if(v!==undefined)el.textContent=v;});
+  document.querySelectorAll('[data-i18n-html]').forEach(el=>{const v=tr(el.getAttribute('data-i18n-html'));if(v!==undefined)el.innerHTML=v;});}
+applyStaticI18N();
+const f1=x=>{const v=x.toFixed(1);return v==='-0.0'?'0.0':v;};
+const f2=x=>x.toFixed(2);
+window.A={k1:1,b1:-1,k2:-0.5,b2:2};
+function solType(){const {k1,b1,k2,b2}=window.A;if(Math.abs(k1-k2)<1e-9)return Math.abs(b1-b2)<1e-9?'inf':'none';return 'one';}
+function solX(){const {k1,b1,k2,b2}=window.A;if(solType()!=='one')return null;return (b2-b1)/(k1-k2);}
+function solY(){const x=solX();if(x===null)return null;return window.A.k1*x+window.A.b1;}
+const METRICS=[
+  {key:'x',   dot:'var(--sol)',   i:'m_x',   fmt:()=>{const x=solX();return x===null?tr('dash'):f1(x);}, sub:()=>tr('sub_x'), u:'u_none'},
+  {key:'y',   dot:'var(--sol)',   i:'m_y',   fmt:()=>{const y=solY();return y===null?tr('dash'):f1(y);}, sub:()=>tr('sub_y'), u:'u_none'},
+  {key:'type',dot:'var(--accent)',i:'m_type',fmt:()=>tr('t_'+solType()), sub:()=>tr('sub_type'), u:'u_none'},
+  {key:'d',   dot:'#64748b',      i:'m_d',   fmt:()=>f2(window.A.k1-window.A.k2), sub:()=>tr('sub_d'), u:'u_none'},
+];
+function renderMetrics(){document.getElementById('metrics').innerHTML=METRICS.map(m=>`
+  <div class="metric" data-key="${m.key}" onclick="window.openDetail('${m.key}')"><div class="metric-dot" style="background:${m.dot}"></div>
+  <div class="metric-main"><span class="metric-name">${tr(m.i)}</span><span class="metric-sub" id="ms-${m.key}"></span></div>
+  <span class="metric-val" id="mv-${m.key}">—</span></div>`).join('');}
+function sgn(x){return x<0?' − ':' + ';}
+function updateMetricValues(){METRICS.forEach(m=>{const v=document.getElementById('mv-'+m.key);if(v)v.textContent=m.fmt();const s=document.getElementById('ms-'+m.key);if(s)s.textContent=m.sub();});
+  [['k1',window.A.k1],['b1',window.A.b1],['k2',window.A.k2],['b2',window.A.b2]].forEach(([k,val])=>{
+    document.getElementById('n-'+k).textContent=f1(val);
+    const rng=(k[0]==='k')?4:8;document.getElementById('sl-'+k).style.setProperty('--fill',((val+rng)/(2*rng)*100)+'%');});
+  const {k1,b1,k2,b2}=window.A,x=solX(),y=solY();
+  const sol=solType()==='one'?`<span class="es">(${f1(x)}; ${f1(y)})</span>`:(solType()==='none'?'<span class="es">'+tr('t_none')+'</span>':'<span class="es">∞</span>');
+  document.getElementById('eq-banner').innerHTML=
+    `<span class="e1">y=${f1(k1)}x${sgn(b1)}${f1(Math.abs(b1))}</span><span class="e2">y=${f1(k2)}x${sgn(b2)}${f1(Math.abs(b2))}</span>→ ${sol}`;}
+renderMetrics();
+</script>
+<script type="importmap">{"imports":{"three":"../../libs/vendor/three-0.160.0/three.module.js"}}</script>
+<script type="module">
+import * as THREE from 'three';
+const canvas=document.getElementById('c');
+const renderer=new THREE.WebGLRenderer({canvas,antialias: true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);renderer.outputColorSpace=THREE.SRGBColorSpace;
+const W=10;
+const scene=new THREE.Scene();scene.background=null;
+const camera=new THREE.PerspectiveCamera(40,innerWidth/innerHeight,0.1,8000);
+const CAM_DIR=new THREE.Vector3(0.24,0.18,1).normalize();
+let camDist=40,camDistTarget=40,userZoom=1.0;let showProj=true,showGrid=true;
+const PI=Math.PI;
+const f1=x=>{const v=x.toFixed(1);return v==='-0.0'?'0.0':v;};
+function computeCamTarget(){const R0=W*1.5*1.1;const fovy=camera.fov*PI/180;const dV=R0/Math.sin(fovy/2);const usableW=Math.max(420,innerWidth-660);const fovx=2*Math.atan(Math.tan(fovy/2)*usableW/innerHeight);const dH=R0/Math.sin(fovx/2);return Math.max(dV,dH)*userZoom;}
+function applyCamera(){camera.position.copy(CAM_DIR).multiplyScalar(camDist);camera.lookAt(0,0,0);}
+scene.add(new THREE.AmbientLight(0xffffff,0.82));
+const kL=new THREE.DirectionalLight(0xffffff,0.8);kL.position.set(4,8,12);scene.add(kL);
+const fL=new THREE.DirectionalLight(0xc4b5fd,0.3);fL.position.set(-8,-3,4);scene.add(fL);
+const V=(x,y,z)=>new THREE.Vector3(x,y,z);
+const root=new THREE.Group();scene.add(root);const obj=new THREE.Group();root.add(obj);
+const COL={grid:0xcdd3dc,axis:0x64748b,l1:0x2563eb,l2:0xe11d48,sol:0x16a34a};
+const tR=W*0.012;
+function cyl(from,to,rr,mat){const dir=new THREE.Vector3().subVectors(to,from),len=dir.length();const m=new THREE.Mesh(new THREE.CylinderGeometry(rr,rr,len,10),mat);m.position.addVectors(from,to).multiplyScalar(0.5);if(len>1e-6)m.quaternion.setFromUnitVectors(V(0,1,0),dir.normalize());return m;}
+function sphere(r,mat){return new THREE.Mesh(new THREE.SphereGeometry(r,18,14),mat);}
+function dashed(from,to,rr,col,seg){const g=new THREE.Group();const n=seg||14;for(let i=0;i<n;i+=2){const a=from.clone().lerp(to,i/n),b=from.clone().lerp(to,Math.min(1,(i+1)/n));g.add(cyl(a,b,rr,new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:0.7})));}return g;}
+const gridGroup=new THREE.Group();obj.add(gridGroup);const axisGroup=new THREE.Group();obj.add(axisGroup);
+(function(){const gMat=new THREE.MeshBasicMaterial({color:COL.grid,transparent:true,opacity:0.7});
+  for(let i=-W;i<=W;i+=2){if(i===0)continue;gridGroup.add(cyl(V(i,-W,-0.02),V(i,W,-0.02),tR*0.4,gMat));gridGroup.add(cyl(V(-W,i,-0.02),V(W,i,-0.02),tR*0.4,gMat));}
+  const aMat=new THREE.MeshStandardMaterial({color:COL.axis,roughness:0.5});
+  axisGroup.add(cyl(V(-W*1.08,0,0),V(W*1.08,0,0),tR*0.7,aMat));axisGroup.add(cyl(V(0,-W*1.08,0),V(0,W*1.08,0),tR*0.7,aMat));
+  axisGroup.add(new THREE.Mesh(new THREE.ConeGeometry(tR*2.4,tR*7,14),aMat).translateX(W*1.08).rotateZ(-PI/2));
+  axisGroup.add(new THREE.Mesh(new THREE.ConeGeometry(tR*2.4,tR*7,14),aMat).translateY(W*1.08));})();
+const dynGroup=new THREE.Group();obj.add(dynGroup);
+function disposeDyn(){while(dynGroup.children.length){const o=dynGroup.children[0];o.traverse(x=>{if(x.geometry)x.geometry.dispose();});dynGroup.remove(o);}}
+let hiKey=null;
+function lineSeg(k,b){const f=x=>k*x+b;let p1=V(-W,f(-W),0.04),p2=V(W,f(W),0.04);
+  function clip(pin,pout){let a=pin.clone(),c=pout.clone();for(let it=0;it<24;it++){const m=a.clone().add(c).multiplyScalar(0.5);if(Math.abs(m.y)<=W*1.02)a=m;else c=m;}return a;}
+  if(Math.abs(p1.y)>W*1.02)p1=clip(p2,p1);if(Math.abs(p2.y)>W*1.02)p2=clip(p1,p2);return [p1,p2];}
+function solType(){const {k1,b1,k2,b2}=window.A;if(Math.abs(k1-k2)<1e-9)return Math.abs(b1-b2)<1e-9?'inf':'none';return 'one';}
+function solX(){const {k1,b1,k2,b2}=window.A;if(solType()!=='one')return null;return (b2-b1)/(k1-k2);}
+function solY(){const x=solX();if(x===null)return null;return window.A.k1*x+window.A.b1;}
+function buildDyn(){
+  disposeDyn();const {k1,b1,k2,b2}=window.A;
+  // line 1
+  const h1=(hiKey==='d');const [a1,b1p]=lineSeg(k1,b1);
+  dynGroup.add(cyl(a1,b1p,tR*1.25,new THREE.MeshStandardMaterial({color:COL.l1,roughness:0.3,metalness:0.1,emissive:h1?COL.l1:0,emissiveIntensity:h1?0.3:0})));
+  // line 2
+  const [a2,b2p]=lineSeg(k2,b2);
+  dynGroup.add(cyl(a2,b2p,tR*1.25,new THREE.MeshStandardMaterial({color:COL.l2,roughness:0.3,metalness:0.1,emissive:h1?COL.l2:0,emissiveIntensity:h1?0.3:0})));
+  // solution point
+  const x=solX(),y=solY();
+  if(x!==null&&Math.abs(x)<=W*1.05&&Math.abs(y)<=W*1.05){
+    const hi=(hiKey==='x'||hiKey==='y'||hiKey==='type');
+    dynGroup.add(sphere(tR*(hi?3.2:2.3),new THREE.MeshStandardMaterial({color:COL.sol,roughness:0.25,metalness:0.25,emissive:COL.sol,emissiveIntensity:hi?0.55:0.25})).translateX(x).translateY(y).translateZ(0.1));
+    if(showProj){
+      dynGroup.add(dashed(V(x,y,0.06),V(x,0,0.06),tR*0.45,COL.sol));
+      dynGroup.add(dashed(V(x,y,0.06),V(0,y,0.06),tR*0.45,COL.sol));
+      dynGroup.add(sphere(tR*1.4,new THREE.MeshStandardMaterial({color:COL.sol,roughness:0.3})).translateX(x).translateZ(0.08));
+      dynGroup.add(sphere(tR*1.4,new THREE.MeshStandardMaterial({color:COL.sol,roughness:0.3})).translateY(y).translateZ(0.08));
+    }
+  }
+  updateLabelAnchors();
+}
+const layer=document.getElementById('labels-layer');
+function mkLabel(cls){const d=document.createElement('div');d.className='dim-label '+cls;layer.appendChild(d);return d;}
+const L_sol=mkLabel('lsol'),L_1=mkLabel('l1'),L_2=mkLabel('l2');
+const anc={sol:V(),l1:V(),l2:V()};
+function updateLabelAnchors(){const {k1,b1,k2,b2}=window.A,x=solX(),y=solY();
+  if(x!==null){anc.sol.set(x,y,0);L_sol.textContent='('+f1(x)+'; '+f1(y)+')';}
+  // line labels near their right ends
+  const lx=W*0.62;anc.l1.set(lx,Math.max(-W*1.05,Math.min(W*1.05,k1*lx+b1)),0);anc.l2.set(-lx,Math.max(-W*1.05,Math.min(W*1.05,k2*(-lx)+b2)),0);
+  L_1.textContent='①';L_2.textContent='②';}
+function project(localVec){const w=localVec.clone().applyMatrix4(obj.matrixWorld).project(camera);return {x:(w.x*0.5+0.5)*innerWidth,y:(-w.y*0.5+0.5)*innerHeight,behind:w.z>1};}
+function place(el,v,vis,off){if(!vis){el.classList.add('hidden');return;}const s=project(v);if(s.behind){el.classList.add('hidden');return;}el.classList.remove('hidden');el.style.left=s.x+'px';el.style.top=(s.y+(off||0))+'px';}
+function updateLabels(){const x=solX();place(L_sol,anc.sol,x!==null&&Math.abs(x)<=W*1.05&&Math.abs(solY())<=W*1.05,-18);
+  place(L_1,anc.l1,Math.abs(anc.l1.y)<=W*1.04,0);place(L_2,anc.l2,Math.abs(anc.l2.y)<=W*1.04,0);}
+const DETAIL_ALL={
+ru:{
+  x:{tag:'Решение',p:'Абсцисса x точки пересечения — это значение неизвестного x, при котором обе прямые дают одинаковый y. Находят, приравняв правые части: k₁x+b₁ = k₂x+b₂, откуда x = (b₂−b₁)/(k₁−k₂).'},
+  y:{tag:'Решение',p:'Ордината y решения получается подстановкой найденного x в любое из уравнений: y = k₁x+b₁. Пара (x; y) — это и есть единственное решение системы.'},
+  type:{tag:'Число решений',p:'Возможны три случая. Прямые пересекаются (k₁≠k₂) — одно решение. Параллельны (k₁=k₂, b₁≠b₂) — решений нет. Совпадают (k₁=k₂, b₁=b₂) — бесконечно много решений.'},
+  d:{tag:'Наклоны',p:'Разность угловых коэффициентов k₁−k₂ показывает, пересекаются ли прямые. Если она не равна нулю — прямые пересекаются ровно в одной точке. Если равна нулю — прямые параллельны или совпадают.'},
+},
+kz:{
+  x:{tag:'Шешім',p:'Қиылысу нүктесінің x абсциссасы — екі түзу де бірдей y беретін x мәні. k₁x+b₁ = k₂x+b₂ теңдігінен x = (b₂−b₁)/(k₁−k₂).'},
+  y:{tag:'Шешім',p:'Шешімнің y ординатасы табылған x-ті кез келген теңдеуге қойып табылады: y = k₁x+b₁. (x; y) жұбы — жүйенің шешімі.'},
+  type:{tag:'Шешім саны',p:'Үш жағдай бар. Түзулер қиылысады (k₁≠k₂) — бір шешім. Параллель (k₁=k₂, b₁≠b₂) — шешім жоқ. Беттеседі (k₁=k₂, b₁=b₂) — шексіз көп шешім.'},
+  d:{tag:'Көлбеуліктер',p:'k₁−k₂ айырмасы түзулердің қиылысатынын көрсетеді. Нөлге тең болмаса — бір нүктеде қиылысады. Нөлге тең болса — параллель не беттеседі.'},
+},
+en:{
+  x:{tag:'Solution',p:'The x-coordinate of the intersection is the value of x for which both lines give the same y. Set the right sides equal: k₁x+b₁ = k₂x+b₂, so x = (b₂−b₁)/(k₁−k₂).'},
+  y:{tag:'Solution',p:'The y-coordinate of the solution is found by substituting that x into either equation: y = k₁x+b₁. The pair (x; y) is the unique solution of the system.'},
+  type:{tag:'Number of solutions',p:'Three cases are possible. The lines cross (k₁≠k₂) — one solution. They are parallel (k₁=k₂, b₁≠b₂) — no solution. They coincide (k₁=k₂, b₁=b₂) — infinitely many solutions.'},
+  d:{tag:'Slopes',p:'The difference of slopes k₁−k₂ tells whether the lines intersect. If it is non-zero, they cross at exactly one point. If it is zero, the lines are parallel or coincide.'},
+}
+};
+const DETAIL=DETAIL_ALL[LANG]||DETAIL_ALL.ru;
+function openDetail(key){const d=DETAIL[key];if(!d)return;const m=METRICS.find(x=>x.key===key);
+  document.querySelectorAll('.metric').forEach(el=>el.classList.toggle('active',el.dataset.key===key));
+  hiKey=key;buildDyn();const {k1,b1,k2,b2}=window.A,x=solX(),y=solY();
+  const tcase={one:tr('case_one'),none:tr('case_none'),inf:tr('case_inf')}[solType()];
+  const calc={x:x===null?tr('dash'):`x = (b₂−b₁)/(k₁−k₂)\n  = (${f1(b2)}−${f1(b1)})/(${f1(k1)}−${f1(k2)}) = ${f1(x)}`,
+    y:y===null?tr('dash'):`y = k₁·x + b₁ = ${f1(k1)}·${f1(x)}+${f1(b1)} = ${f1(y)}`,
+    type:tcase,
+    d:`k₁ − k₂ = ${f1(k1)} − ${f1(k2)} = ${(k1-k2).toFixed(2)}`}[key];
+  const bigval=key==='type'?tr('t_'+solType()):(key==='x'?(x===null?tr('dash'):f1(x)):(key==='y'?(y===null?tr('dash'):f1(y)):(k1-k2).toFixed(2)));
+  document.getElementById('detail-content').innerHTML=`<div class="d-tag">${d.tag}</div><div class="d-title">${tr(m.i)}</div>
+    <div class="d-bigval"><b>${bigval}</b></div><div class="d-formula">${calc}</div><div class="d-para">${d.p}</div>`;
+  document.getElementById('panel-left').classList.add('detail');currentDetail=key;markInteract();}
+let currentDetail=null;window.openDetail=openDetail;
+window.showList=function(){document.getElementById('panel-left').classList.remove('detail');currentDetail=null;
+  document.querySelectorAll('.metric').forEach(m=>m.classList.remove('active'));hiKey=null;buildDyn();};
+window.setDim=function(k,val){window.A[k]=val;buildDyn();updateMetricValues();if(currentDetail)openDetail(currentDetail);markInteract();};
+window.toggleProj=function(){showProj=!showProj;document.getElementById('chip-proj').classList.toggle('on',showProj);buildDyn();markInteract();};
+window.toggleGrid=function(){showGrid=!showGrid;document.getElementById('chip-grid').classList.toggle('on',showGrid);gridGroup.visible=showGrid;markInteract();};
+let mode=null,last={x:0,y:0},dd=0,isDragging=false,rotX=0.0;
+let lastInteract=performance.now()-16000,autoSpeed=0;const AUTO_TARGET=0.0010,IDLE_MS=15000;
+function markInteract(){lastInteract=performance.now();}
+canvas.addEventListener('mousedown',e=>{markInteract();mode='rotate';last={x:e.clientX,y:e.clientY};isDragging=false;dd=0;});
+canvas.addEventListener('mousemove',e=>{if(mode==='rotate'){dd=Math.hypot(e.clientX-last.x,e.clientY-last.y);if(dd>4)isDragging=true;
+  if(isDragging){root.rotation.y+=(e.clientX-last.x)*0.009;rotX=Math.max(-1.2,Math.min(1.2,rotX+(e.clientY-last.y)*0.007));root.rotation.x=rotX;markInteract();}last={x:e.clientX,y:e.clientY};}});
+window.addEventListener('mouseup',()=>{mode=null;});
+canvas.addEventListener('wheel',e=>{e.preventDefault();userZoom=Math.max(0.6,Math.min(1.7,userZoom+e.deltaY*0.0015));markInteract();},{passive:false});
+window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+let t=0;
+function animate(){requestAnimationFrame(animate);t+=0.016;const idle=performance.now()-lastInteract;
+  if(idle>IDLE_MS)autoSpeed+=(AUTO_TARGET-autoSpeed)*0.025;else autoSpeed+=(0-autoSpeed)*0.18;
+  root.rotation.y+=autoSpeed;root.rotation.x=rotX;camDistTarget=computeCamTarget();camDist+=(camDistTarget-camDist)*0.18;applyCamera();
+  renderer.render(scene,camera);obj.updateWorldMatrix(true,false);updateLabels();}
+buildDyn();updateMetricValues();camDistTarget=computeCamTarget();camDist=camDistTarget;applyCamera();animate();
+</script>
+</body>
+</html>

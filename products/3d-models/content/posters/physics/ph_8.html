@@ -1,0 +1,1592 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Рычаг первого рода — Механическое преимущество</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #2c3e50 0%, #1a252f 100%);
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        /* Header */
+        .header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 20px 30px;
+            background: linear-gradient(180deg, rgba(0, 0, 0, 0.8) 0%, transparent 100%);
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .header h1 {
+            color: white;
+            font-size: 26px;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .header p {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        /* Control Panel */
+        .control-panel {
+            position: absolute;
+            top: 100px;
+            left: 20px;
+            width: 300px;
+            background: rgba(0, 0, 0, 0.9);
+            
+            border-radius: 16px;
+            padding: 20px;
+            z-index: 10;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            max-height: calc(100vh - 140px);
+            overflow-y: auto;
+        }
+
+        .section-title {
+            color: #e74c3c;
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-title.blue {
+            color: #3498db;
+        }
+
+        .section-title.green {
+            color: #2ecc71;
+        }
+
+        .section-title.orange {
+            color: #f39c12;
+        }
+
+        /* Weight controls */
+        .weight-control {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .weight-control.red {
+            border-left: 3px solid #e74c3c;
+        }
+
+        .weight-control.blue {
+            border-left: 3px solid #3498db;
+        }
+
+        /* Sliders */
+        .slider-group {
+            margin-bottom: 12px;
+        }
+
+        .slider-group label {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 12px;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+
+        .slider-group label span.value {
+            color: #f39c12;
+            font-weight: 600;
+        }
+
+        .slider-group input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+            height: 6px;
+            border-radius: 3px;
+            -webkit-appearance: none;
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .slider-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #f39c12;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .slider-group.red input[type="range"]::-webkit-slider-thumb {
+            background: #e74c3c;
+        }
+
+        .slider-group.blue input[type="range"]::-webkit-slider-thumb {
+            background: #3498db;
+        }
+
+        /* Buttons */
+        .btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            color: white;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s;
+            margin-bottom: 10px;
+        }
+
+        .btn-balance {
+            background: linear-gradient(135deg, #2ecc71, #27ae60);
+        }
+
+        .btn-reset {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Checkboxes */
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .checkbox-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .checkbox-item input {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+
+        .checkbox-item label {
+            color: white;
+            font-size: 13px;
+            cursor: pointer;
+            flex: 1;
+        }
+
+        /* Info Panel */
+        .info-panel {
+            position: absolute;
+            top: 100px;
+            right: 20px;
+            width: 280px;
+            background: rgba(0, 0, 0, 0.9);
+            
+            border-radius: 16px;
+            padding: 20px;
+            z-index: 10;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .info-panel h3 {
+            color: white;
+            font-size: 16px;
+            margin: 0 0 15px;
+        }
+
+        /* Moment display */
+        .moment-display {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .moment-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .moment-row:last-child {
+            border-bottom: none;
+        }
+
+        .moment-label {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 13px;
+        }
+
+        .moment-value {
+            font-family: 'Consolas', monospace;
+            font-size: 15px;
+            font-weight: 700;
+        }
+
+        .moment-value.red {
+            color: #e74c3c;
+        }
+
+        .moment-value.blue {
+            color: #3498db;
+        }
+
+        .moment-value.green {
+            color: #2ecc71;
+        }
+
+        .moment-value.orange {
+            color: #f39c12;
+        }
+
+        /* Balance indicator */
+        .balance-indicator {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .balance-status {
+            font-size: 16px;
+            font-weight: 700;
+            padding: 10px 20px;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+
+        .balance-status.balanced {
+            background: rgba(46, 204, 113, 0.2);
+            color: #2ecc71;
+            border: 1px solid rgba(46, 204, 113, 0.3);
+        }
+
+        .balance-status.left {
+            background: rgba(231, 76, 60, 0.2);
+            color: #e74c3c;
+            border: 1px solid rgba(231, 76, 60, 0.3);
+        }
+
+        .balance-status.right {
+            background: rgba(52, 152, 219, 0.2);
+            color: #3498db;
+            border: 1px solid rgba(52, 152, 219, 0.3);
+        }
+
+        .balance-bar {
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            margin-top: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .balance-fill {
+            position: absolute;
+            height: 100%;
+            background: #2ecc71;
+            transition: all 0.3s;
+        }
+
+        .balance-fill.left {
+            right: 50%;
+            background: linear-gradient(90deg, transparent, #e74c3c);
+        }
+
+        .balance-fill.right {
+            left: 50%;
+            background: linear-gradient(90deg, #3498db, transparent);
+        }
+
+        .balance-center {
+            position: absolute;
+            top: -4px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 4px;
+            height: 16px;
+            background: white;
+            border-radius: 2px;
+        }
+
+        /* Formula Panel */
+        .formula-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            
+            border-radius: 12px;
+            padding: 15px 30px;
+            z-index: 10;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+        }
+
+        .formula {
+            color: white;
+            font-size: 20px;
+            font-family: 'Times New Roman', serif;
+        }
+
+        .formula .f1 {
+            color: #e74c3c;
+        }
+
+        .formula .d1 {
+            color: #e74c3c;
+        }
+
+        .formula .f2 {
+            color: #3498db;
+        }
+
+        .formula .d2 {
+            color: #3498db;
+        }
+
+        .formula-desc {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 12px;
+            margin-top: 8px;
+        }
+
+        /* Mechanical advantage display */
+        .ma-display {
+            position: absolute;
+            bottom: 90px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.85);
+            border-radius: 12px;
+            padding: 15px 25px;
+            z-index: 10;
+            text-align: center;
+        }
+
+        .ma-value {
+            color: #f39c12;
+            font-size: 28px;
+            font-weight: 700;
+            font-family: 'Consolas', monospace;
+        }
+
+        .ma-label {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 11px;
+            margin-top: 5px;
+            text-transform: uppercase;
+        }
+
+        /* Hint */
+        .hint {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 12px;
+            z-index: 5;
+        }
+
+        /* Lever type indicator */
+        .lever-type {
+            position: absolute;
+            top: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(243, 156, 18, 0.9);
+            color: white;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 14px;
+            z-index: 15;
+        }
+    </style>
+</head>
+<body>
+
+<div id="canvas-container"></div>
+
+<!-- Header -->
+<div class="header">
+    <h1>⚖️ Рычаг первого рода</h1>
+    <p><span>Правило моментов • Механическое преимущество • Условие равновесия</span></p>
+</div>
+
+<!-- Lever type -->
+<div class="lever-type">Рычаг I рода (точка опоры между силами)</div>
+
+<!-- Control Panel -->
+<div class="control-panel">
+    <div class="section-title" style="color: #e74c3c;">🔴 Груз 1 (красный)</div>
+    <div class="weight-control red">
+        <div class="slider-group red">
+            <label>
+                <span>Масса m₁:</span>
+                <span class="value" id="mass1-value">10 кг</span>
+            </label>
+            <input type="range" id="mass1" min="1" max="20" value="10">
+        </div>
+        <div class="slider-group red">
+            <label>
+                <span>Расстояние d₁:</span>
+                <span class="value" id="dist1-value">20 см</span>
+            </label>
+            <input type="range" id="dist1" min="5" max="45" value="20">
+        </div>
+    </div>
+
+    <div class="section-title blue">🔵 Груз 2 (синий)</div>
+    <div class="weight-control blue">
+        <div class="slider-group blue">
+            <label>
+                <span>Масса m₂:</span>
+                <span class="value" id="mass2-value">5 кг</span>
+            </label>
+            <input type="range" id="mass2" min="1" max="20" value="5">
+        </div>
+        <div class="slider-group blue">
+            <label>
+                <span>Расстояние d₂:</span>
+                <span class="value" id="dist2-value">40 см</span>
+            </label>
+            <input type="range" id="dist2" min="5" max="45" value="40">
+        </div>
+    </div>
+
+    <div class="section-title green">⚙️ Точка опоры</div>
+    <div class="slider-group">
+        <label>
+            <span>Позиция опоры:</span>
+            <span class="value" id="fulcrum-value">50%</span>
+        </label>
+        <input type="range" id="fulcrum" min="20" max="80" value="50">
+    </div>
+
+    <div class="section-title orange">👁️ Отображение</div>
+    <div class="checkbox-item">
+        <input type="checkbox" id="show-arrows" checked>
+        <label for="show-arrows">Стрелки сил</label>
+    </div>
+    <div class="checkbox-item">
+        <input type="checkbox" id="show-distances" checked>
+        <label for="show-distances">Расстояния (плечи)</label>
+    </div>
+    <div class="checkbox-item">
+        <input type="checkbox" id="show-labels" checked>
+        <label for="show-labels">Подписи</label>
+    </div>
+
+    <button class="btn btn-balance" id="btn-balance">⚖️ Уравновесить</button>
+    <button class="btn btn-reset" id="btn-reset">🔄 Сбросить</button>
+</div>
+
+<!-- Info Panel -->
+<div class="info-panel">
+    <h3>📊 Расчёт моментов</h3>
+
+    <div class="moment-display">
+        <div class="moment-row">
+            <span class="moment-label">Сила F₁ (груз 1)</span>
+            <span class="moment-value red" id="force1">100 Н</span>
+        </div>
+        <div class="moment-row">
+            <span class="moment-label">Плечо d₁</span>
+            <span class="moment-value red" id="arm1">0.20 м</span>
+        </div>
+        <div class="moment-row">
+            <span class="moment-label">Момент M₁ = F₁×d₁</span>
+            <span class="moment-value red" id="moment1">20.0 Н·м</span>
+        </div>
+    </div>
+
+    <div class="moment-display">
+        <div class="moment-row">
+            <span class="moment-label">Сила F₂ (груз 2)</span>
+            <span class="moment-value blue" id="force2">50 Н</span>
+        </div>
+        <div class="moment-row">
+            <span class="moment-label">Плечо d₂</span>
+            <span class="moment-value blue" id="arm2">0.40 м</span>
+        </div>
+        <div class="moment-row">
+            <span class="moment-label">Момент M₂ = F₂×d₂</span>
+            <span class="moment-value blue" id="moment2">20.0 Н·м</span>
+        </div>
+    </div>
+
+    <div class="balance-indicator">
+        <div style="color: rgba(255,255,255,0.7); font-size: 12px; margin-bottom: 5px;">Состояние рычага</div>
+        <div class="balance-status balanced" id="balance-status">⚖️ РАВНОВЕСИЕ</div>
+        <div class="balance-bar">
+            <div class="balance-fill" id="balance-fill"></div>
+            <div class="balance-center"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Mechanical Advantage -->
+<div class="ma-display">
+    <div class="ma-value" id="ma-value">2.0</div>
+    <div class="ma-label">Механическое преимущество (d₂/d₁)</div>
+</div>
+
+<!-- Formula -->
+<div class="formula-panel">
+    <div class="formula">
+        <span class="f1">F₁</span> × <span class="d1">d₁</span> =
+        <span class="f2">F₂</span> × <span class="d2">d₂</span>
+    </div>
+    <div class="formula-desc">Правило моментов: сумма моментов относительно точки опоры равна нулю</div>
+</div>
+
+<!-- Hint -->
+<div class="hint">Вращайте сцену мышью • Колёсико для зума</div>
+
+<script src="../../libs/vendor/three-r128/three.min.js"></script>
+<script>
+    // Parameters
+    let mass1 = 10; // kg
+    let mass2 = 5;  // kg
+    let dist1 = 20; // cm from fulcrum
+    let dist2 = 40; // cm from fulcrum
+    let fulcrumPos = 0.5; // 0-1, position along beam
+
+    const g = 9.8; // gravity
+    const beamLength = 5; // 3D units (represents 100cm)
+    const cmToUnits = beamLength / 100;
+
+    // Three.js
+    let scene, camera, renderer, mainGroup;
+    let beam, fulcrum;
+    let weight1, weight2;
+    let arrow1, arrow2;
+    let distLine1, distLine2;
+    let distLabel1, distLabel2;
+    let forceLabel1, forceLabel2;
+
+    // Animation
+    let targetTilt = 0;
+    let currentTilt = 0;
+
+    // Controls
+    let isDragging = false;
+    let lastMouse = {x: 0, y: 0};
+    let rotation = {x: 0.2, y: -0.3};
+
+    const container = document.getElementById('canvas-container');
+
+    function init() {
+        // Scene
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color('#2c3e50');
+
+        // Camera
+        camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 3, 8);
+        camera.lookAt(0, 0, 0);
+
+        // Renderer
+        renderer = new THREE.WebGLRenderer({antialias: true});
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = false;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        container.appendChild(renderer.domElement);
+
+        // Lights
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
+
+        const topLight = new THREE.DirectionalLight(0xffffff, 0.7);
+        topLight.position.set(5, 10, 5);
+        topLight.castShadow = true;
+        topLight.shadow.mapSize.width = 2048;
+        topLight.shadow.mapSize.height = 2048;
+        scene.add(topLight);
+
+        const fillLight = new THREE.DirectionalLight(0x6699cc, 0.3);
+        fillLight.position.set(-5, 5, -5);
+        scene.add(fillLight);
+
+        // Main group
+        mainGroup = new THREE.Group();
+        scene.add(mainGroup);
+
+        createScene();
+        setupControls();
+        updatePhysics();
+        animate();
+    }
+
+    function createScene() {
+        // Floor/table
+        const tableGeometry = new THREE.BoxGeometry(8, 0.2, 4);
+        const tableMaterial = new THREE.MeshStandardMaterial({
+            color: 0x4a3728,
+            roughness: 0.8,
+            metalness: 0.1
+        });
+        const table = new THREE.Mesh(tableGeometry, tableMaterial);
+        table.position.y = -1.5;
+        table.receiveShadow = true;
+        mainGroup.add(table);
+
+        // Wood grain on table
+        for (let i = -8; i <= 8; i++) {
+            const grainGeometry = new THREE.BoxGeometry(8, 0.01, 0.02);
+            const grainMaterial = new THREE.MeshStandardMaterial({color: 0x3d2817});
+            const grain = new THREE.Mesh(grainGeometry, grainMaterial);
+            grain.position.set(0, -1.39, i * 0.2);
+            mainGroup.add(grain);
+        }
+
+        // Create fulcrum (triangular support)
+        createFulcrum();
+
+        // Create lever beam
+        createBeam();
+
+        // Create weights
+        createWeights();
+
+        // Create arrows
+        createArrows();
+
+        // Create distance lines
+        createDistanceLines();
+
+        // Create labels
+        createLabels();
+    }
+
+    function createFulcrum() {
+        fulcrum = new THREE.Group();
+
+        // Triangular prism shape
+        const shape = new THREE.Shape();
+        shape.moveTo(0, 0);
+        shape.lineTo(0.5, 0);
+        shape.lineTo(0.25, 0.6);
+        shape.lineTo(0, 0);
+
+        const extrudeSettings = {
+            depth: 0.6,
+            bevelEnabled: true,
+            bevelThickness: 0.02,
+            bevelSize: 0.02
+        };
+
+        const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+        geometry.center();
+
+        const material = new THREE.MeshStandardMaterial({
+            color: 0x555555,
+            roughness: 0.3,
+            metalness: 0.8
+        });
+
+        const triangleMesh = new THREE.Mesh(geometry, material);
+        triangleMesh.rotation.y = Math.PI / 2;
+        triangleMesh.position.y = 0.3;
+        triangleMesh.castShadow = true;
+        fulcrum.add(triangleMesh);
+
+        // Base plate
+        const baseGeometry = new THREE.BoxGeometry(0.8, 0.12, 0.8);
+        const baseMaterial = new THREE.MeshStandardMaterial({
+            color: 0x444444,
+            roughness: 0.5,
+            metalness: 0.6
+        });
+        const base = new THREE.Mesh(baseGeometry, baseMaterial);
+        base.position.y = 0;
+        base.castShadow = true;
+        fulcrum.add(base);
+
+        fulcrum.position.y = -1.4;
+        mainGroup.add(fulcrum);
+    }
+
+    function createBeam() {
+        // Lever beam (wooden)
+        const beamGeometry = new THREE.BoxGeometry(beamLength, 0.15, 0.35);
+        const beamMaterial = new THREE.MeshStandardMaterial({
+            color: 0xc4a574,
+            roughness: 0.7,
+            metalness: 0.1
+        });
+        beam = new THREE.Mesh(beamGeometry, beamMaterial);
+        beam.castShadow = true;
+        beam.receiveShadow = true;
+
+        // Add wood grain texture simulation
+        for (let i = -10; i <= 10; i++) {
+            const grainGeometry = new THREE.BoxGeometry(beamLength - 0.1, 0.008, 0.02);
+            const grainMaterial = new THREE.MeshStandardMaterial({color: 0xa08050});
+            const grain = new THREE.Mesh(grainGeometry, grainMaterial);
+            grain.position.set(0, 0.076, i * 0.03);
+            beam.add(grain);
+        }
+
+        // Add ruler markings
+        for (let i = -5; i <= 5; i++) {
+            const isMajor = i % 1 === 0;
+            const markHeight = isMajor ? 0.04 : 0.02;
+            const markGeometry = new THREE.BoxGeometry(0.015, markHeight, 0.36);
+            const markMaterial = new THREE.MeshBasicMaterial({
+                color: i === 0 ? 0x2ecc71 : 0x333333
+            });
+            const mark = new THREE.Mesh(markGeometry, markMaterial);
+            mark.position.set(i * 0.5, 0.078 + markHeight / 2, 0);
+            beam.add(mark);
+        }
+
+        // Add cm numbers on beam
+        [-40, -20, 0, 20, 40].forEach((cm, idx) => {
+            const canvas = document.createElement('canvas');
+            canvas.width = 64;
+            canvas.height = 32;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#333333';
+            ctx.font = 'bold 20px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(Math.abs(cm).toString(), 32, 22);
+
+            const texture = new THREE.CanvasTexture(canvas);
+            const spriteMaterial = new THREE.SpriteMaterial({
+                map: texture,
+                transparent: true
+            });
+            const sprite = new THREE.Sprite(spriteMaterial);
+            sprite.position.set(cm * cmToUnits, 0.15, 0.22);
+            sprite.scale.set(0.3, 0.15, 1);
+            beam.add(sprite);
+        });
+
+        mainGroup.add(beam);
+    }
+
+    function createWeights() {
+        // Weight 1 (red)
+        weight1 = createWeight(0xc0392b, mass1);
+        mainGroup.add(weight1);
+
+        // Weight 2 (blue)
+        weight2 = createWeight(0x2980b9, mass2);
+        mainGroup.add(weight2);
+    }
+
+    function createWeight(color, mass) {
+        const weight = new THREE.Group();
+
+        // Cylinder body
+        const bodyGeometry = new THREE.CylinderGeometry(0.18, 0.2, 0.35, 32);
+        const bodyMaterial = new THREE.MeshStandardMaterial({
+            color: color,
+            roughness: 0.4,
+            metalness: 0.6
+        });
+        const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+        body.castShadow = true;
+        weight.add(body);
+
+        // Top ring (handle)
+        const ringGeometry = new THREE.TorusGeometry(0.08, 0.02, 8, 32);
+        const ringMaterial = new THREE.MeshStandardMaterial({
+            color: 0x888888,
+            roughness: 0.3,
+            metalness: 0.9
+        });
+        const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+        ring.position.y = 0.22;
+        ring.rotation.x = Math.PI / 2;
+        weight.add(ring);
+
+        // Decorative rings on body
+        [-0.12, 0, 0.12].forEach(y => {
+            const decorRing = new THREE.Mesh(
+                    new THREE.TorusGeometry(0.19, 0.015, 8, 32),
+                    new THREE.MeshStandardMaterial({color: 0x333333, metalness: 0.8})
+            );
+            decorRing.position.y = y;
+            decorRing.rotation.x = Math.PI / 2;
+            weight.add(decorRing);
+        });
+
+        return weight;
+    }
+
+    function createArrows() {
+        // Arrow 1 (red, downward)
+        arrow1 = createArrow(0xe74c3c);
+        mainGroup.add(arrow1);
+
+        // Arrow 2 (blue, downward)
+        arrow2 = createArrow(0x3498db);
+        mainGroup.add(arrow2);
+    }
+
+    function createArrow(color) {
+        const arrow = new THREE.Group();
+
+        // Arrow shaft
+        const shaftGeometry = new THREE.CylinderGeometry(0.03, 0.03, 0.6, 12);
+        const shaftMaterial = new THREE.MeshBasicMaterial({
+            color: color,
+            transparent: true,
+            opacity: 0.85
+        });
+        const shaft = new THREE.Mesh(shaftGeometry, shaftMaterial);
+        shaft.position.y = 0.35;
+        arrow.add(shaft);
+
+        // Arrow head
+        const headGeometry = new THREE.ConeGeometry(0.1, 0.2, 12);
+        const headMaterial = new THREE.MeshBasicMaterial({
+            color: color,
+            transparent: true,
+            opacity: 0.85
+        });
+        const head = new THREE.Mesh(headGeometry, headMaterial);
+        head.rotation.x = Math.PI;
+        head.position.y = -0.05;
+        arrow.add(head);
+
+        // Glow effect
+        const glowGeometry = new THREE.CylinderGeometry(0.06, 0.06, 0.7, 12);
+        const glowMaterial = new THREE.MeshBasicMaterial({
+            color: color,
+            transparent: true,
+            opacity: 0.15
+        });
+        const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+        glow.position.y = 0.3;
+        arrow.add(glow);
+
+        return arrow;
+    }
+
+    function createDistanceLines() {
+        // Create line materials
+        const material1 = new THREE.LineDashedMaterial({
+            color: 0xe74c3c,
+            dashSize: 0.08,
+            gapSize: 0.04,
+            linewidth: 2
+        });
+
+        const material2 = new THREE.LineDashedMaterial({
+            color: 0x3498db,
+            dashSize: 0.08,
+            gapSize: 0.04,
+            linewidth: 2
+        });
+
+        // Line 1
+        const points1 = [new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0)];
+        const geometry1 = new THREE.BufferGeometry().setFromPoints(points1);
+        distLine1 = new THREE.Line(geometry1, material1);
+        distLine1.computeLineDistances();
+        mainGroup.add(distLine1);
+
+        // Line 2
+        const points2 = [new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0)];
+        const geometry2 = new THREE.BufferGeometry().setFromPoints(points2);
+        distLine2 = new THREE.Line(geometry2, material2);
+        distLine2.computeLineDistances();
+        mainGroup.add(distLine2);
+
+        // Bracket ends for distance line 1
+        const bracket1Start = createBracketEnd(0xe74c3c);
+        const bracket1End = createBracketEnd(0xe74c3c);
+        distLine1.bracket1 = bracket1Start;
+        distLine1.bracket2 = bracket1End;
+        mainGroup.add(bracket1Start);
+        mainGroup.add(bracket1End);
+
+        // Bracket ends for distance line 2
+        const bracket2Start = createBracketEnd(0x3498db);
+        const bracket2End = createBracketEnd(0x3498db);
+        distLine2.bracket1 = bracket2Start;
+        distLine2.bracket2 = bracket2End;
+        mainGroup.add(bracket2Start);
+        mainGroup.add(bracket2End);
+    }
+
+    function createBracketEnd(color) {
+        const bracket = new THREE.Group();
+        const vertLine = new THREE.Mesh(
+                new THREE.BoxGeometry(0.02, 0.15, 0.02),
+                new THREE.MeshBasicMaterial({color: color})
+        );
+        bracket.add(vertLine);
+        return bracket;
+    }
+
+    function createLabels() {
+        // Force labels (sprites)
+        forceLabel1 = createTextSprite('F₁ = 100 Н', '#e74c3c');
+        forceLabel2 = createTextSprite('F₂ = 50 Н', '#3498db');
+        mainGroup.add(forceLabel1);
+        mainGroup.add(forceLabel2);
+
+        // Distance labels
+        distLabel1 = createTextSprite('d₁ = 20 см', '#ffcc00');
+        distLabel2 = createTextSprite('d₂ = 40 см', '#ffcc00');
+        mainGroup.add(distLabel1);
+        mainGroup.add(distLabel2);
+    }
+
+    function createTextSprite(text, color) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = 64;
+        const ctx = canvas.getContext('2d');
+
+        ctx.fillStyle = 'rgba(0,0,0,0.7)';
+        ctx.roundRect(0, 0, 256, 64, 10);
+        ctx.fill();
+
+        ctx.fillStyle = color;
+        ctx.font = 'bold 28px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, 128, 32);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        const material = new THREE.SpriteMaterial({
+            map: texture,
+            transparent: true
+        });
+        const sprite = new THREE.Sprite(material);
+        sprite.scale.set(0.8, 0.2, 1);
+        return sprite;
+    }
+
+    function updateTextSprite(sprite, text, color) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = 64;
+        const ctx = canvas.getContext('2d');
+
+        ctx.fillStyle = 'rgba(0,0,0,0.7)';
+        ctx.roundRect(0, 0, 256, 64, 10);
+        ctx.fill();
+
+        ctx.fillStyle = color;
+        ctx.font = 'bold 28px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, 128, 32);
+
+        sprite.material.map = new THREE.CanvasTexture(canvas);
+        sprite.material.map.needsUpdate = true;
+    }
+
+    function updatePhysics() {
+        // Calculate forces (F = mg)
+        const force1 = mass1 * g;
+        const force2 = mass2 * g;
+
+        // Convert distances to meters
+        const d1 = dist1 / 100;
+        const d2 = dist2 / 100;
+
+        // Calculate moments
+        const moment1 = force1 * d1;
+        const moment2 = force2 * d2;
+
+        // Calculate tilt angle based on moment difference
+        const momentDiff = moment1 - moment2;
+        const maxMoment = Math.max(moment1, moment2, 1);
+        targetTilt = Math.atan2(momentDiff, maxMoment * 3) * 0.6;
+        targetTilt = Math.max(-0.25, Math.min(0.25, targetTilt));
+
+        // Update displays
+        document.getElementById('force1').textContent = force1.toFixed(0) + ' Н';
+        document.getElementById('arm1').textContent = d1.toFixed(2) + ' м';
+        document.getElementById('moment1').textContent = moment1.toFixed(1) + ' Н·м';
+
+        document.getElementById('force2').textContent = force2.toFixed(0) + ' Н';
+        document.getElementById('arm2').textContent = d2.toFixed(2) + ' м';
+        document.getElementById('moment2').textContent = moment2.toFixed(1) + ' Н·м';
+
+        // Mechanical advantage
+        const ma = d2 / d1;
+        document.getElementById('ma-value').textContent = ma.toFixed(2);
+
+        // Balance status
+        const balanceStatus = document.getElementById('balance-status');
+        const balanceFill = document.getElementById('balance-fill');
+        const tolerance = 0.5;
+
+        if (Math.abs(momentDiff) < tolerance) {
+            balanceStatus.textContent = '⚖️ РАВНОВЕСИЕ';
+            balanceStatus.className = 'balance-status balanced';
+            balanceFill.style.width = '0';
+            balanceFill.className = 'balance-fill';
+        } else if (momentDiff > 0) {
+            balanceStatus.textContent = '⬅️ НАКЛОН ВЛЕВО';
+            balanceStatus.className = 'balance-status left';
+            const fillWidth = Math.min(Math.abs(momentDiff) / maxMoment * 50, 50);
+            balanceFill.style.width = fillWidth + '%';
+            balanceFill.className = 'balance-fill left';
+        } else {
+            balanceStatus.textContent = '➡️ НАКЛОН ВПРАВО';
+            balanceStatus.className = 'balance-status right';
+            const fillWidth = Math.min(Math.abs(momentDiff) / maxMoment * 50, 50);
+            balanceFill.style.width = fillWidth + '%';
+            balanceFill.className = 'balance-fill right';
+        }
+
+        updateVisuals();
+    }
+
+    function updateVisuals() {
+        const showArrows = document.getElementById('show-arrows').checked;
+        const showDistances = document.getElementById('show-distances').checked;
+        const showLabels = document.getElementById('show-labels').checked;
+
+        // Calculate fulcrum position on beam
+        const fulcrumOffset = (fulcrumPos - 0.5) * beamLength;
+        fulcrum.position.x = fulcrumOffset;
+
+        // Position weights relative to fulcrum
+        const weight1X = fulcrumOffset - dist1 * cmToUnits;
+        const weight2X = fulcrumOffset + dist2 * cmToUnits;
+
+        // Calculate Y positions based on tilt
+        const beamY = -0.55;
+        const weight1RelX = -dist1 * cmToUnits;
+        const weight2RelX = dist2 * cmToUnits;
+
+        const weight1Y = beamY + Math.sin(-currentTilt) * Math.abs(weight1RelX);
+        const weight2Y = beamY + Math.sin(currentTilt) * Math.abs(weight2RelX);
+
+        weight1.position.set(weight1X, weight1Y + 0.25, 0);
+        weight2.position.set(weight2X, weight2Y + 0.25, 0);
+
+        // Update beam rotation around fulcrum
+        beam.rotation.z = currentTilt;
+        beam.position.x = fulcrumOffset;
+        beam.position.y = beamY + 0.075;
+
+        // Update arrows
+        arrow1.visible = showArrows;
+        arrow2.visible = showArrows;
+
+        if (showArrows) {
+            const arrowScale1 = 0.4 + mass1 / 15;
+            const arrowScale2 = 0.4 + mass2 / 15;
+
+            arrow1.position.set(weight1X, weight1Y + 0.8 + arrowScale1 * 0.3, 0);
+            arrow1.scale.set(1, arrowScale1, 1);
+
+            arrow2.position.set(weight2X, weight2Y + 0.8 + arrowScale2 * 0.3, 0);
+            arrow2.scale.set(1, arrowScale2, 1);
+        }
+
+        // Update distance lines
+        distLine1.visible = showDistances;
+        distLine2.visible = showDistances;
+        distLine1.bracket1.visible = showDistances;
+        distLine1.bracket2.visible = showDistances;
+        distLine2.bracket1.visible = showDistances;
+        distLine2.bracket2.visible = showDistances;
+
+        if (showDistances) {
+            const lineY = beamY - 0.25;
+
+            const points1 = [
+                new THREE.Vector3(weight1X, lineY, 0.3),
+                new THREE.Vector3(fulcrumOffset, lineY, 0.3)
+            ];
+            distLine1.geometry.setFromPoints(points1);
+            distLine1.computeLineDistances();
+            distLine1.bracket1.position.set(weight1X, lineY, 0.3);
+            distLine1.bracket2.position.set(fulcrumOffset, lineY, 0.3);
+
+            const points2 = [
+                new THREE.Vector3(fulcrumOffset, lineY, 0.3),
+                new THREE.Vector3(weight2X, lineY, 0.3)
+            ];
+            distLine2.geometry.setFromPoints(points2);
+            distLine2.computeLineDistances();
+            distLine2.bracket1.position.set(fulcrumOffset, lineY, 0.3);
+            distLine2.bracket2.position.set(weight2X, lineY, 0.3);
+        }
+
+        // Update labels
+        forceLabel1.visible = showLabels;
+        forceLabel2.visible = showLabels;
+        distLabel1.visible = showLabels && showDistances;
+        distLabel2.visible = showLabels && showDistances;
+
+        if (showLabels) {
+            const force1 = mass1 * g;
+            const force2 = mass2 * g;
+
+            updateTextSprite(forceLabel1, `F₁ = ${force1.toFixed(0)} Н`, '#e74c3c');
+            updateTextSprite(forceLabel2, `F₂ = ${force2.toFixed(0)} Н`, '#3498db');
+
+            forceLabel1.position.set(weight1X + 0.5, weight1Y + 1.4, 0);
+            forceLabel2.position.set(weight2X + 0.5, weight2Y + 1.4, 0);
+
+            if (showDistances) {
+                const lineY = beamY - 0.25;
+                updateTextSprite(distLabel1, `d₁ = ${dist1} см`, '#ffcc00');
+                updateTextSprite(distLabel2, `d₂ = ${dist2} см`, '#ffcc00');
+
+                distLabel1.position.set((weight1X + fulcrumOffset) / 2, lineY - 0.15, 0.3);
+                distLabel2.position.set((fulcrumOffset + weight2X) / 2, lineY - 0.15, 0.3);
+            }
+        }
+    }
+
+    function balanceSystem() {
+        const requiredDist2 = (mass1 * dist1) / mass2;
+
+        if (requiredDist2 >= 5 && requiredDist2 <= 45) {
+            dist2 = Math.round(requiredDist2);
+            document.getElementById('dist2').value = dist2;
+            document.getElementById('dist2-value').textContent = dist2 + ' см';
+        } else {
+            const requiredMass2 = (mass1 * dist1) / dist2;
+            if (requiredMass2 >= 1 && requiredMass2 <= 20) {
+                mass2 = Math.round(requiredMass2);
+                document.getElementById('mass2').value = mass2;
+                document.getElementById('mass2-value').textContent = mass2 + ' кг';
+            }
+        }
+
+        updatePhysics();
+    }
+
+    function setupControls() {
+        document.getElementById('mass1').addEventListener('input', (e) => {
+            mass1 = parseInt(e.target.value);
+            document.getElementById('mass1-value').textContent = mass1 + ' кг';
+            updatePhysics();
+        });
+
+        document.getElementById('dist1').addEventListener('input', (e) => {
+            dist1 = parseInt(e.target.value);
+            document.getElementById('dist1-value').textContent = dist1 + ' см';
+            updatePhysics();
+        });
+
+        document.getElementById('mass2').addEventListener('input', (e) => {
+            mass2 = parseInt(e.target.value);
+            document.getElementById('mass2-value').textContent = mass2 + ' кг';
+            updatePhysics();
+        });
+
+        document.getElementById('dist2').addEventListener('input', (e) => {
+            dist2 = parseInt(e.target.value);
+            document.getElementById('dist2-value').textContent = dist2 + ' см';
+            updatePhysics();
+        });
+
+        document.getElementById('fulcrum').addEventListener('input', (e) => {
+            fulcrumPos = parseInt(e.target.value) / 100;
+            document.getElementById('fulcrum-value').textContent = e.target.value + '%';
+            updatePhysics();
+        });
+
+        document.getElementById('btn-balance').addEventListener('click', balanceSystem);
+
+        document.getElementById('btn-reset').addEventListener('click', () => {
+            mass1 = 10;
+            mass2 = 5;
+            dist1 = 20;
+            dist2 = 40;
+            fulcrumPos = 0.5;
+            document.getElementById('mass1').value = 10;
+            document.getElementById('mass2').value = 5;
+            document.getElementById('dist1').value = 20;
+            document.getElementById('dist2').value = 40;
+            document.getElementById('fulcrum').value = 50;
+            document.getElementById('mass1-value').textContent = '10 кг';
+            document.getElementById('mass2-value').textContent = '5 кг';
+            document.getElementById('dist1-value').textContent = '20 см';
+            document.getElementById('dist2-value').textContent = '40 см';
+            document.getElementById('fulcrum-value').textContent = '50%';
+            document.getElementById('show-arrows').checked = true;
+            document.getElementById('show-distances').checked = true;
+            document.getElementById('show-labels').checked = true;
+            rotation = {x: 0.2, y: -0.3};
+            camera.position.z = 8;
+            updatePhysics();
+        });
+
+        ['show-arrows', 'show-distances', 'show-labels'].forEach(id => {
+            document.getElementById(id).addEventListener('change', updateVisuals);
+        });
+
+        renderer.domElement.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            lastMouse = {x: e.clientX, y: e.clientY};
+        });
+
+        renderer.domElement.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                const deltaX = e.clientX - lastMouse.x;
+                const deltaY = e.clientY - lastMouse.y;
+                rotation.y += deltaX * 0.008;
+                rotation.x += deltaY * 0.008;
+                rotation.x = Math.max(-0.5, Math.min(0.8, rotation.x));
+                lastMouse = {x: e.clientX, y: e.clientY};
+            }
+        });
+
+        renderer.domElement.addEventListener('mouseup', () => isDragging = false);
+        renderer.domElement.addEventListener('mouseleave', () => isDragging = false);
+
+        renderer.domElement.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            camera.position.z = Math.max(4, Math.min(15, camera.position.z + e.deltaY * 0.01));
+        }, {passive: false});
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+
+        // Smooth tilt animation
+        currentTilt += (targetTilt - currentTilt) * 0.08;
+        updateVisuals();
+
+        mainGroup.rotation.x = rotation.x;
+        mainGroup.rotation.y = rotation.y;
+
+        renderer.render(scene, camera);
+    }
+
+    init();
+</script>
+<script>
+(function() {
+    const TEXT_MAP = {
+    "Рычаг первого рода — Механическое преимущество": {
+        "kz": "Бірінші текті тұтқа — Механикалық артықшылық",
+        "en": "First-Class Lever — Mechanical Advantage"
+    },
+    "Правило моментов • Механическое преимущество • Условие равновесия": {
+        "kz": "Моменттер ережесі • Механикалық артықшылық • Тепе-теңдік шарты",
+        "en": "Moment rule • Mechanical advantage • Equilibrium condition"
+    },
+    "Рычаг I рода (точка опоры между силами)": {
+        "kz": "I текті тұтқа (тірек нүктесі күштер арасында)",
+        "en": "Class I lever (fulcrum between forces)"
+    },
+    "Масса m₁:": {
+        "kz": "m₁ массасы:",
+        "en": "Mass m₁:"
+    },
+    "Расстояние d₁:": {
+        "kz": "d₁ қашықтығы:",
+        "en": "Distance d₁:"
+    },
+    "Масса m₂:": {
+        "kz": "m₂ массасы:",
+        "en": "Mass m₂:"
+    },
+    "Расстояние d₂:": {
+        "kz": "d₂ қашықтығы:",
+        "en": "Distance d₂:"
+    },
+    "Позиция опоры:": {
+        "kz": "Тірек орны:",
+        "en": "Fulcrum position:"
+    },
+    "Стрелки сил": {
+        "kz": "Күш бағдарлары",
+        "en": "Force arrows"
+    },
+    "Расстояния (плечи)": {
+        "kz": "Қашықтықтар (иіндер)",
+        "en": "Distances (arms)"
+    },
+    "Подписи": {
+        "kz": "Жазулар",
+        "en": "Labels"
+    },
+    "Сила F₁ (груз 1)": {
+        "kz": "F₁ күші (жүк 1)",
+        "en": "Force F₁ (load 1)"
+    },
+    "Плечо d₁": {
+        "kz": "d₁ иіні",
+        "en": "Arm d₁"
+    },
+    "Момент M₁ = F₁×d₁": {
+        "kz": "M₁ моменті = F₁×d₁",
+        "en": "Moment M₁ = F₁×d₁"
+    },
+    "Сила F₂ (груз 2)": {
+        "kz": "F₂ күші (жүк 2)",
+        "en": "Force F₂ (load 2)"
+    },
+    "Плечо d₂": {
+        "kz": "d₂ иіні",
+        "en": "Arm d₂"
+    },
+    "Момент M₂ = F₂×d₂": {
+        "kz": "M₂ моменті = F₂×d₂",
+        "en": "Moment M₂ = F₂×d₂"
+    },
+    "⚖️ Равновесие": {
+        "kz": "⚖️ Тепе-теңдік",
+        "en": "⚖️ Equilibrium"
+    },
+    "❌ Не в равновесии": {
+        "kz": "❌ Тепе-теңдікте емес",
+        "en": "❌ Not in equilibrium"
+    },
+    "Правило моментов: M₁ = M₂": {
+        "kz": "Моменттер ережесі: M₁ = M₂",
+        "en": "Moment rule: M₁ = M₂"
+    }
+,
+    "Закон Кулона — 3D Модель": {
+        "kz": "Кулон заңы — 3D Модель",
+        "en": "Coulomb's Law — 3D Model"
+    },
+    "⚡ Закон Кулона": {
+        "kz": "⚡ Кулон заңы",
+        "en": "⚡ Coulomb's Law"
+    },
+    "Электростатическое взаимодействие зарядов": {
+        "kz": "Зарядтардың электрстатикалық өзара әрекеттесуі",
+        "en": "Electrostatic interaction of charges"
+    },
+    "Заряд 1": {
+        "kz": "1-заряд",
+        "en": "Charge 1"
+    },
+    "Заряд 2": {
+        "kz": "2-заряд",
+        "en": "Charge 2"
+    },
+    "Расстояние": {
+        "kz": "Қашықтық",
+        "en": "Distance"
+    },
+    "Показать силовые линии": {
+        "kz": "Күш сызықтарын көрсету",
+        "en": "Show field lines"
+    },
+    "Показать вектора сил": {
+        "kz": "Күш векторларын көрсету",
+        "en": "Show force vectors"
+    },
+    "↺ Сбросить": {
+        "kz": "↺ Қалпына келтіру",
+        "en": "↺ Reset"
+    },
+    "Сила взаимодействия": {
+        "kz": "Өзара әрекеттесу күші",
+        "en": "Interaction force"
+    },
+    "Притяжение": {
+        "kz": "Тартылу",
+        "en": "Attraction"
+    },
+    "Отталкивание": {
+        "kz": "Тебілу",
+        "en": "Repulsion"
+    },
+    "ЛКМ — вращение • ПКМ — перемещение • Колёсико — зум": {
+        "kz": "Сол жақ батырма — айналдыру • Оң жақ батырма — жылжыту • Дөңгелек — масштабтау",
+        "en": "LMB — rotate • RMB — pan • Scroll — zoom"
+    }
+,
+    "⬅️ НАКЛОН ВЛЕВО": {
+        "kz": "⬅️ СОЛҒА ЕҢКЕЙІС",
+        "en": "⬅️ TILTED LEFT"
+    },
+    "➡️ НАКЛОН ВПРАВО": {
+        "kz": "➡️ ОҢҒА ЕҢКЕЙІС",
+        "en": "➡️ TILTED RIGHT"
+    },
+    "0.20 м": {
+        "kz": "0,20 м",
+        "en": "0.20 m"
+    },
+    "0.40 м": {
+        "kz": "0,40 м",
+        "en": "0.40 m"
+    },
+    "10 кг": {
+        "kz": "10 кг",
+        "en": "10 kg"
+    },
+    "100 Н": {
+        "kz": "100 Н",
+        "en": "100 N"
+    },
+    "20 см": {
+        "kz": "20 см",
+        "en": "20 cm"
+    },
+    "40 см": {
+        "kz": "40 см",
+        "en": "40 cm"
+    },
+    "20.0 Н·м": {
+        "kz": "20,0 Н·м",
+        "en": "20.0 N·m"
+    },
+    "5 кг": {
+        "kz": "5 кг",
+        "en": "5 kg"
+    },
+    "50%": {
+        "kz": "50%",
+        "en": "50%"
+    }
+,
+    "Вращайте сцену мышью • Колёсико для зума": {
+        "kz": "Тінтуірмен сахнаны айналдырыңыз • Масштабтау үшін дөңгелек",
+        "en": "Rotate scene with mouse • Scroll to zoom"
+    },
+    "Механическое преимущество (d₂/d₁)": {
+        "kz": "Механикалық артықшылық (d₂/d₁)",
+        "en": "Mechanical advantage (d₂/d₁)"
+    },
+    "Правило моментов: сумма моментов относительно точки опоры равна нулю": {
+        "kz": "Моменттер ережесі: тірек нүктесіне қатысты моменттер қосындысы нөлге тең",
+        "en": "Moment rule: sum of moments about the fulcrum equals zero"
+    },
+    "Состояние рычага": {
+        "kz": "Тұтқа күйі",
+        "en": "Lever state"
+    },
+    "50 Н": {
+        "kz": "50 Н",
+        "en": "50 N"
+    }
+,
+    "⚖️ Рычаг первого рода": {"kz": "⚖️ Бірінші текті тұтқа", "en": "⚖️ Class I Lever"},
+    "🔴 Груз 1 (красный)": {"kz": "🔴 Жүк 1 (қызыл)", "en": "🔴 Load 1 (red)"},
+    "🔵 Груз 2 (синий)": {"kz": "🔵 Жүк 2 (көк)", "en": "🔵 Load 2 (blue)"},
+    "⚙️ Точка опоры": {"kz": "⚙️ Тірек нүктесі", "en": "⚙️ Fulcrum"},
+    "👁️ Отображение": {"kz": "👁️ Бейнелеу", "en": "👁️ Display"},
+    "⚖️ Уравновесить": {"kz": "⚖️ Тепе-теңдікке келтіру", "en": "⚖️ Balance"},
+    "🔄 Сбросить": {"kz": "🔄 Қалпына келтіру", "en": "🔄 Reset"},
+    "📊 Расчёт моментов": {"kz": "📊 Моменттерді есептеу", "en": "📊 Moment calculation"},
+    "⚖️ РАВНОВЕСИЕ": {"kz": "⚖️ ТЕПЕ-ТЕҢДІК", "en": "⚖️ BALANCED"}
+};
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentLang = urlParams.get('lang') || 'ru';
+
+    if (currentLang === 'ru') return; // No translation needed
+
+    function translateTextNodes(root) {
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
+        const nodes = [];
+        while (walker.nextNode()) nodes.push(walker.currentNode);
+        
+        nodes.forEach(node => {
+            let text = node.textContent;
+            if (!text || !text.trim()) return;
+            
+            const trimmed = text.trim();
+            if (TEXT_MAP[trimmed] && TEXT_MAP[trimmed][currentLang]) {
+                node.textContent = text.replace(trimmed, TEXT_MAP[trimmed][currentLang]);
+            }
+        });
+    }
+
+    function translateAttributes(root) {
+        root.querySelectorAll('[title]').forEach(el => {
+            const t = el.getAttribute('title');
+            if (TEXT_MAP[t] && TEXT_MAP[t][currentLang]) {
+                el.setAttribute('title', TEXT_MAP[t][currentLang]);
+            }
+        });
+        root.querySelectorAll('[placeholder]').forEach(el => {
+            const t = el.getAttribute('placeholder');
+            if (TEXT_MAP[t] && TEXT_MAP[t][currentLang]) {
+                el.setAttribute('placeholder', TEXT_MAP[t][currentLang]);
+            }
+        });
+        // Translate page title
+        const titleText = document.title.trim();
+        if (TEXT_MAP[titleText] && TEXT_MAP[titleText][currentLang]) {
+            document.title = TEXT_MAP[titleText][currentLang];
+        }
+    }
+
+    
+
+    function applyTranslations() {
+        translateTextNodes(document.body);
+        translateAttributes(document);
+        if (typeof translateData === 'function') translateData(currentLang);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', applyTranslations);
+    } else {
+        applyTranslations();
+    }
+
+    // Re-translate after dynamic content changes
+    window.currentLang = currentLang;
+    window._currentLang = currentLang;
+    window._TEXT_MAP = TEXT_MAP;
+
+    // One-time delayed re-translate for dynamic content
+    let _tc=0;const _ti=setInterval(()=>{translateTextNodes(document.body);translateAttributes(document);if(++_tc>=20)clearInterval(_ti);},500);
+})();
+</script>
+</body>
+</html>

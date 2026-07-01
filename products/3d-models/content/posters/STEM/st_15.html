@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Line Follower Robot</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #e2e8f0;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            color: #1e293b;
+        }
+
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        .header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 20px;
+            text-align: center;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, transparent 100%);
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        h1 {
+            color: #334155;
+            margin: 0;
+            font-size: 24px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .control-panel {
+            position: absolute;
+            top: 80px;
+            left: 20px;
+            width: 300px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 12px;
+            padding: 20px;
+            z-index: 10;
+            border-left: 4px solid #3b82f6;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        .slider-group {
+            margin-bottom: 20px;
+        }
+
+        .slider-group label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            color: #64748b;
+            margin-bottom: 5px;
+        }
+
+        .slider-group label span.value {
+            color: #3b82f6;
+            font-weight: bold;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+            accent-color: #3b82f6;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            margin-top: 5px;
+            background: #3b82f6;
+            border: none;
+            border-radius: 6px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn:hover {
+            background: #2563eb;
+        }
+
+        .btn.secondary {
+            background: #64748b;
+            margin-top: 10px;
+        }
+
+        .btn.secondary:hover {
+            background: #475569;
+        }
+
+        .sensor-display {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            justify-content: center;
+        }
+
+        .sensor-box {
+            flex: 1;
+            padding: 10px;
+            background: #f1f5f9;
+            border-radius: 8px;
+            border: 2px solid #cbd5e1;
+            text-align: center;
+            transition: all 0.1s;
+        }
+
+        .sensor-box.active {
+            background: #1e293b;
+            color: white;
+            border-color: #000;
+        }
+
+        .sensor-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .sensor-val {
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .info-panel {
+            position: absolute;
+            top: 80px;
+            right: 20px;
+            width: 220px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 12px;
+            padding: 15px;
+            z-index: 10;
+            border-right: 4px solid #10b981;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 13px;
+            color: #475569;
+        }
+
+        .stat-val {
+            font-weight: bold;
+            color: #1e293b;
+            font-family: monospace;
+        }
+
+        .hint {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            text-align: center;
+            font-size: 13px;
+            color: #64748b;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        /* Mini map canvas for debug (hidden usually) */
+        #track-canvas {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+<script>
+(function(){
+  var lang = new URLSearchParams(location.search).get('lang') || 'ru';
+  var T = {
+    ru: {
+      title: 'Робот: Следование по Линии',
+      sens_left: 'Левый (L)', sens_right: 'Правый (R)',
+      val_black: 'ЧЕРНЫЙ', val_white: 'БЕЛЫЙ',
+      lbl_speed: 'Базовая скорость:', lbl_turn: 'Резкость поворота (Gain):',
+      btn_start_pause: '▶ СТАРТ / ПАУЗА', btn_reset: '↺ СБРОСИТЬ НА СТАРТ',
+      lbl_status: 'Состояние:', lbl_ml: 'Мотор Лев:', lbl_mr: 'Мотор Прав:',
+      algo_desc: 'Алгоритм: Если датчик видит <b>ЧЕРНЫЙ</b>, робот тормозит этот мотор, чтобы повернуть в сторону линии.',
+      hint: 'ЛКМ - Вращение • ПКМ - Панорама • Колесо - Зум',
+      st_stop: 'СТОП', st_moving: 'ДВИЖЕНИЕ', st_pause: 'ПАУЗА',
+      btn_start: '▶ СТАРТ', btn_pause: '⏸ ПАУЗА'
+    },
+    kz: {
+      title: 'Робот: Сызықты Ұстану',
+      sens_left: 'Сол (L)', sens_right: 'Оң (R)',
+      val_black: 'ҚАРА', val_white: 'АҚ',
+      lbl_speed: 'Негізгі жылдамдық:', lbl_turn: 'Бұрылу өткірлігі (Gain):',
+      btn_start_pause: '▶ СТАРТ / ПАУЗА', btn_reset: '↺ БАСТАПҚЫ ОРЫНҒА',
+      lbl_status: 'Күй:', lbl_ml: 'Сол мотор:', lbl_mr: 'Оң мотор:',
+      algo_desc: 'Алгоритм: Сенсор <b>ҚАРА</b> көрсе, робот сызыққа бұрылу үшін сол моторды тежейді.',
+      hint: 'ЛТБ - Айналдыру • ОТБ - Жылжыту • Доңғалақ - Масштаб',
+      st_stop: 'СТОП', st_moving: 'ҚОЗҒАЛЫС', st_pause: 'ПАУЗА',
+      btn_start: '▶ СТАРТ', btn_pause: '⏸ ПАУЗА'
+    },
+    en: {
+      title: 'Robot: Line Following',
+      sens_left: 'Left (L)', sens_right: 'Right (R)',
+      val_black: 'BLACK', val_white: 'WHITE',
+      lbl_speed: 'Base Speed:', lbl_turn: 'Turn Sharpness (Gain):',
+      btn_start_pause: '▶ START / PAUSE', btn_reset: '↺ RESET TO START',
+      lbl_status: 'Status:', lbl_ml: 'Motor Left:', lbl_mr: 'Motor Right:',
+      algo_desc: 'Algorithm: When a sensor sees <b>BLACK</b>, the robot brakes that motor to turn toward the line.',
+      hint: 'LMB - Rotate • RMB - Pan • Wheel - Zoom',
+      st_stop: 'STOP', st_moving: 'MOVING', st_pause: 'PAUSE',
+      btn_start: '▶ START', btn_pause: '⏸ PAUSE'
+    }
+  };
+  window._t = T[lang] || T.ru;
+  document.addEventListener('DOMContentLoaded', function(){
+    var t = window._t;
+    document.querySelector('h1').textContent = t.title;
+    document.getElementById('lbl-sens-l').textContent = t.sens_left;
+    document.getElementById('lbl-sens-r').textContent = t.sens_right;
+    document.getElementById('val-l').textContent = t.val_white;
+    document.getElementById('val-r').textContent = t.val_white;
+    document.getElementById('lbl-speed').textContent = t.lbl_speed;
+    document.getElementById('lbl-turn').textContent = t.lbl_turn;
+    document.getElementById('btn-toggle').textContent = t.btn_start_pause;
+    document.getElementById('btn-reset-sim').textContent = t.btn_reset;
+    document.getElementById('lbl-status').textContent = t.lbl_status;
+    document.getElementById('lbl-ml').textContent = t.lbl_ml;
+    document.getElementById('lbl-mr').textContent = t.lbl_mr;
+    document.getElementById('algo-desc').innerHTML = t.algo_desc;
+    document.getElementById('stat-status').textContent = t.st_stop;
+    document.getElementById('hint-text').textContent = t.hint;
+  });
+})();
+</script>
+
+<div id="canvas-container"></div>
+
+<div class="header">
+    <h1>Робот: Следование по Линии</h1>
+</div>
+
+<div class="control-panel">
+    <div class="sensor-display">
+        <div class="sensor-box" id="sens-l">
+            <div class="sensor-label" id="lbl-sens-l">Левый (L)</div>
+            <div class="sensor-val" id="val-l">БЕЛЫЙ</div>
+        </div>
+        <div class="sensor-box" id="sens-r">
+            <div class="sensor-label" id="lbl-sens-r">Правый (R)</div>
+            <div class="sensor-val" id="val-r">БЕЛЫЙ</div>
+        </div>
+    </div>
+
+    <div class="slider-group">
+        <label><span id="lbl-speed">Базовая скорость:</span><span class="value" id="disp-speed">15</span></label>
+        <input type="range" id="input-speed" min="5" max="30" value="15">
+    </div>
+    <div class="slider-group">
+        <label><span id="lbl-turn">Резкость поворота (Gain):</span><span class="value" id="disp-turn">0.8</span></label>
+        <input type="range" id="input-turn" min="0.1" max="2.0" step="0.1" value="0.8">
+    </div>
+
+    <button class="btn" id="btn-toggle" onclick="toggleSim()">▶ СТАРТ / ПАУЗА</button>
+    <button class="btn secondary" id="btn-reset-sim" onclick="resetSim()">↺ СБРОСИТЬ НА СТАРТ</button>
+</div>
+
+<div class="info-panel">
+    <div class="stat-row"><span id="lbl-status">Состояние:</span> <span class="stat-val" id="stat-status">СТОП</span></div>
+    <div class="stat-row"><span id="lbl-ml">Мотор Лев:</span> <span class="stat-val" id="stat-ml">0</span></div>
+    <div class="stat-row"><span id="lbl-mr">Мотор Прав:</span> <span class="stat-val" id="stat-mr">0</span></div>
+    <div id="algo-desc" style="margin-top:10px; font-size:11px; line-height:1.4; color:#64748b;">
+        Алгоритм: Если датчик видит <b>ЧЕРНЫЙ</b>, робот тормозит этот мотор, чтобы повернуть в сторону линии.
+    </div>
+</div>
+
+<div class="hint" id="hint-text">ЛКМ - Вращение • ПКМ - Панорама • Колесо - Зум</div>
+
+<!-- Offscreen canvas for track reading -->
+<canvas id="track-canvas" width="1024" height="1024"></canvas>
+
+<!-- Three.js -->
+<script type="importmap">
+    {
+        "imports": {
+            "three": "../../libs/vendor/three-0.160.0/three.module.js",
+            "three/addons/": "../../libs/vendor/three-0.160.0/addons/"
+        }
+    }
+</script>
+
+<script type="module">
+    import * as THREE from 'three';
+    import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+
+    // --- Config ---
+    const CONFIG = {
+        trackSize: 200,
+        robotSize: 6,
+        sensorOffset: 3, // Distance from center to sensors
+        sensorSpread: 1.5, // Distance between sensors
+        trackColor: '#1e293b', // Dark line
+        floorColor: '#ffffff'
+    };
+
+    // --- State ---
+    let state = {
+        running: false,
+        pos: new THREE.Vector2(0, -80), // Start pos
+        angle: 0, // Rotation (radians)
+        speed: 15,
+        turnGain: 0.8,
+        sensorL: 0, // 0 = white, 1 = black
+        sensorR: 0
+    };
+
+    // --- Globals ---
+    let scene, camera, renderer, controls;
+    let robotGroup, wheelL, wheelR, ledL, ledR;
+    let trackCtx, trackTexture;
+
+    function init() {
+        // Init Track Data
+        initTrackCanvas();
+
+        // Scene
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xe2e8f0);
+        scene.fog = new THREE.Fog(0xe2e8f0, 50, 300);
+
+        // Camera
+        const aspect = window.innerWidth / window.innerHeight;
+        camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 1000);
+        camera.position.set(0, 80, 80);
+        camera.lookAt(0, 0, 0);
+
+        // Renderer
+        renderer = new THREE.WebGLRenderer({antialias: true});
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = false;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        // Lighting
+        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.8);
+        scene.add(hemiLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
+        dirLight.position.set(50, 100, 50);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
+        dirLight.shadow.camera.left = -100;
+        dirLight.shadow.camera.right = 100;
+        dirLight.shadow.camera.top = 100;
+        dirLight.shadow.camera.bottom = -100;
+        scene.add(dirLight);
+
+        // Controls
+        controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.maxPolarAngle = Math.PI / 2 - 0.1;
+        controls.minDistance = 20;
+        controls.maxDistance = 200;
+
+        // Objects
+        createTrackMesh();
+        createRobot();
+
+        // Listeners
+        window.addEventListener('resize', onResize);
+        setupUI();
+
+        // Loop
+        animate();
+    }
+
+    function initTrackCanvas() {
+        const canvas = document.getElementById('track-canvas');
+        trackCtx = canvas.getContext('2d');
+        const w = canvas.width;
+        const h = canvas.height;
+
+        // Background
+        trackCtx.fillStyle = '#ffffff';
+        trackCtx.fillRect(0, 0, w, h);
+
+        // Draw Path (Figure 8-ish or Loop)
+        trackCtx.beginPath();
+        trackCtx.lineWidth = 40; // Approx 40px width on 1024 map -> maps to world units
+        trackCtx.lineCap = 'round';
+        trackCtx.lineJoin = 'round';
+        trackCtx.strokeStyle = '#000000';
+
+        // Draw a complex loop
+        trackCtx.moveTo(w / 2, h - 100); // Start bottom
+        trackCtx.bezierCurveTo(w + 200, h / 2, w / 2, 0, 100, h / 2); // Loop left top
+        trackCtx.bezierCurveTo(0, h, w / 2, h - 100, w / 2, h - 100); // Back to start
+
+        // Simple Oval track for reliability
+        trackCtx.clearRect(0, 0, w, h);
+        trackCtx.fillRect(0, 0, w, h);
+
+        trackCtx.beginPath();
+        trackCtx.ellipse(w / 2, h / 2, 400, 200, 0, 0, 2 * Math.PI);
+        // Add a wiggle
+        // Let's create a custom path function
+
+        trackCtx.stroke();
+
+        // Create Texture
+        trackTexture = new THREE.CanvasTexture(canvas);
+        trackTexture.anisotropy = 16;
+    }
+
+    function createTrackMesh() {
+        // Floor Plane
+        const geo = new THREE.PlaneGeometry(CONFIG.trackSize, CONFIG.trackSize);
+        geo.rotateX(-Math.PI / 2);
+        const mat = new THREE.MeshStandardMaterial({
+            map: trackTexture,
+            roughness: 0.8
+        });
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.receiveShadow = true;
+        scene.add(mesh);
+    }
+
+    function createRobot() {
+        robotGroup = new THREE.Group();
+        scene.add(robotGroup);
+
+        // Body
+        const body = new THREE.Mesh(
+                new THREE.BoxGeometry(6, 2, 8),
+                new THREE.MeshStandardMaterial({color: 0x3b82f6})
+        );
+        body.position.y = 2;
+        body.castShadow = true;
+        robotGroup.add(body);
+
+        // Wheels
+        const wheelGeo = new THREE.CylinderGeometry(2, 2, 1, 32);
+        const wheelMat = new THREE.MeshStandardMaterial({color: 0x1e293b});
+
+        wheelL = new THREE.Mesh(wheelGeo, wheelMat);
+        wheelL.rotation.z = Math.PI / 2;
+        wheelL.position.set(-3.5, 2, 2);
+        wheelL.castShadow = true;
+        robotGroup.add(wheelL);
+
+        wheelR = new THREE.Mesh(wheelGeo, wheelMat);
+        wheelR.rotation.z = Math.PI / 2;
+        wheelR.position.set(3.5, 2, 2);
+        wheelR.castShadow = true;
+        robotGroup.add(wheelR);
+
+        // Caster wheel (back)
+        const caster = new THREE.Mesh(
+                new THREE.SphereGeometry(1.5),
+                new THREE.MeshStandardMaterial({color: 0x64748b})
+        );
+        caster.position.set(0, 1.5, -3);
+        robotGroup.add(caster);
+
+        // Sensors (Front)
+        const sensorGeo = new THREE.BoxGeometry(1, 0.5, 1);
+        const sensorMat = new THREE.MeshStandardMaterial({color: 0x1e293b});
+
+        const sensL = new THREE.Mesh(sensorGeo, sensorMat);
+        sensL.position.set(-CONFIG.sensorSpread, 1, 4);
+        robotGroup.add(sensL);
+
+        const sensR = new THREE.Mesh(sensorGeo, sensorMat);
+        sensR.position.set(CONFIG.sensorSpread, 1, 4);
+        robotGroup.add(sensR);
+
+        // LEDs (Visual Feedback)
+        const ledGeo = new THREE.SphereGeometry(0.3);
+        const ledMat = new THREE.MeshBasicMaterial({color: 0x00ff00}); // Green = White surface
+
+        ledL = new THREE.Mesh(ledGeo, ledMat.clone());
+        ledL.position.set(-CONFIG.sensorSpread, 1.5, 4);
+        robotGroup.add(ledL);
+
+        ledR = new THREE.Mesh(ledGeo, ledMat.clone());
+        ledR.position.set(CONFIG.sensorSpread, 1.5, 4);
+        robotGroup.add(ledR);
+
+        // Sensor Rays (Visual)
+        const rayGeo = new THREE.CylinderGeometry(0.1, 0.1, 2);
+        const rayMat = new THREE.MeshBasicMaterial({color: 0xff0000, transparent: true, opacity: 0.3});
+        const rayL = new THREE.Mesh(rayGeo, rayMat);
+        rayL.position.set(-CONFIG.sensorSpread, 0, 4);
+        robotGroup.add(rayL);
+        const rayR = new THREE.Mesh(rayGeo, rayMat);
+        rayR.position.set(CONFIG.sensorSpread, 0, 4);
+        robotGroup.add(rayR);
+
+        // Init Position
+        resetSim();
+    }
+
+    // --- Physics & Logic ---
+
+    function getSensorData(x, z) {
+        // Map World (x, z) to Canvas (u, v)
+        // World: -100 to 100. Canvas: 0 to 1024.
+        const u = (x / CONFIG.trackSize + 0.5) * 1024;
+        const v = (z / CONFIG.trackSize + 0.5) * 1024; // Z maps to Y on canvas
+
+        if (u < 0 || u >= 1024 || v < 0 || v >= 1024) return 0; // Off map
+
+        // Get pixel
+        const pixel = trackCtx.getImageData(Math.floor(u), Math.floor(v), 1, 1).data;
+        // Check brightness (R channel). 0 = black (line), 255 = white.
+        // If < 100, consider it LINE (Black).
+        return pixel[0] < 100 ? 1 : 0;
+    }
+
+    function updatePhysics(dt) {
+        if (!state.running) return;
+
+        // 1. Calculate Sensor Positions in World Space
+        const cos = Math.cos(state.angle);
+        const sin = Math.sin(state.angle);
+
+        // Sensor Local offsets: Z=+4 (Front), X=+-1.5 (Spread)
+        // Robot centers at state.pos
+        // Rotation is around Y axis.
+        // Rotated Z (Forward) is (sin, cos). Rotated X (Right) is (cos, -sin).
+        // Wait, standard math:
+        // Forward (Z+) vector: (sin(a), cos(a))
+        // Right (X+) vector: (cos(a), -sin(a)) ??
+        // Let's use simple trigonometry.
+        // Angle 0 = Facing +Z.
+        // X' = x*cos - z*sin
+        // Z' = x*sin + z*cos
+
+        const fwdX = Math.sin(state.angle);
+        const fwdZ = Math.cos(state.angle);
+        const rightX = Math.cos(state.angle); // Actually -cos if angle is clockwise?
+        const rightZ = -Math.sin(state.angle);
+
+        // Calculate world pos of sensors
+        // Left Sensor: Local (-1.5, 4)
+        const sLx = state.pos.x + (-CONFIG.sensorSpread * Math.cos(state.angle) + 4 * Math.sin(state.angle));
+        const sLz = state.pos.y + (-CONFIG.sensorSpread * -Math.sin(state.angle) + 4 * Math.cos(state.angle));
+
+        // Right Sensor: Local (1.5, 4)
+        const sRx = state.pos.x + (CONFIG.sensorSpread * Math.cos(state.angle) + 4 * Math.sin(state.angle));
+        const sRz = state.pos.y + (CONFIG.sensorSpread * -Math.sin(state.angle) + 4 * Math.cos(state.angle));
+
+        // 2. Read Sensors
+        state.sensorL = getSensorData(sLx, sLz);
+        state.sensorR = getSensorData(sRx, sRz);
+
+        // 3. Logic (Line Follower)
+        let motorL = state.speed;
+        let motorR = state.speed;
+
+        // Simple Logic:
+        // 1 = Black (Line), 0 = White (Floor)
+
+        if (state.sensorL === 1 && state.sensorR === 0) {
+            // Left sees line -> Turn Left
+            motorL = state.speed * (1.0 - state.turnGain);
+            motorR = state.speed * (1.0 + state.turnGain);
+        } else if (state.sensorR === 1 && state.sensorL === 0) {
+            // Right sees line -> Turn Right
+            motorL = state.speed * (1.0 + state.turnGain);
+            motorR = state.speed * (1.0 - state.turnGain);
+        } else if (state.sensorL === 1 && state.sensorR === 1) {
+            // Intersection or thick line -> Straight
+            motorL = state.speed;
+            motorR = state.speed;
+        } else {
+            // Lost line? Usually keep last action or go straight.
+            // For simple oval, straight is usually safe or slight curve.
+        }
+
+        // 4. Kinematics (Differential Drive)
+        // v = (vL + vR) / 2
+        // omega = (vR - vL) / WheelBase
+        const wheelBase = 7; // Distance between wheels
+        const v = (motorL + motorR) / 2;
+        const omega = (motorL - motorR) / wheelBase; // rad/s (if speed is unit/s)
+
+        state.angle += omega * dt;
+        state.pos.x += Math.sin(state.angle) * v * dt;
+        state.pos.y += Math.cos(state.angle) * v * dt; // Y stores Z in 2D vector
+
+        // 5. Update Visuals
+        robotGroup.position.set(state.pos.x, 0, state.pos.y);
+        robotGroup.rotation.y = state.angle;
+
+        // Wheels spin
+        wheelL.rotation.x += motorL * dt;
+        wheelR.rotation.x += motorR * dt;
+
+        // Update UI
+        updateUI(motorL, motorR);
+    }
+
+    function updateUI(ml, mr) {
+        // Sensors
+        const updateBox = (elId, val, ledMesh) => {
+            const el = document.getElementById(elId);
+            const textEl = document.getElementById(elId.replace('sens', 'val'));
+
+            var _sv = window._t || {val_black:'ЧЕРНЫЙ', val_white:'БЕЛЫЙ'};
+            if (val === 1) {
+                el.classList.add('active');
+                textEl.innerText = _sv.val_black;
+                ledMesh.material.color.setHex(0xff0000); // Red = Detect
+            } else {
+                el.classList.remove('active');
+                textEl.innerText = _sv.val_white;
+                ledMesh.material.color.setHex(0x00ff00); // Green = Clear
+            }
+        };
+
+        updateBox('sens-l', state.sensorL, ledL);
+        updateBox('sens-r', state.sensorR, ledR);
+
+        var _st = window._t || {st_moving:'ДВИЖЕНИЕ', st_pause:'ПАУЗА'};
+        document.getElementById('stat-status').innerText = state.running ? _st.st_moving : _st.st_pause;
+        document.getElementById('stat-ml').innerText = ml.toFixed(1);
+        document.getElementById('stat-mr').innerText = mr.toFixed(1);
+    }
+
+    // --- Actions ---
+
+    window.toggleSim = function () {
+        state.running = !state.running;
+        var _b = window._t || {btn_pause:'⏸ ПАУЗА', btn_start:'▶ СТАРТ'};
+        document.getElementById('btn-toggle').innerText = state.running ? _b.btn_pause : _b.btn_start;
+    }
+
+    window.resetSim = function () {
+        state.running = false;
+        document.getElementById('btn-toggle').innerText = window._t ? window._t.btn_start : "▶ СТАРТ";
+
+        // Find start position on track (bottom center of oval)
+        // Oval: x=0, z=50 (bottom part is +Z on canvas logic?)
+        // Canvas h=1024. Z maps to V.
+        // Start at z = 50 (World).
+        // Track equation: ellipse(0, 0, 400, 200).
+        // Parametric: x = 400*cos(t), y = 200*sin(t).
+        // Let's start at bottom: t = PI/2 -> x=0, y=200.
+        // World: x=0, z=200/5.12 approx 40?
+        // Scaled to trackSize 200. Canvas 1024.
+        // Mesh 200 units = 1024 px. Scale ~5.12.
+        // Ellipse Y=200px -> World Z = 200 / 5.12 = 39.
+
+        state.pos.set(0, 39);
+        state.angle = Math.PI / 2; // Facing Left ( -X direction on oval bottom to go CW)
+        // Wait, standard trig t=PI/2 is (0, 1).
+        // Tangent is (-1, 0) -> Left.
+        // Our Z is Up/Down. Left is -X.
+        // Angle PI/2 = Facing Left?
+        // x = sin(a). If a=PI/2, x=1 (Right).
+        // We want Left (-X). So angle -PI/2.
+
+        state.angle = Math.PI / 2; // Let's try
+
+        updatePhysics(0); // Apply pos
+
+        // Camera reset
+        controls.target.set(0, 0, 0);
+        camera.position.set(0, 80, 80);
+    }
+
+    function setupUI() {
+        const iSpeed = document.getElementById('input-speed');
+        iSpeed.addEventListener('input', (e) => {
+            state.speed = parseFloat(e.target.value);
+            document.getElementById('disp-speed').innerText = state.speed;
+        });
+
+        const iTurn = document.getElementById('input-turn');
+        iTurn.addEventListener('input', (e) => {
+            state.turnGain = parseFloat(e.target.value);
+            document.getElementById('disp-turn').innerText = state.turnGain;
+        });
+    }
+
+    function onResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    let lastTime = 0;
+
+    function animate(time) {
+        requestAnimationFrame(animate);
+        const dt = Math.min((time - lastTime) / 1000, 0.1) || 0.016;
+        lastTime = time;
+
+        updatePhysics(dt);
+        controls.update();
+        renderer.render(scene, camera);
+    }
+
+    window.onload = init;
+
+</script>
+</body>
+</html>

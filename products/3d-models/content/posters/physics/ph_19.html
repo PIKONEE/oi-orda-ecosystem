@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Преломление света — призма</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { width: 100%; height: 100%; overflow: hidden; }
+        body {
+            font-family: 'Segoe UI', 'Inter', system-ui, sans-serif;
+            background: linear-gradient(135deg, #eef3fb 0%, #e6edf8 100%);
+            color: #16233f;
+        }
+        #canvas-container { position: absolute; inset: 0; }
+        #labels { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+        .label3d {
+            position: absolute; transform: translate(-50%, -50%);
+            font-size: 12.5px; font-weight: 800; padding: 2px 7px; border-radius: 7px;
+            background: rgba(255,255,255,0.9); border: 1px solid rgba(150,170,205,0.6);
+            box-shadow: 0 2px 8px rgba(40,60,110,0.16); white-space: nowrap;
+        }
+        .label3d.ang { color: #2563eb; }
+        .label3d.dev { color: #b45309; }
+        .label3d.nrm { color: #6b7280; }
+
+        .header {
+            position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+            text-align: center; z-index: 6; pointer-events: none; width: 92%;
+        }
+        .header h1 { font-size: 26px; font-weight: 800; color: #1b2a4a; text-shadow: 0 1px 0 rgba(255,255,255,0.7); }
+        .header p { font-size: 14px; color: #5a6b8c; margin-top: 4px; font-weight: 600; }
+
+        .panel {
+            position: absolute; z-index: 7; background: rgba(255,255,255,0.82);
+             
+            border: 1px solid rgba(150,170,205,0.5); border-radius: 16px;
+            box-shadow: 0 10px 34px rgba(40,60,110,0.14);
+        }
+        .control-panel { top: 92px; left: 22px; width: 320px; padding: 15px 18px; }
+        .info-panel { top: 92px; right: 22px; width: 296px; padding: 15px 18px; }
+
+        .seg { display: flex; gap: 7px; margin-bottom: 14px; flex-wrap: wrap; }
+        .seg button {
+            flex: 1; min-width: 64px; padding: 9px 4px; border-radius: 10px; border: 1.5px solid rgba(150,170,205,0.6);
+            background: rgba(255,255,255,0.55); color: #44537a; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.16s;
+        }
+        .seg button.active { background: rgba(37,99,235,0.13); border-color: #2563eb; color: #1b2a4a; }
+
+        .param-group { margin-bottom: 13px; }
+        .param-label { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 7px; }
+        .param-name { font-size: 13.5px; font-weight: 700; color: #33405e; display: flex; align-items: center; gap: 6px; }
+        .param-icon { font-size: 15px; }
+        .param-value { font-size: 15px; font-weight: 800; color: #2563eb; font-variant-numeric: tabular-nums; }
+
+        input[type=range] {
+            -webkit-appearance: none; appearance: none; width: 100%; height: 6px;
+            border-radius: 6px; outline: none; cursor: pointer;
+            background: linear-gradient(90deg, #c4d2ec, #aebfe0);
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none; width: 19px; height: 19px;
+            border-radius: 50%; background: #fff; border: 3px solid #2563eb;
+            box-shadow: 0 2px 7px rgba(37,99,235,0.4); cursor: pointer; margin-top: -1px;
+        }
+
+        .toggle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
+        .toggle-btn {
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+            padding: 9px 6px; border-radius: 10px; border: 1.5px solid rgba(150,170,205,0.6);
+            background: rgba(255,255,255,0.55); color: #44537a; font-size: 12.5px; font-weight: 700;
+            cursor: pointer; transition: all 0.16s;
+        }
+        .toggle-btn .dot { width: 9px; height: 9px; border-radius: 50%; background: #b7c2d8; transition: all 0.16s; }
+        .toggle-btn.active { background: rgba(37,99,235,0.12); border-color: #2563eb; color: #1b2a4a; }
+        .toggle-btn.active .dot { background: #2563eb; box-shadow: 0 0 7px rgba(37,99,235,0.8); }
+
+        .action-row { display: flex; gap: 8px; margin-top: 12px; }
+        .btn { flex: 1; padding: 9px; border: none; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.16s; color: #fff; }
+        .btn-reset { background: linear-gradient(135deg, #64748b, #475569); }
+        .btn:hover { filter: brightness(1.07); transform: translateY(-1px); }
+
+        .info-title { font-size: 15px; font-weight: 800; color: #1b2a4a; margin-bottom: 11px; display: flex; align-items: center; gap: 7px; }
+        .readout { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px dashed rgba(150,170,205,0.45); font-size: 13px; }
+        .ro-name { color: #5a6b8c; font-weight: 600; }
+        .ro-val { font-weight: 800; color: #1b2a4a; font-variant-numeric: tabular-nums; }
+        .ro-val.hi { color: #b45309; }
+
+        .status-box { margin-top: 11px; padding: 9px 11px; border-radius: 10px; font-size: 12.5px; font-weight: 700; text-align: center; }
+        .status-ok { background: rgba(22,163,74,0.13); color: #15803d; }
+        .status-tir { background: rgba(217,43,43,0.14); color: #c81e1e; }
+
+        .formula-panel {
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 7;
+            background: rgba(27,42,74,0.93); color: #eaf0fb; padding: 11px 24px; border-radius: 14px;
+            box-shadow: 0 10px 30px rgba(20,35,70,0.34); text-align: center; max-width: 90%;
+        }
+        .formula { font-family: 'Cambria Math','Times New Roman', serif; font-size: 18px; font-weight: 600; }
+        .formula .sep { color: #6b7da6; margin: 0 14px; }
+        .formula-note { font-size: 12.5px; color: #9fb2d8; margin-top: 5px; }
+        .formula-note .v { color: #c084fc; font-weight: 800; } .formula-note .r { color: #ff8a8a; font-weight: 800; }
+
+        .hint {
+            position: absolute; bottom: 18px; left: 22px; z-index: 7; font-size: 12px; color: #5a6b8c;
+            background: rgba(255,255,255,0.72); padding: 7px 13px; border-radius: 9px;
+            border: 1px solid rgba(150,170,205,0.45);
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div id="labels"></div>
+
+    <div class="header">
+        <h1>🌈 Преломление света — призма</h1>
+        <p><span>Закон Снеллиуса • дисперсия белого света • угол отклонения</span></p>
+    </div>
+
+    <div class="panel control-panel">
+        <div class="seg" id="mat-seg">
+            <button data-mat="crown" class="active" data-i18n="mCrown">Кронглас</button>
+            <button data-mat="flint" data-i18n="mFlint">Флинт</button>
+            <button data-mat="water" data-i18n="mWater">Вода</button>
+            <button data-mat="diamond" data-i18n="mDiamond">Алмаз</button>
+        </div>
+
+        <div class="param-group">
+            <div class="param-label">
+                <span class="param-name"><span class="param-icon">📐</span><span data-i18n="incLabel">Угол падения θ₁</span></span>
+                <span class="param-value" id="inc-value">45°</span>
+            </div>
+            <input type="range" id="inc" min="10" max="80" step="1" value="45">
+        </div>
+        <div class="param-group">
+            <div class="param-label">
+                <span class="param-name"><span class="param-icon">🔺</span><span data-i18n="apexLabel">Преломляющий угол A</span></span>
+                <span class="param-value" id="apex-value">60°</span>
+            </div>
+            <input type="range" id="apex" min="30" max="75" step="1" value="60">
+        </div>
+
+        <div class="toggle-grid">
+            <button class="toggle-btn active" id="t-disp"><span class="dot"></span><span data-i18n="tDisp">Дисперсия</span></button>
+            <button class="toggle-btn active" id="t-nrm"><span class="dot"></span><span data-i18n="tNrm">Нормали</span></button>
+            <button class="toggle-btn active" id="t-ang"><span class="dot"></span><span data-i18n="tAng">Углы</span></button>
+            <button class="toggle-btn" id="t-screen"><span class="dot"></span><span data-i18n="tScreen">Экран</span></button>
+        </div>
+
+        <div class="action-row">
+            <button class="btn btn-reset" id="btn-reset" data-i18n="reset">↺ Сброс</button>
+        </div>
+    </div>
+
+    <div class="panel info-panel">
+        <div class="info-title">📊 <span data-i18n="infoTitle">Параметры</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roMat">Материал</span><span class="ro-val" id="ro-mat">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roN">Показатель n (589 нм)</span><span class="ro-val" id="ro-n">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roInc">Угол падения θ₁</span><span class="ro-val" id="ro-inc">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roRef">Угол преломления θ₂</span><span class="ro-val" id="ro-ref">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roDev">Угол отклонения δ</span><span class="ro-val hi" id="ro-dev">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roDmin">Мин. отклонение δₘ</span><span class="ro-val" id="ro-dmin">—</span></div>
+        <div class="status-box status-ok" id="status">—</div>
+    </div>
+
+    <div class="formula-panel">
+        <div class="formula">
+            n₁·sin θ₁ = n₂·sin θ₂
+            <span class="sep">|</span>
+            δ = θ₁ + θ₂′ − A
+        </div>
+        <div class="formula-note" data-i18n="note"><span class="v">фиолетовый</span> преломляется сильнее, <span class="r">красный</span> — слабее</div>
+    </div>
+
+    <div class="hint"><span data-i18n="hint">ЛКМ — вращение • ПКМ — перемещение • Колесо — зум</span></div>
+
+    <script src="../../libs/vendor/three-r128/three.min.js"></script>
+    <script>
+    const RAD = 180 / Math.PI, DEG = Math.PI / 180;
+    const LANG = (new URLSearchParams(window.location.search).get('lang')) || 'ru';
+    const I18N = {
+        ru: { headH:'🌈 Преломление света — призма', headS:'Закон Снеллиуса • дисперсия белого света • угол отклонения',
+              mCrown:'Кронглас', mFlint:'Флинт', mWater:'Вода', mDiamond:'Алмаз',
+              incLabel:'Угол падения θ₁', apexLabel:'Преломляющий угол A',
+              tDisp:'Дисперсия', tNrm:'Нормали', tAng:'Углы', tScreen:'Экран', reset:'↺ Сброс', infoTitle:'Параметры',
+              roMat:'Материал', roN:'Показатель n (589 нм)', roInc:'Угол падения θ₁', roRef:'Угол преломления θ₂',
+              roDev:'Угол отклонения δ', roDmin:'Мин. отклонение δₘ',
+              note:'<span class="v">фиолетовый</span> преломляется сильнее, <span class="r">красный</span> — слабее',
+              hint:'ЛКМ — вращение • ПКМ — перемещение • Колесо — зум',
+              stOk:'Луч выходит из призмы', stTir:'Полное внутреннее отражение!',
+              matName:{crown:'Кронглас',flint:'Флинт',water:'Вода',diamond:'Алмаз'}, white:'Белый свет', deg:'°' },
+        kz: { headH:'🌈 Жарықтың сынуы — призма', headS:'Снеллиус заңы • ақ жарық дисперсиясы • ауытқу бұрышы',
+              mCrown:'Кронглас', mFlint:'Флинт', mWater:'Су', mDiamond:'Алмаз',
+              incLabel:'Түсу бұрышы θ₁', apexLabel:'Сындыру бұрышы A',
+              tDisp:'Дисперсия', tNrm:'Нормальдар', tAng:'Бұрыштар', tScreen:'Экран', reset:'↺ Қайтару', infoTitle:'Параметрлер',
+              roMat:'Материал', roN:'Көрсеткіш n (589 нм)', roInc:'Түсу бұрышы θ₁', roRef:'Сыну бұрышы θ₂',
+              roDev:'Ауытқу бұрышы δ', roDmin:'Мин. ауытқу δₘ',
+              note:'<span class="v">күлгін</span> күштірек сынады, <span class="r">қызыл</span> — әлсізірек',
+              hint:'СБ — айналдыру • ОБ — жылжыту • Дөңгелек — масштаб',
+              stOk:'Сәуле призмадан шығады', stTir:'Толық ішкі шағылысу!',
+              matName:{crown:'Кронглас',flint:'Флинт',water:'Су',diamond:'Алмаз'}, white:'Ақ жарық', deg:'°' },
+        en: { headH:'🌈 Light Refraction — Prism', headS:'Snell\'s law • white-light dispersion • angle of deviation',
+              mCrown:'Crown glass', mFlint:'Flint glass', mWater:'Water', mDiamond:'Diamond',
+              incLabel:'Angle of incidence θ₁', apexLabel:'Apex angle A',
+              tDisp:'Dispersion', tNrm:'Normals', tAng:'Angles', tScreen:'Screen', reset:'↺ Reset', infoTitle:'Parameters',
+              roMat:'Material', roN:'Index n (589 nm)', roInc:'Incidence θ₁', roRef:'Refraction θ₂',
+              roDev:'Deviation δ', roDmin:'Min. deviation δₘ',
+              note:'<span class="v">violet</span> refracts more, <span class="r">red</span> refracts less',
+              hint:'LMB — rotate • RMB — pan • Wheel — zoom',
+              stOk:'Ray exits the prism', stTir:'Total internal reflection!',
+              matName:{crown:'Crown glass',flint:'Flint glass',water:'Water',diamond:'Diamond'}, white:'White light', deg:'°' }
+    };
+    const L = I18N[LANG] || I18N.ru;
+
+    // ---- materials: index at red(700nm) & violet(400nm) -> Cauchy n(λ)=B+C/λ² ----
+    const MATERIALS = {
+        crown:   { nR: 1.5131, nV: 1.5320 },
+        flint:   { nR: 1.6130, nV: 1.6710 },
+        water:   { nR: 1.3311, nV: 1.3428 },
+        diamond: { nR: 2.4070, nV: 2.4650 }
+    };
+    function cauchy(mat) {
+        const l1 = 400, l2 = 700;
+        const C = (mat.nV - mat.nR) / (1/(l1*l1) - 1/(l2*l2));
+        const B = mat.nV - C/(l1*l1);
+        return { B, C };
+    }
+    function nOf(matKey, lambda) { const c = cauchy(MATERIALS[matKey]); return c.B + c.C/(lambda*lambda); }
+
+    // visible-spectrum colors (sampled wavelengths, nm)
+    const WAVES = [410, 440, 480, 510, 540, 580, 620, 660];
+    function wavelengthToColor(wl) {
+        let r=0,g=0,b=0;
+        if (wl>=380&&wl<440){r=-(wl-440)/60;b=1;}
+        else if (wl<490){g=(wl-440)/50;b=1;}
+        else if (wl<510){g=1;b=-(wl-510)/20;}
+        else if (wl<580){r=(wl-510)/70;g=1;}
+        else if (wl<645){r=1;g=-(wl-645)/65;}
+        else if (wl<=780){r=1;}
+        let f=1;
+        if (wl>700) f=0.3+0.7*(780-wl)/80; else if (wl<420) f=0.3+0.7*(wl-380)/40;
+        return new THREE.Color(Math.pow(r*f,0.8), Math.pow(g*f,0.8), Math.pow(b*f,0.8));
+    }
+
+    // ---- state ----
+    let matKey = 'crown';
+    let incDeg = 45;     // angle of incidence at first face
+    let apexDeg = 60;    // apex (refracting) angle A
+    let showDisp = true, showNrm = true, showAng = true, showScreen = false;
+
+    const SIDE = 7.0;       // prism side length
+    const DEPTH = 2.6;      // extrusion depth (z)
+    const SCREEN_X = 13;    // x of projection screen
+
+    // ---- three.js ----
+    let scene, camera, renderer, root;
+    let prismMesh, prismEdges, floorGrid, screenMesh;
+    let rayGroup, normalGroup, screenDots, angleGroup;
+    const clock = new THREE.Clock();
+    const container = document.getElementById('canvas-container');
+    const labelLayer = document.getElementById('labels');
+
+    let camTheta = -0.62, camPhi = 1.32, camRadius = 26;
+    const camTarget = new THREE.Vector3(1.5, 0, 0);
+    let dragMode = 0, lastX = 0, lastY = 0;
+
+    // ---- 2D geometry helpers (optics in XY plane, z=0) ----
+    function prismVerts() {
+        const a = apexDeg * DEG / 2;
+        const apex = new THREE.Vector2(0, SIDE * Math.cos(a) * 0.5 + 0.6);
+        const v1 = new THREE.Vector2(apex.x - SIDE*Math.sin(a), apex.y - SIDE*Math.cos(a)); // left base
+        const v2 = new THREE.Vector2(apex.x + SIDE*Math.sin(a), apex.y - SIDE*Math.cos(a)); // right base
+        return { apex, v1, v2 };
+    }
+    // faces with OUTWARD normals; returns [{a,b,n}] left, right, base
+    function prismFaces() {
+        const { apex, v1, v2 } = prismVerts();
+        const a = apexDeg * DEG / 2;
+        return [
+            { a: apex, b: v1, n: new THREE.Vector2(-Math.cos(a),  Math.sin(a)).normalize() }, // left
+            { a: apex, b: v2, n: new THREE.Vector2( Math.cos(a),  Math.sin(a)).normalize() }, // right
+            { a: v1,   b: v2, n: new THREE.Vector2(0, -1) }                                    // base
+        ];
+    }
+    function rot2(v, ang) {
+        const c = Math.cos(ang), s = Math.sin(ang);
+        return new THREE.Vector2(v.x*c - v.y*s, v.x*s + v.y*c);
+    }
+    // refract: I incident dir(unit), N normal(unit, any orientation), n1->n2. null on TIR
+    function refract2(I, N, n1, n2) {
+        let nn = N.clone(), ci = I.dot(N);
+        if (ci > 0) nn.negate(); else ci = -ci;
+        const eta = n1/n2, k = 1 - eta*eta*(1 - ci*ci);
+        if (k < 0) return null;
+        return I.clone().multiplyScalar(eta).add(nn.multiplyScalar(eta*ci - Math.sqrt(k))).normalize();
+    }
+    function reflect2(I, N) {
+        let nn = N.clone(); if (I.dot(nn) > 0) nn.negate();
+        return I.clone().sub(nn.clone().multiplyScalar(2*I.dot(nn))).normalize();
+    }
+    // ray P+tD vs segment a..b -> t (>eps) or null
+    function raySeg(P, D, a, b) {
+        const ex = b.x - a.x, ey = b.y - a.y;
+        const denom = D.x*ey - D.y*ex;
+        if (Math.abs(denom) < 1e-9) return null;
+        const dx = a.x - P.x, dy = a.y - P.y;
+        const t = (dx*ey - dy*ex) / denom;
+        const u = (dx*D.y - dy*D.x) / denom;
+        if (t > 1e-4 && u >= -1e-4 && u <= 1+1e-4) return t;
+        return null;
+    }
+
+    // trace one wavelength's ray; returns polyline [{p,col}] segments + meta
+    function traceRay(lambda, color) {
+        const faces = prismFaces();
+        const left = faces[0];
+        // entry point: midpoint of left face
+        const E = new THREE.Vector2((left.a.x+left.b.x)/2, (left.a.y+left.b.y)/2);
+        const inward = left.n.clone().negate();              // into glass
+        const Idir = rot2(inward, incDeg * DEG).normalize();  // incident propagation dir
+        const segs = [];
+        // incident (air) segment, drawn back from E
+        const S = E.clone().sub(Idir.clone().multiplyScalar(6.0));
+        segs.push([S, E]);
+        const nGlass = nOf(matKey, lambda);
+        // first refraction air(1) -> glass
+        let dir = refract2(Idir, left.n, 1.0, nGlass);
+        const meta = { theta2: 0, dev: 0, tir: false, exit: null, exitDir: null };
+        if (!dir) { meta.tir = true; return { segs, color, meta }; }
+        meta.theta2 = Math.acos(Math.min(1, Math.abs(dir.dot(inward)))) * RAD;
+        let P = E.clone(), curFace = 0, bounces = 0;
+        while (bounces < 5) {
+            // find next face hit (exclude current)
+            let best = Infinity, bi = -1;
+            for (let i = 0; i < 3; i++) {
+                if (i === curFace) continue;
+                const t = raySeg(P, dir, faces[i].a, faces[i].b);
+                if (t != null && t < best) { best = t; bi = i; }
+            }
+            if (bi < 0) break;
+            const H = P.clone().add(dir.clone().multiplyScalar(best));
+            segs.push([P.clone(), H.clone()]);
+            // try to exit glass -> air
+            const out = refract2(dir, faces[bi].n, nGlass, 1.0);
+            if (out) {
+                const F = H.clone().add(out.clone().multiplyScalar(9.0));
+                segs.push([H.clone(), F.clone()]);
+                meta.exit = H; meta.exitDir = out.clone();
+                meta.dev = deviationAngle(Idir, out);
+                return { segs, color, meta };
+            }
+            // TIR -> reflect internally and continue
+            dir = reflect2(dir, faces[bi].n);
+            P = H; curFace = bi; bounces++; meta.tir = true;
+        }
+        return { segs, color, meta };
+    }
+    function deviationAngle(inDir, outDir) {
+        let a = Math.acos(Math.max(-1, Math.min(1, inDir.dot(outDir)))) * RAD;
+        return a;
+    }
+
+    function init() {
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xeef3fb);
+        scene.fog = new THREE.Fog(0xeef3fb, 40, 92);
+
+        camera = new THREE.PerspectiveCamera(48, window.innerWidth/window.innerHeight, 0.1, 300);
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        container.appendChild(renderer.domElement);
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.92));
+        const key = new THREE.DirectionalLight(0xffffff, 0.55); key.position.set(8, 16, 14); scene.add(key);
+        const fill = new THREE.DirectionalLight(0x9fc0ff, 0.28); fill.position.set(-10, 6, -8); scene.add(fill);
+
+        root = new THREE.Group(); scene.add(root);
+
+        floorGrid = new THREE.GridHelper(60, 30, 0xc2cee4, 0xdde5f1);
+        floorGrid.position.y = -SIDE * 0.62; root.add(floorGrid);
+
+        prismMesh = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshPhysicalMaterial({
+            color: 0xbfe3ff, transparent: true, opacity: 0.30, roughness: 0.06, metalness: 0,
+            clearcoat: 1, clearcoatRoughness: 0.08, side: THREE.DoubleSide
+        }));
+        root.add(prismMesh);
+        prismEdges = new THREE.LineSegments(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0x5b9bd5, transparent: true, opacity: 0.85 }));
+        root.add(prismEdges);
+
+        // projection screen
+        screenMesh = new THREE.Mesh(
+            new THREE.PlaneGeometry(4, 12),
+            new THREE.MeshStandardMaterial({ color: 0x1b2a4a, roughness: 0.85, side: THREE.DoubleSide })
+        );
+        screenMesh.position.set(SCREEN_X, 0, 0); screenMesh.rotation.y = Math.PI/2; root.add(screenMesh);
+
+        rayGroup = new THREE.Group(); root.add(rayGroup);
+        normalGroup = new THREE.Group(); root.add(normalGroup);
+        angleGroup = new THREE.Group(); root.add(angleGroup);
+        screenDots = new THREE.Group(); root.add(screenDots);
+
+        makeLabels();
+        applyI18N();
+        setupControls();
+        rebuildPrism();
+        rebuild();
+        updateCamera();
+        animate();
+    }
+
+    function rebuildPrism() {
+        const { apex, v1, v2 } = prismVerts();
+        const shape = new THREE.Shape();
+        shape.moveTo(apex.x, apex.y); shape.lineTo(v1.x, v1.y); shape.lineTo(v2.x, v2.y); shape.closePath();
+        const geo = new THREE.ExtrudeGeometry(shape, { depth: DEPTH, bevelEnabled: false });
+        geo.translate(0, 0, -DEPTH/2);
+        prismMesh.geometry.dispose(); prismMesh.geometry = geo;
+        prismEdges.geometry.dispose(); prismEdges.geometry = new THREE.EdgesGeometry(geo);
+    }
+
+    // ---- ray drawing as glowing tubes ----
+    function tube(p1, p2, color, radius, opacity) {
+        const a = new THREE.Vector3(p1.x, p1.y, 0), b = new THREE.Vector3(p2.x, p2.y, 0);
+        const len = a.distanceTo(b);
+        if (len < 1e-4) return null;
+        const geo = new THREE.CylinderGeometry(radius, radius, len, 8);
+        const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: opacity != null ? opacity : 0.95 });
+        const m = new THREE.Mesh(geo, mat);
+        m.position.copy(a.clone().add(b).multiplyScalar(0.5));
+        m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), b.clone().sub(a).normalize());
+        return m;
+    }
+    function dashedLine2(p1, p2, color) {
+        const geo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(p1.x,p1.y,0), new THREE.Vector3(p2.x,p2.y,0)]);
+        const m = new THREE.Line(geo, new THREE.LineDashedMaterial({ color, dashSize: 0.3, gapSize: 0.22, transparent: true, opacity: 0.8 }));
+        m.computeLineDistances(); return m;
+    }
+
+    function clearGroup(g) {
+        for (let i = g.children.length - 1; i >= 0; i--) {
+            const c = g.children[i];
+            if (c.geometry) c.geometry.dispose();
+            if (c.material) c.material.dispose();
+            g.remove(c);
+        }
+    }
+
+    let lastResult = { whiteMeta: null, results: [] };
+    function rebuild() {
+        clearGroup(rayGroup); clearGroup(normalGroup); clearGroup(screenDots);
+
+        const faces = prismFaces();
+        const results = [];
+        if (showDisp) {
+            for (const wl of WAVES) results.push(traceRay(wl, wavelengthToColor(wl)));
+        } else {
+            results.push(traceRay(589, new THREE.Color(0xfff6d6))); // single near-white beam
+        }
+
+        // incident (white) beam: shared first segment
+        const inc = results[0].segs[0];
+        const incTube = tube(inc[0], inc[1], new THREE.Color(0xffffff), 0.085, 0.98);
+        if (incTube) rayGroup.add(incTube);
+
+        // per-wavelength segments after entry
+        for (const res of results) {
+            for (let i = 1; i < res.segs.length; i++) {
+                const isExit = (i === res.segs.length - 1) && res.meta.exit;
+                const r = isExit ? 0.07 : 0.055;
+                const t = tube(res.segs[i][0], res.segs[i][1], res.color, r, isExit ? 0.96 : 0.8);
+                if (t) rayGroup.add(t);
+            }
+            // screen projection dot
+            if (showScreen && res.meta.exit && res.meta.exitDir) {
+                const ex = res.meta.exit, d = res.meta.exitDir;
+                if (Math.abs(d.x) > 1e-4) {
+                    const t = (SCREEN_X - ex.x) / d.x;
+                    if (t > 0) {
+                        const hy = ex.y + d.y * t;
+                        if (Math.abs(hy) < 6) {
+                            const dot = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 10),
+                                new THREE.MeshBasicMaterial({ color: res.color }));
+                            dot.position.set(SCREEN_X - 0.25, hy, 0); screenDots.add(dot);
+                        }
+                    }
+                }
+            }
+        }
+        screenMesh.visible = showScreen;
+
+        // normals at entry & exit (use reference/middle ray)
+        const ref = showDisp ? results[Math.floor(results.length/2)] : results[0];
+        if (showNrm) {
+            const left = faces[0];
+            const E = new THREE.Vector2((left.a.x+left.b.x)/2, (left.a.y+left.b.y)/2);
+            normalGroup.add(dashedLine2(E.clone().sub(left.n.clone().multiplyScalar(2.4)), E.clone().add(left.n.clone().multiplyScalar(2.4)), 0x6b7280));
+            if (ref.meta.exit) {
+                const rf = prismFaces()[1].n;
+                const X = ref.meta.exit;
+                normalGroup.add(dashedLine2(X.clone().sub(rf.clone().multiplyScalar(2.4)), X.clone().add(rf.clone().multiplyScalar(2.4)), 0x6b7280));
+            }
+        }
+
+        lastResult = { ref, results };
+        updateLabels();
+        updateReadouts();
+    }
+
+    // ---- labels ----
+    let lblWhite, lblTh1, lblTh2, lblDev, lblN;
+    function makeLabels() {
+        lblWhite = mk('nrm'); lblTh1 = mk('ang'); lblTh2 = mk('ang'); lblDev = mk('dev'); lblN = mk('nrm');
+        function mk(c){ const d=document.createElement('div'); d.className='label3d '+c; labelLayer.appendChild(d); return d; }
+    }
+    function proj(el, x, y, show, text, color) {
+        if (!show) { el.style.display='none'; return; }
+        const v = new THREE.Vector3(x, y, 0).project(camera);
+        if (v.z > 1) { el.style.display='none'; return; }
+        el.style.display='block'; el.textContent = text;
+        if (color) el.style.color = color;
+        el.style.left = (v.x*0.5+0.5)*window.innerWidth + 'px';
+        el.style.top = (-v.y*0.5+0.5)*window.innerHeight + 'px';
+    }
+    function updateLabels() {
+        const faces = prismFaces();
+        const left = faces[0];
+        const E = new THREE.Vector2((left.a.x+left.b.x)/2, (left.a.y+left.b.y)/2);
+        const inward = left.n.clone().negate();
+        const Idir = rot2(inward, incDeg*DEG);
+        const S = E.clone().sub(Idir.clone().multiplyScalar(3.2));
+        proj(lblWhite, S.x, S.y + 0.5, showDisp, L.white, '#64748b');
+        proj(lblTh1, E.x - 1.0, E.y + 1.0, showAng, 'θ₁=' + incDeg + L.deg, '#2563eb');
+        const ref = lastResult.ref;
+        if (ref && showAng) proj(lblTh2, E.x + 0.6, E.y - 0.7, true, 'θ₂=' + ref.meta.theta2.toFixed(0) + L.deg, '#2563eb');
+        else lblTh2.style.display='none';
+        if (ref && ref.meta.exit && showAng) {
+            const X = ref.meta.exit;
+            proj(lblDev, X.x + 1.6, X.y + 0.2, true, 'δ=' + ref.meta.dev.toFixed(0) + L.deg, '#b45309');
+        } else lblDev.style.display='none';
+        const { apex } = prismVerts();
+        proj(lblN, apex.x, apex.y + 0.6, true, 'A=' + apexDeg + L.deg + ' • n=' + nOf(matKey,589).toFixed(3), '#475569');
+    }
+
+    function updateReadouts() {
+        const ref = lastResult.ref;
+        setTxt('ro-mat', L.matName[matKey]);
+        setTxt('ro-n', nOf(matKey, 589).toFixed(4));
+        setTxt('ro-inc', incDeg + L.deg);
+        const tir = !ref || !ref.meta.exit;
+        setTxt('ro-ref', ref ? ref.meta.theta2.toFixed(1) + L.deg : '—');
+        setTxt('ro-dev', (ref && ref.meta.exit) ? ref.meta.dev.toFixed(1) + L.deg : '—');
+        // minimum deviation for reference index
+        const A = apexDeg * DEG, n = nOf(matKey, 589);
+        const arg = n * Math.sin(A/2);
+        const dmin = (arg <= 1) ? (2*Math.asin(arg) - A) * RAD : NaN;
+        setTxt('ro-dmin', isNaN(dmin) ? '—' : dmin.toFixed(1) + L.deg);
+        const st = document.getElementById('status');
+        if (tir) { st.textContent = L.stTir; st.className = 'status-box status-tir'; }
+        else { st.textContent = L.stOk; st.className = 'status-box status-ok'; }
+    }
+    function setTxt(id, v) { const el = document.getElementById(id); if (el) el.textContent = v; }
+
+    function updateCamera() {
+        const sp=Math.sin(camPhi), cp=Math.cos(camPhi), st=Math.sin(camTheta), ct=Math.cos(camTheta);
+        camera.position.set(camTarget.x + camRadius*sp*ct, camTarget.y + camRadius*cp, camTarget.z + camRadius*sp*st);
+        camera.lookAt(camTarget);
+    }
+
+    function setupControls() {
+        document.querySelectorAll('#mat-seg button').forEach(b => {
+            b.addEventListener('click', () => {
+                matKey = b.getAttribute('data-mat');
+                document.querySelectorAll('#mat-seg button').forEach(x => x.classList.remove('active'));
+                b.classList.add('active'); rebuild();
+            });
+        });
+        document.getElementById('inc').addEventListener('input', e => { incDeg = parseInt(e.target.value); setTxt('inc-value', incDeg + L.deg); rebuild(); });
+        document.getElementById('apex').addEventListener('input', e => { apexDeg = parseInt(e.target.value); setTxt('apex-value', apexDeg + L.deg); rebuildPrism(); rebuild(); });
+
+        const tog = (id, fn) => { const el = document.getElementById(id); el.addEventListener('click', () => { el.classList.toggle('active'); fn(el.classList.contains('active')); rebuild(); }); };
+        tog('t-disp', v => showDisp = v);
+        tog('t-nrm', v => showNrm = v);
+        tog('t-ang', v => showAng = v);
+        tog('t-screen', v => showScreen = v);
+
+        document.getElementById('btn-reset').addEventListener('click', () => {
+            matKey='crown'; incDeg=45; apexDeg=60; showDisp=true; showNrm=true; showAng=true; showScreen=false;
+            document.querySelectorAll('#mat-seg button').forEach(x => x.classList.toggle('active', x.getAttribute('data-mat')==='crown'));
+            document.getElementById('inc').value=45; document.getElementById('apex').value=60;
+            setTxt('inc-value','45'+L.deg); setTxt('apex-value','60'+L.deg);
+            ['t-disp','t-nrm','t-ang'].forEach(id => document.getElementById(id).classList.add('active'));
+            document.getElementById('t-screen').classList.remove('active');
+            camTheta=-0.62; camPhi=1.32; camRadius=26; camTarget.set(1.5,0,0);
+            rebuildPrism(); rebuild(); updateCamera();
+        });
+
+        const el = renderer.domElement;
+        el.addEventListener('contextmenu', e => e.preventDefault());
+        el.addEventListener('mousedown', e => { dragMode = (e.button===2||e.shiftKey)?2:1; lastX=e.clientX; lastY=e.clientY; });
+        window.addEventListener('mousemove', e => {
+            if (!dragMode) return;
+            const dx=e.clientX-lastX, dy=e.clientY-lastY; lastX=e.clientX; lastY=e.clientY;
+            if (dragMode===1){ camTheta-=dx*0.005; camPhi=Math.max(0.2,Math.min(Math.PI-0.2,camPhi-dy*0.005)); }
+            else { const ps=camRadius*0.0016; const right=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,0); const up=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,1); camTarget.addScaledVector(right,-dx*ps); camTarget.addScaledVector(up,dy*ps); }
+            updateCamera();
+        });
+        window.addEventListener('mouseup', () => dragMode=0);
+        el.addEventListener('wheel', e => { e.preventDefault(); camRadius=Math.max(11,Math.min(60,camRadius+e.deltaY*0.016)); updateCamera(); }, { passive:false });
+        el.addEventListener('touchstart', e => { const t=e.touches[0]; dragMode=1; lastX=t.clientX; lastY=t.clientY; }, { passive:true });
+        el.addEventListener('touchmove', e => { if(!dragMode) return; const t=e.touches[0]; const dx=t.clientX-lastX, dy=t.clientY-lastY; lastX=t.clientX; lastY=t.clientY; camTheta-=dx*0.006; camPhi=Math.max(0.2,Math.min(Math.PI-0.2,camPhi-dy*0.006)); updateCamera(); e.preventDefault(); }, { passive:false });
+        window.addEventListener('touchend', () => dragMode=0);
+        window.addEventListener('resize', () => { camera.aspect=window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+    }
+
+    function applyI18N() {
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const k = el.getAttribute('data-i18n');
+            if (L[k] != null) { if (k === 'note') el.innerHTML = L[k]; else el.textContent = L[k]; }
+        });
+        document.querySelector('.header h1').textContent = L.headH;
+        document.querySelector('.header p span').textContent = L.headS;
+        document.title = L.headH.replace(/^[^\wА-Яа-яЁё]+/, '');
+        document.documentElement.lang = LANG;
+        setTxt('inc-value', incDeg + L.deg);
+        setTxt('apex-value', apexDeg + L.deg);
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+        updateLabels();
+        renderer.render(scene, camera);
+    }
+
+    init();
+    </script>
+</body>
+</html>

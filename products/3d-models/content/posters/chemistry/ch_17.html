@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="page_title">Закон сохранения массы — Атомы до и после реакции</title>
+<script src="../../libs/vendor/three-r128/three.min.js"></script>
+<style>
+
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{--blue:#38bdf8;--purple:#a78bfa;--orange:#fb923c;--green:#4ade80;--red:#f87171;--yellow:#facc15;--cyan:#22d3ee;--glass-bg:rgba(24,32,58,0.56);--glass-border:rgba(255,255,255,0.15);--text:#edf1f8;--text-dim:#92a4c0;--mono:'JetBrains Mono',monospace;--serif:'Playfair Display',serif;--sans:'Nunito',sans-serif;}
+body{background:radial-gradient(ellipse at 50% 35%,#212b4a 0%,#141c34 50%,#0c1020 100%);color:var(--text);font-family:var(--sans);overflow:hidden;height:100vh;width:100vw;}
+#canvas-container{position:absolute;inset:0;z-index:0;}canvas{display:block;}
+.glass{background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:16px;box-shadow:0 6px 28px rgba(0,0,0,0.28),inset 0 1px 0 rgba(255,255,255,0.08);}
+::-webkit-scrollbar{width:5px;}::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.16);border-radius:3px;}
+#left-panel{position:absolute;top:56px;left:16px;width:370px;z-index:10;padding:24px;display:flex;flex-direction:column;gap:16px;max-height:calc(100vh - 72px);overflow-y:auto;}
+.panel-title{font-family:var(--serif);font-size:26px;font-weight:700;background:linear-gradient(135deg,var(--cyan),var(--yellow));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.panel-subtitle{font-size:15px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1.5px;}
+.separator{height:1px;background:linear-gradient(90deg,transparent,var(--glass-border),transparent);}
+.btn{padding:14px 20px;border:none;border-radius:14px;font-family:var(--sans);font-weight:700;font-size:20px;cursor:pointer;transition:all .2s;letter-spacing:.5px;width:100%;}
+.btn-react{background:linear-gradient(135deg,var(--orange),#ea580c);color:#fff;box-shadow:0 4px 18px rgba(251,146,60,0.3);}
+.btn-react:hover{transform:translateY(-1px);box-shadow:0 6px 22px rgba(251,146,60,0.45);}
+.btn-back{background:linear-gradient(135deg,var(--cyan),#0284c7);color:#fff;box-shadow:0 4px 18px rgba(56,189,248,0.25);}
+.btn-back:hover{transform:translateY(-1px);}
+.btn-reset{background:rgba(255,255,255,0.08);color:var(--text);border:1px solid var(--glass-border);font-size:18px;padding:12px 16px;}
+.btn-reset:hover{background:rgba(255,255,255,0.14);}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;font-size:18px;color:var(--text-dim);}
+.toggle{width:52px;height:28px;border-radius:14px;background:rgba(255,255,255,0.12);position:relative;cursor:pointer;transition:background .3s;}
+.toggle.active{background:var(--blue);}
+.toggle::after{content:'';position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:white;transition:transform .3s;}
+.toggle.active::after{transform:translateX(24px);}
+.rx-selector{display:flex;flex-direction:column;gap:6px;}
+.rx-btn{padding:12px 14px;border:1px solid var(--glass-border);border-radius:12px;background:rgba(255,255,255,0.04);color:var(--text-dim);font-size:16px;cursor:pointer;transition:all .2s;text-align:left;font-family:var(--mono);}
+.rx-btn.active{background:rgba(56,189,248,0.12);border-color:var(--blue);color:var(--blue);}
+.rx-btn:hover{background:rgba(255,255,255,0.08);}
+.rx-btn .rx-name{font-family:var(--sans);font-size:13px;color:var(--text-dim);display:block;margin-top:2px;}
+#right-panel{position:absolute;top:16px;right:16px;width:400px;z-index:10;padding:24px;display:flex;flex-direction:column;gap:14px;max-height:calc(100vh - 32px);overflow-y:auto;}
+.stat-label{font-size:17px;color:var(--text-dim);}.stat-value{font-family:var(--mono);font-weight:600;font-size:22px;}
+.stat-row{display:flex;justify-content:space-between;align-items:baseline;}
+.reaction-box{background:rgba(0,0,0,0.18);border-radius:14px;padding:18px;border:1px solid rgba(255,255,255,0.07);text-align:center;}
+.reaction-eq-big{font-family:var(--serif);font-size:26px;color:var(--text);font-style:italic;line-height:1.6;}
+.atom-table{width:100%;border-collapse:separate;border-spacing:0;border-radius:12px;overflow:hidden;border:1px solid rgba(255,255,255,0.07);}
+.atom-table th{background:rgba(0,0,0,0.2);padding:10px 12px;font-size:16px;font-weight:700;color:var(--text-dim);text-align:center;}
+.atom-table td{padding:10px 12px;font-family:var(--mono);font-size:20px;font-weight:700;text-align:center;border-top:1px solid rgba(255,255,255,0.05);}
+.match{color:var(--green);}.mismatch{color:var(--red);}
+.mass-box{display:flex;justify-content:space-around;align-items:center;padding:16px;border-radius:14px;border:1px solid rgba(255,255,255,0.07);background:rgba(0,0,0,0.15);}
+.mass-side{text-align:center;}.mass-label{font-size:15px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;}
+.mass-value{font-family:var(--mono);font-size:30px;font-weight:700;}
+.formula-box{background:rgba(0,0,0,0.15);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:14px 16px;font-family:var(--serif);font-size:20px;line-height:2;color:var(--text-dim);}
+.info-box{background:rgba(0,0,0,0.12);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:14px 16px;font-size:17px;line-height:1.7;color:var(--text-dim);}
+.info-box b{color:var(--text);font-weight:600;}
+.legend-item{display:flex;align-items:center;gap:10px;font-size:16px;color:var(--text-dim);}
+.legend-dot{width:16px;height:16px;border-radius:50%;flex-shrink:0;}
+#bottom-panel{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);z-index:10;padding:16px 36px;display:flex;gap:44px;align-items:center;white-space:nowrap;}
+.bottom-stat{display:flex;flex-direction:column;align-items:center;gap:3px;}
+.bottom-stat .label{font-size:14px;text-transform:uppercase;letter-spacing:1.2px;color:var(--text-dim);}
+.bottom-stat .value{font-family:var(--mono);font-size:26px;font-weight:700;}
+#status-bar{position:absolute;top:16px;left:50%;transform:translateX(-50%);z-index:10;padding:12px 28px;display:flex;align-items:center;gap:14px;font-size:20px;font-weight:700;letter-spacing:1px;}
+.status-dot{width:16px;height:16px;border-radius:50%;flex-shrink:0;}
+
+</style>
+</head>
+<body>
+<div id="canvas-container"></div>
+<div id="status-bar" class="glass"><div class="status-dot" id="status-dot" style="background:var(--cyan);"></div><span id="status-text" style="color:var(--cyan);" data-i18n="status_before">РЕАГЕНТЫ — ДО РЕАКЦИИ</span></div>
+
+<div id="left-panel" class="glass">
+  <div><div class="panel-title" data-i18n="panel_title">Закон сохранения массы</div><div class="panel-subtitle" data-i18n="panel_subtitle">Баланс атомов</div></div>
+  <div class="separator"></div>
+  <div class="panel-subtitle" data-i18n="select_rx">Выберите реакцию</div>
+  <div class="rx-selector">
+    <div class="rx-btn active" data-rx="0">2H₂ + O₂ → 2H₂O<span class="rx-name" data-i18n="rx0">Горение водорода</span></div>
+    <div class="rx-btn" data-rx="1">CH₄ + 2O₂ → CO₂ + 2H₂O<span class="rx-name" data-i18n="rx1">Горение метана</span></div>
+    <div class="rx-btn" data-rx="2">2Fe + 3Cl₂ → 2FeCl₃<span class="rx-name" data-i18n="rx2">Железо и хлор</span></div>
+    <div class="rx-btn" data-rx="3">N₂ + 3H₂ → 2NH₃<span class="rx-name" data-i18n="rx3">Синтез аммиака</span></div>
+  </div>
+  <div class="separator"></div>
+  <div class="toggle-row"><span data-i18n="toggle_bonds">Показать связи</span><div class="toggle active" id="toggle-bonds"></div></div>
+  <div class="toggle-row"><span data-i18n="toggle_labels">Подписи атомов</span><div class="toggle active" id="toggle-labels"></div></div>
+  <div class="separator"></div>
+  <button class="btn btn-react" id="btn-react" data-i18n="btn_react">⚗ Провести реакцию →</button>
+  <button class="btn btn-back" id="btn-back" style="margin-top:6px;display:none;" data-i18n="btn_back">← Вернуть реагенты</button>
+  <button class="btn btn-reset" id="btn-reset" style="margin-top:6px;" data-i18n="btn_reset">↺ Сброс</button>
+</div>
+
+<div id="right-panel" class="glass">
+  <div class="reaction-box"><div class="reaction-eq-big" id="rx-display">2H₂ + O₂ → 2H₂O</div><div style="font-size:16px;color:var(--text-dim);margin-top:4px;" id="rx-name-display">Горение водорода</div></div>
+  <div class="mass-box"><div class="mass-side"><div class="mass-label" data-i18n="mass_reagents">Реагенты</div><div class="mass-value" id="mass-left" style="color:var(--cyan);">0 г</div></div><div style="font-size:36px;font-weight:700;color:var(--green);" id="mass-sign">=</div><div class="mass-side"><div class="mass-label" data-i18n="mass_products">Продукты</div><div class="mass-value" id="mass-right" style="color:var(--orange);">0 г</div></div></div>
+  <div class="separator"></div>
+  <div class="panel-subtitle" data-i18n="balance_title">Баланс атомов</div>
+  <table class="atom-table" id="atom-table"></table>
+  <div class="separator"></div>
+  <div class="panel-subtitle" data-i18n="legend_title">Легенда атомов</div>
+  <div style="display:flex;flex-direction:column;gap:8px;" id="legend-container"></div>
+  <div class="separator"></div>
+  <div class="formula-box" style="text-align:center;"><div style="font-size:22px;" data-i18n-html="formula_law"><i>Σm</i><sub>реаг.</sub> = <i>Σm</i><sub>прод.</sub></div><div style="font-size:15px;margin-top:8px;font-family:var(--sans);font-style:normal;text-align:left;" data-i18n="formula_text">Масса веществ, вступивших в реакцию, равна массе образовавшихся продуктов</div></div>
+  <div class="separator"></div>
+  <div class="info-box" data-i18n-html="info_law">Атомы <b>не создаются и не уничтожаются</b> — они лишь перегруппировываются. Число атомов каждого элемента <b>до</b> реакции в точности равно числу <b>после</b>.</div>
+</div>
+
+<div id="bottom-panel" class="glass">
+  <div class="bottom-stat"><span class="label" data-i18n="b_reagents">Реагенты</span><span class="value" id="b-left" style="color:var(--cyan);">0 г</span></div>
+  <div class="bottom-stat"><span class="label" data-i18n="b_products">Продукты</span><span class="value" id="b-right" style="color:var(--orange);">0 г</span></div>
+  <div class="bottom-stat"><span class="label" data-i18n="b_balance">Баланс</span><span class="value" id="b-bal" style="color:var(--green);">=</span></div>
+  <div class="bottom-stat"><span class="label" data-i18n="b_total_atoms">Всего атомов</span><span class="value" id="b-atoms" style="color:var(--yellow);">0</span></div>
+  <div class="bottom-stat"><span class="label" data-i18n="b_stage">Стадия</span><span class="value" id="b-stage" style="color:var(--text);">До</span></div>
+</div>
+
+<script>
+// =====================================================================
+//  I18N — встроенные переводы (RU / KZ / EN). Язык: ?lang=ru|kz|en.
+// =====================================================================
+const I18N = {
+  ru: {
+    page_title:'Закон сохранения массы — Атомы до и после реакции',panel_title:'Закон сохранения массы',panel_subtitle:'Баланс атомов',
+    select_rx:'Выберите реакцию',toggle_bonds:'Показать связи',toggle_labels:'Подписи атомов',
+    btn_react:'⚗ Провести реакцию →',btn_back:'← Вернуть реагенты',btn_reset:'↺ Сброс',
+    balance_title:'Баланс атомов',legend_title:'Легенда атомов',
+    formula_law:'<i>Σm</i><sub>реаг.</sub> = <i>Σm</i><sub>прод.</sub>',
+    formula_text:'Масса веществ, вступивших в реакцию, равна массе образовавшихся продуктов',
+    info_law:'Атомы <b>не создаются и не уничтожаются</b> — они лишь перегруппировываются. Число атомов каждого элемента <b>до</b> реакции в точности равно числу <b>после</b>.',
+    b_reagents:'Реагенты',b_products:'Продукты',b_balance:'Баланс',b_total_atoms:'Всего атомов',b_stage:'Стадия',
+    status_before:'РЕАГЕНТЫ — ДО РЕАКЦИИ',status_animating:'⚗ АТОМЫ ПЕРЕГРУППИРОВЫВАЮТСЯ',status_after:'ПРОДУКТЫ — ПОСЛЕ РЕАКЦИИ',
+    stage_before:'До',stage_after:'После',
+    mass_reagents:'Реагенты',mass_products:'Продукты',
+    tbl_element:'Элемент',tbl_before:'До',tbl_after:'После',
+    unit_g:'г',unit_amu:'а.е.м.',
+    rx0:'Горение водорода',rx1:'Горение метана',rx2:'Железо и хлор',rx3:'Синтез аммиака',
+    el_H:'Водород',el_O:'Кислород',el_C:'Углерод',el_N:'Азот',el_Fe:'Железо',el_Cl:'Хлор'
+  },
+  kz: {
+    page_title:'Масса сақталу заңы — Реакция алдындағы және кейінгі атомдар',panel_title:'Масса сақталу заңы',panel_subtitle:'Атомдар балансы',
+    select_rx:'Реакцияны таңдаңыз',toggle_bonds:'Байланыстарды көрсету',toggle_labels:'Атом белгілері',
+    btn_react:'⚗ Реакцияны жүргізу →',btn_back:'← Реагенттерді қайтару',btn_reset:'↺ Қалпына келтіру',
+    balance_title:'Атомдар балансы',legend_title:'Атомдар шартты белгілері',
+    formula_law:'<i>Σm</i><sub>реаг.</sub> = <i>Σm</i><sub>өнім.</sub>',
+    formula_text:'Реакцияға түскен заттардың массасы түзілген өнімдердің массасына тең',
+    info_law:'Атомдар <b>жасалмайды және жойылмайды</b> — олар тек қайта топтастырылады. Әрбір элементтің атомдар саны реакцияға <b>дейін</b> және <b>кейін</b> бірдей.',
+    b_reagents:'Реагенттер',b_products:'Өнімдер',b_balance:'Баланс',b_total_atoms:'Барлық атомдар',b_stage:'Кезең',
+    status_before:'РЕАГЕНТТЕР — РЕАКЦИЯ АЛДЫНДА',status_animating:'⚗ АТОМДАР ҚАЙТА ТОПТАСТЫРЫЛУДА',status_after:'ӨНІМДЕР — РЕАКЦИЯДАН КЕЙІН',
+    stage_before:'Дейін',stage_after:'Кейін',
+    mass_reagents:'Реагенттер',mass_products:'Өнімдер',
+    tbl_element:'Элемент',tbl_before:'Дейін',tbl_after:'Кейін',
+    unit_g:'г',unit_amu:'а.б.м.',
+    rx0:'Сутектің жануы',rx1:'Метанның жануы',rx2:'Темір және хлор',rx3:'Аммиак синтезі',
+    el_H:'Сутек',el_O:'Оттек',el_C:'Көміртек',el_N:'Азот',el_Fe:'Темір',el_Cl:'Хлор'
+  },
+  en: {
+    page_title:'Law of Conservation of Mass — Atoms Before & After',panel_title:'Conservation of Mass',panel_subtitle:'Atom balance',
+    select_rx:'Select reaction',toggle_bonds:'Show bonds',toggle_labels:'Atom labels',
+    btn_react:'⚗ Run reaction →',btn_back:'← Restore reagents',btn_reset:'↺ Reset',
+    balance_title:'Atom balance',legend_title:'Atom legend',
+    formula_law:'<i>Σm</i><sub>react.</sub> = <i>Σm</i><sub>prod.</sub>',
+    formula_text:'The mass of substances entering a reaction equals the mass of the products formed',
+    info_law:'Atoms are <b>neither created nor destroyed</b> — they are merely rearranged. The number of atoms of each element <b>before</b> a reaction exactly equals the number <b>after</b>.',
+    b_reagents:'Reagents',b_products:'Products',b_balance:'Balance',b_total_atoms:'Total atoms',b_stage:'Stage',
+    status_before:'REAGENTS — BEFORE REACTION',status_animating:'⚗ ATOMS REARRANGING',status_after:'PRODUCTS — AFTER REACTION',
+    stage_before:'Before',stage_after:'After',
+    mass_reagents:'Reagents',mass_products:'Products',
+    tbl_element:'Element',tbl_before:'Before',tbl_after:'After',
+    unit_g:'g',unit_amu:'amu',
+    rx0:'Hydrogen combustion',rx1:'Methane combustion',rx2:'Iron and chlorine',rx3:'Ammonia synthesis',
+    el_H:'Hydrogen',el_O:'Oxygen',el_C:'Carbon',el_N:'Nitrogen',el_Fe:'Iron',el_Cl:'Chlorine'
+  }
+};
+const LANG=(()=>{const q=new URLSearchParams(location.search).get('lang');return(q&&I18N[q])?q:'ru';})();
+const t=(key)=>(I18N[LANG]&&I18N[LANG][key])??(I18N.ru&&I18N.ru[key]);
+
+function applyStaticI18N(){
+  document.documentElement.lang=LANG;
+  const tv=t('page_title');if(tv)document.title=tv;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{const v=t(el.getAttribute('data-i18n'));if(v)el.textContent=v;});
+  document.querySelectorAll('[data-i18n-html]').forEach(el=>{const v=t(el.getAttribute('data-i18n-html'));if(v)el.innerHTML=v;});
+}
+applyStaticI18N();
+const EL={H:{color:0xeef2ff,r:0.4,mass:1,name:t('el_H')},O:{color:0xef4444,r:0.52,mass:16,name:t('el_O')},C:{color:0x475569,r:0.55,mass:12,name:t('el_C')},N:{color:0x3b82f6,r:0.5,mass:14,name:t('el_N')},Fe:{color:0x9ca3af,r:0.6,mass:56,name:t('el_Fe')},Cl:{color:0x22c55e,r:0.55,mass:35.5,name:t('el_Cl')}};
+
+const RXS=[
+  {name:t('rx0'),eq:'2H₂ + O₂ → 2H₂O',
+   left:[{a:[{e:'H',x:-.35,y:0},{e:'H',x:.35,y:0}],b:[[0,1]],ox:-4,oy:2},{a:[{e:'H',x:-.35,y:0},{e:'H',x:.35,y:0}],b:[[0,1]],ox:-4,oy:-2},{a:[{e:'O',x:-.45,y:0},{e:'O',x:.45,y:0}],b:[[0,1]],ox:-1,oy:0}],
+   right:[{a:[{e:'O',x:0,y:0},{e:'H',x:-.75,y:.5},{e:'H',x:.75,y:.5}],b:[[0,1],[0,2]],ox:3,oy:2},{a:[{e:'O',x:0,y:0},{e:'H',x:-.75,y:.5},{e:'H',x:.75,y:.5}],b:[[0,1],[0,2]],ox:3,oy:-2}]},
+  {name:t('rx1'),eq:'CH₄ + 2O₂ → CO₂ + 2H₂O',
+   left:[{a:[{e:'C',x:0,y:0},{e:'H',x:0,y:.8},{e:'H',x:0,y:-.8},{e:'H',x:.8,y:0},{e:'H',x:-.8,y:0}],b:[[0,1],[0,2],[0,3],[0,4]],ox:-4.5,oy:0},{a:[{e:'O',x:-.4,y:0},{e:'O',x:.4,y:0}],b:[[0,1]],ox:-1.5,oy:2},{a:[{e:'O',x:-.4,y:0},{e:'O',x:.4,y:0}],b:[[0,1]],ox:-1.5,oy:-2}],
+   right:[{a:[{e:'C',x:0,y:0},{e:'O',x:-.85,y:0},{e:'O',x:.85,y:0}],b:[[0,1],[0,2]],ox:3,oy:0},{a:[{e:'O',x:0,y:0},{e:'H',x:-.7,y:.45},{e:'H',x:.7,y:.45}],b:[[0,1],[0,2]],ox:6,oy:2},{a:[{e:'O',x:0,y:0},{e:'H',x:-.7,y:.45},{e:'H',x:.7,y:.45}],b:[[0,1],[0,2]],ox:6,oy:-2}]},
+  {name:t('rx2'),eq:'2Fe + 3Cl₂ → 2FeCl₃',
+   left:[{a:[{e:'Fe',x:0,y:0}],b:[],ox:-5.5,oy:1.8},{a:[{e:'Fe',x:0,y:0}],b:[],ox:-5.5,oy:-1.8},{a:[{e:'Cl',x:-.4,y:0},{e:'Cl',x:.4,y:0}],b:[[0,1]],ox:-3,oy:2.8},{a:[{e:'Cl',x:-.4,y:0},{e:'Cl',x:.4,y:0}],b:[[0,1]],ox:-3,oy:0},{a:[{e:'Cl',x:-.4,y:0},{e:'Cl',x:.4,y:0}],b:[[0,1]],ox:-3,oy:-2.8}],
+   right:[{a:[{e:'Fe',x:0,y:0},{e:'Cl',x:.95,y:.55},{e:'Cl',x:.95,y:-.55},{e:'Cl',x:-.95,y:0}],b:[[0,1],[0,2],[0,3]],ox:3.5,oy:2},{a:[{e:'Fe',x:0,y:0},{e:'Cl',x:.95,y:.55},{e:'Cl',x:.95,y:-.55},{e:'Cl',x:-.95,y:0}],b:[[0,1],[0,2],[0,3]],ox:3.5,oy:-2}]},
+  {name:t('rx3'),eq:'N₂ + 3H₂ → 2NH₃',
+   left:[{a:[{e:'N',x:-.42,y:0},{e:'N',x:.42,y:0}],b:[[0,1]],ox:-5,oy:0},{a:[{e:'H',x:-.35,y:0},{e:'H',x:.35,y:0}],b:[[0,1]],ox:-2.5,oy:2.5},{a:[{e:'H',x:-.35,y:0},{e:'H',x:.35,y:0}],b:[[0,1]],ox:-2.5,oy:0},{a:[{e:'H',x:-.35,y:0},{e:'H',x:.35,y:0}],b:[[0,1]],ox:-2.5,oy:-2.5}],
+   right:[{a:[{e:'N',x:0,y:0},{e:'H',x:0,y:.8},{e:'H',x:.7,y:-.4},{e:'H',x:-.7,y:-.4}],b:[[0,1],[0,2],[0,3]],ox:3.5,oy:2},{a:[{e:'N',x:0,y:0},{e:'H',x:0,y:.8},{e:'H',x:.7,y:-.4},{e:'H',x:-.7,y:-.4}],b:[[0,1],[0,2],[0,3]],ox:3.5,oy:-2}]},
+];
+
+// ═══ THREE SCENE ═══
+const container=document.getElementById('canvas-container');
+const scene=new THREE.Scene();scene.fog=new THREE.FogExp2(0x141c34,0.003);
+const camera=new THREE.PerspectiveCamera(50,innerWidth/innerHeight,0.1,300);
+const renderer=new THREE.WebGLRenderer({antialias: true,alpha:true});
+renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.shadowMap.enabled=false;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.2;
+container.appendChild(renderer.domElement);
+scene.add(new THREE.AmbientLight(0x667788,0.75));
+const dL=new THREE.DirectionalLight(0xffeedd,0.8);dL.position.set(8,18,12);dL.castShadow=true;scene.add(dL);
+const fl=new THREE.Mesh(new THREE.PlaneGeometry(100,100),new THREE.MeshStandardMaterial({color:0x131a2c,roughness:0.85}));
+fl.rotation.x=-Math.PI/2;fl.position.y=-4;fl.receiveShadow=true;scene.add(fl);
+
+// Arrow
+const arrowG=new THREE.Group();
+arrowG.add(new THREE.Mesh(new THREE.BoxGeometry(1.6,0.2,0.2),new THREE.MeshStandardMaterial({color:0xfacc15,emissive:0xfacc15,emissiveIntensity:0.3})));
+const ah=new THREE.Mesh(new THREE.ConeGeometry(0.35,0.7,8),new THREE.MeshStandardMaterial({color:0xfacc15,emissive:0xfacc15,emissiveIntensity:0.3}));
+ah.rotation.z=-Math.PI/2;ah.position.x=1.15;arrowG.add(ah);
+scene.add(arrowG);
+
+// ═══ ATOM LABELS ═══
+const labelDivs=[];
+function createLabel(text,color){const d=document.createElement('div');d.style.cssText=`position:absolute;z-index:5;font-family:var(--mono);font-size:16px;font-weight:700;color:${color};pointer-events:none;text-shadow:0 2px 8px rgba(0,0,0,0.9);`;d.textContent=text;document.body.appendChild(d);labelDivs.push(d);return d;}
+function clearLabels(){labelDivs.forEach(d=>d.remove());labelDivs.length=0;}
+function proj(pos){const v=pos.clone().project(camera);return{x:v.x*innerWidth/2+innerWidth/2,y:-v.y*innerHeight/2+innerHeight/2};}
+
+// ═══ BUILD ═══
+let atoms3D=[], bonds3D=[];
+const state={rxIndex:0,stage:'before',showBonds:true,showLabels:true,animating:false,animT:0};
+
+function elColor(el){const c=EL[el].color;return`rgb(${(c>>16)&255},${(c>>8)&255},${c&255})`;}
+
+function clearScene(){atoms3D.forEach(a=>scene.remove(a.mesh));bonds3D.forEach(b=>scene.remove(b));atoms3D=[];bonds3D=[];clearLabels();}
+
+function buildMols(molList){
+  molList.forEach(mol=>{
+    mol.a.forEach(at=>{
+      const d=EL[at.e];
+      const mesh=new THREE.Mesh(new THREE.SphereGeometry(d.r,24,24),new THREE.MeshStandardMaterial({color:d.color,emissive:d.color,emissiveIntensity:0.15,roughness:0.3,metalness:0.15}));
+      mesh.castShadow=true;
+      const tx=mol.ox+at.x, ty=mol.oy+at.y, tz=(Math.random()-0.5)*1.2;
+      mesh.position.set(tx,ty,tz);scene.add(mesh);
+      const lbl=state.showLabels?createLabel(at.e,at.e==='H'?'#c8d0e0':elColor(at.e)):null;
+      atoms3D.push({mesh,el:at.e,tx,ty,tz,label:lbl});
+    });
+    if(state.showBonds){
+      mol.b.forEach(([i,j])=>{
+        const a1=mol.a[i],a2=mol.a[j],x1=mol.ox+a1.x,y1=mol.oy+a1.y,x2=mol.ox+a2.x,y2=mol.oy+a2.y;
+        const dx=x2-x1,dy=y2-y1,len=Math.sqrt(dx*dx+dy*dy);
+        const bm=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.07,len*0.6,8),new THREE.MeshStandardMaterial({color:0x94a3b8,roughness:0.4}));
+        bm.position.set((x1+x2)/2,(y1+y2)/2,0);bm.rotation.z=Math.atan2(dy,dx)-Math.PI/2;
+        scene.add(bm);bonds3D.push(bm);
+      });
+    }
+  });
+}
+
+function buildScene(){clearScene();const rx=RXS[state.rxIndex];if(state.stage==='before')buildMols(rx.left);else if(state.stage==='after')buildMols(rx.right);updateUI();}
+
+// ═══ FLYING ANIMATION ═══
+let flyAtoms=[];
+function startAnim(){
+  if(state.animating)return;state.animating=true;state.animT=0;state.stage='animating';
+  const rx=RXS[state.rxIndex];
+  const srcList=[],tgtList=[];
+  rx.left.forEach(m=>m.a.forEach(at=>srcList.push({e:at.e,x:m.ox+at.x,y:m.oy+at.y})));
+  rx.right.forEach(m=>m.a.forEach(at=>tgtList.push({e:at.e,x:m.ox+at.x,y:m.oy+at.y})));
+  const used=new Set();clearScene();flyAtoms=[];
+  srcList.forEach(s=>{
+    let ti=-1;for(let i=0;i<tgtList.length;i++){if(!used.has(i)&&tgtList[i].e===s.e){ti=i;break;}}
+    if(ti<0)return;used.add(ti);const t=tgtList[ti];
+    const d=EL[s.e];
+    const mesh=new THREE.Mesh(new THREE.SphereGeometry(d.r,24,24),new THREE.MeshStandardMaterial({color:d.color,emissive:d.color,emissiveIntensity:0.15,roughness:0.3,metalness:0.15}));
+    mesh.position.set(s.x,s.y,(Math.random()-0.5)*1.2);scene.add(mesh);
+    const lbl=state.showLabels?createLabel(s.e,s.e==='H'?'#c8d0e0':elColor(s.e)):null;
+    flyAtoms.push({mesh,el:s.e,sx:s.x,sy:s.y,sz:mesh.position.z,ex:t.x,ey:t.y,ez:(Math.random()-0.5)*1.2,label:lbl});
+  });
+  document.getElementById('status-dot').style.background='var(--orange)';
+  document.getElementById('status-text').style.color='var(--orange)';
+  document.getElementById('status-text').textContent=t('status_animating');
+}
+
+// ═══ UI ═══
+function countA(ml){const c={};ml.forEach(m=>m.a.forEach(at=>{c[at.e]=(c[at.e]||0)+1;}));return c;}
+function massA(ml){let m=0;ml.forEach(mo=>mo.a.forEach(at=>{m+=EL[at.e].mass;}));return m;}
+
+function updateUI(){
+  const rx=RXS[state.rxIndex];
+  document.getElementById('rx-display').textContent=rx.eq;
+  document.getElementById('rx-name-display').textContent=rx.name;
+  const lc=countA(rx.left),rc=countA(rx.right),lm=massA(rx.left),rm=massA(rx.right);
+  document.getElementById('mass-left').textContent=lm+' '+t('unit_g');
+  document.getElementById('mass-right').textContent=rm+' '+t('unit_g');
+  const ok=lm===rm;
+  document.getElementById('mass-sign').textContent=ok?'=':'≠';
+  document.getElementById('mass-sign').style.color=ok?'var(--green)':'var(--red)';
+  document.getElementById('b-left').textContent=lm+' '+t('unit_g');document.getElementById('b-right').textContent=rm+' '+t('unit_g');
+  document.getElementById('b-bal').textContent=ok?'=':'≠';document.getElementById('b-bal').style.color=ok?'var(--green)':'var(--red)';
+  const allEls=new Set([...Object.keys(lc),...Object.keys(rc)]);
+  let tbl='<tr><th>'+t('tbl_element')+'</th><th>'+t('tbl_before')+'</th><th></th><th>'+t('tbl_after')+'</th></tr>',totA=0;
+  allEls.forEach(el=>{const l=lc[el]||0,r=rc[el]||0;totA+=l;const m=l===r;
+    tbl+=`<tr><td style="color:${elColor(el)}">${el}</td><td class="${m?'match':'mismatch'}">${l}</td><td class="${m?'match':'mismatch'}">${m?'=':'≠'}</td><td class="${m?'match':'mismatch'}">${r}</td></tr>`;});
+  document.getElementById('atom-table').innerHTML=tbl;document.getElementById('b-atoms').textContent=totA;
+  const leg=document.getElementById('legend-container');leg.innerHTML='';
+  allEls.forEach(el=>{leg.innerHTML+=`<div class="legend-item"><div class="legend-dot" style="background:${elColor(el)};"></div>${el} — ${EL[el].name} (${EL[el].mass} ${t('unit_amu')})</div>`;});
+  const dot=document.getElementById('status-dot'),txt=document.getElementById('status-text'),bs=document.getElementById('b-stage');
+  if(state.stage==='before'){dot.style.background='var(--cyan)';txt.style.color='var(--cyan)';txt.textContent=t('status_before');bs.textContent=t('stage_before');}
+  else if(state.stage==='after'){dot.style.background='var(--green)';txt.style.color='var(--green)';txt.textContent=t('status_after');bs.textContent=t('stage_after');}
+}
+
+document.querySelectorAll('.rx-btn').forEach(btn=>btn.addEventListener('click',()=>{
+  document.querySelectorAll('.rx-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
+  state.rxIndex=+btn.dataset.rx;state.stage='before';state.animating=false;
+  flyAtoms.forEach(a=>scene.remove(a.mesh));flyAtoms=[];buildScene();
+  document.getElementById('btn-react').style.display='';document.getElementById('btn-back').style.display='none';
+}));
+document.getElementById('toggle-bonds').addEventListener('click',function(){this.classList.toggle('active');state.showBonds=this.classList.contains('active');buildScene();});
+document.getElementById('toggle-labels').addEventListener('click',function(){this.classList.toggle('active');state.showLabels=this.classList.contains('active');buildScene();});
+document.getElementById('btn-react').addEventListener('click',()=>{if(state.stage==='before')startAnim();});
+document.getElementById('btn-back').addEventListener('click',()=>{state.stage='before';state.animating=false;flyAtoms.forEach(a=>scene.remove(a.mesh));flyAtoms=[];clearLabels();buildScene();document.getElementById('btn-react').style.display='';document.getElementById('btn-back').style.display='none';});
+document.getElementById('btn-reset').addEventListener('click',()=>{state.stage='before';state.animating=false;flyAtoms.forEach(a=>scene.remove(a.mesh));flyAtoms=[];clearLabels();buildScene();document.getElementById('btn-react').style.display='';document.getElementById('btn-back').style.display='none';camSph={r:16,theta:Math.PI*0.5,phi:Math.PI*0.47};camTarget.set(0,0,0);updateCam();});
+
+buildScene();
+
+// ═══ CAMERA ═══
+let isDrag=false,isPan=false,prevM={x:0,y:0};
+let camSph={r:16,theta:Math.PI*0.5,phi:Math.PI*0.47},camTarget=new THREE.Vector3(0,0,0);
+function updateCam(){camera.position.set(camTarget.x+camSph.r*Math.sin(camSph.phi)*Math.cos(camSph.theta),camTarget.y+camSph.r*Math.cos(camSph.phi),camTarget.z+camSph.r*Math.sin(camSph.phi)*Math.sin(camSph.theta));camera.lookAt(camTarget);}
+updateCam();
+renderer.domElement.addEventListener('mousedown',e=>{if(e.button===0)isDrag=true;if(e.button===2)isPan=true;prevM={x:e.clientX,y:e.clientY};});
+renderer.domElement.addEventListener('mousemove',e=>{const dx=e.clientX-prevM.x,dy=e.clientY-prevM.y;prevM={x:e.clientX,y:e.clientY};if(isDrag){camSph.theta-=dx*0.005;camSph.phi=Math.max(0.1,Math.min(Math.PI*0.48,camSph.phi+dy*0.005));updateCam();}if(isPan){const r2=new THREE.Vector3();camera.getWorldDirection(r2);r2.cross(new THREE.Vector3(0,1,0)).normalize();camTarget.addScaledVector(r2,-dx*0.03);camTarget.y=Math.max(-5,camTarget.y+dy*0.03);updateCam();}});
+renderer.domElement.addEventListener('mouseup',()=>{isDrag=false;isPan=false;});
+renderer.domElement.addEventListener('contextmenu',e=>e.preventDefault());
+renderer.domElement.addEventListener('wheel',e=>{camSph.r=Math.max(5,Math.min(40,camSph.r+e.deltaY*0.015));updateCam();});
+
+// ═══ FLASH ═══
+const flashes=[];
+function spawnFlash(){for(let i=0;i<15;i++){const m=new THREE.Mesh(new THREE.SphereGeometry(0.1+Math.random()*0.1,6,6),new THREE.MeshBasicMaterial({color:Math.random()>0.5?0xfacc15:0xfb923c,transparent:true,opacity:1}));m.position.set((Math.random()-0.5),(Math.random()-0.5),(Math.random()-0.5));scene.add(m);const sp=3+Math.random()*4;const a=Math.random()*Math.PI*2,e2=(Math.random()-0.5)*Math.PI;flashes.push({mesh:m,vx:Math.cos(a)*sp,vy:Math.sin(e2)*sp,vz:Math.sin(a)*sp,life:0,max:0.4+Math.random()*0.2});}}
+
+// ═══ ANIMATE ═══
+const clock=new THREE.Clock();
+let flashSpawned=false;
+
+function animate(){
+  requestAnimationFrame(animate);
+  const dt=Math.min(clock.getDelta(),0.05);
+
+  if(!state.animating){
+    atoms3D.forEach((a,i)=>{a.mesh.position.y=a.ty+Math.sin(performance.now()*0.0012+i*0.7)*0.12;a.mesh.rotation.y+=dt*0.15;});
+  }
+
+  if(state.animating){
+    state.animT+=dt*0.5;
+    const t=Math.min(1,state.animT);
+
+    flyAtoms.forEach(a=>{
+      if(t<0.35){
+        const f=t/0.35,e=f*f;
+        a.mesh.position.x=a.sx*(1-e);a.mesh.position.y=a.sy*(1-e);a.mesh.position.z=a.sz*(1-e);
+        a.mesh.scale.setScalar(1-e*0.25);
+      } else if(t<0.5){
+        a.mesh.position.set((Math.random()-0.5)*0.3,(Math.random()-0.5)*0.3,(Math.random()-0.5)*0.3);
+        a.mesh.scale.setScalar(0.6+Math.random()*0.15);
+      } else {
+        const f=(t-0.5)/0.5,e=f*f*(3-2*f);
+        a.mesh.position.x=a.ex*e;a.mesh.position.y=a.ey*e;a.mesh.position.z=a.ez*e;
+        a.mesh.scale.setScalar(0.75+e*0.25);
+      }
+    });
+
+    if(t>=0.35&&!flashSpawned){flashSpawned=true;spawnFlash();}
+
+    // Labels during flight
+    if(state.showLabels){
+      flyAtoms.forEach(a=>{if(!a.label)return;const p=proj(a.mesh.position);a.label.style.left=(p.x-8)+'px';a.label.style.top=(p.y-24)+'px';});
+    }
+
+    if(t>=1){
+      state.animating=false;flashSpawned=false;state.stage='after';
+      flyAtoms.forEach(a=>scene.remove(a.mesh));flyAtoms=[];clearLabels();buildScene();
+      document.getElementById('btn-react').style.display='none';document.getElementById('btn-back').style.display='';
+    }
+  }
+
+  // Flashes
+  for(let i=flashes.length-1;i>=0;i--){const f=flashes[i];f.life+=dt;f.mesh.position.x+=f.vx*dt;f.mesh.position.y+=f.vy*dt;f.mesh.position.z+=f.vz*dt;f.mesh.material.opacity=Math.max(0,1-f.life/f.max);f.mesh.scale.setScalar(1+f.life*3);if(f.life>f.max){scene.remove(f.mesh);flashes.splice(i,1);}}
+
+  // Labels
+  if(state.showLabels&&!state.animating){atoms3D.forEach(a=>{if(!a.label)return;const p=proj(a.mesh.position);a.label.style.left=(p.x-8)+'px';a.label.style.top=(p.y-24)+'px';});}
+
+  arrowG.scale.setScalar(0.85+0.15*Math.sin(performance.now()*0.003));
+  renderer.render(scene,camera);
+}
+animate();
+window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+</script>
+</body>
+</html>

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="page_title">Бактериофаг — вирус бактерий</title>
+    <link rel="stylesheet" href="_poster.css">
+</head>
+<body>
+<div id="canvas-container"></div>
+<div id="header">
+    <h1 data-i18n="header_title">Бактериофаг</h1>
+    <p data-i18n="header_subtitle">Интерактивная модель вируса бактерий — 5 структурных частей</p>
+</div>
+<div id="hint" data-i18n="hint">Кликните по любой части бактериофага, чтобы узнать больше</div>
+<button id="reset-btn" data-i18n="reset_btn" data-i18n-title="reset_btn_title" title="Сбросить вид">↺ Сбросить вид</button>
+
+<div id="info-panel" aria-hidden="true">
+    <button class="close-btn" id="close-btn" data-i18n-aria-label="close_btn_label" aria-label="Закрыть">×</button>
+    <div class="info-header"><span class="info-dot" id="info-dot"></span><div><h2 id="info-title">Название</h2><span id="info-subtitle"></span></div></div>
+    <p id="info-desc">Описание</p>
+    <div id="info-facts"></div>
+</div>
+<div id="legend"></div>
+<div id="hover-label"></div>
+<div id="loading"><div class="spinner"></div><div id="loading-text" data-i18n="loading">Загрузка модели…</div></div>
+
+<script type="importmap">
+    { "imports": { "three": "../../libs/vendor/three-0.160.0/three.module.js", "three/addons/": "../../libs/vendor/three-0.160.0/addons/" } }
+</script>
+
+<script type="module">
+    import { initPoster } from './_poster_lib.js';
+
+    const I18N = {
+        ru: {
+            page_title: 'Бактериофаг — вирус бактерий',
+            header_title: 'Бактериофаг',
+            header_subtitle: 'Интерактивная модель вируса бактерий — 5 структурных частей',
+            hint: 'Кликните по любой части бактериофага, чтобы узнать больше',
+            reset_btn: '↺ Сбросить вид', reset_btn_title: 'Сбросить вид', close_btn_label: 'Закрыть',
+            loading: 'Загрузка модели…', error_load: 'Не удалось загрузить bacteriophage.glb', error_no_mesh: 'В модели нет меша',
+            facts_label: 'Интересный факт',
+            zones: {
+                head: { title: 'Головка (капсид)', desc: 'Икосаэдрическая (двадцатигранная) белковая оболочка, защищающая генетический материал вируса. У бактериофага T4 капсид имеет диаметр около 90 нм и содержит ДНК длиной 169 000 пар нуклеотидов. Состоит из 152 копий главного белка капсида (gp23), упакованных в строгую геометрическую структуру.', facts: 'Внутри капсида ДНК уложена настолько плотно, что давление достигает 60 атмосфер — как в океанских глубинах на 600 метрах.' },
+                neck: { title: 'Шейка (воротничок)', desc: 'Небольшая соединительная структура между головкой и хвостом. Содержит портальный белок (gp20), через который ДНК проходит при упаковке в капсид и при инъекции в бактерию. Шейка действует как «турникет», контролирующий выход генетического материала.', facts: 'Молекулярная машина, упаковывающая ДНК в капсид через портальный белок шейки, развивает мощность сравнимую с автомобильным двигателем (с учётом масштаба).' },
+                sheath: { title: 'Хвостовой чехол', desc: 'Сократительная мышцевидная трубка длиной около 100 нм, окружающая внутренний полый стержень. При прикреплении к бактерии чехол резко сокращается, как пружина, проталкивая стержень через клеточную стенку бактерии и впрыскивая внутрь её ДНК. Это уникальный молекулярный механизм инъекции.', facts: 'Хвостовой чехол сокращается всего за 1–2 миллисекунды, развивая силу, сравнимую с миниатюрной пружиной арбалета.' },
+                fibers: { title: 'Хвостовые нити',  desc: 'Шесть длинных тонких белковых нитей (отростков), отходящих от базовой пластинки. Действуют как «лапки» — служат для распознавания и прикрепления к специфическим рецепторам на поверхности бактериальной клетки. Только при правильном распознавании цели запускается процесс инъекции ДНК.', facts: 'Каждая из 6 хвостовых нитей имеет длину около 145 нм — это в 1,5 раза длиннее головки фага.' },
+                baseplate: { title: 'Базовая пластинка', desc: 'Шестиугольная многобелковая структура на конце хвоста, к которой прикрепляются хвостовые нити и из которой выходит стержень при инъекции. Содержит ферменты-лизоцимы, локально разрушающие клеточную стенку бактерии для пробоя. Действует как «молекулярный шприц».', facts: 'Базовая пластинка состоит из ~140 белков 16 разных типов и считается одной из самых сложных молекулярных машин в природе.' }
+            }
+        },
+        kz: {
+            page_title: 'Бактериофаг — бактериялардың вирусы',
+            header_title: 'Бактериофаг',
+            header_subtitle: 'Бактерия вирусының интерактивті моделі — 5 құрылымдық бөлік',
+            hint: 'Толығырақ білу үшін бактериофагтың кез келген бөлігіне басыңыз',
+            reset_btn: '↺ Көріністі қалпына келтіру', reset_btn_title: 'Көріністі қалпына келтіру', close_btn_label: 'Жабу',
+            loading: 'Модель жүктелуде…', error_load: 'bacteriophage.glb файлын жүктеу мүмкін болмады', error_no_mesh: 'Модельде меш табылмады',
+            facts_label: 'Қызықты факт',
+            zones: {
+                head: { title: 'Бас (капсид)', desc: 'Вирустың генетикалық материалын қорғайтын икосаэдрлік (жиырма жақты) белок қабығы. T4 бактериофагында капсидтің диаметрі шамамен 90 нм, ұзындығы 169 000 нуклеотид жұбы болатын ДНҚ-ны қамтиды. Қатаң геометриялық құрылымға оралған негізгі капсид белогының (gp23) 152 көшірмесінен тұрады.', facts: 'Капсид ішіндегі ДНҚ соншалықты тығыз оралған, қысым 60 атмосфераға жетеді — 600 метр тереңдіктегі мұхиттағыдай.' },
+                neck: { title: 'Мойын (жаға)', desc: 'Бас пен құйрық арасындағы шағын байланыстырушы құрылым. Капсидке оралу және бактерияға инъекция кезінде ДНҚ өтетін портал белогын (gp20) қамтиды. Мойын генетикалық материалдың шығуын бақылайтын «турникет» сияқты жұмыс істейді.', facts: 'Мойынның портал белогы арқылы капсидке ДНҚ-ны оратын молекулалық машина (масштабты ескере отырып) автомобиль қозғалтқышымен салыстырылатын қуат шығарады.' },
+                sheath: { title: 'Құйрық қабығы', desc: 'Ішкі қуыс өзекті қоршап тұрған, ұзындығы шамамен 100 нм болатын жиырылғыш бұлшықет тәрізді түтік. Бактерияға бекінген кезде қабық серіппе сияқты күрт жиырылып, өзекті бактерия қабырғасы арқылы итеріп, ішіне ДНҚ-ны енгізеді. Бұл бірегей молекулалық инъекция механизмі.', facts: 'Құйрық қабығы небәрі 1–2 миллисекундта жиырылып, миниатюралық арбалет серіппесімен салыстырылатын күш дамытады.' },
+                fibers: { title: 'Құйрық жіптері', desc: 'Базальды пластинкадан таралатын алты ұзын жіңішке белок жіптері (өсінділері). «Аяқтар» сияқты әрекет етеді — бактерия жасушасының бетіндегі арнайы рецепторларды танып, оларға бекіну үшін қызмет етеді. Мақсатты дұрыс тану кезінде ғана ДНҚ-ны инъекциялау процесі іске қосылады.', facts: 'Әрбір 6 құйрық жіптің ұзындығы шамамен 145 нм — бұл фаг басынан 1,5 есе ұзынырақ.' },
+                baseplate: { title: 'Базальды пластинка', desc: 'Құйрық жіптері бекитін және инъекция кезінде өзек шығатын құйрық соңындағы алты бұрышты көп белокты құрылым. Тесу үшін бактерия қабырғасын жергілікті бұзатын лизоцим ферменттерін қамтиды. «Молекулалық шприц» сияқты жұмыс істейді.', facts: 'Базальды пластинка 16 түрлі типтегі ~140 белоктан тұрады және табиғаттағы ең күрделі молекулалық машиналардың бірі болып саналады.' }
+            }
+        },
+        en: {
+            page_title: 'Bacteriophage — Virus of Bacteria',
+            header_title: 'Bacteriophage',
+            header_subtitle: 'Interactive model of a bacterial virus — 5 structural parts',
+            hint: 'Click any part of the bacteriophage to learn more',
+            reset_btn: '↺ Reset view', reset_btn_title: 'Reset view', close_btn_label: 'Close',
+            loading: 'Loading model…', error_load: 'Failed to load bacteriophage.glb', error_no_mesh: 'No mesh found in the model',
+            facts_label: 'Did you know?',
+            zones: {
+                head: { title: 'Head (Capsid)', desc: 'An icosahedral (20-faced) protein shell that protects the genetic material of the virus. In bacteriophage T4 the capsid is about 90 nm in diameter and contains DNA 169,000 base pairs long. It consists of 152 copies of the major capsid protein (gp23) arranged in a strict geometric structure.', facts: 'Inside the capsid the DNA is packed so tightly that the pressure reaches 60 atmospheres — like the ocean at a depth of 600 meters.' },
+                neck: { title: 'Neck (Collar)', desc: 'A small connecting structure between the head and tail. Contains the portal protein (gp20) through which DNA passes during packaging into the capsid and during injection into the bacterium. The neck acts as a "turnstile" controlling the release of genetic material.', facts: 'The molecular machine that packages DNA into the capsid through the neck\'s portal protein develops power comparable to a car engine (when scaled appropriately).' },
+                sheath: { title: 'Tail Sheath', desc: 'A contractile muscle-like tube about 100 nm long that surrounds an inner hollow rod. When attached to a bacterium, the sheath sharply contracts like a spring, pushing the rod through the bacterial cell wall and injecting DNA inside. This is a unique molecular injection mechanism.', facts: 'The tail sheath contracts in just 1–2 milliseconds, developing a force comparable to a miniature crossbow spring.' },
+                fibers: { title: 'Tail Fibers', desc: 'Six long thin protein fibers (appendages) extending from the baseplate. They act as "legs" — used to recognize and attach to specific receptors on the surface of the bacterial cell. Only upon correct target recognition does the DNA injection process begin.', facts: 'Each of the 6 tail fibers is about 145 nm long — 1.5 times longer than the phage head.' },
+                baseplate: { title: 'Baseplate', desc: 'A hexagonal multi-protein structure at the end of the tail to which the tail fibers attach and from which the rod emerges during injection. Contains lysozyme enzymes that locally degrade the bacterial cell wall for puncture. Acts as a "molecular syringe".', facts: 'The baseplate consists of ~140 proteins of 16 different types and is considered one of the most complex molecular machines in nature.' }
+            }
+        }
+    };
+
+    const ZONES = [
+        { id: 'head',      subtitle: 'Caput (Capsid)',         color: 0xff6b6b },
+        { id: 'neck',      subtitle: 'Collum',                 color: 0xffd93d },
+        { id: 'sheath',    subtitle: 'Vagina caudae',          color: 0x4d96ff },
+        { id: 'fibers',    subtitle: 'Fibrae caudales',        color: 0x6bcb77 },
+        { id: 'baseplate', subtitle: 'Lamina basalis',         color: 0xc77dff }
+    ];
+
+    // classify(x, y, z): vertical structure
+    function classify(x, y, z) {
+        if (y > 0.4) return 0;  // head
+        if (y > 0.2) return 1;  // neck
+        if (y < -0.55) return 4; // baseplate
+        const rad = Math.sqrt(x * x + z * z);
+        if (y < -0.1 && rad > 0.35) return 3; // fibers
+        return 2; // sheath
+    }
+
+    initPoster({ modelFile: 'bacteriophage.glb', zones: ZONES, classify, i18n: I18N, exposure: 1.35 });
+</script>
+</body>
+</html>

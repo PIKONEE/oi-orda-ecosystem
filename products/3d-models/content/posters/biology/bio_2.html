@@ -1,0 +1,1172 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="page_title">Интерактивный мозг человека</title>
+    <style>
+        :root {
+            --bg-1: #0b1020;
+            --bg-2: #1a1f3a;
+            --panel: rgba(20, 24, 42, 0.88);
+            --panel-border: rgba(255, 255, 255, 0.08);
+            --text: #eef1ff;
+            --text-dim: #b6bfd8;
+            --accent: #7aa7ff;
+        }
+
+        * { box-sizing: border-box; }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            color: var(--text);
+            background: radial-gradient(ellipse at 30% 20%, #1c2347 0%, var(--bg-1) 60%, #05060d 100%);
+        }
+
+        #canvas-container {
+            position: absolute;
+            inset: 0;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* Верхний заголовок (сдвинут правее, чтобы не перекрывался кнопкой "Назад") */
+        #header {
+            position: absolute;
+            top: 22px;
+            left: 140px;
+            right: 420px;
+            z-index: 10;
+            user-select: none;
+            pointer-events: none;
+        }
+        #header h1 {
+            margin: 0;
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+            color: var(--text);
+            text-shadow: 0 2px 20px rgba(0,0,0,0.6);
+        }
+        #header p {
+            margin: 4px 0 0 0;
+            font-size: 13px;
+            color: var(--text-dim);
+            text-shadow: 0 1px 8px rgba(0,0,0,0.6);
+        }
+
+        /* Подсказка в центре-сверху */
+        #hint {
+            position: absolute;
+            top: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            background: rgba(10, 14, 28, 0.55);
+            
+            
+            border: 1px solid var(--panel-border);
+            color: var(--text-dim);
+            padding: 8px 14px;
+            border-radius: 999px;
+            font-size: 13px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+        #hint.show { opacity: 1; }
+
+        /* Информационная панель справа */
+        #info-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 360px;
+            max-height: calc(100vh - 220px);
+            overflow-y: auto;
+            background: var(--panel);
+            
+            
+            border: 1px solid var(--panel-border);
+            border-radius: 18px;
+            padding: 22px 22px 20px 22px;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.55);
+            transform: translateX(calc(100% + 30px));
+            opacity: 0;
+            transition: transform 0.45s cubic-bezier(0.2, 0.9, 0.3, 1), opacity 0.3s ease;
+            z-index: 20;
+        }
+        #info-panel.active {
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        #info-panel::-webkit-scrollbar { width: 6px; }
+        #info-panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 6px; }
+
+        .info-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding-bottom: 14px;
+            margin-bottom: 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+        .info-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            box-shadow: 0 0 12px currentColor;
+            flex-shrink: 0;
+        }
+        #info-title {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 700;
+            line-height: 1.25;
+            color: var(--text);
+            flex: 1;
+        }
+        #info-subtitle {
+            display: block;
+            font-size: 12px;
+            font-weight: 400;
+            color: var(--text-dim);
+            margin-top: 2px;
+            font-style: italic;
+        }
+        #info-desc {
+            color: var(--text);
+            font-size: 14.5px;
+            line-height: 1.65;
+            margin: 0;
+        }
+        #info-facts {
+            margin: 14px 0 0 0;
+            padding: 12px 14px;
+            background: rgba(122, 167, 255, 0.08);
+            border-left: 3px solid var(--accent);
+            border-radius: 8px;
+            font-size: 13px;
+            color: var(--text-dim);
+            line-height: 1.55;
+        }
+        #info-facts strong {
+            color: var(--text);
+            display: block;
+            margin-bottom: 4px;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 14px;
+            right: 14px;
+            width: 30px;
+            height: 30px;
+            border: none;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text);
+            font-size: 18px;
+            line-height: 1;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s, transform 0.2s;
+        }
+        .close-btn:hover { background: rgba(255, 255, 255, 0.18); transform: scale(1.08); }
+
+        /* Легенда внизу */
+        #legend {
+            position: absolute;
+            left: 50%;
+            bottom: 22px;
+            transform: translateX(-50%);
+            z-index: 15;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px 14px;
+            background: rgba(10, 14, 28, 0.55);
+            
+            
+            border: 1px solid var(--panel-border);
+            border-radius: 16px;
+            max-width: calc(100vw - 60px);
+        }
+        .legend-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 13px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 999px;
+            font-size: 13px;
+            color: var(--text);
+            cursor: pointer;
+            transition: background 0.2s, border-color 0.2s, transform 0.15s;
+            user-select: none;
+            white-space: nowrap;
+        }
+        .legend-chip:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
+        }
+        .legend-chip.active {
+            background: rgba(122, 167, 255, 0.18);
+            border-color: rgba(122, 167, 255, 0.45);
+        }
+        .legend-dot {
+            width: 11px;
+            height: 11px;
+            border-radius: 50%;
+            box-shadow: 0 0 8px currentColor;
+        }
+
+        /* Плавающая подсказка у курсора */
+        #hover-label {
+            position: fixed;
+            z-index: 25;
+            background: rgba(10, 14, 28, 0.85);
+            border: 1px solid var(--panel-border);
+            color: var(--text);
+            padding: 6px 10px;
+            border-radius: 8px;
+            font-size: 12.5px;
+            font-weight: 500;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.15s;
+            transform: translate(12px, 12px);
+            white-space: nowrap;
+        }
+        #hover-label.show { opacity: 1; }
+
+        /* Кнопка сброса камеры */
+        #reset-btn {
+            position: absolute;
+            top: 20px;
+            right: 400px;
+            z-index: 10;
+            padding: 9px 14px;
+            background: rgba(10, 14, 28, 0.6);
+            
+            
+            border: 1px solid var(--panel-border);
+            color: var(--text);
+            border-radius: 10px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: background 0.2s;
+            display: none;
+        }
+        #reset-btn:hover { background: rgba(122, 167, 255, 0.2); }
+        #reset-btn.show { display: inline-flex; align-items: center; gap: 6px; }
+
+        /* Переключатель языков (RU / KZ / EN) */
+        #lang-switcher {
+            position: absolute;
+            top: 70px;
+            left: 20px;
+            z-index: 30;
+            display: inline-flex;
+            gap: 4px;
+            padding: 4px;
+            background: rgba(10, 14, 28, 0.65);
+            
+            
+            border: 1px solid var(--panel-border);
+            border-radius: 999px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+            user-select: none;
+        }
+        #lang-switcher .lang-pill {
+            border: none;
+            background: transparent;
+            color: var(--text-dim);
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            padding: 6px 11px;
+            border-radius: 999px;
+            cursor: pointer;
+            transition: background 0.2s, color 0.2s, transform 0.15s;
+            font-family: inherit;
+        }
+        #lang-switcher .lang-pill:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text);
+        }
+        #lang-switcher .lang-pill.active {
+            background: var(--accent);
+            color: #0b1020;
+            cursor: default;
+        }
+
+        /* Экран загрузки */
+        #loading {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at center, #1a2045, #05060d);
+            z-index: 100;
+            transition: opacity 0.6s ease;
+        }
+        #loading.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .spinner {
+            width: 52px;
+            height: 52px;
+            border: 3px solid rgba(255,255,255,0.1);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        #loading-text {
+            margin-top: 18px;
+            color: var(--text-dim);
+            font-size: 14px;
+            letter-spacing: 0.5px;
+        }
+
+        @media (max-width: 900px) {
+            #info-panel { width: calc(100vw - 40px); max-height: 55vh; }
+            #reset-btn { display: none !important; }
+            #header { left: 140px; right: 20px; }
+            #header h1 { font-size: 18px; }
+            #header p { font-size: 12px; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="canvas-container"></div>
+
+<div id="header">
+    <h1 data-i18n="header_title">Мозг человека</h1>
+    <p data-i18n="header_subtitle">Интерактивная анатомическая модель — 7 ключевых отделов</p>
+</div>
+
+<div id="hint" data-i18n="hint">Кликните по любому отделу мозга, чтобы узнать больше</div>
+
+<button id="reset-btn" data-i18n="reset_btn" data-i18n-title="reset_btn_title" title="Сбросить вид">↺ Сбросить вид</button>
+
+
+
+<div id="info-panel" aria-hidden="true">
+    <button class="close-btn" id="close-btn" data-i18n-aria-label="close_btn_label" aria-label="Закрыть">×</button>
+    <div class="info-header">
+        <span class="info-dot" id="info-dot"></span>
+        <div>
+            <h2 id="info-title">Название</h2>
+            <span id="info-subtitle"></span>
+        </div>
+    </div>
+    <p id="info-desc">Описание</p>
+    <div id="info-facts"></div>
+</div>
+
+<div id="legend"></div>
+
+<div id="hover-label"></div>
+
+<div id="loading">
+    <div class="spinner"></div>
+    <div id="loading-text" data-i18n="loading">Загрузка модели мозга…</div>
+</div>
+
+<script type="importmap">
+    {
+        "imports": {
+            "three": "../../libs/vendor/three-0.160.0/three.module.js",
+            "three/addons/": "../../libs/vendor/three-0.160.0/addons/"
+        }
+    }
+</script>
+
+<script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+    // =====================================================================
+    //  I18N — встроенные переводы (RU / KZ / EN)
+    //  Язык берётся из ?lang=ru|kz|en (передаётся приложением). По-умолчанию RU.
+    // =====================================================================
+    const I18N = {
+        ru: {
+            page_title: 'Интерактивный мозг человека',
+            header_title: 'Мозг человека',
+            header_subtitle: 'Интерактивная анатомическая модель — 7 ключевых отделов',
+            hint: 'Кликните по любому отделу мозга, чтобы узнать больше',
+            reset_btn: '↺ Сбросить вид',
+            reset_btn_title: 'Сбросить вид',
+            close_btn_label: 'Закрыть',
+            loading: 'Загрузка модели мозга…',
+            error_load: 'Не удалось загрузить brain.glb',
+            error_no_mesh: 'В модели нет меша',
+            facts_label: 'Интересный факт',
+            zones: {
+                frontal: {
+                    title: 'Лобная доля',
+                    desc: 'Самая большая доля мозга, расположенная в передней части головы. Отвечает за мышление, планирование, принятие решений, речь (зона Брока), управление движениями и контроль эмоций. Здесь формируется личность человека и его поведение.',
+                    facts: 'Составляет около 30% коры больших полушарий. Развивается дольше всех — окончательно созревает только к 25 годам.'
+                },
+                parietal: {
+                    title: 'Теменная доля',
+                    desc: 'Верхняя часть мозга позади лобной доли. Обрабатывает ощущения от тела: прикосновения, температуру, давление и боль. Помогает ориентироваться в пространстве, различать предметы на ощупь и управлять координацией рук.',
+                    facts: 'Содержит соматосенсорную кору — «карту тела», где каждая точка кожи имеет своё представительство в мозге.'
+                },
+                occipital: {
+                    title: 'Затылочная доля',
+                    desc: 'Находится в задней части мозга. Главный центр обработки зрения: анализирует форму, цвет, движение и расстояние до объектов. Благодаря ей мы узнаём лица, читаем текст и воспринимаем окружающий мир глазами.',
+                    facts: 'Первичная зрительная кора (V1) получает сигналы от глаз менее чем за 0,1 секунды и различает миллионы оттенков.'
+                },
+                temporal_left: {
+                    title: 'Левая височная доля',
+                    desc: 'Расположена сбоку над левым ухом. У большинства людей — главный центр речи: понимание слов (зона Вернике), чтение и воспроизведение языка. Также отвечает за слух и долговременную память на факты.',
+                    facts: 'Повреждение зоны Вернике приводит к тому, что человек говорит бегло, но бессмысленно — не понимая своих же слов.'
+                },
+                temporal_right: {
+                    title: 'Правая височная доля',
+                    desc: 'Симметрична левой височной доле, но выполняет другие функции. Обрабатывает музыку, интонации голоса и эмоции. Помогает узнавать лица, запоминать зрительные образы и ориентироваться в знакомых местах.',
+                    facts: 'Именно здесь находится «веретенообразная извилина» — участок, который распознаёт знакомые лица за доли секунды.'
+                },
+                cerebellum: {
+                    title: 'Мозжечок',
+                    desc: '«Малый мозг» в задне-нижней части черепа. Координирует движения, поддерживает равновесие и осанку, делает действия точными и плавными. Участвует в обучении двигательным навыкам — от ходьбы до игры на музыкальных инструментах.',
+                    facts: 'Содержит около 80% всех нейронов мозга, занимая лишь 10% его объёма.'
+                },
+                brainstem: {
+                    title: 'Ствол мозга',
+                    desc: 'Связывает головной мозг со спинным. Контролирует жизненно важные функции: дыхание, сердцебиение, артериальное давление, сон и бодрствование. Работает автоматически, без участия сознания.',
+                    facts: 'Повреждение ствола мозга несовместимо с жизнью — именно здесь расположены центры дыхания и сердцебиения.'
+                }
+            }
+        },
+        kz: {
+            page_title: 'Адам миы — интерактивті модель',
+            header_title: 'Адам миы',
+            header_subtitle: 'Интерактивті анатомиялық модель — 7 негізгі бөлім',
+            hint: 'Толығырақ білу үшін мидың кез келген бөліміне басыңыз',
+            reset_btn: '↺ Көріністі қалпына келтіру',
+            reset_btn_title: 'Көріністі қалпына келтіру',
+            close_btn_label: 'Жабу',
+            loading: 'Ми моделі жүктелуде…',
+            error_load: 'brain.glb файлын жүктеу мүмкін болмады',
+            error_no_mesh: 'Модельде меш табылмады',
+            facts_label: 'Қызықты факт',
+            zones: {
+                frontal: {
+                    title: 'Маңдай бөлігі',
+                    desc: 'Бастың алдыңғы бөлігінде орналасқан мидың ең үлкен бөлігі. Ойлау, жоспарлау, шешім қабылдау, сөйлеу (Брока аймағы), қозғалысты басқару және эмоцияларды бақылау үшін жауапты. Адамның тұлғасы мен мінез-құлқы дәл осы жерде қалыптасады.',
+                    facts: 'Үлкен ми сыңарлары қыртысының шамамен 30%-ын құрайды. Барлық бөліктердің ішінде ең ұзақ дамиды — толық жетілуі тек 25 жасқа қарай аяқталады.'
+                },
+                parietal: {
+                    title: 'Төбе бөлігі',
+                    desc: 'Маңдай бөлігінің артындағы мидың жоғарғы бөлігі. Денеден келетін сезімдерді өңдейді: жанасу, температура, қысым және ауырсыну. Кеңістікте бағдарлануға, заттарды сипап ажыратуға және қол қозғалысын үйлестіруге көмектеседі.',
+                    facts: 'Соматосенсорлық қыртысты — теріңіздің әрбір нүктесінің мида өкілдігі бар «дене картасын» қамтиды.'
+                },
+                occipital: {
+                    title: 'Шүйде бөлігі',
+                    desc: 'Мидың артқы бөлігінде орналасқан. Көру өңдеуінің басты орталығы: пішінді, түсті, қозғалысты және объектілерге дейінгі қашықтықты талдайды. Соның арқасында біз бет-әлпетті танып, мәтінді оқып, қоршаған әлемді көзбен қабылдаймыз.',
+                    facts: 'Алғашқы көру қыртысы (V1) көзден сигналдарды 0,1 секундтан да аз уақытта қабылдап, миллиондаған реңкті ажырата алады.'
+                },
+                temporal_left: {
+                    title: 'Сол жақ самай бөлігі',
+                    desc: 'Сол құлақтың үстінде, бүйірде орналасқан. Адамдардың көпшілігінде сөйлеудің басты орталығы: сөздерді түсіну (Вернике аймағы), оқу және тілді жаңғырту. Сонымен қатар естуге және фактілерді ұзақ есте сақтауға жауапты.',
+                    facts: 'Вернике аймағының зақымдалуы адамның еркін, бірақ мағынасыз сөйлеуіне әкеледі — өз сөздерін өзі түсінбейтін болады.'
+                },
+                temporal_right: {
+                    title: 'Оң жақ самай бөлігі',
+                    desc: 'Сол жақ самай бөлігіне симметриялы, бірақ басқа қызметтер атқарады. Музыканы, дауыс ырғағын және эмоцияларды өңдейді. Бет-әлпетті тануға, көру бейнелерін есте сақтауға және таныс жерлерде бағдарлануға көмектеседі.',
+                    facts: 'Дәл осы жерде «ұршық тәрізді ирек» — таныс беттерді бөлшек секундта танитын аймақ орналасқан.'
+                },
+                cerebellum: {
+                    title: 'Мишық',
+                    desc: 'Бас сүйектің артқы-төменгі бөлігіндегі «кіші ми». Қозғалыстарды үйлестіреді, тепе-теңдік пен дене қалпын сақтайды, әрекеттерді дәл әрі біркелкі етеді. Жүруден музыкалық аспаптарда ойнауға дейінгі қозғалыс дағдыларын меңгеруге қатысады.',
+                    facts: 'Ми көлемінің тек 10%-ын алып жатыр, бірақ мидың барлық нейрондарының шамамен 80%-ын қамтиды.'
+                },
+                brainstem: {
+                    title: 'Ми бағанасы',
+                    desc: 'Үлкен миды жұлынмен байланыстырады. Өмірлік маңызды функцияларды бақылайды: тыныс алу, жүрек соғысы, артериялық қысым, ұйқы мен сергектік. Сана қатыспай, автоматты түрде жұмыс істейді.',
+                    facts: 'Ми бағанасының зақымдалуы өмірмен үйлеспейді — тыныс алу мен жүрек соғу орталықтары дәл осында орналасқан.'
+                }
+            }
+        },
+        en: {
+            page_title: 'Interactive Human Brain',
+            header_title: 'Human Brain',
+            header_subtitle: 'Interactive anatomical model — 7 key regions',
+            hint: 'Click any region of the brain to learn more',
+            reset_btn: '↺ Reset view',
+            reset_btn_title: 'Reset view',
+            close_btn_label: 'Close',
+            loading: 'Loading brain model…',
+            error_load: 'Failed to load brain.glb',
+            error_no_mesh: 'No mesh found in the model',
+            facts_label: 'Did you know?',
+            zones: {
+                frontal: {
+                    title: 'Frontal Lobe',
+                    desc: 'The largest lobe of the brain, located at the front of the head. Responsible for thinking, planning, decision-making, speech (Broca\'s area), motor control, and emotional regulation. This is where personality and behavior are formed.',
+                    facts: 'Makes up about 30% of the cerebral cortex. It is the slowest lobe to mature — full development is reached only by age 25.'
+                },
+                parietal: {
+                    title: 'Parietal Lobe',
+                    desc: 'The upper part of the brain behind the frontal lobe. Processes sensations from the body: touch, temperature, pressure and pain. Helps with spatial orientation, identifying objects by feel, and coordinating hand movements.',
+                    facts: 'Contains the somatosensory cortex — a “body map” where every point of skin has its own representation in the brain.'
+                },
+                occipital: {
+                    title: 'Occipital Lobe',
+                    desc: 'Located at the back of the brain. The main center for visual processing: analyzes shape, color, motion, and distance to objects. Thanks to it we recognize faces, read text, and perceive the world through our eyes.',
+                    facts: 'The primary visual cortex (V1) receives signals from the eyes in less than 0.1 seconds and can distinguish millions of shades.'
+                },
+                temporal_left: {
+                    title: 'Left Temporal Lobe',
+                    desc: 'Located on the side, above the left ear. In most people, the main language center: word comprehension (Wernicke\'s area), reading and language production. Also responsible for hearing and long-term memory of facts.',
+                    facts: 'Damage to Wernicke\'s area causes a person to speak fluently but meaninglessly — without understanding their own words.'
+                },
+                temporal_right: {
+                    title: 'Right Temporal Lobe',
+                    desc: 'Symmetric to the left temporal lobe but performs different functions. Processes music, tone of voice, and emotions. Helps recognize faces, remember visual images, and navigate familiar places.',
+                    facts: 'This is where the “fusiform gyrus” is located — the area that recognizes familiar faces in a fraction of a second.'
+                },
+                cerebellum: {
+                    title: 'Cerebellum',
+                    desc: 'The “little brain” at the back-bottom of the skull. Coordinates movement, maintains balance and posture, makes actions precise and smooth. Involved in learning motor skills — from walking to playing musical instruments.',
+                    facts: 'Contains about 80% of all neurons in the brain while occupying only 10% of its volume.'
+                },
+                brainstem: {
+                    title: 'Brainstem',
+                    desc: 'Connects the brain with the spinal cord. Controls vital functions: breathing, heartbeat, blood pressure, sleep and wakefulness. Operates automatically, without conscious involvement.',
+                    facts: 'Damage to the brainstem is incompatible with life — the centers for breathing and heartbeat are located here.'
+                }
+            }
+        }
+    };
+
+    const LANG = (() => {
+        const q = new URLSearchParams(location.search).get('lang');
+        return (q && I18N[q]) ? q : 'ru';
+    })();
+    const t = (key) => (I18N[LANG] && I18N[LANG][key]) ?? I18N.ru[key];
+    const zoneText = (zone, key) =>
+        I18N[LANG]?.zones?.[zone.id]?.[key] ?? I18N.ru.zones[zone.id][key];
+
+    function applyStaticI18N() {
+        document.documentElement.lang = LANG;
+        const titleVal = t('page_title');
+        if (titleVal) document.title = titleVal;
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const v = t(el.getAttribute('data-i18n'));
+            if (v) el.textContent = v;
+        });
+        document.querySelectorAll('[data-i18n-title]').forEach(el => {
+            const v = t(el.getAttribute('data-i18n-title'));
+            if (v) el.setAttribute('title', v);
+        });
+        document.querySelectorAll('[data-i18n-aria-label]').forEach(el => {
+            const v = t(el.getAttribute('data-i18n-aria-label'));
+            if (v) el.setAttribute('aria-label', v);
+        });
+        document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+            const v = t(el.getAttribute('data-i18n-placeholder'));
+            if (v) el.setAttribute('placeholder', v);
+        });
+    }
+    applyStaticI18N();
+
+    // Переключатель языков: подсвечиваем активный, перезагрузка с ?lang=
+    (function setupLangSwitcher() {
+        const sw = document.getElementById('lang-switcher');
+        if (!sw) return;
+        sw.querySelectorAll('.lang-pill').forEach(btn => {
+            const lang = btn.dataset.lang;
+            if (lang === LANG) btn.classList.add('active');
+            btn.addEventListener('click', () => {
+                if (lang === LANG) return;
+                const url = new URL(location.href);
+                url.searchParams.set('lang', lang);
+                location.href = url.toString();
+            });
+        });
+    })();
+
+    // =====================================================================
+    //  ДАННЫЕ О ЗОНАХ МОЗГА (7 отделов)
+    //  title/desc/facts хранятся в I18N (см. выше). Здесь только id, латинский
+    //  подзаголовок (subtitle — общий для всех языков) и цвет подсветки.
+    // =====================================================================
+    const ZONES = [
+        { id: 'frontal',        subtitle: 'Lobus frontalis',           color: 0xff6b6b },
+        { id: 'parietal',       subtitle: 'Lobus parietalis',          color: 0x4d96ff },
+        { id: 'occipital',      subtitle: 'Lobus occipitalis',         color: 0xffd93d },
+        { id: 'temporal_left',  subtitle: 'Lobus temporalis sinister', color: 0x6bcb77 },
+        { id: 'temporal_right', subtitle: 'Lobus temporalis dexter',   color: 0xc77dff },
+        { id: 'cerebellum',     subtitle: 'Cerebellum',                color: 0xff9f45 },
+        { id: 'brainstem',      subtitle: 'Truncus encephali',         color: 0x00c9a7 }
+    ];
+
+    const ZONE_INDEX = {};
+    ZONES.forEach((z, i) => { ZONE_INDEX[z.id] = i; });
+
+    // =====================================================================
+    //  ОРИЕНТАЦИЯ МОДЕЛИ
+    //  Карта осей: куда направлены "перед", "верх", "право" в локальных координатах модели
+    //  Если зоны окажутся перепутаны — меняем здесь (напр. FRONT_AXIS = '-z')
+    // =====================================================================
+    const ORIENT = {
+        FRONT_AXIS: '+z',   // +x / -x / +y / -y / +z / -z
+        UP_AXIS:    '+y',
+        RIGHT_AXIS: '+x'
+    };
+
+    // Поддержка быстрой проверки ориентации через URL ?flip=1 / ?swap=xz и т.п.
+    (function applyUrlOrient() {
+        const qs = new URLSearchParams(location.search);
+        if (qs.get('flipz') === '1') ORIENT.FRONT_AXIS = ORIENT.FRONT_AXIS.startsWith('+') ? '-' + ORIENT.FRONT_AXIS.slice(1) : '+' + ORIENT.FRONT_AXIS.slice(1);
+        if (qs.get('flipx') === '1') ORIENT.RIGHT_AXIS = ORIENT.RIGHT_AXIS.startsWith('+') ? '-' + ORIENT.RIGHT_AXIS.slice(1) : '+' + ORIENT.RIGHT_AXIS.slice(1);
+        if (qs.get('flipy') === '1') ORIENT.UP_AXIS    = ORIENT.UP_AXIS.startsWith('+')    ? '-' + ORIENT.UP_AXIS.slice(1)    : '+' + ORIENT.UP_AXIS.slice(1);
+    })();
+
+    function axisReader(axis) {
+        const sign = axis[0] === '-' ? -1 : 1;
+        const comp = axis[1]; // x/y/z
+        return (v) => sign * v[comp];
+    }
+
+    // =====================================================================
+    //  КЛАССИФИКАЦИЯ ТОЧКИ В ЗОНУ (вход: нормированные координаты [-1..1])
+    //   f = front(+)/back(-),  u = up(+)/down(-),  r = right(+)/left(-)
+    // =====================================================================
+    function classify(f, u, r) {
+        // 1) Ствол мозга — узкий центр, сильно внизу
+        if (u < -0.55 && Math.abs(r) < 0.22 && Math.abs(f) < 0.35) return ZONE_INDEX.brainstem;
+        // 2) Мозжечок — задне-нижняя часть (большой объём снизу сзади)
+        if (u < -0.05 && f < -0.25) return ZONE_INDEX.cerebellum;
+        // 3) Лобная доля — всё, что заметно спереди
+        if (f > 0.28) return ZONE_INDEX.frontal;
+        // 4) Затылочная доля — задняя верхняя часть (выше мозжечка)
+        if (f < -0.45) return ZONE_INDEX.occipital;
+        // 5) Височные доли — боковые нижние
+        if (u < 0.15) {
+            if (r < -0.28) return ZONE_INDEX.temporal_left;
+            if (r >  0.28) return ZONE_INDEX.temporal_right;
+        }
+        // 6) Теменная доля — всё остальное (верхняя центральная часть)
+        return ZONE_INDEX.parietal;
+    }
+
+    // =====================================================================
+    //  СЦЕНА THREE.JS
+    // =====================================================================
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.Fog(0x0b1020, 12, 40);
+
+    const camera = new THREE.PerspectiveCamera(38, window.innerWidth / window.innerHeight, 0.05, 200);
+    const CAMERA_START = new THREE.Vector3(0, 0.5, 5.5);
+    camera.position.copy(CAMERA_START);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.05;
+    container.appendChild(renderer.domElement);
+
+    // Свет
+    scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+
+    const keyLight = new THREE.DirectionalLight(0xffe9c8, 1.1);
+    keyLight.position.set(3, 4, 4);
+    scene.add(keyLight);
+
+    const fillLight = new THREE.DirectionalLight(0x8cb6ff, 0.55);
+    fillLight.position.set(-4, 1, -3);
+    scene.add(fillLight);
+
+    const rimLight = new THREE.DirectionalLight(0xffffff, 0.4);
+    rimLight.position.set(0, -3, -4);
+    scene.add(rimLight);
+
+    // OrbitControls
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+    controls.minDistance = 2.2;
+    controls.maxDistance = 12;
+    controls.target.set(0, 0, 0);
+    controls.autoRotate = true;
+    controls.autoRotateSpeed = 0.45;
+
+    // =====================================================================
+    //  ЗАГРУЗКА МОДЕЛИ
+    // =====================================================================
+    const brainGroup = new THREE.Group();
+    scene.add(brainGroup);
+
+    let brainMesh = null;          // Основной mesh (оригинальная текстура, НЕ трогаем)
+    let glowMesh = null;           // Оверлей-мэш поверх brainMesh, дающий свечение выбранной зоне
+    let zoneMaterials = [];        // 7 материалов glowMesh (один на зону, additive glow)
+    let highlightedZone = -1;      // индекс выделенной зоны
+
+    const loader = new GLTFLoader();
+    loader.load('brain.glb',
+        (gltf) => { setupBrain(gltf); },
+        (xhr) => {
+            if (xhr.lengthComputable) {
+                const pct = Math.round(xhr.loaded / xhr.total * 100);
+                document.getElementById('loading-text').textContent = `${t('loading')} ${pct}%`;
+            }
+        },
+        (err) => {
+            console.error('Ошибка загрузки модели', err);
+            document.getElementById('loading-text').textContent = t('error_load');
+        }
+    );
+
+    function setupBrain(gltf) {
+        // 1) Находим первый mesh в сцене
+        let origMesh = null;
+        gltf.scene.traverse(obj => { if (!origMesh && obj.isMesh) origMesh = obj; });
+        if (!origMesh) {
+            document.getElementById('loading-text').textContent = t('error_no_mesh');
+            return;
+        }
+
+        // 2) Нормализуем геометрию: центрируем и масштабируем в куб ~2 единицы
+        let geom = origMesh.geometry.clone();
+        // Если геометрия не индексированная — построим индекс, чтобы работать с треугольниками
+        if (!geom.index) {
+            const n = geom.attributes.position.count;
+            const arr = n > 65535 ? new Uint32Array(n) : new Uint16Array(n);
+            for (let i = 0; i < n; i++) arr[i] = i;
+            geom.setIndex(new THREE.BufferAttribute(arr, 1));
+        }
+        geom.computeBoundingBox();
+        const bb = geom.boundingBox;
+        const size = new THREE.Vector3();
+        bb.getSize(size);
+        const center = new THREE.Vector3();
+        bb.getCenter(center);
+        const maxDim = Math.max(size.x, size.y, size.z);
+        const scale = 2.4 / maxDim;
+
+        // Применяем трансформацию к позициям, чтобы классификация работала в унифицированных координатах
+        const posAttr = geom.attributes.position;
+        for (let i = 0; i < posAttr.count; i++) {
+            posAttr.setXYZ(i,
+                (posAttr.getX(i) - center.x) * scale,
+                (posAttr.getY(i) - center.y) * scale,
+                (posAttr.getZ(i) - center.z) * scale
+            );
+        }
+        posAttr.needsUpdate = true;
+        geom.computeBoundingBox();
+        geom.computeVertexNormals();
+
+        // 3) Считаем половины размеров (для нормализации в [-1..1] при классификации)
+        const newBB = geom.boundingBox;
+        const half = {
+            x: Math.max(Math.abs(newBB.min.x), Math.abs(newBB.max.x)) || 1,
+            y: Math.max(Math.abs(newBB.min.y), Math.abs(newBB.max.y)) || 1,
+            z: Math.max(Math.abs(newBB.min.z), Math.abs(newBB.max.z)) || 1
+        };
+
+        const readF = axisReader(ORIENT.FRONT_AXIS);
+        const readU = axisReader(ORIENT.UP_AXIS);
+        const readR = axisReader(ORIENT.RIGHT_AXIS);
+
+        // 4) Классифицируем каждый треугольник по центроиду
+        const idx = geom.index;
+        const idxArr = idx.array;
+        const triCount = idxArr.length / 3;
+        const triZones = new Int8Array(triCount);
+
+        const tmpA = { x: 0, y: 0, z: 0 };
+        for (let t = 0; t < triCount; t++) {
+            const a = idxArr[t * 3];
+            const b = idxArr[t * 3 + 1];
+            const c = idxArr[t * 3 + 2];
+            const cx = (posAttr.getX(a) + posAttr.getX(b) + posAttr.getX(c)) / 3;
+            const cy = (posAttr.getY(a) + posAttr.getY(b) + posAttr.getY(c)) / 3;
+            const cz = (posAttr.getZ(a) + posAttr.getZ(b) + posAttr.getZ(c)) / 3;
+            tmpA.x = cx; tmpA.y = cy; tmpA.z = cz;
+            const f = readF(tmpA) / half[ORIENT.FRONT_AXIS[1]];
+            const u = readU(tmpA) / half[ORIENT.UP_AXIS[1]];
+            const r = readR(tmpA) / half[ORIENT.RIGHT_AXIS[1]];
+            triZones[t] = classify(f, u, r);
+        }
+
+        // 5) Сортируем треугольники по зоне и строим новый index + group'ы
+        const order = new Uint32Array(triCount);
+        for (let i = 0; i < triCount; i++) order[i] = i;
+        order.sort((a, b) => triZones[a] - triZones[b]);
+
+        // Тип нового индекса: если максимальная величина индекса вершины превышает 65535,
+        // используем Uint32Array; иначе — тот же тип, что у оригинала
+        const maxVertex = posAttr.count - 1;
+        const Uint = maxVertex > 65535 ? Uint32Array : (idxArr.constructor || Uint16Array);
+        const newIdx = new Uint(idxArr.length);
+        for (let i = 0; i < triCount; i++) {
+            const src = order[i] * 3;
+            newIdx[i * 3]     = idxArr[src];
+            newIdx[i * 3 + 1] = idxArr[src + 1];
+            newIdx[i * 3 + 2] = idxArr[src + 2];
+        }
+
+        geom.setIndex(new THREE.BufferAttribute(newIdx, 1));
+        geom.clearGroups();
+
+        // Добавляем группы
+        let curZone = triZones[order[0]];
+        let curStart = 0;
+        const groups = [];
+        for (let i = 1; i < triCount; i++) {
+            const z = triZones[order[i]];
+            if (z !== curZone) {
+                groups.push({ start: curStart * 3, count: (i - curStart) * 3, materialIndex: curZone });
+                curStart = i;
+                curZone = z;
+            }
+        }
+        groups.push({ start: curStart * 3, count: (triCount - curStart) * 3, materialIndex: curZone });
+
+        // Переупорядочим группы по возрастанию materialIndex, чтобы индексы совпадали
+        // (THREE использует materialIndex как индекс в массиве material; группы могут идти в любом порядке)
+        groups.forEach(g => geom.addGroup(g.start, g.count, g.materialIndex));
+
+        // 6) ОСНОВНОЙ мэш — оригинальный материал, абсолютно без изменений.
+        //    Группы тоже есть, но передаём ОДИН материал — THREE применит его ко всем группам.
+        brainMesh = new THREE.Mesh(geom, origMesh.material);
+        brainMesh.name = 'Brain';
+        brainGroup.add(brainMesh);
+
+        // 7) ОВЕРЛЕЙ-мэш — копия геометрии с 7 additive-материалами. Даёт явное свечение
+        //    выбранной зоне, не затрагивая оригинальный вид остальной части мозга.
+        zoneMaterials = ZONES.map((z) => {
+            const m = new THREE.MeshBasicMaterial({
+                color: z.color,
+                transparent: true,
+                opacity: 0.0,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false,
+                depthTest: true,
+                side: THREE.FrontSide,
+                toneMapped: false
+            });
+            return m;
+        });
+        glowMesh = new THREE.Mesh(geom, zoneMaterials);
+        glowMesh.name = 'BrainGlow';
+        glowMesh.scale.setScalar(1.003);                 // крошечный outset, чтобы не было z-fight
+        glowMesh.renderOrder = 2;
+        brainGroup.add(glowMesh);
+
+        initZoneState();
+
+        // Лёгкий поворот для эстетичного ракурса (можно убрать)
+        brainGroup.rotation.y = 0.2;
+
+        // Скрываем загрузку
+        const loading = document.getElementById('loading');
+        loading.classList.add('hidden');
+        setTimeout(() => loading.remove(), 800);
+
+        // Показываем подсказку на 4 секунды
+        const hint = document.getElementById('hint');
+        hint.classList.add('show');
+        setTimeout(() => hint.classList.remove('show'), 5000);
+
+        buildLegend();
+    }
+
+    // =====================================================================
+    //  UI: ЛЕГЕНДА
+    // =====================================================================
+    function buildLegend() {
+        const legend = document.getElementById('legend');
+        legend.innerHTML = '';
+        ZONES.forEach((z, i) => {
+            const chip = document.createElement('div');
+            chip.className = 'legend-chip';
+            chip.dataset.zone = i;
+            const colorHex = '#' + z.color.toString(16).padStart(6, '0');
+            chip.innerHTML = `<span class="legend-dot" style="background:${colorHex}; color:${colorHex}"></span>${zoneText(z, 'title')}`;
+            chip.addEventListener('click', () => focusZone(i));
+            chip.addEventListener('mouseenter', () => previewZone(i));
+            chip.addEventListener('mouseleave', () => previewZone(-1));
+            legend.appendChild(chip);
+        });
+    }
+
+    // =====================================================================
+    //  ПОДСВЕТКА И ИНФОРМАЦИЯ
+    //  Принцип: под оригинальным brainMesh лежит прозрачный "glow"-мэш с 7 зонами.
+    //  У выбранной зоны поднимается opacity → добавляется яркое цветное свечение.
+    //  Остальные зоны полностью невидимы (opacity 0), мозг выглядит как оригинал.
+    // =====================================================================
+    const OPACITY_SELECTED = 0.32;   // сила свечения выбранной зоны (additive) — мягко
+    const OPACITY_HOVER    = 0.12;   // едва заметная подсветка при наведении
+
+    // Плавное приближение opacity к цели
+    const zoneTargetOpacity = [];
+    function initZoneState() {
+        for (let i = 0; i < ZONES.length; i++) zoneTargetOpacity[i] = 0.0;
+    }
+
+    function updateMaterialTweens(dt) {
+        const k = 1 - Math.exp(-12 * dt);
+        for (let i = 0; i < zoneMaterials.length; i++) {
+            const m = zoneMaterials[i];
+            if (!m) continue;
+            const target = zoneTargetOpacity[i] ?? 0;
+            m.opacity += (target - m.opacity) * k;
+        }
+    }
+
+    function computeTargets(selectedIdx, hoverIdx) {
+        for (let i = 0; i < ZONES.length; i++) {
+            if (i === selectedIdx)        zoneTargetOpacity[i] = OPACITY_SELECTED;
+            else if (i === hoverIdx)      zoneTargetOpacity[i] = OPACITY_HOVER;
+            else                          zoneTargetOpacity[i] = 0.0;
+        }
+    }
+
+    function syncChipActive() {
+        document.querySelectorAll('.legend-chip').forEach(c => {
+            const idx = parseInt(c.dataset.zone, 10);
+            c.classList.toggle('active', idx === highlightedZone);
+        });
+    }
+
+    let hoveredZone = -1;
+
+    function previewZone(zoneIdx) {
+        hoveredZone = zoneIdx;
+        computeTargets(highlightedZone, hoveredZone);
+        syncChipActive();
+    }
+
+    function highlightZone(zoneIdx) {
+        highlightedZone = zoneIdx;
+        computeTargets(highlightedZone, hoveredZone);
+        syncChipActive();
+    }
+
+    function clearHighlight() {
+        highlightedZone = -1;
+        computeTargets(highlightedZone, hoveredZone);
+        syncChipActive();
+    }
+
+    const panel = document.getElementById('info-panel');
+    const titleEl = document.getElementById('info-title');
+    const subtitleEl = document.getElementById('info-subtitle');
+    const descEl = document.getElementById('info-desc');
+    const factsEl = document.getElementById('info-facts');
+    const dotEl = document.getElementById('info-dot');
+    const resetBtn = document.getElementById('reset-btn');
+
+    function showInfo(zoneIdx) {
+        const z = ZONES[zoneIdx];
+        if (!z) return;
+        titleEl.textContent = zoneText(z, 'title');
+        subtitleEl.textContent = z.subtitle;
+        descEl.textContent = zoneText(z, 'desc');
+        const factsText = zoneText(z, 'facts');
+        if (factsText) {
+            factsEl.innerHTML = `<strong>${t('facts_label')}</strong>` + factsText;
+            factsEl.style.display = 'block';
+        } else {
+            factsEl.style.display = 'none';
+        }
+        const hex = '#' + z.color.toString(16).padStart(6, '0');
+        dotEl.style.background = hex;
+        dotEl.style.color = hex;
+        panel.classList.add('active');
+        panel.setAttribute('aria-hidden', 'false');
+        resetBtn.classList.add('show');
+    }
+
+    function closePanel() {
+        panel.classList.remove('active');
+        panel.setAttribute('aria-hidden', 'true');
+        clearHighlight();
+        resetBtn.classList.remove('show');
+    }
+
+    function focusZone(zoneIdx) {
+        highlightZone(zoneIdx);
+        showInfo(zoneIdx);
+        controls.autoRotate = false;
+    }
+
+    document.getElementById('close-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        closePanel();
+    });
+    resetBtn.addEventListener('click', () => {
+        closePanel();
+        animateCamera(CAMERA_START, new THREE.Vector3(0, 0, 0));
+        controls.autoRotate = true;
+    });
+
+    // =====================================================================
+    //  РЭЙКАСТИНГ КЛИКОВ И HOVER
+    // =====================================================================
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+    const hoverLabel = document.getElementById('hover-label');
+
+    function getZoneFromEvent(event) {
+        if (!brainMesh) return -1;
+        const rect = renderer.domElement.getBoundingClientRect();
+        mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+        raycaster.setFromCamera(mouse, camera);
+        // Рэйкастим glow-мэш (у него 7 материалов по группам → face.materialIndex = номер зоны)
+        const target = glowMesh || brainMesh;
+        const hits = raycaster.intersectObject(target, false);
+        if (hits.length === 0) return -1;
+        const face = hits[0].face;
+        if (face && typeof face.materialIndex === 'number') return face.materialIndex;
+        return -1;
+    }
+
+    let hoverZone = -1;
+    renderer.domElement.addEventListener('pointermove', (e) => {
+        const zi = getZoneFromEvent(e);
+        if (zi !== hoverZone) {
+            hoverZone = zi;
+            if (zi >= 0) {
+                renderer.domElement.style.cursor = 'pointer';
+                hoverLabel.textContent = zoneText(ZONES[zi], 'title');
+                hoverLabel.classList.add('show');
+                previewZone(zi);
+            } else {
+                renderer.domElement.style.cursor = 'grab';
+                hoverLabel.classList.remove('show');
+                previewZone(-1);
+            }
+        }
+        hoverLabel.style.left = e.clientX + 'px';
+        hoverLabel.style.top = e.clientY + 'px';
+    });
+
+    renderer.domElement.addEventListener('pointerleave', () => {
+        hoverZone = -1;
+        hoverLabel.classList.remove('show');
+        previewZone(-1);
+        renderer.domElement.style.cursor = 'grab';
+    });
+
+    renderer.domElement.addEventListener('pointerdown', () => {
+        renderer.domElement.style.cursor = 'grabbing';
+    });
+    renderer.domElement.addEventListener('pointerup', (e) => {
+        renderer.domElement.style.cursor = hoverZone >= 0 ? 'pointer' : 'grab';
+    });
+
+    // Клик по мешу открывает панель
+    let downPos = null;
+    renderer.domElement.addEventListener('mousedown', (e) => {
+        downPos = { x: e.clientX, y: e.clientY };
+    });
+    renderer.domElement.addEventListener('mouseup', (e) => {
+        if (!downPos) return;
+        const dx = e.clientX - downPos.x;
+        const dy = e.clientY - downPos.y;
+        downPos = null;
+        // Отфильтровываем перетаскивания
+        if (Math.hypot(dx, dy) > 4) return;
+        const zi = getZoneFromEvent(e);
+        if (zi >= 0) {
+            focusZone(zi);
+        } else {
+            // Клик по пустому месту — закрываем
+            closePanel();
+            controls.autoRotate = true;
+        }
+    });
+
+    // Touch — простое касание
+    renderer.domElement.addEventListener('touchend', (e) => {
+        if (e.changedTouches && e.changedTouches.length > 0) {
+            const t = e.changedTouches[0];
+            const zi = getZoneFromEvent(t);
+            if (zi >= 0) focusZone(zi);
+        }
+    });
+
+    // Останавливаем авто-поворот, когда пользователь сам крутит
+    controls.addEventListener('start', () => { controls.autoRotate = false; });
+
+    // =====================================================================
+    //  АНИМАЦИЯ КАМЕРЫ
+    // =====================================================================
+    function animateCamera(toPos, toTarget, duration = 900) {
+        const fromPos = camera.position.clone();
+        const fromTarget = controls.target.clone();
+        const start = performance.now();
+        function step(now) {
+            const t = Math.min(1, (now - start) / duration);
+            const k = 1 - Math.pow(1 - t, 3); // ease-out cubic
+            camera.position.lerpVectors(fromPos, toPos, k);
+            controls.target.lerpVectors(fromTarget, toTarget, k);
+            controls.update();
+            if (t < 1) requestAnimationFrame(step);
+        }
+        requestAnimationFrame(step);
+    }
+
+    // =====================================================================
+    //  ГЛАВНЫЙ ЦИКЛ
+    // =====================================================================
+    const clock = new THREE.Clock();
+    function animate() {
+        requestAnimationFrame(animate);
+        const dt = Math.min(clock.getDelta(), 0.1);
+        controls.update();
+
+        // Плавный tween прозрачности glow-оверлея к целевым состояниям
+        updateMaterialTweens(dt);
+
+        renderer.render(scene, camera);
+    }
+    animate();
+
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // Esc закрывает панель
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closePanel();
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,1318 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Сервопривод: устройство и работа — 3D Модель</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            color: #e2e8f0;
+        }
+
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+
+        .header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 20px 30px;
+            background: linear-gradient(180deg, rgba(15, 23, 42, 0.92) 0%, transparent 100%);
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .header h1 {
+            color: #f97316;
+            font-size: 26px;
+            font-weight: 700;
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 15px rgba(249, 115, 22, 0.4);
+        }
+
+        .header p {
+            color: #94a3b8;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        .control-panel {
+            position: absolute;
+            top: 100px;
+            left: 20px;
+            width: 320px;
+            background: rgba(15, 23, 42, 0.9);
+            
+            border-radius: 12px;
+            padding: 22px;
+            z-index: 10;
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            border-left: 4px solid #f97316;
+            max-height: calc(100vh - 140px);
+            overflow-y: auto;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+        }
+
+        .control-panel::-webkit-scrollbar { width: 6px; }
+        .control-panel::-webkit-scrollbar-thumb {
+            background: rgba(249, 115, 22, 0.4);
+            border-radius: 3px;
+        }
+
+        .section-title {
+            color: #e2e8f0;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+            padding-bottom: 8px;
+            margin-top: 22px;
+        }
+
+        .section-title:first-child { margin-top: 0; }
+
+        .btn-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+        }
+
+        .btn {
+            padding: 11px 5px;
+            background: rgba(51, 65, 85, 0.6);
+            border: 1px solid rgba(148, 163, 184, 0.15);
+            border-radius: 8px;
+            color: #cbd5e1;
+            font-size: 12px;
+            font-weight: 600;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            background: rgba(249, 115, 22, 0.15);
+            border-color: rgba(249, 115, 22, 0.4);
+        }
+
+        .btn.active {
+            background: rgba(249, 115, 22, 0.25);
+            border-color: #f97316;
+            color: #fff;
+            box-shadow: 0 0 12px rgba(249, 115, 22, 0.3);
+        }
+
+        .slider-group { margin-bottom: 16px; }
+
+        .slider-group label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            color: #cbd5e1;
+            margin-bottom: 7px;
+        }
+
+        .slider-group label .value {
+            color: #f97316;
+            font-weight: 700;
+            font-family: 'Consolas', monospace;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 5px;
+            cursor: pointer;
+            accent-color: #f97316;
+            background: rgba(148, 163, 184, 0.2);
+            border-radius: 3px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 9px 10px;
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .checkbox-item:hover { background: rgba(255, 255, 255, 0.09); }
+
+        .checkbox-item input {
+            accent-color: #f97316;
+            cursor: pointer;
+            width: 16px;
+            height: 16px;
+        }
+
+        .checkbox-item label {
+            cursor: pointer;
+            font-size: 13px;
+            color: #e2e8f0;
+            flex: 1;
+        }
+
+        .info-panel {
+            position: absolute;
+            top: 100px;
+            right: 20px;
+            width: 250px;
+            background: rgba(15, 23, 42, 0.9);
+            
+            border-radius: 12px;
+            padding: 20px;
+            z-index: 10;
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            border-right: 4px solid #f97316;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+        }
+
+        .info-panel h3 {
+            color: #f1f5f9;
+            font-size: 15px;
+            margin: 0 0 15px;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+            padding-bottom: 10px;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 11px;
+            align-items: center;
+        }
+
+        .stat-label { color: #94a3b8; font-size: 12px; }
+
+        .stat-value {
+            color: #f1f5f9;
+            font-weight: 700;
+            font-family: 'Consolas', monospace;
+            font-size: 13px;
+        }
+
+        .angle-gauge {
+            margin-top: 14px;
+            padding: 14px;
+            border-radius: 8px;
+            background: rgba(249, 115, 22, 0.12);
+            border: 1px solid rgba(249, 115, 22, 0.35);
+            text-align: center;
+        }
+
+        .angle-gauge .gauge-val {
+            color: #f97316;
+            font-size: 28px;
+            font-weight: 800;
+            font-family: 'Consolas', monospace;
+        }
+
+        .angle-gauge .gauge-lbl {
+            color: #94a3b8;
+            font-size: 11px;
+            text-transform: uppercase;
+            margin-top: 3px;
+            letter-spacing: 1px;
+        }
+
+        .desc-box {
+            position: absolute;
+            bottom: 64px;
+            left: 50%;
+            transform: translateX(-50%);
+            max-width: 640px;
+            width: calc(100% - 60px);
+            background: rgba(15, 23, 42, 0.92);
+            
+            border-radius: 12px;
+            padding: 16px 22px;
+            z-index: 10;
+            border: 1px solid rgba(249, 115, 22, 0.25);
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .desc-box .desc-title {
+            color: #f97316;
+            font-size: 15px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .desc-box .desc-text {
+            color: #cbd5e1;
+            font-size: 13px;
+            line-height: 1.55;
+        }
+
+        .legend {
+            position: absolute;
+            bottom: 18px;
+            left: 20px;
+            background: rgba(15, 23, 42, 0.85);
+            padding: 12px 16px;
+            border-radius: 10px;
+            z-index: 10;
+            font-size: 12px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+
+        .legend-item:last-child { margin-bottom: 0; }
+
+        .legend-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 3px;
+        }
+
+        .hint {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            color: rgba(148, 163, 184, 0.7);
+            font-size: 12px;
+            z-index: 5;
+            pointer-events: none;
+        }
+
+        .badge-tooltip {
+            position: absolute;
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid rgba(249, 115, 22, 0.4);
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-size: 12px;
+            color: #e2e8f0;
+            max-width: 230px;
+            pointer-events: none;
+            z-index: 50;
+            opacity: 0;
+            transition: opacity 0.15s;
+            line-height: 1.45;
+        }
+
+        .badge-tooltip.show { opacity: 1; }
+        .badge-tooltip b { color: #f97316; }
+
+        @media (max-width: 1100px) {
+            .control-panel { width: 270px; }
+            .info-panel { width: 210px; }
+        }
+    </style>
+</head>
+<body>
+<script>
+(function(){
+    var lang = new URLSearchParams(location.search).get('lang') || 'ru';
+    var T = {
+        ru: {
+            loading: 'Загрузка 3D модели...',
+            title: '🔧 Сервопривод: устройство и работа',
+            subtitle: 'Робототехника • Редуктор • Обратная связь по положению',
+            sect_angle: '🎯 Заданный угол',
+            sect_params: '⚙️ Параметры',
+            sect_vis: '👁️ Визуализация',
+            lbl_target: 'Целевой угол:',
+            lbl_speed: 'Скорость отработки:',
+            lbl_load: 'Нагрузка на вал:',
+            lbl_cutaway: 'Разрез корпуса',
+            lbl_signal: 'Сигнал управления (PWM)',
+            lbl_labels_cb: 'Подписи деталей',
+            lbl_horn: 'Качалка (рычаг)',
+            info_h3: '📊 Состояние сервопривода',
+            stat_lbl_target: 'Целевой угол:',
+            stat_lbl_current: 'Текущий угол:',
+            stat_lbl_error: 'Ошибка (Δ):',
+            stat_lbl_pwm: 'Длит. импульса:',
+            stat_lbl_ratio: 'Редукция:',
+            gauge_lbl: 'состояние двигателя',
+            leg_motor: 'Электромотор',
+            leg_gears: 'Редуктор (шестерни)',
+            leg_pot: 'Потенциометр (датчик)',
+            leg_pcb: 'Плата управления',
+            hint: 'ЛКМ — вращение • ПКМ — панорама • Колесо — зум • Клик по детали — инфо',
+            desc_title: 'Как работает сервопривод',
+            desc_text: 'Контроллер сравнивает заданный угол (PWM-сигнал) с реальным углом, который измеряет потенциометр. Пока есть разница — мотор через редуктор поворачивает вал. Кликните на деталь, чтобы узнать её роль.',
+            st_rotating_up: 'ВРАЩЕНИЕ ▲',
+            st_rotating_down: 'ВРАЩЕНИЕ ▼',
+            st_hold: 'УДЕРЖАНИЕ',
+            unit_us: ' мкс',
+            lbl_3d_motor: 'Мотор',
+            lbl_3d_gears: 'Редуктор',
+            lbl_3d_output: 'Выходной вал',
+            lbl_3d_pot: 'Потенциометр',
+            lbl_3d_pcb: 'Плата управления',
+            components: {
+                motor: {
+                    title: 'Электромотор (DC)',
+                    text: 'Маленький двигатель постоянного тока. Вращается очень быстро, но со слабым моментом. Контроллер подаёт на него ток нужного направления, чтобы крутить вал в нужную сторону.'
+                },
+                gears: {
+                    title: 'Редуктор (зубчатые колёса)',
+                    text: 'Набор шестерён снижает скорость мотора примерно в 250 раз и во столько же раз увеличивает крутящий момент. Благодаря этому маленький сервопривод держит большую нагрузку.'
+                },
+                pot: {
+                    title: 'Потенциометр (датчик угла)',
+                    text: 'Переменный резистор связан с выходным валом. По его сопротивлению контроллер точно знает текущий угол поворота — это обратная связь.'
+                },
+                pcb: {
+                    title: 'Плата управления',
+                    text: 'Сравнивает заданный угол (из PWM-сигнала) с реальным (от потенциометра). Пока есть разница — включает мотор. Это замкнутый контур регулирования.'
+                },
+                output: {
+                    title: 'Выходной вал и качалка',
+                    text: 'Вал выходит наружу через редуктор. На него крепится качалка (рычаг), которая передаёт движение на механизм робота — руль, сустав, заслонку.'
+                }
+            }
+        },
+        kz: {
+            loading: '3D модель жүктелуде...',
+            title: '🔧 Серво жетек: құрылысы мен жұмысы',
+            subtitle: 'Робот техникасы • Редуктор • Орын бойынша кері байланыс',
+            sect_angle: '🎯 Берілген бұрыш',
+            sect_params: '⚙️ Параметрлер',
+            sect_vis: '👁️ Визуализация',
+            lbl_target: 'Мақсатты бұрыш:',
+            lbl_speed: 'Орындау жылдамдығы:',
+            lbl_load: 'Білік жүктемесі:',
+            lbl_cutaway: 'Корпустың қимасы',
+            lbl_signal: 'Басқару сигналы (PWM)',
+            lbl_labels_cb: 'Бөлшек белгілері',
+            lbl_horn: 'Серіппе (рычаг)',
+            info_h3: '📊 Серво жетектің күйі',
+            stat_lbl_target: 'Мақсатты бұрыш:',
+            stat_lbl_current: 'Ағымдағы бұрыш:',
+            stat_lbl_error: 'Қате (Δ):',
+            stat_lbl_pwm: 'Импульс ұзақтығы:',
+            stat_lbl_ratio: 'Редукция:',
+            gauge_lbl: 'қозғалтқыш күйі',
+            leg_motor: 'Электрқозғалтқыш',
+            leg_gears: 'Редуктор (тістіктер)',
+            leg_pot: 'Потенциометр (датчик)',
+            leg_pcb: 'Басқару тақтасы',
+            hint: 'СТБ — айналдыру • ОТБ — панорама • Доңғалақ — масштаб • Бөлшекке басу — ақпарат',
+            desc_title: 'Серво жетек қалай жұмыс істейді',
+            desc_text: 'Контроллер берілген бұрышты (PWM-сигнал) потенциометр өлшейтін нақты бұрышпен салыстырады. Айырмашылық болса — мотор редуктор арқылы білікті бұрады. Бөлшекке басып, оның рөлін біліңіз.',
+            st_rotating_up: 'АЙНАЛУ ▲',
+            st_rotating_down: 'АЙНАЛУ ▼',
+            st_hold: 'ҰСТАУ',
+            unit_us: ' мкс',
+            lbl_3d_motor: 'Мотор',
+            lbl_3d_gears: 'Редуктор',
+            lbl_3d_output: 'Шығыс білік',
+            lbl_3d_pot: 'Потенциометр',
+            lbl_3d_pcb: 'Басқару тақтасы',
+            components: {
+                motor: {
+                    title: 'Электрқозғалтқыш (ТТ)',
+                    text: 'Кішкентай тұрақты ток қозғалтқышы. Өте жылдам айналады, бірақ моменті аз. Контроллер білікті қажетті бағытта айналдыру үшін оған қажетті бағыттағы токты береді.'
+                },
+                gears: {
+                    title: 'Редуктор (тісті дөңгелектер)',
+                    text: 'Тістіктер жиыны мотор жылдамдығын шамамен 250 есе төмендетеді және крутящий моментті сонша есе арттырады. Осының арқасында кішкентай серво жетек үлкен жүктемені ұстайды.'
+                },
+                pot: {
+                    title: 'Потенциометр (бұрыш датчигі)',
+                    text: 'Айнымалы резистор шығыс білігімен байланысқан. Оның кедергісі бойынша контроллер ағымдағы бұрылу бұрышын дәл біледі — бұл кері байланыс.'
+                },
+                pcb: {
+                    title: 'Басқару тақтасы',
+                    text: 'Берілген бұрышты (PWM-сигналдан) нақтымен (потенциометрден) салыстырады. Айырмашылық болса — мотор қосылады. Бұл тұйық реттеу контуры.'
+                },
+                output: {
+                    title: 'Шығыс білік және серіппе',
+                    text: 'Білік редуктор арқылы сыртқа шығады. Оған серіппе (рычаг) бекітіледі, ол қозғалысты роботтың механизміне береді — рульге, буынға, тосқауылға.'
+                }
+            }
+        },
+        en: {
+            loading: 'Loading 3D model...',
+            title: '🔧 Servo Motor: Structure and Operation',
+            subtitle: 'Robotics • Gearbox • Position Feedback',
+            sect_angle: '🎯 Target Angle',
+            sect_params: '⚙️ Parameters',
+            sect_vis: '👁️ Visualization',
+            lbl_target: 'Target angle:',
+            lbl_speed: 'Response speed:',
+            lbl_load: 'Shaft load:',
+            lbl_cutaway: 'Case cutaway',
+            lbl_signal: 'Control signal (PWM)',
+            lbl_labels_cb: 'Part labels',
+            lbl_horn: 'Horn (lever)',
+            info_h3: '📊 Servo State',
+            stat_lbl_target: 'Target angle:',
+            stat_lbl_current: 'Current angle:',
+            stat_lbl_error: 'Error (Δ):',
+            stat_lbl_pwm: 'Pulse width:',
+            stat_lbl_ratio: 'Gear ratio:',
+            gauge_lbl: 'motor state',
+            leg_motor: 'DC Motor',
+            leg_gears: 'Gearbox (gears)',
+            leg_pot: 'Potentiometer (sensor)',
+            leg_pcb: 'Control board',
+            hint: 'LMB — rotate • RMB — pan • Wheel — zoom • Click part — info',
+            desc_title: 'How a Servo Works',
+            desc_text: "The controller compares the target angle (PWM signal) with the actual angle measured by the potentiometer. While there's a difference — the motor rotates the shaft through the gearbox. Click a part to learn its role.",
+            st_rotating_up: 'ROTATING ▲',
+            st_rotating_down: 'ROTATING ▼',
+            st_hold: 'HOLDING',
+            unit_us: ' µs',
+            lbl_3d_motor: 'Motor',
+            lbl_3d_gears: 'Gearbox',
+            lbl_3d_output: 'Output shaft',
+            lbl_3d_pot: 'Potentiometer',
+            lbl_3d_pcb: 'Control board',
+            components: {
+                motor: {
+                    title: 'DC Motor',
+                    text: 'A small direct-current motor. It spins very fast but with low torque. The controller feeds current in the right direction to rotate the shaft the right way.'
+                },
+                gears: {
+                    title: 'Gearbox (gear train)',
+                    text: 'A set of gears reduces the motor speed by about 250× and increases torque by the same factor. This lets a tiny servo hold a large load.'
+                },
+                pot: {
+                    title: 'Potentiometer (angle sensor)',
+                    text: 'A variable resistor linked to the output shaft. The controller reads its resistance to know the exact current rotation angle — this is the feedback path.'
+                },
+                pcb: {
+                    title: 'Control board',
+                    text: "Compares the target angle (from the PWM signal) with the actual angle (from the potentiometer). If there's a difference — it drives the motor. This is a closed-loop control system."
+                },
+                output: {
+                    title: 'Output shaft and horn',
+                    text: 'The shaft exits through the gearbox. A horn (lever arm) attaches to it, transmitting motion to the robot mechanism — a steering link, joint, or flap.'
+                }
+            }
+        }
+    };
+    window._t = T[lang] || T.ru;
+    document.addEventListener('DOMContentLoaded', function(){
+        var t = window._t;
+        function s(id, text){ var el = document.getElementById(id); if (el) el.textContent = text; }
+        s('loading-text', t.loading);
+        s('header-h1', t.title);
+        s('header-p', t.subtitle);
+        s('sect-angle', t.sect_angle);
+        s('sect-params', t.sect_params);
+        s('sect-vis', t.sect_vis);
+        s('lbl-target', t.lbl_target);
+        s('lbl-speed', t.lbl_speed);
+        s('lbl-load', t.lbl_load);
+        s('lbl-cutaway', t.lbl_cutaway);
+        s('lbl-signal', t.lbl_signal);
+        s('lbl-labels-cb', t.lbl_labels_cb);
+        s('lbl-horn', t.lbl_horn);
+        s('info-h3', t.info_h3);
+        s('stat-lbl-target', t.stat_lbl_target);
+        s('stat-lbl-current', t.stat_lbl_current);
+        s('stat-lbl-error', t.stat_lbl_error);
+        s('stat-lbl-pwm', t.stat_lbl_pwm);
+        s('stat-lbl-ratio', t.stat_lbl_ratio);
+        s('gauge-lbl', t.gauge_lbl);
+        s('leg-motor', t.leg_motor);
+        s('leg-gears', t.leg_gears);
+        s('leg-pot', t.leg_pot);
+        s('leg-pcb', t.leg_pcb);
+        s('hint-text', t.hint);
+        s('desc-title', t.desc_title);
+        s('desc-text', t.desc_text);
+    });
+})();
+</script>
+
+<div id="canvas-container"></div>
+
+<div class="header">
+    <h1 id="header-h1">🔧 Сервопривод: устройство и работа</h1>
+    <p id="header-p">Робототехника • Редуктор • Обратная связь по положению</p>
+</div>
+
+<div class="control-panel">
+    <div class="section-title" id="sect-angle">🎯 Заданный угол</div>
+    <div class="slider-group">
+        <label><span id="lbl-target">Целевой угол:</span><span class="value" id="val-target">90°</span></label>
+        <input type="range" id="input-target" min="0" max="180" step="1" value="90">
+    </div>
+    <div class="btn-row">
+        <div class="btn" onclick="setPreset(0)">0°</div>
+        <div class="btn active" onclick="setPreset(90)">90°</div>
+        <div class="btn" onclick="setPreset(180)">180°</div>
+    </div>
+
+    <div class="section-title" id="sect-params">⚙️ Параметры</div>
+    <div class="slider-group">
+        <label><span id="lbl-speed">Скорость отработки:</span><span class="value" id="val-speed">1.0×</span></label>
+        <input type="range" id="input-speed" min="0.3" max="3.0" step="0.1" value="1.0">
+    </div>
+    <div class="slider-group">
+        <label><span id="lbl-load">Нагрузка на вал:</span><span class="value" id="val-load">0 %</span></label>
+        <input type="range" id="input-load" min="0" max="100" step="5" value="0">
+    </div>
+
+    <div class="section-title" id="sect-vis">👁️ Визуализация</div>
+    <div class="checkbox-item">
+        <input type="checkbox" id="check-cutaway" checked>
+        <label for="check-cutaway" id="lbl-cutaway">Разрез корпуса</label>
+    </div>
+    <div class="checkbox-item">
+        <input type="checkbox" id="check-signal" checked>
+        <label for="check-signal" id="lbl-signal">Сигнал управления (PWM)</label>
+    </div>
+    <div class="checkbox-item">
+        <input type="checkbox" id="check-labels" checked>
+        <label for="check-labels" id="lbl-labels-cb">Подписи деталей</label>
+    </div>
+    <div class="checkbox-item">
+        <input type="checkbox" id="check-horn" checked>
+        <label for="check-horn" id="lbl-horn">Качалка (рычаг)</label>
+    </div>
+</div>
+
+<div class="info-panel">
+    <h3 id="info-h3">📊 Состояние сервопривода</h3>
+    <div class="stat-row">
+        <span class="stat-label" id="stat-lbl-target">Целевой угол:</span>
+        <span class="stat-value" id="stat-target" style="color:#f97316">90°</span>
+    </div>
+    <div class="stat-row">
+        <span class="stat-label" id="stat-lbl-current">Текущий угол:</span>
+        <span class="stat-value" id="stat-current">90°</span>
+    </div>
+    <div class="stat-row">
+        <span class="stat-label" id="stat-lbl-error">Ошибка (Δ):</span>
+        <span class="stat-value" id="stat-error" style="color:#22c55e">0°</span>
+    </div>
+    <div class="stat-row">
+        <span class="stat-label" id="stat-lbl-pwm">Длит. импульса:</span>
+        <span class="stat-value" id="stat-pwm">1500 мкс</span>
+    </div>
+    <div class="stat-row">
+        <span class="stat-label" id="stat-lbl-ratio">Редукция:</span>
+        <span class="stat-value">~250:1</span>
+    </div>
+    <div class="angle-gauge">
+        <div class="gauge-val" id="stat-state">УДЕРЖАНИЕ</div>
+        <div class="gauge-lbl" id="gauge-lbl">состояние двигателя</div>
+    </div>
+</div>
+
+<div class="desc-box" id="desc-box">
+    <div class="desc-title" id="desc-title">Как работает сервопривод</div>
+    <div class="desc-text" id="desc-text">
+        Контроллер сравнивает заданный угол (PWM-сигнал) с реальным углом, который измеряет потенциометр.
+        Пока есть разница — мотор через редуктор поворачивает вал. Кликните на деталь, чтобы узнать её роль.
+    </div>
+</div>
+
+<div class="legend">
+    <div class="legend-item">
+        <div class="legend-dot" style="background:#3b82f6"></div>
+        <span id="leg-motor">Электромотор</span>
+    </div>
+    <div class="legend-item">
+        <div class="legend-dot" style="background:#fbbf24"></div>
+        <span id="leg-gears">Редуктор (шестерни)</span>
+    </div>
+    <div class="legend-item">
+        <div class="legend-dot" style="background:#22c55e"></div>
+        <span id="leg-pot">Потенциометр (датчик)</span>
+    </div>
+    <div class="legend-item">
+        <div class="legend-dot" style="background:#ef4444"></div>
+        <span id="leg-pcb">Плата управления</span>
+    </div>
+</div>
+
+<div class="hint" id="hint-text">ЛКМ — вращение • ПКМ — панорама • Колесо — зум • Клик по детали — инфо</div>
+
+<div class="badge-tooltip" id="tooltip"></div>
+
+<script type="importmap">
+{
+    "imports": {
+        "three": "../../libs/vendor/three-0.160.0/three.module.js",
+        "three/addons/": "../../libs/vendor/three-0.160.0/addons/"
+    }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ===================== CONFIG =====================
+const CONFIG = {
+    colorCase: 0x1e3a5f,
+    colorMotor: 0x3b82f6,
+    colorGear: 0xfbbf24,
+    colorPot: 0x22c55e,
+    colorPCB: 0xef4444,
+    colorHorn: 0xe2e8f0
+};
+
+const COMPONENTS = (window._t && window._t.components) || {
+    motor: {
+        title: 'Электромотор (DC)',
+        text: 'Маленький двигатель постоянного тока. Вращается очень быстро, но со слабым моментом. Контроллер подаёт на него ток нужного направления, чтобы крутить вал в нужную сторону.'
+    },
+    gears: {
+        title: 'Редуктор (зубчатые колёса)',
+        text: 'Набор шестерён снижает скорость мотора примерно в 250 раз и во столько же раз увеличивает крутящий момент. Благодаря этому маленький сервопривод держит большую нагрузку.'
+    },
+    pot: {
+        title: 'Потенциометр (датчик угла)',
+        text: 'Переменный резистор связан с выходным валом. По его сопротивлению контроллер точно знает текущий угол поворота — это обратная связь.'
+    },
+    pcb: {
+        title: 'Плата управления',
+        text: 'Сравнивает заданный угол (из PWM-сигнала) с реальным (от потенциометра). Пока есть разница — включает мотор. Это замкнутый контур регулирования.'
+    },
+    output: {
+        title: 'Выходной вал и качалка',
+        text: 'Вал выходит наружу через редуктор. На него крепится качалка (рычаг), которая передаёт движение на механизм робота — руль, сустав, заслонку.'
+    }
+};
+
+// ===================== STATE =====================
+let state = {
+    targetAngle: 90,      // 0..180
+    currentAngle: 90,     // плавно догоняет target
+    speedMul: 1.0,
+    load: 0,              // 0..100 %
+    showCutaway: true,
+    showSignal: true,
+    showLabels: true,
+    showHorn: true
+};
+
+// ===================== GLOBALS =====================
+let scene, camera, renderer, controls;
+let raycaster, mouse, tooltipEl;
+let servoGroup;
+let caseHalf;             // верхняя половина корпуса (прячется в разрезе)
+let motorMesh, motorShaft;
+let gearGroup = [];       // шестерни редуктора
+let outputShaftGroup;     // выходной вал + качалка + потенциометр-ползунок
+let potWiper;             // бегунок потенциометра
+let pwmGroup;             // визуализация PWM-импульсов
+let labelSprites = [];
+let clickableParts = [];
+let motorSpin = 0;
+
+// ===================== INIT =====================
+function init() {
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0f172a);
+    scene.fog = new THREE.FogExp2(0x0f172a, 0.018);
+
+    const aspect = window.innerWidth / window.innerHeight;
+    camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 200);
+    camera.position.set(14, 11, 18);
+
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = false;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.15;
+    document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+    controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.minDistance = 9;
+    controls.maxDistance = 45;
+    controls.target.set(0, 1.5, 0);
+
+    raycaster = new THREE.Raycaster();
+    mouse = new THREE.Vector2();
+    tooltipEl = document.getElementById('tooltip');
+
+    setupLighting();
+    buildServo();
+    buildPWM();
+    createLabels();
+    setupUIEvents();
+
+    window.addEventListener('resize', onWindowResize);
+    renderer.domElement.addEventListener('click', onClick);
+    renderer.domElement.addEventListener('pointermove', onPointerMove);
+
+    animate();
+
+}
+
+function setupLighting() {
+    const ambient = new THREE.AmbientLight(0x9aa5b5, 0.7);
+    scene.add(ambient);
+
+    const key = new THREE.DirectionalLight(0xffffff, 1.7);
+    key.position.set(12, 20, 14);
+    key.castShadow = true;
+    key.shadow.mapSize.set(2048, 2048);
+    key.shadow.camera.near = 1;
+    key.shadow.camera.far = 80;
+    key.shadow.camera.left = -20;
+    key.shadow.camera.right = 20;
+    key.shadow.camera.top = 20;
+    key.shadow.camera.bottom = -20;
+    key.shadow.bias = -0.0005;
+    scene.add(key);
+
+    const fill = new THREE.DirectionalLight(0x88b0ff, 0.5);
+    fill.position.set(-15, 8, -12);
+    scene.add(fill);
+
+    const rim = new THREE.PointLight(0xf97316, 0.5, 40);
+    rim.position.set(0, 4, 12);
+    scene.add(rim);
+}
+
+// ===================== SERVO MODEL =====================
+function registerClickable(obj, key) {
+    obj.userData.partKey = key;
+    obj.traverse(o => { if (o.isMesh) { o.userData.partKey = key; clickableParts.push(o); } });
+}
+
+function buildServo() {
+    servoGroup = new THREE.Group();
+    clickableParts = [];
+    gearGroup = [];
+
+    // ===== Корпус (нижняя часть, всегда видна) =====
+    const caseMat = new THREE.MeshStandardMaterial({
+        color: CONFIG.colorCase, metalness: 0.4, roughness: 0.55
+    });
+    const caseLow = new THREE.Mesh(new THREE.BoxGeometry(8, 4, 5), caseMat);
+    caseLow.position.y = 0;
+    caseLow.castShadow = true;
+    caseLow.receiveShadow = true;
+    servoGroup.add(caseLow);
+
+    // Монтажные «уши»
+    const earMat = new THREE.MeshStandardMaterial({ color: 0x274d7a, metalness: 0.3, roughness: 0.6 });
+    for (const sx of [-1, 1]) {
+        const ear = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.8, 5), earMat);
+        ear.position.set(sx * 5, 1.4, 0);
+        ear.castShadow = true;
+        servoGroup.add(ear);
+        const hole = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.4, 0.4, 1, 16),
+            new THREE.MeshStandardMaterial({ color: 0x0f172a })
+        );
+        hole.position.set(sx * 5, 1.4, 0);
+        servoGroup.add(hole);
+    }
+
+    // ===== Верхняя крышка (прячется при разрезе) =====
+    caseHalf = new THREE.Group();
+    const capMat = new THREE.MeshStandardMaterial({
+        color: 0x2a4d75, metalness: 0.4, roughness: 0.5,
+        transparent: true, opacity: 1
+    });
+    const capTop = new THREE.Mesh(new THREE.BoxGeometry(8, 2.4, 5), capMat);
+    capTop.position.y = 3.2;
+    capTop.castShadow = true;
+    caseHalf.add(capTop);
+    // Колпак над редуктором
+    const bump = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.4, 1.4, 24), capMat);
+    bump.position.set(2.4, 5.0, 0);
+    caseHalf.add(bump);
+    registerClickable(caseHalf, 'gears');
+    servoGroup.add(caseHalf);
+
+    // ===== Электромотор =====
+    const motorMat = new THREE.MeshStandardMaterial({
+        color: CONFIG.colorMotor, metalness: 0.6, roughness: 0.35
+    });
+    motorMesh = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 4.2, 28), motorMat);
+    motorMesh.position.set(-2.2, 1.6, 0);
+    motorMesh.castShadow = true;
+    servoGroup.add(motorMesh);
+    registerClickable(motorMesh, 'motor');
+
+    // Вал мотора с шестернёй (pinion)
+    const shaftMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.8, roughness: 0.25 });
+    motorShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 1.6, 12), shaftMat);
+    motorShaft.position.set(-2.2, 3.9, 0);
+    servoGroup.add(motorShaft);
+    const pinion = makeGear(0.7, 10, 0.5, CONFIG.colorGear);
+    pinion.position.set(-2.2, 4.5, 0);
+    motorShaft.userData.pinion = pinion;
+    servoGroup.add(pinion);
+    gearGroup.push({ mesh: pinion, dir: 1, speed: 1.0 });
+    registerClickable(pinion, 'gears');
+
+    // ===== Редуктор: 3 промежуточные шестерни разного размера =====
+    const gearDefs = [
+        { x: -0.4, y: 4.4, r: 1.4, teeth: 22, dir: -1, speed: 0.45 },
+        { x: 1.2,  y: 4.2, r: 1.1, teeth: 18, dir: 1,  speed: 0.22 },
+        { x: 2.4,  y: 4.5, r: 1.7, teeth: 28, dir: -1, speed: 0.10 }
+    ];
+    for (const gd of gearDefs) {
+        const g = makeGear(gd.r, gd.teeth, 0.45, CONFIG.colorGear);
+        g.position.set(gd.x, gd.y, 0);
+        servoGroup.add(g);
+        gearGroup.push({ mesh: g, dir: gd.dir, speed: gd.speed });
+        registerClickable(g, 'gears');
+    }
+
+    // ===== Выходной узел: вал + большая выходная шестерня + качалка + бегунок потенциометра =====
+    outputShaftGroup = new THREE.Group();
+    outputShaftGroup.position.set(2.4, 0, 0);
+
+    const finalGear = makeGear(1.9, 32, 0.5, 0xf59e0b);
+    finalGear.position.set(0, 4.6, 0);
+    outputShaftGroup.add(finalGear);
+    registerClickable(finalGear, 'output');
+
+    const outShaft = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.45, 0.45, 4.5, 20),
+        shaftMat
+    );
+    outShaft.position.set(0, 5.2, 0);
+    outputShaftGroup.add(outShaft);
+
+    // Качалка (horn) — крестовина
+    const hornGroup = new THREE.Group();
+    hornGroup.position.set(0, 7.4, 0);
+    const hornMat = new THREE.MeshStandardMaterial({
+        color: CONFIG.colorHorn, metalness: 0.3, roughness: 0.5
+    });
+    const hubH = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 0.5, 20), hornMat);
+    hornGroup.add(hubH);
+    for (let i = 0; i < 4; i++) {
+        const arm = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.25, 0.5), hornMat);
+        const holder = new THREE.Group();
+        holder.add(arm);
+        arm.position.x = 1.7;
+        holder.rotation.y = (i / 4) * Math.PI * 2;
+        hornGroup.add(holder);
+        // Отверстия на лучах
+        for (let h = 0; h < 3; h++) {
+            const hole = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.12, 0.12, 0.4, 8),
+                new THREE.MeshStandardMaterial({ color: 0x64748b })
+            );
+            const hh = new THREE.Group();
+            hh.add(hole);
+            hole.position.set(1.2 + h * 0.7, 0, 0);
+            hh.rotation.y = (i / 4) * Math.PI * 2;
+            hornGroup.add(hh);
+        }
+    }
+    outputShaftGroup.userData.horn = hornGroup;
+    outputShaftGroup.add(hornGroup);
+    registerClickable(hornGroup, 'output');
+
+    servoGroup.add(outputShaftGroup);
+
+    // ===== Потенциометр (снизу, связан с выходным валом) =====
+    const potMat = new THREE.MeshStandardMaterial({
+        color: CONFIG.colorPot, metalness: 0.3, roughness: 0.6
+    });
+    const potBody = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 1.4, 20), potMat);
+    potBody.position.set(2.4, -1.1, 0);
+    potBody.castShadow = true;
+    servoGroup.add(potBody);
+    registerClickable(potBody, 'pot');
+
+    // Бегунок потенциометра (вращается вместе с выходным валом)
+    potWiper = new THREE.Mesh(
+        new THREE.BoxGeometry(1.8, 0.25, 0.35),
+        new THREE.MeshStandardMaterial({ color: 0x065f46, metalness: 0.4, roughness: 0.4 })
+    );
+    potWiper.position.set(2.4, -0.35, 0);
+    servoGroup.add(potWiper);
+    registerClickable(potWiper, 'pot');
+
+    // ===== Плата управления =====
+    const pcbMat = new THREE.MeshStandardMaterial({
+        color: CONFIG.colorPCB, metalness: 0.2, roughness: 0.7
+    });
+    const pcb = new THREE.Mesh(new THREE.BoxGeometry(6.5, 0.3, 4), pcbMat);
+    pcb.position.set(-0.5, -1.7, 0);
+    pcb.castShadow = true;
+    servoGroup.add(pcb);
+    registerClickable(pcb, 'pcb');
+    // Микросхема на плате
+    const chip = new THREE.Mesh(
+        new THREE.BoxGeometry(1.6, 0.4, 1.6),
+        new THREE.MeshStandardMaterial({ color: 0x111827, metalness: 0.3, roughness: 0.6 })
+    );
+    chip.position.set(-1.5, -1.45, 0);
+    servoGroup.add(chip);
+
+    // Провода (3 жилы: питание, земля, сигнал)
+    const wireColors = [0xef4444, 0x111827, 0xf97316];
+    for (let i = 0; i < 3; i++) {
+        const wire = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.12, 0.12, 4, 8),
+            new THREE.MeshStandardMaterial({ color: wireColors[i] })
+        );
+        wire.rotation.z = Math.PI / 2;
+        wire.position.set(-6, -1.5 + i * 0.35, 0);
+        servoGroup.add(wire);
+    }
+
+    servoGroup.position.y = 1;
+    scene.add(servoGroup);
+}
+
+// Параметрическая шестерня (звезда зубьев + диск)
+function makeGear(radius, teeth, thickness, color) {
+    const g = new THREE.Group();
+    const mat = new THREE.MeshStandardMaterial({
+        color: color, metalness: 0.55, roughness: 0.4
+    });
+
+    const disk = new THREE.Mesh(
+        new THREE.CylinderGeometry(radius, radius, thickness, 36),
+        mat
+    );
+    g.add(disk);
+
+    const toothW = (2 * Math.PI * radius) / teeth * 0.5;
+    for (let i = 0; i < teeth; i++) {
+        const ang = (i / teeth) * Math.PI * 2;
+        const tooth = new THREE.Mesh(
+            new THREE.BoxGeometry(toothW, thickness, radius * 0.32),
+            mat
+        );
+        tooth.position.set(
+            Math.cos(ang) * (radius + radius * 0.12),
+            0,
+            Math.sin(ang) * (radius + radius * 0.12)
+        );
+        tooth.rotation.y = -ang;
+        g.add(tooth);
+    }
+
+    // Втулка
+    const hub = new THREE.Mesh(
+        new THREE.CylinderGeometry(radius * 0.22, radius * 0.22, thickness * 1.4, 16),
+        new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.8, roughness: 0.3 })
+    );
+    g.add(hub);
+
+    g.castShadow = true;
+    return g;
+}
+
+// ===================== PWM SIGNAL VISUAL =====================
+function buildPWM() {
+    pwmGroup = new THREE.Group();
+    pwmGroup.position.set(-10, 6, 0);
+
+    // Осциллограф-рамка
+    const frameMat = new THREE.MeshBasicMaterial({ color: 0x0b1220 });
+    const frame = new THREE.Mesh(new THREE.PlaneGeometry(8, 4), frameMat);
+    pwmGroup.add(frame);
+
+    const border = new THREE.LineSegments(
+        new THREE.EdgesGeometry(new THREE.PlaneGeometry(8, 4)),
+        new THREE.LineBasicMaterial({ color: 0xf97316 })
+    );
+    pwmGroup.add(border);
+
+    // Линия сигнала (обновляется в updatePWM)
+    const sigMat = new THREE.LineBasicMaterial({ color: 0x22d3ee, linewidth: 2 });
+    const sigGeo = new THREE.BufferGeometry();
+    sigGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(200 * 3), 3));
+    pwmGroup.userData.line = new THREE.Line(sigGeo, sigMat);
+    pwmGroup.add(pwmGroup.userData.line);
+
+    pwmGroup.lookAt(camera.position);
+    scene.add(pwmGroup);
+}
+
+function updatePWM() {
+    if (!pwmGroup) return;
+    pwmGroup.visible = state.showSignal;
+    if (!state.showSignal) return;
+
+    // PWM: импульс 1000..2000 мкс при периоде 20000 мкс (50 Гц)
+    const pulseUs = 1000 + (state.targetAngle / 180) * 1000;
+    const periodUs = 20000;
+    const highFrac = pulseUs / periodUs;
+
+    const line = pwmGroup.userData.line;
+    const pos = line.geometry.attributes.position;
+    const n = 200;
+    // Рисуем 2.5 периода прямоугольного сигнала
+    for (let i = 0; i < n; i++) {
+        const f = i / (n - 1);
+        const phase = (f * 2.5) % 1;
+        const high = phase < highFrac;
+        const x = -3.6 + f * 7.2;
+        const y = high ? 1.2 : -1.2;
+        pos.setXYZ(i, x, y, 0.02);
+    }
+    pos.needsUpdate = true;
+
+    pwmGroup.lookAt(camera.position);
+}
+
+// ===================== LABELS =====================
+function makeTextSprite(text) {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = 256;
+    canvas.height = 64;
+    ctx.fillStyle = 'rgba(15,23,42,0.88)';
+    roundRect(ctx, 0, 0, 256, 64, 12);
+    ctx.fill();
+    ctx.strokeStyle = '#f97316';
+    ctx.lineWidth = 2;
+    roundRect(ctx, 1, 1, 254, 62, 12);
+    ctx.stroke();
+    ctx.fillStyle = '#e2e8f0';
+    ctx.font = 'bold 24px Segoe UI, Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, 128, 34);
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.minFilter = THREE.LinearFilter;
+    const mat = new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true });
+    const s = new THREE.Sprite(mat);
+    s.scale.set(6, 1.5, 1);
+    return s;
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+}
+
+function createLabels() {
+    var _lb = window._t || {lbl_3d_motor:'Мотор', lbl_3d_gears:'Редуктор', lbl_3d_output:'Выходной вал', lbl_3d_pot:'Потенциометр', lbl_3d_pcb:'Плата управления'};
+    labelSprites = [];
+    const defs = [
+        { text: _lb.lbl_3d_motor,  pos: [-2.2, 5.5, 0] },
+        { text: _lb.lbl_3d_gears,  pos: [1.0, 9.0, 0] },
+        { text: _lb.lbl_3d_output, pos: [5.5, 8.5, 0] },
+        { text: _lb.lbl_3d_pot,    pos: [2.4, -3.4, 0] },
+        { text: _lb.lbl_3d_pcb,    pos: [-4.5, -3.4, 0] }
+    ];
+    for (const d of defs) {
+        const s = makeTextSprite(d.text);
+        s.position.set(d.pos[0], d.pos[1] + 1, d.pos[2]);
+        scene.add(s);
+        labelSprites.push(s);
+    }
+}
+
+function updateLabels() {
+    labelSprites.forEach(s => s.visible = state.showLabels);
+}
+
+// ===================== PHYSICS / CONTROL LOOP =====================
+function updateControl(dt) {
+    // Сервопетля: текущий угол плавно догоняет целевой.
+    // Нагрузка замедляет отработку.
+    const loadFactor = 1 - (state.load / 100) * 0.6;
+    const k = 0.08 * state.speedMul * loadFactor;
+    const error = state.targetAngle - state.currentAngle;
+    state.currentAngle += error * Math.min(k * dt, 1);
+
+    // Зона доводки: у самой цели сервопривод дожимает вал и фиксируется
+    // (аналог deadband у реальных серводвигателей) — без вечного "ползания".
+    if (Math.abs(state.targetAngle - state.currentAngle) < 0.8) {
+        state.currentAngle += (state.targetAngle - state.currentAngle) * Math.min(0.25 * dt, 1);
+    }
+    if (Math.abs(state.targetAngle - state.currentAngle) < 0.05) {
+        state.currentAngle = state.targetAngle;
+    }
+
+    // Поворот выходного узла: 0..180° -> -90..+90° вокруг Y
+    const rad = THREE.MathUtils.degToRad(state.currentAngle - 90);
+    if (outputShaftGroup) outputShaftGroup.rotation.y = rad;
+    if (potWiper) potWiper.rotation.y = rad;
+
+    // Состояние мотора
+    var _s = window._t || {st_rotating_up:'ВРАЩЕНИЕ ▲', st_rotating_down:'ВРАЩЕНИЕ ▼', st_hold:'УДЕРЖАНИЕ', unit_us:' мкс'};
+    const moving = Math.abs(error) > 0.5;
+    const stateEl = document.getElementById('stat-state');
+    if (moving) {
+        // мотор крутится тем быстрее, чем больше ошибка
+        const spinRate = Math.sign(error) * Math.min(Math.abs(error) * 0.04, 0.8) * state.speedMul;
+        motorSpin += spinRate;
+        if (motorShaft) motorShaft.rotation.y = motorSpin;
+        // редуктор: каждая шестерня крутится со своей скоростью/направлением
+        for (const g of gearGroup) {
+            g.mesh.rotation.y += spinRate * g.speed * g.dir * 3;
+        }
+        stateEl.textContent = error > 0 ? _s.st_rotating_up : _s.st_rotating_down;
+        stateEl.style.color = '#f97316';
+    } else {
+        stateEl.textContent = _s.st_hold;
+        stateEl.style.color = '#22c55e';
+    }
+
+    // PWM pulse width
+    const pulseUs = Math.round(1000 + (state.targetAngle / 180) * 1000);
+
+    document.getElementById('stat-target').textContent = Math.round(state.targetAngle) + '°';
+    document.getElementById('stat-current').textContent = state.currentAngle.toFixed(1) + '°';
+    const errVal = (state.targetAngle - state.currentAngle);
+    const errEl = document.getElementById('stat-error');
+    errEl.textContent = errVal.toFixed(1) + '°';
+    errEl.style.color = Math.abs(errVal) < 1 ? '#22c55e' : '#fbbf24';
+    document.getElementById('stat-pwm').textContent = pulseUs + _s.unit_us;
+}
+
+// ===================== UI EVENTS =====================
+window.setPreset = function(angle) {
+    state.targetAngle = angle;
+    document.getElementById('input-target').value = angle;
+    document.getElementById('val-target').textContent = angle + '°';
+    document.querySelectorAll('.btn-row .btn').forEach(b => {
+        b.classList.toggle('active', parseInt(b.textContent) === angle);
+    });
+};
+
+function setupUIEvents() {
+    document.getElementById('input-target').addEventListener('input', e => {
+        state.targetAngle = parseInt(e.target.value);
+        document.getElementById('val-target').textContent = state.targetAngle + '°';
+        document.querySelectorAll('.btn-row .btn').forEach(b => {
+            b.classList.toggle('active', parseInt(b.textContent) === state.targetAngle);
+        });
+    });
+    document.getElementById('input-speed').addEventListener('input', e => {
+        state.speedMul = parseFloat(e.target.value);
+        document.getElementById('val-speed').textContent = state.speedMul.toFixed(1) + '×';
+    });
+    document.getElementById('input-load').addEventListener('input', e => {
+        state.load = parseInt(e.target.value);
+        document.getElementById('val-load').textContent = state.load + ' %';
+    });
+    document.getElementById('check-cutaway').addEventListener('change', e => {
+        state.showCutaway = e.target.checked;
+        if (caseHalf) caseHalf.visible = !state.showCutaway;
+    });
+    document.getElementById('check-signal').addEventListener('change', e => {
+        state.showSignal = e.target.checked;
+    });
+    document.getElementById('check-labels').addEventListener('change', e => {
+        state.showLabels = e.target.checked;
+        updateLabels();
+    });
+    document.getElementById('check-horn').addEventListener('change', e => {
+        state.showHorn = e.target.checked;
+        if (outputShaftGroup && outputShaftGroup.userData.horn) {
+            outputShaftGroup.userData.horn.visible = state.showHorn;
+        }
+    });
+    // начальное состояние разреза
+    if (caseHalf) caseHalf.visible = !state.showCutaway;
+}
+
+// ===================== INTERACTION =====================
+function onPointerMove(e) {
+    mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+    raycaster.setFromCamera(mouse, camera);
+    const visibleParts = clickableParts.filter(o => {
+        let p = o;
+        while (p) { if (!p.visible) return false; p = p.parent; }
+        return true;
+    });
+    const hits = raycaster.intersectObjects(visibleParts, false);
+
+    if (hits.length > 0) {
+        const key = hits[0].object.userData.partKey;
+        if (key && COMPONENTS[key]) {
+            renderer.domElement.style.cursor = 'pointer';
+            const info = COMPONENTS[key];
+            tooltipEl.innerHTML = '<b>' + info.title + '</b><br>' + info.text;
+            tooltipEl.style.left = (e.clientX + 16) + 'px';
+            tooltipEl.style.top = (e.clientY + 16) + 'px';
+            tooltipEl.classList.add('show');
+            return;
+        }
+    }
+    renderer.domElement.style.cursor = 'default';
+    tooltipEl.classList.remove('show');
+}
+
+function onClick() {
+    raycaster.setFromCamera(mouse, camera);
+    const visibleParts = clickableParts.filter(o => {
+        let p = o;
+        while (p) { if (!p.visible) return false; p = p.parent; }
+        return true;
+    });
+    const hits = raycaster.intersectObjects(visibleParts, false);
+    if (hits.length > 0) {
+        const key = hits[0].object.userData.partKey;
+        if (key && COMPONENTS[key]) {
+            const info = COMPONENTS[key];
+            document.getElementById('desc-title').textContent = info.title;
+            document.getElementById('desc-text').textContent = info.text;
+        }
+    }
+}
+
+// ===================== RESIZE / LOOP =====================
+function onWindowResize() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+const clock = new THREE.Clock();
+
+function animate() {
+    requestAnimationFrame(animate);
+    const dt = Math.min(clock.getDelta(), 0.05) * 60;
+
+    updateControl(dt);
+    updatePWM();
+
+    controls.update();
+    renderer.render(scene, camera);
+}
+
+init();
+updateLabels();
+</script>
+</body>
+</html>

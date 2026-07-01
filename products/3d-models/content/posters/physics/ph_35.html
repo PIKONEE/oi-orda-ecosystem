@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Силовые линии электрического поля</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { width: 100%; height: 100%; overflow: hidden; }
+        body {
+            font-family: 'Segoe UI', 'Inter', system-ui, sans-serif;
+            background: linear-gradient(135deg, #eef3fb 0%, #e6edf8 100%);
+            color: #16233f;
+        }
+        #canvas-container { position: absolute; inset: 0; }
+        #labels { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+        .label3d {
+            position: absolute; transform: translate(-50%, -50%);
+            font-size: 13px; font-weight: 800; padding: 2px 9px; border-radius: 7px;
+            background: rgba(255,255,255,0.92); border: 1px solid rgba(150,170,205,0.6);
+            box-shadow: 0 2px 8px rgba(40,60,110,0.16); white-space: nowrap;
+        }
+        .label3d.pos { color: #dc2626; } .label3d.neg { color: #2563eb; }
+
+        .header {
+            position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+            text-align: center; z-index: 6; pointer-events: none; width: 92%;
+        }
+        .header h1 { font-size: 26px; font-weight: 800; color: #1b2a4a; text-shadow: 0 1px 0 rgba(255,255,255,0.7); }
+        .header p { font-size: 14px; color: #5a6b8c; margin-top: 4px; font-weight: 600; }
+
+        .panel {
+            position: absolute; z-index: 7; background: rgba(255,255,255,0.82);
+             
+            border: 1px solid rgba(150,170,205,0.5); border-radius: 16px;
+            box-shadow: 0 10px 34px rgba(40,60,110,0.14);
+        }
+        .control-panel { top: 92px; left: 22px; width: 318px; padding: 15px 18px; }
+        .info-panel { top: 92px; right: 22px; width: 300px; padding: 15px 18px; }
+
+        .preset-label { font-size: 12px; font-weight: 800; color: #5a6b8c; margin-bottom: 7px; }
+        .preset-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .pbtn {
+            padding: 9px 6px; border-radius: 10px; border: 1.5px solid rgba(150,170,205,0.6);
+            background: rgba(255,255,255,0.55); color: #44537a; font-size: 12.5px; font-weight: 700;
+            cursor: pointer; transition: all 0.16s; text-align: center;
+        }
+        .pbtn.active { background: rgba(37,99,235,0.12); border-color: #2563eb; color: #1b2a4a; }
+
+        .param-group { margin: 13px 0; }
+        .param-label { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+        .param-name { font-size: 13px; font-weight: 700; color: #33405e; display: flex; align-items: center; gap: 6px; }
+        .param-value { font-size: 15px; font-weight: 800; color: #2563eb; font-variant-numeric: tabular-nums; }
+        input[type=range] {
+            -webkit-appearance: none; appearance: none; width: 100%; height: 6px;
+            border-radius: 6px; outline: none; cursor: pointer;
+            background: linear-gradient(90deg, #c4d2ec, #aebfe0);
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none; width: 18px; height: 18px;
+            border-radius: 50%; background: #fff; border: 3px solid #2563eb;
+            box-shadow: 0 2px 7px rgba(37,99,235,0.4); cursor: pointer;
+        }
+
+        .toggle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
+        .toggle-btn {
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+            padding: 9px 6px; border-radius: 10px; border: 1.5px solid rgba(150,170,205,0.6);
+            background: rgba(255,255,255,0.55); color: #44537a; font-size: 12.5px; font-weight: 700;
+            cursor: pointer; transition: all 0.16s;
+        }
+        .toggle-btn .dot { width: 9px; height: 9px; border-radius: 50%; background: #b7c2d8; transition: all 0.16s; }
+        .toggle-btn.active { background: rgba(37,99,235,0.12); border-color: #2563eb; color: #1b2a4a; }
+        .toggle-btn.active .dot { background: #2563eb; box-shadow: 0 0 7px rgba(37,99,235,0.8); }
+
+        .action-row { display: flex; gap: 8px; margin-top: 11px; }
+        .btn { flex: 1; padding: 9px; border: none; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.16s; color: #fff; }
+        .btn-reset { background: linear-gradient(135deg, #64748b, #475569); }
+        .btn:hover { filter: brightness(1.07); transform: translateY(-1px); }
+
+        .info-title { font-size: 15px; font-weight: 800; color: #1b2a4a; margin: 4px 0 9px; display: flex; align-items: center; gap: 7px; }
+        .readout { display: flex; justify-content: space-between; align-items: center; padding: 5.5px 0; border-bottom: 1px dashed rgba(150,170,205,0.45); font-size: 13px; }
+        .ro-name { color: #5a6b8c; font-weight: 600; }
+        .ro-val { font-weight: 800; color: #1b2a4a; font-variant-numeric: tabular-nums; }
+        .ro-val.p { color: #dc2626; } .ro-val.n { color: #2563eb; }
+
+        .formula-panel {
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 7;
+            background: rgba(27,42,74,0.93); color: #eaf0fb; padding: 11px 22px; border-radius: 14px;
+            box-shadow: 0 10px 30px rgba(20,35,70,0.34); text-align: center; max-width: 70%;
+        }
+        .formula { font-family: 'Cambria Math','Times New Roman', serif; font-size: 18px; font-weight: 600; }
+        .formula .sep { color: #6b7da6; margin: 0 12px; }
+        .formula-note { font-size: 12.5px; color: #9fb2d8; margin-top: 5px; }
+
+        .hint {
+            position: absolute; bottom: 18px; left: 22px; z-index: 7; font-size: 12px; color: #5a6b8c;
+            background: rgba(255,255,255,0.72); padding: 7px 13px; border-radius: 9px;
+            border: 1px solid rgba(150,170,205,0.45);
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div id="labels"></div>
+
+    <div class="header">
+        <h1>⚡ Силовые линии электрического поля</h1>
+        <p><span>Точечные заряды • E = kq/r² • линии от «+» к «−»</span></p>
+    </div>
+
+    <div class="panel control-panel">
+        <div class="preset-label" data-i18n="presetLabel">КОНФИГУРАЦИЯ ЗАРЯДОВ</div>
+        <div class="preset-grid">
+            <button class="pbtn active" data-preset="dipole" data-i18n="pDipole">Диполь (+ −)</button>
+            <button class="pbtn" data-preset="like" data-i18n="pLike">Два «+»</button>
+            <button class="pbtn" data-preset="single" data-i18n="pSingle">Один заряд</button>
+            <button class="pbtn" data-preset="quad" data-i18n="pQuad">Квадруполь</button>
+        </div>
+
+        <div class="param-group">
+            <div class="param-label">
+                <span class="param-name"><span>🔴</span><span data-i18n="q1Label">Заряд q₁</span></span>
+                <span class="param-value" id="q1-value">+2</span>
+            </div>
+            <input type="range" id="q1" min="-3" max="3" step="1" value="2">
+        </div>
+        <div class="param-group">
+            <div class="param-label">
+                <span class="param-name"><span>🔵</span><span data-i18n="q2Label">Заряд q₂</span></span>
+                <span class="param-value" id="q2-value">−2</span>
+            </div>
+            <input type="range" id="q2" min="-3" max="3" step="1" value="-2">
+        </div>
+
+        <div class="toggle-grid">
+            <button class="toggle-btn active" id="t-flow"><span class="dot"></span><span data-i18n="tFlow">Анимация</span></button>
+            <button class="toggle-btn active" id="t-lbl"><span class="dot"></span><span data-i18n="tLbl">Подписи</span></button>
+        </div>
+
+        <div class="action-row">
+            <button class="btn btn-reset" id="btn-reset" data-i18n="reset">↺ Сброс</button>
+        </div>
+    </div>
+
+    <div class="panel info-panel">
+        <div class="info-title">📊 <span data-i18n="infoTitle">Параметры</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roConf">Конфигурация</span><span class="ro-val" id="ro-conf">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roQ1">Заряд q₁</span><span class="ro-val p" id="ro-q1">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roQ2">Заряд q₂</span><span class="ro-val n" id="ro-q2">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roLines">Силовых линий</span><span class="ro-val" id="ro-lines">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roRule">Направление</span><span class="ro-val" id="ro-rule" style="font-size:12px">+ → −</span></div>
+    </div>
+
+    <div class="formula-panel">
+        <div class="formula">
+            E = k·q ∕ r²
+            <span class="sep">|</span>
+            E⃗ = ΣE⃗ᵢ
+        </div>
+        <div class="formula-note" data-i18n="note">Силовые линии начинаются на «+» и заканчиваются на «−». Густота линий ∝ величине заряда и напряжённости поля.</div>
+    </div>
+
+    <div class="hint"><span data-i18n="hint">ЛКМ — вращение • ПКМ — перемещение • Колесо — зум</span></div>
+
+    <script src="../../libs/vendor/three-r128/three.min.js"></script>
+    <script>
+    const LANG = (new URLSearchParams(window.location.search).get('lang')) || 'ru';
+    const I18N = {
+        ru: { headH:'⚡ Силовые линии электрического поля', headS:'Точечные заряды • E = kq/r² • линии от «+» к «−»',
+              presetLabel:'КОНФИГУРАЦИЯ ЗАРЯДОВ', pDipole:'Диполь (+ −)', pLike:'Два «+»', pSingle:'Один заряд', pQuad:'Квадруполь',
+              q1Label:'Заряд q₁', q2Label:'Заряд q₂', tFlow:'Анимация', tLbl:'Подписи', reset:'↺ Сброс', infoTitle:'Параметры',
+              roConf:'Конфигурация', roQ1:'Заряд q₁', roQ2:'Заряд q₂', roLines:'Силовых линий', roRule:'Направление',
+              note:'Силовые линии начинаются на «+» и заканчиваются на «−». Густота линий ∝ величине заряда и напряжённости поля.',
+              hint:'ЛКМ — вращение • ПКМ — перемещение • Колесо — зум',
+              cDipole:'Диполь', cLike:'Одноимённые', cSingle:'Один заряд', cQuad:'Квадруполь', rule:'+ → −' },
+        kz: { headH:'⚡ Электр өрісінің күш сызықтары', headS:'Нүктелік зарядтар • E = kq/r² • «+»-тен «−»-ке сызықтар',
+              presetLabel:'ЗАРЯДТАР КОНФИГУРАЦИЯСЫ', pDipole:'Диполь (+ −)', pLike:'Екі «+»', pSingle:'Бір заряд', pQuad:'Квадруполь',
+              q1Label:'Заряд q₁', q2Label:'Заряд q₂', tFlow:'Анимация', tLbl:'Жазулар', reset:'↺ Қайтару', infoTitle:'Параметрлер',
+              roConf:'Конфигурация', roQ1:'Заряд q₁', roQ2:'Заряд q₂', roLines:'Күш сызықтары', roRule:'Бағыты',
+              note:'Күш сызықтары «+»-тен басталып «−»-те аяқталады. Сызық тығыздығы заряд шамасы мен өріс кернеулігіне пропорционал.',
+              hint:'СБ — айналдыру • ОБ — жылжыту • Дөңгелек — масштаб',
+              cDipole:'Диполь', cLike:'Аттас зарядтар', cSingle:'Бір заряд', cQuad:'Квадруполь', rule:'+ → −' },
+        en: { headH:'⚡ Electric Field Lines', headS:'Point charges • E = kq/r² • lines from "+" to "−"',
+              presetLabel:'CHARGE CONFIGURATION', pDipole:'Dipole (+ −)', pLike:'Two "+"', pSingle:'Single charge', pQuad:'Quadrupole',
+              q1Label:'Charge q₁', q2Label:'Charge q₂', tFlow:'Animate', tLbl:'Labels', reset:'↺ Reset', infoTitle:'Parameters',
+              roConf:'Configuration', roQ1:'Charge q₁', roQ2:'Charge q₂', roLines:'Field lines', roRule:'Direction',
+              note:'Field lines start on "+" and end on "−". Line density ∝ charge magnitude and field strength.',
+              hint:'LMB — rotate • RMB — pan • Wheel — zoom',
+              cDipole:'Dipole', cLike:'Like charges', cSingle:'Single charge', cQuad:'Quadrupole', rule:'+ → −' }
+    };
+    const L = I18N[LANG] || I18N.ru;
+
+    // ---- physics: charges & field ----
+    let charges = [];       // { pos:Vector3, q:number, mesh }
+    let preset = 'dipole';
+    let q1 = 2, q2 = -2;
+    let animate_flow = true, showLbl = true;
+    let simT = 0;
+
+    function fieldAt(p) {                 // E = Σ k q (r) / |r|^3  (k=1 units)
+        const E = new THREE.Vector3();
+        for (const c of charges) {
+            const d = new THREE.Vector3().subVectors(p, c.pos);
+            const r2 = d.lengthSq();
+            if (r2 < 0.04) continue;
+            d.multiplyScalar(c.q / (r2 * Math.sqrt(r2)));
+            E.add(d);
+        }
+        return E;
+    }
+
+    // ---- three.js ----
+    let scene, camera, renderer, root;
+    let lineGroup, flowGroup, chargeGroup;
+    const clock = new THREE.Clock();
+    const container = document.getElementById('canvas-container');
+    const labelLayer = document.getElementById('labels');
+    let flowPoints = [];   // animated dots: {curve points array}
+
+    let camTheta = 0.7, camPhi = 1.18, camRadius = 14;
+    const camTarget = new THREE.Vector3(0, 0, 0);
+    let dragMode = 0, lastX = 0, lastY = 0;
+
+    function init() {
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xeef3fb);
+        scene.fog = new THREE.Fog(0xeef3fb, 24, 60);
+
+        camera = new THREE.PerspectiveCamera(47, window.innerWidth / window.innerHeight, 0.1, 200);
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        container.appendChild(renderer.domElement);
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.95));
+        const key = new THREE.DirectionalLight(0xffffff, 0.45); key.position.set(6, 9, 8); scene.add(key);
+
+        root = new THREE.Group(); scene.add(root);
+        const grid = new THREE.GridHelper(28, 14, 0xc2cee4, 0xdde5f1);
+        grid.position.y = -4.0; root.add(grid);
+
+        chargeGroup = new THREE.Group(); root.add(chargeGroup);
+        lineGroup = new THREE.Group(); root.add(lineGroup);
+        flowGroup = new THREE.Group(); root.add(flowGroup);
+
+        applyI18N();
+        setupControls();
+        buildConfig();
+        updateCamera();
+        animate();
+    }
+
+    function clearGroup(g) { while (g.children.length) { const c = g.children[0]; c.geometry && c.geometry.dispose(); g.remove(c); } }
+
+    function setCharges() {
+        charges = [];
+        const s = 2.2;
+        if (preset === 'dipole') { charges.push({ pos: new THREE.Vector3(-s, 0, 0), q: 2 }, { pos: new THREE.Vector3(s, 0, 0), q: -2 }); }
+        else if (preset === 'like') { charges.push({ pos: new THREE.Vector3(-s, 0, 0), q: 2 }, { pos: new THREE.Vector3(s, 0, 0), q: 2 }); }
+        else if (preset === 'single') { charges.push({ pos: new THREE.Vector3(0, 0, 0), q: q1 || 2 }); }
+        else if (preset === 'quad') { charges.push(
+            { pos: new THREE.Vector3(-s, s, 0), q: 2 }, { pos: new THREE.Vector3(s, s, 0), q: -2 },
+            { pos: new THREE.Vector3(-s, -s, 0), q: -2 }, { pos: new THREE.Vector3(s, -s, 0), q: 2 }); }
+        if (preset === 'dipole' || preset === 'like') { charges[0].q = q1; charges[1].q = q2; }
+    }
+
+    function buildCharges() {
+        clearGroup(chargeGroup);
+        for (const c of charges) {
+            const pos = c.q >= 0;
+            const m = new THREE.Mesh(new THREE.SphereGeometry(0.45 + Math.abs(c.q) * 0.06, 22, 16),
+                new THREE.MeshStandardMaterial({ color: c.q === 0 ? 0x9ca3af : (pos ? 0xdc2626 : 0x2563eb), emissive: c.q === 0 ? 0x000000 : (pos ? 0x7f1d1d : 0x1e3a8a), emissiveIntensity: 0.4, metalness: 0.3, roughness: 0.4 }));
+            m.position.copy(c.pos); chargeGroup.add(m); c.mesh = m;
+        }
+    }
+
+    // trace a field line by integrating dr = ±E/|E| ds (RK2)
+    function traceLine(start, sign, steps, ds) {
+        const pts = [start.clone()];
+        const p = start.clone();
+        for (let i = 0; i < steps; i++) {
+            const E1 = fieldAt(p); if (E1.lengthSq() < 1e-9) break;
+            const k1 = E1.normalize().multiplyScalar(sign * ds);
+            const mid = p.clone().add(k1.clone().multiplyScalar(0.5));
+            const E2 = fieldAt(mid); if (E2.lengthSq() < 1e-9) break;
+            const step = E2.normalize().multiplyScalar(sign * ds);
+            p.add(step); pts.push(p.clone());
+            // stop near a charge
+            let near = false;
+            for (const c of charges) if (p.distanceTo(c.pos) < 0.5) { pts.push(c.pos.clone()); near = true; break; }
+            if (near || p.length() > 14) break;
+        }
+        return pts;
+    }
+
+    function buildLines() {
+        clearGroup(lineGroup); flowPoints = [];
+        const ds = 0.16, steps = 260;
+        // seed lines around each positive charge (and negative for single negative)
+        const planes = [0, Math.PI / 3, 2 * Math.PI / 3, Math.PI, 4 * Math.PI / 3, 5 * Math.PI / 3]; // around x-axis tilt for 3D
+        charges.forEach(c => {
+            if (c.q === 0) return;
+            const sign = c.q > 0 ? +1 : -1;     // start on +, go along E; for lone negative, trace backwards
+            const nLines = Math.max(6, Math.round(Math.abs(c.q) * 6));
+            for (let i = 0; i < nLines; i++) {
+                const a = (i / nLines) * Math.PI * 2;
+                // distribute seeds on a small sphere around the charge, mostly in a few 3D planes
+                const tilt = planes[i % planes.length] * 0.18;
+                const dir = new THREE.Vector3(Math.cos(a), Math.sin(a) * Math.cos(tilt), Math.sin(a) * Math.sin(tilt)).normalize();
+                const seed = c.pos.clone().add(dir.multiplyScalar(0.55));
+                // only trace outward from positives (and from negatives if no positive exists nearby) to avoid duplicates
+                if (c.q > 0) addLine(traceLine(seed, +1, steps, ds));
+                else if (!charges.some(o => o.q > 0)) addLine(traceLine(seed, -1, steps, ds));
+            }
+        });
+        setTxt('ro-lines', lineGroup.children.length);
+    }
+
+    function addLine(pts) {
+        if (pts.length < 2) return;
+        const geo = new THREE.BufferGeometry().setFromPoints(pts);
+        const mat = new THREE.LineBasicMaterial({ color: 0x8b5cf6, transparent: true, opacity: 0.6 });
+        lineGroup.add(new THREE.Line(geo, mat));
+        // arrow midway to show direction
+        const mid = Math.floor(pts.length * 0.5);
+        if (mid + 1 < pts.length) {
+            const dir = new THREE.Vector3().subVectors(pts[mid + 1], pts[mid]).normalize();
+            const ah = new THREE.ArrowHelper(dir, pts[mid], 0.001, 0x7c3aed, 0.34, 0.2);
+            lineGroup.add(ah);
+        }
+        flowPoints.push(pts);
+    }
+
+    function buildFlow() {
+        clearGroup(flowGroup);
+        const geo = new THREE.SphereGeometry(0.09, 8, 6);
+        const mat = new THREE.MeshBasicMaterial({ color: 0xfde047 });
+        const count = Math.min(flowPoints.length, 90);
+        for (let i = 0; i < count; i++) {
+            const dot = new THREE.Mesh(geo, mat);
+            dot.userData = { line: i, off: Math.random() };
+            flowGroup.add(dot);
+        }
+    }
+
+    function buildConfig() {
+        setCharges(); buildCharges(); buildLines(); buildFlow();
+        // readouts
+        const names = { dipole: L.cDipole, like: L.cLike, single: L.cSingle, quad: L.cQuad };
+        setTxt('ro-conf', names[preset]);
+        const fmt = (q) => (q > 0 ? '+' : '') + q;
+        if (preset === 'single') { setTxt('ro-q1', fmt(charges[0].q)); setTxt('ro-q2', '—'); }
+        else if (preset === 'quad') { setTxt('ro-q1', '+2 / −2'); setTxt('ro-q2', '−2 / +2'); }
+        else { setTxt('ro-q1', fmt(charges[0].q)); setTxt('ro-q2', fmt(charges[1].q)); }
+    }
+
+    function setTxt(id, v) { const el = document.getElementById(id); if (el) el.textContent = v; }
+
+    // ---- labels ----
+    let chargeLabels = [];
+    function rebuildLabels() {
+        chargeLabels.forEach(l => l.remove()); chargeLabels = [];
+        charges.forEach(c => { const d = document.createElement('div'); d.className = 'label3d ' + (c.q >= 0 ? 'pos' : 'neg'); labelLayer.appendChild(d); chargeLabels.push(d); });
+    }
+    function proj(el, p, show, text) {
+        if (!show) { el.style.display = 'none'; return; }
+        const v = p.clone().project(camera);
+        if (v.z > 1) { el.style.display = 'none'; return; }
+        el.style.display = 'block'; if (text != null) el.textContent = text;
+        el.style.left = (v.x * 0.5 + 0.5) * window.innerWidth + 'px';
+        el.style.top = (-v.y * 0.5 + 0.5) * window.innerHeight + 'px';
+    }
+    function updateLabels() {
+        if (chargeLabels.length !== charges.length) rebuildLabels();
+        charges.forEach((c, i) => proj(chargeLabels[i], c.pos.clone().add(new THREE.Vector3(0, 0.75 + Math.abs(c.q) * 0.06, 0)), showLbl, (c.q > 0 ? '+' : '') + c.q));
+    }
+
+    function updateCamera() {
+        const sp = Math.sin(camPhi), cp = Math.cos(camPhi), st = Math.sin(camTheta), ct = Math.cos(camTheta);
+        camera.position.set(camTarget.x + camRadius * sp * ct, camTarget.y + camRadius * cp, camTarget.z + camRadius * sp * st);
+        camera.lookAt(camTarget);
+    }
+
+    function setupControls() {
+        document.querySelectorAll('.pbtn').forEach(b => b.addEventListener('click', () => {
+            document.querySelectorAll('.pbtn').forEach(x => x.classList.remove('active'));
+            b.classList.add('active'); preset = b.getAttribute('data-preset');
+            // sync default charges per preset
+            if (preset === 'dipole') { q1 = 2; q2 = -2; } else if (preset === 'like') { q1 = 2; q2 = 2; } else if (preset === 'single') { q1 = 2; }
+            document.getElementById('q1').value = q1; document.getElementById('q2').value = q2;
+            setTxt('q1-value', (q1 > 0 ? '+' : '') + q1); setTxt('q2-value', (q2 > 0 ? '+' : '') + q2);
+            rebuildLabels(); buildConfig();
+        }));
+        document.getElementById('q1').addEventListener('input', e => { q1 = +e.target.value; setTxt('q1-value', (q1 > 0 ? '+' : '') + q1); buildConfig(); rebuildLabels(); });
+        document.getElementById('q2').addEventListener('input', e => { q2 = +e.target.value; setTxt('q2-value', (q2 > 0 ? '+' : '') + q2); buildConfig(); rebuildLabels(); });
+
+        const tog = (id, fn) => { const el = document.getElementById(id); el.addEventListener('click', () => { el.classList.toggle('active'); fn(el.classList.contains('active')); }); };
+        tog('t-flow', v => { animate_flow = v; flowGroup.visible = v; });
+        tog('t-lbl', v => showLbl = v);
+
+        document.getElementById('btn-reset').addEventListener('click', () => {
+            preset = 'dipole'; q1 = 2; q2 = -2; animate_flow = true; showLbl = true;
+            document.querySelectorAll('.pbtn').forEach(x => x.classList.toggle('active', x.getAttribute('data-preset') === 'dipole'));
+            document.getElementById('q1').value = 2; document.getElementById('q2').value = -2;
+            setTxt('q1-value', '+2'); setTxt('q2-value', '−2');
+            document.getElementById('t-flow').classList.add('active'); document.getElementById('t-lbl').classList.add('active');
+            flowGroup.visible = true;
+            camTheta = 0.7; camPhi = 1.18; camRadius = 14; camTarget.set(0, 0, 0);
+            rebuildLabels(); buildConfig(); updateCamera();
+        });
+
+        const el = renderer.domElement;
+        el.addEventListener('contextmenu', e => e.preventDefault());
+        el.addEventListener('mousedown', e => { dragMode = (e.button === 2 || e.shiftKey) ? 2 : 1; lastX = e.clientX; lastY = e.clientY; });
+        window.addEventListener('mousemove', e => {
+            if (!dragMode) return;
+            const dx = e.clientX - lastX, dy = e.clientY - lastY; lastX = e.clientX; lastY = e.clientY;
+            if (dragMode === 1) { camTheta -= dx * 0.005; camPhi = Math.max(0.18, Math.min(Math.PI - 0.18, camPhi - dy * 0.005)); }
+            else { const ps = camRadius * 0.0016; const right = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0); const up = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 1); camTarget.addScaledVector(right, -dx * ps); camTarget.addScaledVector(up, dy * ps); }
+            updateCamera();
+        });
+        window.addEventListener('mouseup', () => dragMode = 0);
+        el.addEventListener('wheel', e => { e.preventDefault(); camRadius = Math.max(8, Math.min(34, camRadius + e.deltaY * 0.014)); updateCamera(); }, { passive: false });
+        el.addEventListener('touchstart', e => { const t = e.touches[0]; dragMode = 1; lastX = t.clientX; lastY = t.clientY; }, { passive: true });
+        el.addEventListener('touchmove', e => { if (!dragMode) return; const t = e.touches[0]; const dx = t.clientX - lastX, dy = t.clientY - lastY; lastX = t.clientX; lastY = t.clientY; camTheta -= dx * 0.006; camPhi = Math.max(0.18, Math.min(Math.PI - 0.18, camPhi - dy * 0.006)); updateCamera(); e.preventDefault(); }, { passive: false });
+        window.addEventListener('touchend', () => dragMode = 0);
+        window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+    }
+
+    function applyI18N() {
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const k = el.getAttribute('data-i18n');
+            if (L[k] != null) { if (k === 'note') el.innerHTML = L[k]; else el.textContent = L[k]; }
+        });
+        document.querySelector('.header h1').textContent = L.headH;
+        document.querySelector('.header p span').textContent = L.headS;
+        setTxt('ro-rule', L.rule);
+        document.title = L.headH.replace(/^[^\wА-Яа-яЁё]+/, '');
+        document.documentElement.lang = LANG;
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+        const dt = Math.min(clock.getDelta(), 0.05);
+        if (animate_flow) simT += dt;
+
+        if (animate_flow && flowGroup.visible) {
+            flowGroup.children.forEach(dot => {
+                const pts = flowPoints[dot.userData.line]; if (!pts || pts.length < 2) { dot.visible = false; return; }
+                dot.visible = true;
+                const u = (simT * 0.13 + dot.userData.off) % 1;
+                const f = u * (pts.length - 1); const i = Math.floor(f), frac = f - i;
+                dot.position.lerpVectors(pts[i], pts[Math.min(i + 1, pts.length - 1)], frac);
+            });
+        }
+        updateLabels();
+        renderer.render(scene, camera);
+    }
+
+    init();
+    </script>
+</body>
+</html>

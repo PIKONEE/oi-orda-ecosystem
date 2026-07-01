@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Механизм 3D-принтера</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { width: 100%; height: 100%; overflow: hidden; }
+        body { font-family: 'Segoe UI','Inter',system-ui,sans-serif; background: linear-gradient(135deg,#eef2f8 0%,#dde6f1 100%); color:#1a2438; }
+        #canvas-container { position: absolute; inset: 0; }
+        #labels { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+        .label3d { position: absolute; transform: translate(-50%,-50%); font-size: 12px; font-weight: 800; padding: 2px 9px; border-radius: 7px; background: rgba(255,255,255,0.93); border: 1.5px solid rgba(140,160,200,0.6); box-shadow: 0 2px 8px rgba(40,55,100,0.16); white-space: nowrap; color:#24304d; }
+
+        .header { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); text-align: center; z-index: 6; pointer-events: none; width: 92%; }
+        .header h1 { font-size: 25px; font-weight: 800; color:#1f2b48; text-shadow: 0 1px 0 rgba(255,255,255,0.7); }
+        .header p { font-size: 13.5px; color:#566584; margin-top: 4px; font-weight: 600; }
+
+        .panel { position: absolute; z-index: 7; background: rgba(255,255,255,0.83);   border: 1px solid rgba(140,160,200,0.5); border-radius: 16px; box-shadow: 0 10px 34px rgba(40,55,100,0.14); }
+        .control-panel { top: 88px; left: 22px; width: 314px; padding: 16px 18px; }
+        .info-panel { top: 88px; right: 22px; width: 286px; padding: 16px 18px; }
+
+        .sec-title { font-size: 12px; font-weight: 800; color:#46557a; text-transform: uppercase; letter-spacing: 0.6px; margin: 2px 0 9px; }
+        .seg { display:grid; grid-template-columns:1fr 1fr; gap:7px; margin-bottom: 13px; }
+        .seg-btn { padding: 9px 6px; border-radius: 9px; border:1.5px solid rgba(140,160,200,0.5); background: rgba(236,242,250,0.6); color:#46557a; font-size:12.5px; font-weight:800; cursor:pointer; transition:all 0.16s; text-align:center; }
+        .seg-btn.active { background: linear-gradient(135deg,#e9663b,#d2502a); color:#fff; border-color:#ff8a5c; }
+
+        .param-group { margin-bottom: 11px; }
+        .param-label { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px; }
+        .param-name { font-size: 13px; font-weight: 700; color:#36446a; }
+        .param-value { font-size: 14px; font-weight: 800; color:#d2502a; font-variant-numeric: tabular-nums; }
+        input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; border-radius: 6px; outline: none; cursor: pointer; background: linear-gradient(90deg,#f1cdbd,#e3946f); }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 17px; height: 17px; border-radius: 50%; background:#d2502a; border: 3px solid #fff; box-shadow: 0 2px 7px rgba(210,80,42,0.4); cursor: pointer; }
+
+        .toggle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 2px; }
+        .toggle-btn { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 9px 6px; border-radius: 10px; border: 1.5px solid rgba(140,160,200,0.5); background: rgba(236,242,250,0.55); color:#46557a; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.16s; }
+        .toggle-btn .dot { width: 9px; height: 9px; border-radius: 50%; background:#a6b4d0; transition: all 0.16s; }
+        .toggle-btn.active { background: rgba(210,80,42,0.13); border-color:#d2502a; color:#7a2c14; }
+        .toggle-btn.active .dot { background:#d2502a; box-shadow: 0 0 7px rgba(210,80,42,0.7); }
+
+        .action-row { display: flex; gap: 8px; margin-top: 12px; }
+        .btn { flex: 1; padding: 10px; border: none; border-radius: 10px; font-size: 13px; font-weight: 800; cursor: pointer; transition: all 0.16s; color:#fff; }
+        .btn-play { background: linear-gradient(135deg,#e9663b,#d2502a); } .btn-reset { background: linear-gradient(135deg,#64748b,#475569); }
+        .btn:hover { filter: brightness(1.07); transform: translateY(-1px); }
+
+        .info-title { font-size: 15px; font-weight: 800; color:#1f2b48; margin-bottom: 10px; }
+        .readout { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px dashed rgba(140,160,200,0.45); font-size: 13px; }
+        .readout:last-child { border-bottom: none; }
+        .ro-name { color:#566584; font-weight: 600; }
+        .ro-val { font-weight: 800; color:#1f2b48; font-variant-numeric: tabular-nums; }
+        .ro-val.hot { color:#e0533d; }
+        .prog { height: 12px; border-radius: 7px; background:#dde6f1; overflow:hidden; margin-top:9px; }
+        .prog > div { height:100%; width:0%; background: linear-gradient(90deg,#e9663b,#f2a24a); transition: width 0.15s; }
+
+        .formula-panel { position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 7; background: rgba(31,43,72,0.93); color:#eef2fb; padding: 10px 22px; border-radius: 13px; box-shadow: 0 10px 30px rgba(25,40,80,0.32); text-align: center; max-width: 76%; }
+        .formula { font-size: 15.5px; font-weight: 600; } .formula b { color:#ffb38a; }
+        .formula-note { font-size: 12px; color:#9fb0d0; margin-top: 4px; }
+        .hint { position: absolute; bottom: 16px; left: 22px; z-index: 7; font-size: 12px; color:#566584; background: rgba(255,255,255,0.72); padding: 7px 13px; border-radius: 9px; border: 1px solid rgba(140,160,200,0.45); }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div id="labels"></div>
+
+    <div class="header">
+        <h1>🖨️ Механизм 3D-принтера</h1>
+        <p><span id="h-sub">FDM-печать • оси X/Y/Z • послойное наплавление</span></p>
+    </div>
+
+    <div class="panel control-panel">
+        <div class="sec-title" data-i18n="modelTitle">Модель для печати</div>
+        <div class="seg">
+            <button class="seg-btn active" data-model="cube" data-i18n="mCube">Куб</button>
+            <button class="seg-btn" data-model="cyl" data-i18n="mCyl">Цилиндр</button>
+            <button class="seg-btn" data-model="pyr" data-i18n="mPyr">Пирамида</button>
+            <button class="seg-btn" data-model="vase" data-i18n="mVase">Ваза</button>
+        </div>
+
+        <div class="param-group"><div class="param-label"><span class="param-name">⚡ <span data-i18n="speedLabel">Скорость печати</span></span><span class="param-value" id="speed-value">100%</span></div><input type="range" id="speed" min="20" max="240" value="100"></div>
+        <div class="param-group"><div class="param-label"><span class="param-name">📏 <span data-i18n="lhLabel">Высота слоя</span></span><span class="param-value" id="lh-value">0.20 мм</span></div><input type="range" id="lh" min="10" max="40" value="20"></div>
+        <div class="param-group"><div class="param-label"><span class="param-name">🌡️ <span data-i18n="tempLabel">Темп. сопла</span></span><span class="param-value" id="temp-value">210 °C</span></div><input type="range" id="temp" min="20" max="260" value="210"></div>
+
+        <div class="toggle-grid">
+            <button class="toggle-btn active" id="t-path"><span class="dot"></span><span data-i18n="tPath">Траектория</span></button>
+            <button class="toggle-btn active" id="t-bed"><span class="dot"></span><span data-i18n="tBed">Подогрев стола</span></button>
+            <button class="toggle-btn active" id="t-labels"><span class="dot"></span><span data-i18n="tLabels">Подписи</span></button>
+            <button class="toggle-btn" id="t-motors"><span class="dot"></span><span data-i18n="tMotors">Моторы/ремни</span></button>
+        </div>
+
+        <div class="action-row">
+            <button class="btn btn-play" id="btn-print" data-i18n="print">▶ Печать</button>
+            <button class="btn btn-reset" id="btn-reset" data-i18n="reset">↺ Сброс</button>
+        </div>
+    </div>
+
+    <div class="panel info-panel">
+        <div class="info-title">📊 <span data-i18n="infoTitle">Состояние печати</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roLayer">Слой</span><span class="ro-val" id="ro-layer">0 / 0</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roZ">Высота Z</span><span class="ro-val" id="ro-z">0.0 мм</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roNoz">Сопло</span><span class="ro-val" id="ro-noz">210 °C</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roBed">Стол</span><span class="ro-val" id="ro-bed">60 °C</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roFil">Филамент</span><span class="ro-val" id="ro-fil">0.00 м</span></div>
+        <div class="prog"><div id="prog-fill"></div></div>
+        <div class="readout" style="margin-top:6px"><span class="ro-name" data-i18n="roStatus">Статус</span><span class="ro-val" id="ro-status">—</span></div>
+    </div>
+
+    <div class="formula-panel">
+        <div class="formula"><span data-i18n="fLine">высота объекта</span> = N<sub>слоёв</sub> × <b data-i18n="fLh">высота слоя</b></div>
+        <div class="formula-note" data-i18n="note">Сопло плавит пластик и наносит его слой за слоем; оси X/Y задают рисунок слоя, ось Z поднимает каретку</div>
+    </div>
+
+    <div class="hint"><span data-i18n="hint">ЛКМ — вращение • ПКМ — перемещение • Колесо — зум</span></div>
+
+    <script src="../../libs/vendor/three-r128/three.min.js"></script>
+    <script>
+    const LANG = (new URLSearchParams(window.location.search).get('lang')) || 'ru';
+    const I18N = {
+        ru: { headH:'🖨️ Механизм 3D-принтера', headS:'FDM-печать • оси X/Y/Z • послойное наплавление',
+              modelTitle:'Модель для печати', mCube:'Куб', mCyl:'Цилиндр', mPyr:'Пирамида', mVase:'Ваза',
+              speedLabel:'Скорость печати', lhLabel:'Высота слоя', tempLabel:'Темп. сопла',
+              tPath:'Траектория', tBed:'Подогрев стола', tLabels:'Подписи', tMotors:'Моторы/ремни',
+              print:'▶ Печать', pause:'⏸ Пауза', reset:'↺ Сброс', infoTitle:'Состояние печати',
+              roLayer:'Слой', roZ:'Высота Z', roNoz:'Сопло', roBed:'Стол', roFil:'Филамент', roStatus:'Статус',
+              fLine:'высота объекта', fLh:'высота слоя', note:'Сопло плавит пластик и наносит его слой за слоем; оси X/Y задают рисунок слоя, ось Z поднимает каретку',
+              hint:'ЛКМ — вращение • ПКМ — перемещение • Колесо — зум',
+              lFrame:'Рама (профиль)', lGantry:'Портал оси X', lCarriage:'Каретка / экструдер', lHot:'Хотэнд (сопло)', lBed:'Подогреваемый стол', lSpool:'Катушка филамента', lZ:'Винт оси Z', lMotor:'Шаговый мотор',
+              sHeat:'Нагрев сопла…', sPrint:'Печать слоёв', sDone:'Готово ✓', sIdle:'Ожидание', sCold:'Сопло холодное',
+              uMm:' мм', uC:' °C', uM:' м' },
+        kz: { headH:'🖨️ 3D-принтер механизмі', headS:'FDM-басып шығару • X/Y/Z осьтері • қабаттап балқыту',
+              modelTitle:'Басатын модель', mCube:'Куб', mCyl:'Цилиндр', mPyr:'Пирамида', mVase:'Ваза',
+              speedLabel:'Басу жылдамдығы', lhLabel:'Қабат биіктігі', tempLabel:'Шүмек темп.',
+              tPath:'Траектория', tBed:'Үстелді қыздыру', tLabels:'Жазулар', tMotors:'Моторлар/белдіктер',
+              print:'▶ Басу', pause:'⏸ Кідірту', reset:'↺ Тазалау', infoTitle:'Басу күйі',
+              roLayer:'Қабат', roZ:'Z биіктігі', roNoz:'Шүмек', roBed:'Үстел', roFil:'Филамент', roStatus:'Күй',
+              fLine:'нысан биіктігі', fLh:'қабат биіктігі', note:'Шүмек пластикті балқытып, қабаттап жағады; X/Y осьтері қабат суретін, Z осі кареткені көтереді',
+              hint:'СБ — айналдыру • ОБ — жылжыту • Дөңгелек — масштаб',
+              lFrame:'Жақтау (профиль)', lGantry:'X осі порталы', lCarriage:'Каретка / экструдер', lHot:'Хотэнд (шүмек)', lBed:'Қыздырылатын үстел', lSpool:'Филамент катушкасы', lZ:'Z осі бұрандасы', lMotor:'Қадамдық мотор',
+              sHeat:'Шүмек қызуда…', sPrint:'Қабаттарды басу', sDone:'Дайын ✓', sIdle:'Күту', sCold:'Шүмек суық',
+              uMm:' мм', uC:' °C', uM:' м' },
+        en: { headH:'🖨️ 3D Printer Mechanism', headS:'FDM printing • X/Y/Z axes • layer-by-layer deposition',
+              modelTitle:'Model to print', mCube:'Cube', mCyl:'Cylinder', mPyr:'Pyramid', mVase:'Vase',
+              speedLabel:'Print speed', lhLabel:'Layer height', tempLabel:'Nozzle temp',
+              tPath:'Toolpath', tBed:'Heated bed', tLabels:'Labels', tMotors:'Motors/belts',
+              print:'▶ Print', pause:'⏸ Pause', reset:'↺ Reset', infoTitle:'Print status',
+              roLayer:'Layer', roZ:'Z height', roNoz:'Nozzle', roBed:'Bed', roFil:'Filament', roStatus:'Status',
+              fLine:'object height', fLh:'layer height', note:'The nozzle melts plastic and lays it down layer by layer; X/Y axes draw each layer, the Z axis lifts the carriage',
+              hint:'LMB — rotate • RMB — pan • Wheel — zoom',
+              lFrame:'Frame (extrusion)', lGantry:'X-axis gantry', lCarriage:'Carriage / extruder', lHot:'Hotend (nozzle)', lBed:'Heated bed', lSpool:'Filament spool', lZ:'Z-axis screw', lMotor:'Stepper motor',
+              sHeat:'Heating nozzle…', sPrint:'Printing layers', sDone:'Done ✓', sIdle:'Idle', sCold:'Nozzle cold',
+              uMm:' mm', uC:' °C', uM:' m' },
+    };
+    const L = I18N[LANG] || I18N.ru;
+
+    const MODEL_H_MM = 16;          // object height in mm
+    const MODEL_H_W = 6;            // world units
+    const BED_TOP = 1.2;
+    let model='cube', printing=false, speedPct=100, layerHeightMM=0.20, nozzleTemp=210;
+    let showPath=true, heatBed=true, showLabels=true, showMotors=false;
+
+    let NLAYERS=80, layer=0, layerProg=0, tW=MODEL_H_W/80, filament=0;
+    let pathAngle=0;
+
+    let scene, camera, renderer, root;
+    let frameGrp, motorsGrp, zGantry, beam, carriage, nozzle, bed, printedObj, spool, pathLine;
+    const labelDefs=[];
+    const clock=new THREE.Clock();
+    const container=document.getElementById('canvas-container');
+    const labelLayer=document.getElementById('labels');
+
+    let camTheta=0.85, camPhi=1.05, camRadius=18;
+    const camTarget=new THREE.Vector3(0,4,0);
+    let dragMode=0,lastX=0,lastY=0;
+
+    const R0=2.2; // base radius/half-width (world)
+    function isRound(){ return model==='cyl'||model==='vase'; }
+    function radiusAt(frac){
+        if(model==='pyr') return R0*(1-frac*0.82);
+        if(model==='vase') return 1.5+0.75*Math.sin(frac*Math.PI*2.4);
+        return R0;
+    }
+
+    function init(){
+        scene=new THREE.Scene();
+        scene.background=new THREE.Color(0xeef2f8);
+        scene.fog=new THREE.Fog(0xeef2f8, 30, 64);
+        camera=new THREE.PerspectiveCamera(46, window.innerWidth/window.innerHeight, 0.1, 200);
+        renderer=new THREE.WebGLRenderer({antialias: true});
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+        renderer.shadowMap.enabled=false; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+        renderer.outputEncoding=THREE.sRGBEncoding;
+        container.appendChild(renderer.domElement);
+
+        scene.add(new THREE.AmbientLight(0xffffff,0.8));
+        const key=new THREE.DirectionalLight(0xffffff,0.65); key.position.set(8,16,7); key.castShadow=true; key.shadow.mapSize.set(2048,2048);
+        key.shadow.camera.left=-12;key.shadow.camera.right=12;key.shadow.camera.top=14;key.shadow.camera.bottom=-6; scene.add(key);
+        scene.add(new THREE.HemisphereLight(0xdfeaff,0x8294ad,0.4));
+
+        root=new THREE.Group(); scene.add(root);
+        buildGround(); buildPrinter();
+        makeLabels(); applyI18N(); setupControls();
+        computeLayers(); updateCamera(); refreshUI(); animate();
+    }
+    function mat(c,m,r,o){ return new THREE.MeshStandardMaterial(Object.assign({color:c,metalness:m,roughness:r},o||{})); }
+
+    function buildGround(){
+        const g=new THREE.Mesh(new THREE.CircleGeometry(20,64), mat(0xcfd9e6,0.05,0.95)); g.rotation.x=-Math.PI/2; g.position.y=-0.4; g.receiveShadow=true; root.add(g);
+        const grid=new THREE.GridHelper(40,40,0xa9b8cf,0xc2cee0); grid.position.y=-0.39; root.add(grid);
+    }
+
+    function buildPrinter(){
+        const alu=mat(0x4a5560,0.7,0.4);
+        frameGrp=new THREE.Group(); root.add(frameGrp);
+        // base + verticals + top  (open cube frame)
+        const X=5, Z=4.5, H=10;
+        const bar=(w,h,d,x,y,z)=>{ const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d), alu); m.position.set(x,y,z); m.castShadow=true; frameGrp.add(m); return m; };
+        // base rectangle
+        bar(2*X+0.4,0.4,0.4,0,0,Z); bar(2*X+0.4,0.4,0.4,0,0,-Z); bar(0.4,0.4,2*Z,X,0,0); bar(0.4,0.4,2*Z,-X,0,0);
+        // verticals
+        bar(0.4,H,0.4,X,H/2,-Z); bar(0.4,H,0.4,-X,H/2,-Z); bar(0.4,H,0.4,X,H/2,Z); bar(0.4,H,0.4,-X,H/2,Z);
+        // top
+        bar(2*X+0.4,0.4,0.4,0,H,Z); bar(2*X+0.4,0.4,0.4,0,H,-Z); bar(0.4,0.4,2*Z,X,H,0); bar(0.4,0.4,2*Z,-X,H,0);
+        labelDefs.push({key:'lFrame', anchor:frameGrp, fixed:new THREE.Vector3(-X,H*0.5,-Z)});
+
+        // Z screws on back verticals
+        motorsGrp=new THREE.Group(); root.add(motorsGrp);
+        [-X,X].forEach(sx=>{ const screw=new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.12,H-1,12), mat(0xc8ccd2,0.9,0.3)); screw.position.set(sx,H/2,-Z+0.5); motorsGrp.add(screw);
+            const sm=new THREE.Mesh(new THREE.BoxGeometry(0.9,0.9,0.9), mat(0x222831,0.4,0.5)); sm.position.set(sx,0.6,-Z+0.5); motorsGrp.add(sm); });
+        labelDefs.push({key:'lZ', anchor:motorsGrp, fixed:new THREE.Vector3(X,H*0.55,-Z+0.5)});
+        labelDefs.push({key:'lMotor', anchor:motorsGrp, fixed:new THREE.Vector3(-X,0.6,-Z+0.5)});
+
+        // heated bed (moves in Z = printer Y axis)
+        bed=new THREE.Group(); root.add(bed);
+        const plate=new THREE.Mesh(new THREE.BoxGeometry(7,0.3,7), mat(0x1a1f27,0.3,0.5)); plate.position.y=BED_TOP-0.15; plate.receiveShadow=true; bed.add(plate);
+        const glass=new THREE.Mesh(new THREE.BoxGeometry(6.6,0.08,6.6), new THREE.MeshStandardMaterial({color:0x2a3340,metalness:0.4,roughness:0.25,emissive:0x401005,emissiveIntensity:0.2})); glass.position.y=BED_TOP; bed.add(glass); bed.userData.glass=glass;
+        const carriY=new THREE.Mesh(new THREE.BoxGeometry(7.4,0.2,1.0), alu); carriY.position.set(0,0.7,0); bed.add(carriY);
+        labelDefs.push({key:'lBed', anchor:bed, off:new THREE.Vector3(0,0.4,3.2)});
+
+        // printed object holder (on bed)
+        printedObj=new THREE.Group(); printedObj.position.y=BED_TOP; bed.add(printedObj);
+
+        // Z gantry (X beam) — raised by Z axis
+        zGantry=new THREE.Group(); root.add(zGantry);
+        beam=new THREE.Mesh(new THREE.BoxGeometry(2*X,0.55,0.7), mat(0x39414c,0.6,0.4)); beam.castShadow=true; zGantry.add(beam);
+        labelDefs.push({key:'lGantry', anchor:zGantry, off:new THREE.Vector3(-3.2,0.5,0)});
+
+        // carriage + extruder + hotend
+        carriage=new THREE.Group(); zGantry.add(carriage);
+        const cbody=new THREE.Mesh(new THREE.BoxGeometry(1.5,1.1,1.2), mat(0xe9663b,0.4,0.45)); cbody.position.y=-0.2; cbody.castShadow=true; carriage.add(cbody);
+        const fan=new THREE.Mesh(new THREE.CylinderGeometry(0.45,0.45,0.3,16), mat(0x2a3340,0.5,0.4)); fan.rotation.x=Math.PI/2; fan.position.set(0,-0.2,0.7); carriage.add(fan);
+        const heatblk=new THREE.Mesh(new THREE.BoxGeometry(0.6,0.5,0.6), mat(0xb9a04a,0.7,0.4)); heatblk.position.y=-0.95; carriage.add(heatblk);
+        nozzle=new THREE.Mesh(new THREE.ConeGeometry(0.22,0.6,18), new THREE.MeshStandardMaterial({color:0xcfa23a,metalness:0.8,roughness:0.3,emissive:0x000000})); nozzle.position.y=-1.4; nozzle.rotation.x=Math.PI; carriage.add(nozzle);
+        labelDefs.push({key:'lCarriage', anchor:carriage, off:new THREE.Vector3(1.4,0.2,0)});
+        labelDefs.push({key:'lHot', anchor:nozzle, off:new THREE.Vector3(0.6,-0.2,0)});
+
+        // filament spool on top
+        spool=new THREE.Group(); spool.position.set(-X-0.2,H+0.2,0); root.add(spool);
+        const reel=new THREE.Mesh(new THREE.CylinderGeometry(1.3,1.3,0.9,28), new THREE.MeshStandardMaterial({color:0x18a558,metalness:0.2,roughness:0.6})); reel.rotation.z=Math.PI/2; spool.add(reel);
+        const hubS=new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.5,1.0,20), mat(0x222,0.4,0.5)); hubS.rotation.z=Math.PI/2; spool.add(hubS);
+        labelDefs.push({key:'lSpool', anchor:spool, fixed:null, off:new THREE.Vector3(0,1.4,0)});
+
+        // toolpath trail
+        const pg=new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(800*3),3)); pg.setDrawRange(0,0);
+        pathLine=new THREE.Line(pg, new THREE.LineBasicMaterial({color:0xe9663b})); printedObj.add(pathLine); pathLine.userData={n:0,arr:pg.attributes.position.array};
+    }
+
+    function makeLabels(){ labelDefs.forEach(d=>{ const el=document.createElement('div'); el.className='label3d'; labelLayer.appendChild(el); d.el=el; }); }
+    function updateLabels(){
+        labelDefs.forEach(d=>{ const txt=L[d.key]||d.key; if(d.el.textContent!==txt) d.el.textContent=txt;
+            if(!showLabels){ d.el.style.display='none'; return; }
+            let p; if(d.fixed) p=d.fixed.clone(); else { p=d.anchor.getWorldPosition(new THREE.Vector3()); if(d.off) p.add(d.off); }
+            const v=p.project(camera); if(v.z>1){ d.el.style.display='none'; return; }
+            d.el.style.display='block'; d.el.style.left=(v.x*0.5+0.5)*window.innerWidth+'px'; d.el.style.top=(-v.y*0.5+0.5)*window.innerHeight+'px';
+        });
+    }
+
+    function computeLayers(){
+        NLAYERS=Math.max(12, Math.round(MODEL_H_MM/layerHeightMM));
+        tW=MODEL_H_W/NLAYERS;
+    }
+
+    function clearPrint(){
+        // remove all but keep pathLine
+        for(let i=printedObj.children.length-1;i>=0;i--){ const c=printedObj.children[i]; if(c===pathLine) continue; if(c.geometry)c.geometry.dispose(); if(c.material)c.material.dispose(); printedObj.remove(c); }
+        layer=0; layerProg=0; filament=0; pathAngle=0; pathLine.userData.n=0; pathLine.geometry.setDrawRange(0,0);
+    }
+
+    function addLayerMesh(i){
+        const frac=i/NLAYERS, r=radiusAt(frac);
+        const col=new THREE.Color().setHSL(0.33-frac*0.33, 0.55, 0.52);
+        let geo;
+        if(isRound()) geo=new THREE.CylinderGeometry(r,r,tW*0.96,40,1,true);
+        else geo=new THREE.BoxGeometry(r*2,tW*0.96,r*2);
+        const m=new THREE.Mesh(geo, new THREE.MeshStandardMaterial({color:col,metalness:0.1,roughness:0.6,side:THREE.DoubleSide}));
+        m.position.y=(i+0.5)*tW; m.castShadow=true; printedObj.add(m);
+        // inner fill cap (top of each layer for round/solid look) — skip for perf
+    }
+
+    // path point in object-local XZ for fraction t around perimeter at radius r
+    function pathPoint(t, r){
+        if(isRound()){ const a=t*Math.PI*2; return {x:r*Math.cos(a), z:r*Math.sin(a)}; }
+        // square perimeter
+        const s=t*4, side=Math.floor(s)%4, f=s-Math.floor(s);
+        const k=r;
+        if(side===0) return {x:-k+2*k*f, z:-k};
+        if(side===1) return {x:k, z:-k+2*k*f};
+        if(side===2) return {x:k-2*k*f, z:k};
+        return {x:-k, z:k-2*k*f};
+    }
+
+    function setupControls(){
+        document.querySelectorAll('.seg-btn').forEach(b=>b.addEventListener('click',()=>{ document.querySelectorAll('.seg-btn').forEach(x=>x.classList.remove('active')); b.classList.add('active'); model=b.getAttribute('data-model'); clearPrint(); refreshUI(); }));
+        document.getElementById('speed').addEventListener('input', e=>{ speedPct=+e.target.value; document.getElementById('speed-value').textContent=speedPct+'%'; });
+        document.getElementById('lh').addEventListener('input', e=>{ layerHeightMM=(+e.target.value)/100; document.getElementById('lh-value').textContent=layerHeightMM.toFixed(2)+L.uMm; computeLayers(); clearPrint(); refreshUI(); });
+        document.getElementById('temp').addEventListener('input', e=>{ nozzleTemp=+e.target.value; document.getElementById('temp-value').textContent=nozzleTemp+L.uC; refreshUI(); });
+        const tog=(id,fn)=>{ const el=document.getElementById(id); el.addEventListener('click',()=>{ el.classList.toggle('active'); fn(el.classList.contains('active')); }); };
+        tog('t-path', v=>{ showPath=v; pathLine.visible=v; });
+        tog('t-bed', v=>heatBed=v);
+        tog('t-labels', v=>showLabels=v);
+        tog('t-motors', v=>{ showMotors=v; motorsGrp.visible=v; });
+        motorsGrp.visible=false;
+        document.getElementById('btn-print').addEventListener('click', ()=>{ printing=!printing; document.getElementById('btn-print').textContent=printing?L.pause:L.print; });
+        document.getElementById('btn-reset').addEventListener('click', ()=>{ printing=false; document.getElementById('btn-print').textContent=L.print; clearPrint(); refreshUI(); });
+
+        const el=renderer.domElement;
+        el.addEventListener('contextmenu', e=>e.preventDefault());
+        el.addEventListener('mousedown', e=>{ dragMode=(e.button===2||e.shiftKey)?2:1; lastX=e.clientX; lastY=e.clientY; });
+        window.addEventListener('mousemove', e=>{ if(!dragMode)return; const dx=e.clientX-lastX,dy=e.clientY-lastY; lastX=e.clientX; lastY=e.clientY; if(dragMode===1){camTheta-=dx*0.005; camPhi=Math.max(0.2,Math.min(Math.PI-0.2,camPhi-dy*0.005));} else {const ps=camRadius*0.0016; const right=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,0); const up=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,1); camTarget.addScaledVector(right,-dx*ps); camTarget.addScaledVector(up,dy*ps);} updateCamera(); });
+        window.addEventListener('mouseup', ()=>dragMode=0);
+        el.addEventListener('wheel', e=>{ e.preventDefault(); camRadius=Math.max(10,Math.min(34,camRadius+e.deltaY*0.015)); updateCamera(); }, {passive:false});
+        el.addEventListener('touchstart', e=>{ const t=e.touches[0]; dragMode=1; lastX=t.clientX; lastY=t.clientY; }, {passive:true});
+        el.addEventListener('touchmove', e=>{ if(!dragMode)return; const t=e.touches[0]; const dx=t.clientX-lastX,dy=t.clientY-lastY; lastX=t.clientX; lastY=t.clientY; camTheta-=dx*0.006; camPhi=Math.max(0.2,Math.min(Math.PI-0.2,camPhi-dy*0.006)); updateCamera(); e.preventDefault(); }, {passive:false});
+        window.addEventListener('touchend', ()=>dragMode=0);
+        window.addEventListener('resize', ()=>{ camera.aspect=window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+    }
+
+    function updateCamera(){ const sp=Math.sin(camPhi),cp=Math.cos(camPhi),st=Math.sin(camTheta),ct=Math.cos(camTheta); camera.position.set(camTarget.x+camRadius*sp*ct, camTarget.y+camRadius*cp, camTarget.z+camRadius*sp*st); camera.lookAt(camTarget); camera.updateMatrixWorld(true); }
+
+    function refreshUI(){
+        document.getElementById('ro-layer').textContent=layer+' / '+NLAYERS;
+        document.getElementById('ro-z').textContent=(layer*layerHeightMM).toFixed(1)+L.uMm;
+        document.getElementById('ro-noz').textContent=nozzleTemp+L.uC;
+        document.getElementById('ro-noz').className='ro-val '+(nozzleTemp>=180?'hot':'');
+        const bedT=heatBed?60:22; document.getElementById('ro-bed').textContent=bedT+L.uC; document.getElementById('ro-bed').className='ro-val '+(heatBed?'hot':'');
+        document.getElementById('ro-fil').textContent=filament.toFixed(2)+L.uM;
+        document.getElementById('prog-fill').style.width=(layer/NLAYERS*100)+'%';
+        let st=L.sIdle; if(printing){ st = nozzleTemp<180? L.sHeat : (layer>=NLAYERS? L.sDone : L.sPrint); } else if(layer>=NLAYERS) st=L.sDone; else if(nozzleTemp<180) st=L.sCold;
+        document.getElementById('ro-status').textContent=st;
+    }
+
+    function applyI18N(){
+        document.querySelectorAll('[data-i18n]').forEach(el=>{ const k=el.getAttribute('data-i18n'); if(L[k]!=null) el.textContent=el.tagName==='B'?el.textContent:L[k]; });
+        document.querySelector('.header h1').textContent=L.headH;
+        document.getElementById('h-sub').textContent=L.headS;
+        document.title=L.headH.replace(/^[^\wА-Яа-яЁё]+/, ''); document.documentElement.lang=LANG;
+    }
+
+    function pushTrail(x,y,z){ const u=pathLine.userData; if(u.n>=800)return; u.arr[u.n*3]=x; u.arr[u.n*3+1]=y; u.arr[u.n*3+2]=z; u.n++; pathLine.geometry.setDrawRange(0,u.n); pathLine.geometry.attributes.position.needsUpdate=true; }
+
+    function animate(){
+        requestAnimationFrame(animate);
+        const dt=Math.min(clock.getDelta(),0.05);
+        // gantry follows current build height
+        const builtH=layer*tW;
+        zGantry.position.y = BED_TOP + builtH + 1.55;
+        // hotend glow with temp; bed glow
+        const hot=Math.max(0,(nozzleTemp-30)/230); nozzle.material.emissive=new THREE.Color(0xff4500); nozzle.material.emissiveIntensity=hot*1.3;
+        bed.userData.glass.material.emissiveIntensity = heatBed?0.35:0.0;
+        // spool slow idle / printing spin
+        // printing logic
+        if(printing && nozzleTemp>=180 && layer<NLAYERS){
+            const frac=layer/NLAYERS, r=radiusAt(frac);
+            layerProg += dt*(speedPct/100)*0.9/Math.max(0.5,r/2);
+            // trace perimeter
+            const t=layerProg%1;
+            const pt=pathPoint(t, r);
+            carriage.position.x = pt.x;            // X axis
+            bed.position.z = -pt.z;                // Y axis (bed moves)
+            if(showPath) pushTrail(pt.x, builtH+tW*0.5, pt.z);
+            spool.rotation.x += dt*1.5;
+            filament += dt*(speedPct/100)*0.02;
+            if(layerProg>=1){ addLayerMesh(layer); layer++; layerProg=0; pathLine.userData.n=0; pathLine.geometry.setDrawRange(0,0); refreshUI(); }
+            document.getElementById('ro-fil').textContent=filament.toFixed(2)+L.uM;
+        } else {
+            carriage.position.x += (0 - carriage.position.x)*Math.min(1,dt*3);
+            bed.position.z += (0 - bed.position.z)*Math.min(1,dt*3);
+            if(printing && layer>=NLAYERS){ printing=false; document.getElementById('btn-print').textContent=L.print; refreshUI(); }
+            if(printing && nozzleTemp<180){ refreshUI(); }
+        }
+        updateLabels();
+        renderer.render(scene, camera);
+    }
+
+    init();
+    </script>
+</body>
+</html>

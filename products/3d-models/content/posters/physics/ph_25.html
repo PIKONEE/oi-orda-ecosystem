@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Закон Архимеда</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { width: 100%; height: 100%; overflow: hidden; }
+        body {
+            font-family: 'Segoe UI', 'Inter', system-ui, sans-serif;
+            background: linear-gradient(135deg, #eef3fb 0%, #e6edf8 100%);
+            color: #16233f;
+        }
+        #canvas-container { position: absolute; inset: 0; }
+        #labels { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+        .label3d {
+            position: absolute; transform: translate(-50%, -50%);
+            font-size: 12.5px; font-weight: 800; padding: 2px 8px; border-radius: 7px;
+            background: rgba(255,255,255,0.92); border: 1px solid rgba(150,170,205,0.6);
+            box-shadow: 0 2px 8px rgba(40,60,110,0.16); white-space: nowrap;
+        }
+        .label3d.w { color: #dc2626; } .label3d.fb { color: #2563eb; } .label3d.obj { color: #92400e; }
+
+        .header {
+            position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+            text-align: center; z-index: 6; pointer-events: none; width: 92%;
+        }
+        .header h1 { font-size: 26px; font-weight: 800; color: #1b2a4a; text-shadow: 0 1px 0 rgba(255,255,255,0.7); }
+        .header p { font-size: 14px; color: #5a6b8c; margin-top: 4px; font-weight: 600; }
+
+        .panel {
+            position: absolute; z-index: 7; background: rgba(255,255,255,0.82);
+             
+            border: 1px solid rgba(150,170,205,0.5); border-radius: 16px;
+            box-shadow: 0 10px 34px rgba(40,60,110,0.14);
+        }
+        .control-panel { top: 92px; left: 22px; width: 320px; padding: 15px 18px; }
+        .info-panel { top: 92px; right: 22px; width: 298px; padding: 15px 18px; }
+
+        .sec-title { font-size: 11.5px; font-weight: 700; color: #8493b0; text-transform: uppercase; letter-spacing: 0.4px; margin: 4px 0 8px; }
+        .seg { display: flex; gap: 6px; margin-bottom: 13px; }
+        .seg button {
+            flex: 1; padding: 8px 4px; border-radius: 9px; border: 1.5px solid rgba(150,170,205,0.6);
+            background: rgba(255,255,255,0.55); color: #44537a; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.16s;
+        }
+        .seg button.active { background: rgba(37,99,235,0.13); border-color: #2563eb; color: #1b2a4a; }
+
+        .param-group { margin-bottom: 12px; }
+        .param-label { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+        .param-name { font-size: 13px; font-weight: 700; color: #33405e; display: flex; align-items: center; gap: 6px; }
+        .param-icon { font-size: 15px; }
+        .param-value { font-size: 15px; font-weight: 800; color: #2563eb; font-variant-numeric: tabular-nums; }
+
+        input[type=range] {
+            -webkit-appearance: none; appearance: none; width: 100%; height: 6px;
+            border-radius: 6px; outline: none; cursor: pointer;
+            background: linear-gradient(90deg, #c4d2ec, #aebfe0);
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none; width: 18px; height: 18px;
+            border-radius: 50%; background: #fff; border: 3px solid #2563eb;
+            box-shadow: 0 2px 7px rgba(37,99,235,0.4); cursor: pointer;
+        }
+
+        .toggle-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 7px; margin-top: 4px; }
+        .toggle-btn {
+            display: flex; align-items: center; justify-content: center; gap: 5px;
+            padding: 9px 4px; border-radius: 10px; border: 1.5px solid rgba(150,170,205,0.6);
+            background: rgba(255,255,255,0.55); color: #44537a; font-size: 12px; font-weight: 700;
+            cursor: pointer; transition: all 0.16s;
+        }
+        .toggle-btn .dot { width: 8px; height: 8px; border-radius: 50%; background: #b7c2d8; transition: all 0.16s; }
+        .toggle-btn.active { background: rgba(37,99,235,0.12); border-color: #2563eb; color: #1b2a4a; }
+        .toggle-btn.active .dot { background: #2563eb; box-shadow: 0 0 7px rgba(37,99,235,0.8); }
+
+        .action-row { display: flex; gap: 8px; margin-top: 11px; }
+        .btn { flex: 1; padding: 9px; border: none; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.16s; color: #fff; }
+        .btn-reset { background: linear-gradient(135deg, #64748b, #475569); }
+        .btn:hover { filter: brightness(1.07); transform: translateY(-1px); }
+
+        .info-title { font-size: 15px; font-weight: 800; color: #1b2a4a; margin-bottom: 10px; display: flex; align-items: center; gap: 7px; }
+        .readout { display: flex; justify-content: space-between; align-items: center; padding: 5.5px 0; border-bottom: 1px dashed rgba(150,170,205,0.45); font-size: 13px; }
+        .ro-name { color: #5a6b8c; font-weight: 600; }
+        .ro-val { font-weight: 800; color: #1b2a4a; font-variant-numeric: tabular-nums; }
+        .ro-val.w { color: #dc2626; } .ro-val.fb { color: #2563eb; }
+
+        .bar { margin-top: 10px; }
+        .bar-track { height: 16px; border-radius: 8px; background: rgba(200,212,232,0.6); overflow: hidden; position: relative; }
+        .bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #38bdf8, #2563eb); transition: width 0.2s; }
+        .bar-lbl { font-size: 11.5px; color: #5a6b8c; margin-top: 4px; text-align: center; font-weight: 600; }
+
+        .status-box { margin-top: 10px; padding: 9px 11px; border-radius: 10px; font-size: 12.5px; font-weight: 700; text-align: center; }
+        .status-float { background: rgba(22,163,74,0.14); color: #15803d; }
+        .status-sink { background: rgba(220,38,38,0.13); color: #b91c1c; }
+        .status-neutral { background: rgba(37,99,235,0.12); color: #1d4ed8; }
+
+        .formula-panel {
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 7;
+            background: rgba(27,42,74,0.93); color: #eaf0fb; padding: 11px 22px; border-radius: 14px;
+            box-shadow: 0 10px 30px rgba(20,35,70,0.34); text-align: center; max-width: 64%;
+        }
+        .formula { font-family: 'Cambria Math','Times New Roman', serif; font-size: 18px; font-weight: 600; }
+        .formula .sep { color: #6b7da6; margin: 0 12px; }
+        .formula-note { font-size: 12.5px; color: #9fb2d8; margin-top: 5px; }
+
+        .hint {
+            position: absolute; bottom: 18px; left: 22px; z-index: 7; font-size: 12px; color: #5a6b8c;
+            background: rgba(255,255,255,0.72); padding: 7px 13px; border-radius: 9px;
+            border: 1px solid rgba(150,170,205,0.45);
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div id="labels"></div>
+
+    <div class="header">
+        <h1>🛟 Закон Архимеда</h1>
+        <p><span>Выталкивающая сила • вытесненная жидкость • плавание и погружение тел</span></p>
+    </div>
+
+    <div class="panel control-panel">
+        <div class="sec-title" data-i18n="secObj">Тело</div>
+        <div class="param-group">
+            <div class="param-label">
+                <span class="param-name"><span class="param-icon">🧊</span><span data-i18n="rhoLabel">Плотность тела ρ</span></span>
+                <span class="param-value" id="rho-value">600 кг/м³</span>
+            </div>
+            <input type="range" id="rho" min="100" max="9000" step="10" value="600">
+        </div>
+        <div class="param-group">
+            <div class="param-label">
+                <span class="param-name"><span class="param-icon">📦</span><span data-i18n="sizeLabel">Размер ребра a</span></span>
+                <span class="param-value" id="size-value">0.20 м</span>
+            </div>
+            <input type="range" id="size" min="0.1" max="0.3" step="0.005" value="0.2">
+        </div>
+
+        <div class="sec-title" data-i18n="secFluid">Жидкость</div>
+        <div class="seg">
+            <button class="active" data-fluid="1000" data-i18n="flWater">Вода</button>
+            <button data-fluid="1030" data-i18n="flSea">Морская</button>
+            <button data-fluid="800" data-i18n="flOil">Масло</button>
+            <button data-fluid="13600" data-i18n="flMerc">Ртуть</button>
+        </div>
+
+        <div class="toggle-grid">
+            <button class="toggle-btn active" id="t-vec"><span class="dot"></span><span data-i18n="tVec">Силы</span></button>
+            <button class="toggle-btn active" id="t-disp"><span class="dot"></span><span data-i18n="tDisp">Вытесн.</span></button>
+            <button class="toggle-btn active" id="t-lbl"><span class="dot"></span><span data-i18n="tLbl">Подписи</span></button>
+        </div>
+
+        <div class="action-row">
+            <button class="btn btn-reset" id="btn-reset" data-i18n="reset">↺ Сброс</button>
+        </div>
+    </div>
+
+    <div class="panel info-panel">
+        <div class="info-title">📊 <span data-i18n="infoTitle">Параметры</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roVol">Объём тела V</span><span class="ro-val" id="ro-vol">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roMass">Масса m</span><span class="ro-val" id="ro-mass">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roW">Вес P = mg</span><span class="ro-val w" id="ro-w">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roVd">Вытеснено V′</span><span class="ro-val" id="ro-vd">—</span></div>
+        <div class="readout"><span class="ro-name" data-i18n="roFb">Сила Архимеда Fₐ</span><span class="ro-val fb" id="ro-fb">—</span></div>
+        <div class="bar">
+            <div class="bar-track"><div class="bar-fill" id="bar"></div></div>
+            <div class="bar-lbl" id="bar-lbl">—</div>
+        </div>
+        <div class="status-box status-float" id="status">—</div>
+    </div>
+
+    <div class="formula-panel">
+        <div class="formula">
+            Fₐ = ρ_ж · g · V′
+            <span class="sep">|</span>
+            <span data-i18n="floatCond">плавает, если ρ_тела &lt; ρ_ж</span>
+        </div>
+        <div class="formula-note" data-i18n="note">Выталкивающая сила = весу вытесненной жидкости. Доля погружения = ρ_тела / ρ_ж</div>
+    </div>
+
+    <div class="hint"><span data-i18n="hint">ЛКМ — вращение • ПКМ — перемещение • Колесо — зум</span></div>
+
+    <script src="../../libs/vendor/three-r128/three.min.js"></script>
+    <script>
+    const LANG = (new URLSearchParams(window.location.search).get('lang')) || 'ru';
+    const I18N = {
+        ru: { headH:'🛟 Закон Архимеда', headS:'Выталкивающая сила • вытесненная жидкость • плавание и погружение тел',
+              secObj:'Тело', secFluid:'Жидкость', rhoLabel:'Плотность тела ρ', sizeLabel:'Размер ребра a',
+              flWater:'Вода', flSea:'Морская', flOil:'Масло', flMerc:'Ртуть',
+              tVec:'Силы', tDisp:'Вытесн.', tLbl:'Подписи', reset:'↺ Сброс', infoTitle:'Параметры',
+              roVol:'Объём тела V', roMass:'Масса m', roW:'Вес P = mg', roVd:'Вытеснено V′', roFb:'Сила Архимеда Fₐ',
+              floatCond:'плавает, если ρ_тела < ρ_ж',
+              note:'Выталкивающая сила = весу вытесненной жидкости. Доля погружения = ρ_тела / ρ_ж',
+              hint:'ЛКМ — вращение • ПКМ — перемещение • Колесо — зум',
+              floats:'Плавает ▲  (Fₐ = P)', sinks:'Тонет ▼  (P > Fₐ)', neutral:'Висит в толще  (Fₐ = P)',
+              subLbl:'Погружено', lW:'P (вес)', lFb:'Fₐ (Архимед)', lObj:'Тело',
+              kg:'кг', n:'Н', l:'л', m3:'м³' },
+        kz: { headH:'🛟 Архимед заңы', headS:'Кері итеруші күш • ығыстырылған сұйық • денелердің жүзуі мен батуы',
+              secObj:'Дене', secFluid:'Сұйық', rhoLabel:'Дене тығыздығы ρ', sizeLabel:'Қыр өлшемі a',
+              flWater:'Су', flSea:'Теңіз', flOil:'Май', flMerc:'Сынап',
+              tVec:'Күштер', tDisp:'Ығыс.', tLbl:'Жазулар', reset:'↺ Қайтару', infoTitle:'Параметрлер',
+              roVol:'Дене көлемі V', roMass:'Масса m', roW:'Салмақ P = mg', roVd:'Ығыстырылды V′', roFb:'Архимед күші Fₐ',
+              floatCond:'ρ_дене < ρ_сұйық болса жүзеді',
+              note:'Кері итеруші күш = ығыстырылған сұйық салмағына. Бату үлесі = ρ_дене / ρ_сұйық',
+              hint:'СБ — айналдыру • ОБ — жылжыту • Дөңгелек — масштаб',
+              floats:'Жүзеді ▲  (Fₐ = P)', sinks:'Батады ▼  (P > Fₐ)', neutral:'Қалқып тұр  (Fₐ = P)',
+              subLbl:'Батқан', lW:'P (салмақ)', lFb:'Fₐ (Архимед)', lObj:'Дене',
+              kg:'кг', n:'Н', l:'л', m3:'м³' },
+        en: { headH:'🛟 Archimedes\u2019 Principle', headS:'Buoyant force • displaced fluid • floating and sinking of bodies',
+              secObj:'Object', secFluid:'Fluid', rhoLabel:'Object density ρ', sizeLabel:'Edge length a',
+              flWater:'Water', flSea:'Sea', flOil:'Oil', flMerc:'Mercury',
+              tVec:'Forces', tDisp:'Displ.', tLbl:'Labels', reset:'↺ Reset', infoTitle:'Parameters',
+              roVol:'Object volume V', roMass:'Mass m', roW:'Weight P = mg', roVd:'Displaced V′', roFb:'Buoyant force Fₐ',
+              floatCond:'floats if ρ_obj < ρ_fluid',
+              note:'Buoyant force = weight of displaced fluid. Submerged fraction = ρ_obj / ρ_fluid',
+              hint:'LMB — rotate • RMB — pan • Wheel — zoom',
+              floats:'Floats ▲  (Fₐ = P)', sinks:'Sinks ▼  (P > Fₐ)', neutral:'Neutral  (Fₐ = P)',
+              subLbl:'Submerged', lW:'P (weight)', lFb:'Fₐ (buoyancy)', lObj:'Object',
+              kg:'kg', n:'N', l:'L', m3:'m³' }
+    };
+    const L = I18N[LANG] || I18N.ru;
+
+    // ---- physics ----
+    const G = 9.8;
+    let rhoObj = 600;       // kg/m³
+    let edge = 0.20;        // m
+    let rhoFluid = 1000;    // kg/m³
+    let showVec = true, showDisp = true, showLbl = true;
+
+    function volume() { return edge * edge * edge; }                 // m³
+    function massObj() { return rhoObj * volume(); }
+    function weight() { return massObj() * G; }
+    function subFraction() { return Math.min(1, rhoObj / rhoFluid); } // fraction submerged (floating)
+    function dispVolume() { return subFraction() * volume(); }        // m³ displaced (at rest)
+    function buoyancy() { return rhoFluid * G * dispVolume(); }        // = weight when floating
+    function floats() { return rhoObj < rhoFluid - 1; }
+    function neutral() { return Math.abs(rhoObj - rhoFluid) <= 1; }
+
+    // ---- three.js ----
+    let scene, camera, renderer, root;
+    let tank, water, waterSurf, objMesh, dispMesh, arrW, arrFb;
+    const clock = new THREE.Clock();
+    const container = document.getElementById('canvas-container');
+    const labelLayer = document.getElementById('labels');
+
+    let camTheta = 0.7, camPhi = 1.18, camRadius = 15;
+    const camTarget = new THREE.Vector3(0, 2.6, 0);
+    let dragMode = 0, lastX = 0, lastY = 0;
+
+    // tank geometry (world units)
+    const TX = 6, TZ = 4, TY = 6, WATER_BASE = 4.2;
+    const tankAreaVis = TX * TZ;
+    function svis() { return edge * 10; }        // visual cube side (0.1m->1.0 .. 0.3m->3.0)
+    let objY = WATER_BASE;                        // current object center y (animated)
+
+    function init() {
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xeef3fb);
+        scene.fog = new THREE.Fog(0xeef3fb, 24, 56);
+
+        camera = new THREE.PerspectiveCamera(47, window.innerWidth / window.innerHeight, 0.1, 200);
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        container.appendChild(renderer.domElement);
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.88));
+        const key = new THREE.DirectionalLight(0xffffff, 0.6); key.position.set(6, 13, 9); scene.add(key);
+        const fill = new THREE.DirectionalLight(0xbcd4ff, 0.3); fill.position.set(-8, 5, -6); scene.add(fill);
+
+        root = new THREE.Group(); scene.add(root);
+        const grid = new THREE.GridHelper(34, 17, 0xc2cee4, 0xdde5f1);
+        grid.position.y = 0; root.add(grid);
+
+        buildTank();
+        buildObject();
+        buildVectors();
+        makeLabels();
+        applyI18N();
+        setupControls();
+        recompute(true);
+        updateCamera();
+        animate();
+    }
+
+    function buildTank() {
+        // glass walls (edges only + faint faces)
+        const glass = new THREE.Mesh(new THREE.BoxGeometry(TX, TY, TZ),
+            new THREE.MeshStandardMaterial({ color: 0xbfe0ff, transparent: true, opacity: 0.06, roughness: 0.1, metalness: 0.1, side: THREE.DoubleSide }));
+        glass.position.y = TY / 2; root.add(glass);
+        const edges = new THREE.LineSegments(new THREE.EdgesGeometry(glass.geometry), new THREE.LineBasicMaterial({ color: 0x7d93b8, transparent: true, opacity: 0.6 }));
+        edges.position.copy(glass.position); root.add(edges);
+
+        // water volume
+        water = new THREE.Mesh(new THREE.BoxGeometry(TX - 0.06, 1, TZ - 0.06),
+            new THREE.MeshStandardMaterial({ color: 0x2f8fd6, transparent: true, opacity: 0.42, roughness: 0.2, metalness: 0.1, side: THREE.DoubleSide }));
+        root.add(water);
+        waterSurf = new THREE.Mesh(new THREE.PlaneGeometry(TX - 0.06, TZ - 0.06),
+            new THREE.MeshStandardMaterial({ color: 0x5bb4ee, transparent: true, opacity: 0.5, roughness: 0.1, metalness: 0.2, side: THREE.DoubleSide }));
+        waterSurf.rotation.x = -Math.PI / 2; root.add(waterSurf);
+    }
+
+    function buildObject() {
+        objMesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1),
+            new THREE.MeshStandardMaterial({ color: 0xb07a3c, roughness: 0.55, metalness: 0.15 }));
+        root.add(objMesh);
+        const oe = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1, 1, 1)), new THREE.LineBasicMaterial({ color: 0x5b3d18, transparent: true, opacity: 0.5 }));
+        objMesh.add(oe);
+        // displaced-water highlight (submerged part)
+        dispMesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1),
+            new THREE.MeshStandardMaterial({ color: 0x1d6fd0, transparent: true, opacity: 0.38, roughness: 0.2 }));
+        root.add(dispMesh);
+    }
+
+    function buildVectors() {
+        arrW = new THREE.ArrowHelper(new THREE.Vector3(0, -1, 0), new THREE.Vector3(), 1, 0xdc2626, 0.45, 0.28);
+        arrFb = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(), 1, 0x2563eb, 0.45, 0.28);
+        root.add(arrW); root.add(arrFb);
+    }
+
+    // recompute physics-derived geometry targets + readouts
+    function recompute(snap) {
+        const f = subFraction();
+        const S = svis();
+        const dispVis = (floats() ? f : 1) * S * S * S;
+        const waterTop = WATER_BASE + dispVis / tankAreaVis;
+
+        // water mesh fill from 0..waterTop
+        water.geometry.dispose(); water.geometry = new THREE.BoxGeometry(TX - 0.06, waterTop, TZ - 0.06);
+        water.position.y = waterTop / 2;
+        waterSurf.position.y = waterTop + 0.002;
+
+        // object target Y
+        let targetY;
+        if (neutral()) targetY = waterTop - S / 2 - 0.15;           // hangs fully submerged just below surface
+        else if (floats()) targetY = waterTop + S * (0.5 - f);      // fraction f below surface
+        else targetY = S / 2 + 0.02;                                // rests on bottom, fully submerged
+        objMesh.scale.set(S, S, S);
+        if (snap) objY = targetY;
+        objMesh._targetY = targetY; objMesh._S = S; objMesh._waterTop = waterTop;
+
+        updateReadouts();
+    }
+
+    function updateObjectVisual() {
+        const S = objMesh._S, waterTop = objMesh._waterTop;
+        objMesh.position.set(0, objY, 0);
+        // submerged region: from object bottom up to min(top, waterTop)
+        const bottom = objY - S / 2, top = objY + S / 2;
+        const subTop = Math.min(top, waterTop), subBot = Math.min(bottom, waterTop);
+        const subH = Math.max(0, subTop - subBot);
+        if (showDisp && subH > 0.001) {
+            dispMesh.visible = true;
+            dispMesh.scale.set(S * 1.01, subH, S * 1.01);
+            dispMesh.position.set(0, subBot + subH / 2, 0);
+        } else dispMesh.visible = false;
+
+        // force vectors
+        const ref = Math.max(weight(), buoyancy(), 1e-6);
+        const maxLen = 2.6;
+        const wLen = 0.3 + (weight() / ref) * maxLen;
+        const fbLen = 0.3 + (buoyancy() / ref) * maxLen;
+        arrW.visible = showVec; arrFb.visible = showVec;
+        if (showVec) {
+            arrW.position.set(0.0, objY, 0); arrW.setLength(wLen, 0.4, 0.26);
+            // buoyancy from centroid of submerged part
+            const cy = (subH > 0.001) ? (subBot + subH / 2) : objY;
+            arrFb.position.set(0.0, cy, 0); arrFb.setDirection(new THREE.Vector3(0, 1, 0)); arrFb.setLength(fbLen, 0.4, 0.26);
+        }
+    }
+
+    function updateReadouts() {
+        setTxt('ro-vol', (volume() * 1000).toFixed(2) + ' ' + L.l);
+        setTxt('ro-mass', massObj().toFixed(2) + ' ' + L.kg);
+        setTxt('ro-w', weight().toFixed(1) + ' ' + L.n);
+        setTxt('ro-vd', (dispVolume() * 1000).toFixed(2) + ' ' + L.l);
+        setTxt('ro-fb', buoyancy().toFixed(1) + ' ' + L.n);
+        const f = subFraction();
+        const bar = document.getElementById('bar'); bar.style.width = (f * 100).toFixed(0) + '%';
+        document.getElementById('bar-lbl').textContent = L.subLbl + ': ' + (f * 100).toFixed(0) + '%';
+        const st = document.getElementById('status');
+        if (neutral()) { st.textContent = L.neutral; st.className = 'status-box status-neutral'; }
+        else if (floats()) { st.textContent = L.floats; st.className = 'status-box status-float'; }
+        else { st.textContent = L.sinks; st.className = 'status-box status-sink'; }
+    }
+    function setTxt(id, v) { const el = document.getElementById(id); if (el) el.textContent = v; }
+
+    // ---- labels ----
+    let lblObj, lblW, lblFb;
+    function makeLabels() {
+        const mk = (cls) => { const d = document.createElement('div'); d.className = 'label3d ' + cls; labelLayer.appendChild(d); return d; };
+        lblObj = mk('obj'); lblW = mk('w'); lblFb = mk('fb');
+    }
+    function proj(el, pos, show, text) {
+        if (!show) { el.style.display = 'none'; return; }
+        const v = pos.clone().project(camera);
+        if (v.z > 1) { el.style.display = 'none'; return; }
+        el.style.display = 'block'; if (text != null) el.textContent = text;
+        el.style.left = (v.x * 0.5 + 0.5) * window.innerWidth + 'px';
+        el.style.top = (-v.y * 0.5 + 0.5) * window.innerHeight + 'px';
+    }
+    function updateLabels() {
+        const S = objMesh._S || 1;
+        proj(lblObj, new THREE.Vector3(S / 2 + 0.2, objY, 0), showLbl, L.lObj);
+        const vis = showLbl && showVec;
+        const ref = Math.max(weight(), buoyancy(), 1e-6), maxLen = 2.6;
+        proj(lblW, new THREE.Vector3(0, objY - (0.3 + (weight() / ref) * maxLen) - 0.3, 0), vis, L.lW);
+        const bottom = objY - S / 2, waterTop = objMesh._waterTop || WATER_BASE;
+        const subTop = Math.min(objY + S / 2, waterTop), subBot = Math.min(bottom, waterTop);
+        const subH = Math.max(0, subTop - subBot);
+        const cy = (subH > 0.001) ? (subBot + subH / 2) : objY;
+        proj(lblFb, new THREE.Vector3(0, cy + (0.3 + (buoyancy() / ref) * maxLen) + 0.3, 0), vis, L.lFb);
+    }
+
+    // ---- camera ----
+    function updateCamera() {
+        const sp = Math.sin(camPhi), cp = Math.cos(camPhi), st = Math.sin(camTheta), ct = Math.cos(camTheta);
+        camera.position.set(camTarget.x + camRadius * sp * ct, camTarget.y + camRadius * cp, camTarget.z + camRadius * sp * st);
+        camera.lookAt(camTarget);
+    }
+
+    function setupControls() {
+        document.getElementById('rho').addEventListener('input', e => { rhoObj = +e.target.value; setTxt('rho-value', rhoObj + ' кг/м³'); recompute(false); });
+        document.getElementById('size').addEventListener('input', e => { edge = +e.target.value; setTxt('size-value', edge.toFixed(2) + ' м'); recompute(false); });
+        document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => {
+            document.querySelectorAll('.seg button').forEach(x => x.classList.remove('active'));
+            b.classList.add('active'); rhoFluid = +b.dataset.fluid; recompute(false);
+        }));
+
+        const tog = (id, fn) => { const el = document.getElementById(id); el.addEventListener('click', () => { el.classList.toggle('active'); fn(el.classList.contains('active')); }); };
+        tog('t-vec', v => showVec = v);
+        tog('t-disp', v => showDisp = v);
+        tog('t-lbl', v => showLbl = v);
+
+        document.getElementById('btn-reset').addEventListener('click', () => {
+            rhoObj = 600; edge = 0.2; rhoFluid = 1000; showVec = true; showDisp = true; showLbl = true;
+            document.getElementById('rho').value = 600; document.getElementById('size').value = 0.2;
+            setTxt('rho-value', '600 кг/м³'); setTxt('size-value', '0.20 м');
+            document.querySelectorAll('.seg button').forEach(x => x.classList.toggle('active', x.dataset.fluid === '1000'));
+            ['t-vec', 't-disp', 't-lbl'].forEach(id => document.getElementById(id).classList.add('active'));
+            camTheta = 0.7; camPhi = 1.18; camRadius = 15; camTarget.set(0, 2.6, 0);
+            recompute(true); updateCamera();
+        });
+
+        const el = renderer.domElement;
+        el.addEventListener('contextmenu', e => e.preventDefault());
+        el.addEventListener('mousedown', e => { dragMode = (e.button === 2 || e.shiftKey) ? 2 : 1; lastX = e.clientX; lastY = e.clientY; });
+        window.addEventListener('mousemove', e => {
+            if (!dragMode) return;
+            const dx = e.clientX - lastX, dy = e.clientY - lastY; lastX = e.clientX; lastY = e.clientY;
+            if (dragMode === 1) { camTheta -= dx * 0.005; camPhi = Math.max(0.18, Math.min(Math.PI - 0.18, camPhi - dy * 0.005)); }
+            else { const ps = camRadius * 0.0016; const right = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0); const up = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 1); camTarget.addScaledVector(right, -dx * ps); camTarget.addScaledVector(up, dy * ps); }
+            updateCamera();
+        });
+        window.addEventListener('mouseup', () => dragMode = 0);
+        el.addEventListener('wheel', e => { e.preventDefault(); camRadius = Math.max(8, Math.min(36, camRadius + e.deltaY * 0.014)); updateCamera(); }, { passive: false });
+        el.addEventListener('touchstart', e => { const t = e.touches[0]; dragMode = 1; lastX = t.clientX; lastY = t.clientY; }, { passive: true });
+        el.addEventListener('touchmove', e => { if (!dragMode) return; const t = e.touches[0]; const dx = t.clientX - lastX, dy = t.clientY - lastY; lastX = t.clientX; lastY = t.clientY; camTheta -= dx * 0.006; camPhi = Math.max(0.18, Math.min(Math.PI - 0.18, camPhi - dy * 0.006)); updateCamera(); e.preventDefault(); }, { passive: false });
+        window.addEventListener('touchend', () => dragMode = 0);
+        window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+    }
+
+    function applyI18N() {
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const k = el.getAttribute('data-i18n');
+            if (L[k] != null) { if (k === 'note' || k === 'floatCond') el.innerHTML = L[k]; else el.textContent = L[k]; }
+        });
+        document.querySelector('.header h1').textContent = L.headH;
+        document.querySelector('.header p span').textContent = L.headS;
+        document.title = L.headH.replace(/^[^\wА-Яа-яЁё]+/, '');
+        document.documentElement.lang = LANG;
+    }
+
+    let bob = 0;
+    function animate() {
+        requestAnimationFrame(animate);
+        const dt = Math.min(clock.getDelta(), 0.05);
+        const target = objMesh._targetY != null ? objMesh._targetY : WATER_BASE;
+        objY += (target - objY) * Math.min(1, dt * 4);
+        if (floats() && Math.abs(objY - target) < 0.05) { bob += dt; objY = target + 0.035 * Math.sin(bob * 2.0); }
+        updateObjectVisual();
+        updateLabels();
+        renderer.render(scene, camera);
+    }
+
+    init();
+    </script>
+</body>
+</html>

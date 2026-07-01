@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Пневматический цилиндр</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #eef2f7; overflow: hidden; width: 100vw; height: 100vh; color: #1e293b; }
+        #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+
+        .header { position: absolute; top: 0; left: 0; right: 0; padding: 22px 36px; background: linear-gradient(180deg, rgba(255,255,255,0.97) 0%, rgba(255,255,255,0) 100%); z-index: 10; pointer-events: none; }
+        .header h1 { color: #1e40af; font-size: 32px; font-weight: 800; margin: 0; }
+        .header p { color: #64748b; font-size: 17px; margin-top: 4px; }
+
+        #lang-switcher { position: absolute; top: 22px; right: 24px; display: flex; gap: 6px; z-index: 20; background: rgba(255,255,255,0.9); padding: 5px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 2px 10px rgba(0,0,0,0.06); }
+        #lang-switcher button { border: none; background: transparent; padding: 7px 13px; border-radius: 8px; font-size: 14px; font-weight: 700; color: #64748b; cursor: pointer; transition: all 0.15s; }
+        #lang-switcher button:hover { background: #eff6ff; color: #3b82f6; }
+        #lang-switcher button.active { background: #3b82f6; color: #fff; }
+
+        .control-panel { position: absolute; top: 100px; left: 24px; width: 340px; background: rgba(255,255,255,0.96);  border-radius: 18px; padding: 24px; z-index: 10; border: 1px solid #e2e8f0; box-shadow: 0 4px 24px rgba(0,0,0,0.08); max-height: calc(100vh - 130px); overflow-y: auto; }
+        .control-panel::-webkit-scrollbar { width: 4px; }
+        .control-panel::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+        .section-label { color: #64748b; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px; margin: 18px 0 10px; }
+        .section-label:first-child { margin-top: 0; }
+
+        .param-group { background: #f8fafc; border-radius: 12px; padding: 16px; border: 1px solid #e2e8f0; margin-bottom: 10px; }
+        .param-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .param-name { color: #475569; font-size: 15px; font-weight: 600; }
+        .param-value { color: #1d4ed8; font-size: 20px; font-weight: 700; font-family: 'Consolas', monospace; }
+        .param-hint { text-align: right; font-size: 12px; color: #94a3b8; margin-top: 4px; }
+
+        input[type="range"] { width: 100%; height: 8px; border-radius: 4px; -webkit-appearance: none; appearance: none; background: #e2e8f0; cursor: pointer; }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 24px; height: 24px; border-radius: 50%; background: #3b82f6; cursor: pointer; box-shadow: 0 2px 8px rgba(59,130,246,0.4); }
+
+        .checkbox-item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; margin-bottom: 8px; cursor: pointer; transition: background 0.2s; }
+        .checkbox-item:hover { background: #eff6ff; }
+        .checkbox-item input { accent-color: #3b82f6; cursor: pointer; width: 18px; height: 18px; }
+        .checkbox-item label { cursor: pointer; font-size: 14px; color: #334155; font-weight: 500; flex: 1; }
+
+        .info-panel { position: absolute; top: 100px; right: 24px; width: 330px; background: rgba(255,255,255,0.96);  border-radius: 18px; padding: 24px; z-index: 10; border: 1px solid #e2e8f0; box-shadow: 0 4px 24px rgba(0,0,0,0.08); max-height: calc(100vh - 130px); overflow-y: auto; }
+        .info-panel::-webkit-scrollbar { width: 4px; }
+        .info-panel::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .info-panel h3 { color: #1e40af; font-size: 20px; font-weight: 800; margin: 0 0 16px; }
+        .stat-row { display: flex; justify-content: space-between; margin-bottom: 11px; align-items: center; gap: 10px; }
+        .stat-label { color: #64748b; font-size: 14px; font-weight: 500; }
+        .stat-value { color: #1e293b; font-weight: 700; font-family: 'Consolas', monospace; font-size: 15px; text-align: right; }
+
+        .phase-badge { display: inline-block; padding: 5px 12px; border-radius: 999px; font-size: 13px; font-weight: 700; color: #fff; white-space: nowrap; }
+
+        .formula-box { background: #0f172a; border-radius: 12px; padding: 14px 16px; margin-top: 8px; }
+        .formula-box code { font-family: 'Consolas', monospace; font-size: 15px; color: #7dd3fc; display: block; text-align: center; }
+        .formula-box .fnote { font-size: 11px; color: #94a3b8; text-align: center; margin-top: 6px; }
+
+        .desc-box { margin-top: 14px; background: #eff6ff; border-radius: 12px; padding: 14px 16px; border: 1px solid #dbeafe; }
+        .desc-box p { font-size: 13px; color: #1e40af; line-height: 1.6; margin: 0; }
+
+        .legend { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 20px; background: rgba(255,255,255,0.95); padding: 14px 30px; border-radius: 14px; z-index: 10; border: 1px solid #e2e8f0; box-shadow: 0 2px 12px rgba(0,0,0,0.06); flex-wrap: wrap; justify-content: center; max-width: 90vw; }
+        .legend-item { display: flex; align-items: center; gap: 6px; font-size: 15px; color: #475569; font-weight: 600; }
+        .legend-dot { width: 14px; height: 14px; border-radius: 50%; }
+
+        .btn-row { display: flex; gap: 8px; }
+        .btn { flex: 1; padding: 11px; border: 1px solid #e2e8f0; background: #f8fafc; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 600; color: #334155; transition: all 0.15s; }
+        .btn:hover { background: #eff6ff; border-color: #bfdbfe; }
+        .btn.active { background: #3b82f6; color: #fff; border-color: #3b82f6; }
+    </style>
+</head>
+<body>
+
+<div id="canvas-container"></div>
+
+<div id="lang-switcher">
+    <button data-lang="ru">RU</button>
+    <button data-lang="kz">KZ</button>
+    <button data-lang="en">EN</button>
+</div>
+
+<div class="header">
+    <h1 data-i18n="title">Пневматический цилиндр</h1>
+    <p data-i18n="subtitle">Двустороннего действия — преобразование давления воздуха в силу и движение</p>
+</div>
+
+<div class="control-panel">
+    <div class="section-label" data-i18n="ctrl">Управление распределителем</div>
+
+    <div class="btn-row" style="margin-bottom:12px;">
+        <button class="btn active" id="btn-extend" data-i18n="extend">▶ Выдвинуть</button>
+        <button class="btn" id="btn-retract" data-i18n="retract">◀ Втянуть</button>
+    </div>
+    <div class="checkbox-item" style="margin-bottom:14px;">
+        <input type="checkbox" id="check-auto" checked>
+        <label for="check-auto" data-i18n="auto">Автоцикл (туда-обратно)</label>
+    </div>
+
+    <div class="section-label" data-i18n="params">Параметры</div>
+
+    <div class="param-group">
+        <div class="param-header">
+            <span class="param-name" data-i18n="pressure">Давление питания</span>
+            <span class="param-value" id="val-pressure">6.0</span>
+        </div>
+        <input type="range" id="input-pressure" min="1" max="10" step="0.5" value="6">
+        <div class="param-hint" data-i18n="pressureUnit">бар (изб.)</div>
+    </div>
+
+    <div class="param-group">
+        <div class="param-header">
+            <span class="param-name" data-i18n="bore">Диаметр поршня D</span>
+            <span class="param-value" id="val-bore">40</span>
+        </div>
+        <input type="range" id="input-bore" min="25" max="63" step="1" value="40">
+        <div class="param-hint" data-i18n="boreUnit">мм</div>
+    </div>
+
+    <div class="param-group">
+        <div class="param-header">
+            <span class="param-name" data-i18n="load">Внешняя нагрузка</span>
+            <span class="param-value" id="val-load">200</span>
+        </div>
+        <input type="range" id="input-load" min="0" max="3000" step="50" value="200">
+        <div class="param-hint" data-i18n="loadUnit">Н</div>
+    </div>
+
+    <div class="section-label" data-i18n="visualization">Визуализация</div>
+    <div class="checkbox-item">
+        <input type="checkbox" id="check-cut" checked>
+        <label for="check-cut" data-i18n="vCut">Разрез корпуса</label>
+    </div>
+    <div class="checkbox-item">
+        <input type="checkbox" id="check-air" checked>
+        <label for="check-air" data-i18n="vAir">Поток сжатого воздуха</label>
+    </div>
+    <div class="checkbox-item">
+        <input type="checkbox" id="check-force" checked>
+        <label for="check-force" data-i18n="vForce">Вектор силы на штоке</label>
+    </div>
+</div>
+
+<div class="info-panel">
+    <h3 data-i18n="state">Состояние</h3>
+    <div class="stat-row">
+        <span class="stat-label" data-i18n="dirLabel">Режим:</span>
+        <span class="phase-badge" id="stat-dir" style="background:#3b82f6">—</span>
+    </div>
+    <div class="stat-row">
+        <span class="stat-label" data-i18n="posLabel">Положение штока:</span>
+        <span class="stat-value" id="stat-pos">0 мм</span>
+    </div>
+    <div class="stat-row">
+        <span class="stat-label" data-i18n="forceLabel">Сила толкающая F:</span>
+        <span class="stat-value" id="stat-force">0 Н</span>
+    </div>
+    <div class="stat-row">
+        <span class="stat-label" data-i18n="areaLabel">Площадь поршня A:</span>
+        <span class="stat-value" id="stat-area">12.6 см²</span>
+    </div>
+    <div class="stat-row">
+        <span class="stat-label" data-i18n="netLabel">Запас по нагрузке:</span>
+        <span class="stat-value" id="stat-net">+550 Н</span>
+    </div>
+
+    <div class="formula-box">
+        <code>F = p · A</code>
+        <div class="fnote" data-i18n="fnote">A = π·D²/4 · &nbsp; шток уменьшает площадь при втягивании</div>
+    </div>
+
+    <div class="desc-box">
+        <p data-i18n="descText">Распределитель направляет сжатый воздух в одну полость, а вторую соединяет с атмосферой. Давление давит на поршень и создаёт силу F = p·A. При выдвижении работает полная площадь поршня, при втягивании — площадь за вычетом штока, поэтому усилие меньше.</p>
+    </div>
+</div>
+
+<div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#7f8c9b"></div><span data-i18n="legBody">Гильза</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:#e74c3c"></div><span data-i18n="legPiston">Поршень</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:#cbd5e1"></div><span data-i18n="legRod">Шток</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div><span data-i18n="legAir">Воздух под давлением</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:#1f2937"></div><span data-i18n="legSeal">Уплотнения</span></div>
+</div>
+
+<script src="../../libs/vendor/three-r128/three.min.js"></script>
+<script src="../../libs/vendor/three-0.128.0/OrbitControls.js"></script>
+
+<script>
+    const OrbitControls = THREE.OrbitControls;
+
+    // ============================ ЛОКАЛИЗАЦИЯ ============================
+    const I18N = {
+        ru: {
+            title: 'Пневматический цилиндр',
+            subtitle: 'Двустороннего действия — преобразование давления воздуха в силу и движение',
+            ctrl: 'Управление распределителем', extend: '▶ Выдвинуть', retract: '◀ Втянуть', auto: 'Автоцикл (туда-обратно)',
+            params: 'Параметры', pressure: 'Давление питания', pressureUnit: 'бар (изб.)',
+            bore: 'Диаметр поршня D', boreUnit: 'мм', load: 'Внешняя нагрузка', loadUnit: 'Н',
+            visualization: 'Визуализация', vCut: 'Разрез корпуса', vAir: 'Поток сжатого воздуха', vForce: 'Вектор силы на штоке',
+            state: 'Состояние', dirLabel: 'Режим:', posLabel: 'Положение штока:', forceLabel: 'Сила толкающая F:',
+            areaLabel: 'Площадь поршня A:', netLabel: 'Запас по нагрузке:',
+            fnote: 'A = π·D²/4 · шток уменьшает площадь при втягивании',
+            descText: 'Распределитель направляет сжатый воздух в одну полость, а вторую соединяет с атмосферой. Давление давит на поршень и создаёт силу F = p·A. При выдвижении работает полная площадь поршня, при втягивании — площадь за вычетом штока, поэтому усилие меньше.',
+            legBody: 'Гильза', legPiston: 'Поршень', legRod: 'Шток', legAir: 'Воздух под давлением', legSeal: 'Уплотнения',
+            dirExtend: 'Выдвижение ▶', dirRetract: 'Втягивание ◀', dirHoldOut: 'Удержание (выдв.)', dirHoldIn: 'Удержание (втян.)', dirStall: 'Нагрузка превышена!',
+            mm: 'мм', N: 'Н', cm2: 'см²'
+        },
+        kz: {
+            title: 'Пневматикалық цилиндр',
+            subtitle: 'Қос әрекетті — ауа қысымын күш пен қозғалысқа түрлендіру',
+            ctrl: 'Бөлгішті басқару', extend: '▶ Созу', retract: '◀ Қысу', auto: 'Автоцикл (әрі-бері)',
+            params: 'Параметрлер', pressure: 'Қоректену қысымы', pressureUnit: 'бар (арт.)',
+            bore: 'Порше диаметрі D', boreUnit: 'мм', load: 'Сыртқы жүктеме', loadUnit: 'Н',
+            visualization: 'Көрнекілік', vCut: 'Корпус қиылысы', vAir: 'Сығылған ауа ағыны', vForce: 'Тіректегі күш векторы',
+            state: 'Күй', dirLabel: 'Режим:', posLabel: 'Тірек орны:', forceLabel: 'Итеру күші F:',
+            areaLabel: 'Порше ауданы A:', netLabel: 'Жүктеме қоры:',
+            fnote: 'A = π·D²/4 · қысу кезінде тірек ауданды азайтады',
+            descText: 'Бөлгіш сығылған ауаны бір қуысқа бағыттайды, екіншісін атмосферамен қосады. Қысым поршеньге әсер етіп F = p·A күшін құрады. Созу кезінде поршеньнің толық ауданы, қысу кезінде тіректі шегергендегі аудан жұмыс істейді, сондықтан күш кемірек.',
+            legBody: 'Гильза', legPiston: 'Поршень', legRod: 'Тірек', legAir: 'Қысымды ауа', legSeal: 'Тығыздағыштар',
+            dirExtend: 'Созу ▶', dirRetract: 'Қысу ◀', dirHoldOut: 'Ұстау (созыл.)', dirHoldIn: 'Ұстау (қысыл.)', dirStall: 'Жүктеме асып кетті!',
+            mm: 'мм', N: 'Н', cm2: 'см²'
+        },
+        en: {
+            title: 'Pneumatic Cylinder',
+            subtitle: 'Double-acting — converting air pressure into force and motion',
+            ctrl: 'Directional valve control', extend: '▶ Extend', retract: '◀ Retract', auto: 'Auto cycle (back & forth)',
+            params: 'Parameters', pressure: 'Supply pressure', pressureUnit: 'bar (gauge)',
+            bore: 'Piston bore D', boreUnit: 'mm', load: 'External load', loadUnit: 'N',
+            visualization: 'Visualization', vCut: 'Cutaway body', vAir: 'Compressed air flow', vForce: 'Rod force vector',
+            state: 'State', dirLabel: 'Mode:', posLabel: 'Rod position:', forceLabel: 'Pushing force F:',
+            areaLabel: 'Piston area A:', netLabel: 'Load margin:',
+            fnote: 'A = π·D²/4 · the rod reduces area on retraction',
+            descText: 'The directional valve routes compressed air into one chamber and connects the other to atmosphere. Pressure acts on the piston and creates force F = p·A. On extension the full piston area works; on retraction the area minus the rod, so the force is lower.',
+            legBody: 'Barrel', legPiston: 'Piston', legRod: 'Rod', legAir: 'Pressurized air', legSeal: 'Seals',
+            dirExtend: 'Extending ▶', dirRetract: 'Retracting ◀', dirHoldOut: 'Holding (out)', dirHoldIn: 'Holding (in)', dirStall: 'Load exceeded!',
+            mm: 'mm', N: 'N', cm2: 'cm²'
+        }
+    };
+
+    let lang = (new URLSearchParams(location.search).get('lang') || 'ru').toLowerCase();
+    if (!I18N[lang]) lang = 'ru';
+    let T = I18N[lang];
+
+    // ============================ ПАРАМЕТРЫ (сцена в см) ============================
+    const STROKE = 16;          // ход поршня, см (сцена)
+    const ROD_R = 0.9;          // радиус штока, см
+    const WALL = 0.7;           // толщина стенки гильзы
+    const CAP = 1.6;            // толщина крышки
+    const PISTON_W = 2.2;       // ширина поршня
+
+    const P = {
+        pressure: 6.0,          // бар
+        boreMm: 40,             // мм (реальный диаметр)
+        load: 200,              // Н
+        cut: true, air: true, force: true, auto: true
+    };
+
+    let boreR = 2.6;            // радиус поршня в сцене (масштабируется от boreMm)
+    let pistonX = 0;            // 0..STROKE
+    let target = STROKE;        // куда едем
+    let dir = 1;                // 1 выдвижение, -1 втягивание, 0 стоп
+    let stalled = false;
+
+    let scene, camera, renderer, controls, clock;
+    let cylinderRoot, barrel, barrelInner, capRear, capFront, rodGuide;
+    let pistonGroup, rodMesh, pistonDisc, rodPort;
+    let chamberRear, chamberFront;        // воздух в полостях
+    let valveBlock, supplyPipeR, supplyPipeF, exhaustGroup;
+    let curveR = null, curveF = null;
+    let forceArrow;
+    let airParticles = [];
+    let mountRear, mountFront;
+
+    // материалы
+    const matBarrel = new THREE.MeshStandardMaterial({ color: 0x7f8c9b, metalness: 0.9, roughness: 0.25, side: THREE.DoubleSide });
+    const matBarrelInner = new THREE.MeshStandardMaterial({ color: 0x5b6675, metalness: 0.85, roughness: 0.35, side: THREE.BackSide });
+    const matCap = new THREE.MeshStandardMaterial({ color: 0x4b5563, metalness: 0.85, roughness: 0.3 });
+    const matPiston = new THREE.MeshStandardMaterial({ color: 0xe74c3c, metalness: 0.5, roughness: 0.35 });
+    const matRod = new THREE.MeshStandardMaterial({ color: 0xd5dbe3, metalness: 1.0, roughness: 0.12 });
+    const matSeal = new THREE.MeshStandardMaterial({ color: 0x1f2937, metalness: 0.2, roughness: 0.8 });
+    const matValve = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.7, roughness: 0.4 });
+    const matPipe = new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.6, roughness: 0.4 });
+    const matAir = new THREE.MeshStandardMaterial({ color: 0x3b82f6, metalness: 0.1, roughness: 0.2, transparent: true, opacity: 0.32, depthWrite: false, side: THREE.DoubleSide });
+    const matMount = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.6, roughness: 0.5 });
+
+    function init() {
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xeef2f7);
+        scene.fog = new THREE.Fog(0xeef2f7, 60, 130);
+        clock = new THREE.Clock();
+
+        camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 400);
+        camera.position.set(2, 11, 34);
+
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.85));
+        const key = new THREE.DirectionalLight(0xffffff, 1.0);
+        key.position.set(14, 22, 18);
+        scene.add(key);
+        const fill = new THREE.DirectionalLight(0xcfe0ff, 0.4);
+        fill.position.set(-16, 8, -10); scene.add(fill);
+        const rim = new THREE.DirectionalLight(0xffffff, 0.3);
+        rim.position.set(0, -6, -18); scene.add(rim);
+
+        const floor = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.95 }));
+        floor.rotation.x = -Math.PI / 2; floor.position.y = -7.5; floor.receiveShadow = true; scene.add(floor);
+        const grid = new THREE.GridHelper(100, 50, 0xcbd5e1, 0xe2e8f0);
+        grid.position.y = -7.49; scene.add(grid);
+
+        controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true; controls.dampingFactor = 0.08;
+        controls.target.set(2, 1.5, 0);
+        controls.minDistance = 16; controls.maxDistance = 80;
+        controls.maxPolarAngle = Math.PI * 0.92;
+
+        applyBore();
+        buildCylinder();
+        buildValve();
+        rebuildPipes();
+        buildAirParticles();
+        setupUI();
+        applyLang();
+        applyCut();
+        animate();
+
+        window.addEventListener('resize', onResize);
+    }
+
+    function onResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    function applyBore() {
+        // реальный диаметр 25..63 мм -> радиус сцены 2.0..3.4
+        boreR = 2.0 + (P.boreMm - 25) / (63 - 25) * 1.4;
+    }
+
+    // полная длина гильзы
+    function barrelLen() { return STROKE + PISTON_W + 2 * CAP + 2; }
+
+    function buildCylinder() {
+        cylinderRoot = new THREE.Group();
+        scene.add(cylinderRoot);
+
+        const L = barrelLen();
+        const halfArc = P.cut ? Math.PI : Math.PI * 2;
+
+        // === Гильза (труба) ===
+        barrel = new THREE.Mesh(
+            new THREE.CylinderGeometry(boreR + WALL, boreR + WALL, L, 48, 1, true, 0, halfArc),
+            matBarrel
+        );
+        barrel.rotation.z = Math.PI / 2;
+        barrel.rotation.x = P.cut ? Math.PI : 0; // вырез сверху
+        barrel.position.set(L / 2 - CAP - 1, 0, 0);
+        barrel.castShadow = true; barrel.receiveShadow = true;
+        cylinderRoot.add(barrel);
+
+        barrelInner = new THREE.Mesh(
+            new THREE.CylinderGeometry(boreR, boreR, L, 48, 1, true, 0, halfArc),
+            matBarrelInner
+        );
+        barrelInner.rotation.z = Math.PI / 2;
+        barrelInner.rotation.x = P.cut ? Math.PI : 0;
+        barrelInner.position.copy(barrel.position);
+        cylinderRoot.add(barrelInner);
+
+        // Рёбра жёсткости на гильзе
+        for (let i = 0; i < 4; i++) {
+            const ring = new THREE.Mesh(new THREE.TorusGeometry(boreR + WALL + 0.05, 0.12, 8, 40), matCap);
+            ring.rotation.y = Math.PI / 2;
+            ring.position.set(barrel.position.x - L / 2 + 2 + i * (L - 4) / 3, 0, 0);
+            cylinderRoot.add(ring);
+        }
+
+        // === Задняя крышка ===
+        capRear = new THREE.Mesh(new THREE.CylinderGeometry(boreR + WALL + 0.3, boreR + WALL + 0.3, CAP, 40), matCap);
+        capRear.rotation.z = Math.PI / 2;
+        capRear.position.set(-CAP - 1 + CAP / 2 - 0.2, 0, 0);
+        capRear.castShadow = true; cylinderRoot.add(capRear);
+        // болты задней крышки
+        addBolts(capRear.position.x, boreR + WALL + 0.05);
+
+        // === Передняя крышка (с направляющей штока) ===
+        const frontX = L - CAP - 1 - CAP / 2 + 0.2;
+        capFront = new THREE.Mesh(new THREE.CylinderGeometry(boreR + WALL + 0.3, boreR + WALL + 0.3, CAP, 40), matCap);
+        capFront.rotation.z = Math.PI / 2;
+        capFront.position.set(frontX, 0, 0);
+        capFront.castShadow = true; cylinderRoot.add(capFront);
+        addBolts(frontX, boreR + WALL + 0.05);
+
+        // Грундбукса/направляющая штока
+        rodGuide = new THREE.Mesh(new THREE.CylinderGeometry(ROD_R + 0.7, ROD_R + 0.7, 1.8, 28), matCap);
+        rodGuide.rotation.z = Math.PI / 2;
+        rodGuide.position.set(frontX + CAP / 2 + 0.4, 0, 0);
+        cylinderRoot.add(rodGuide);
+        // уплотнение штока
+        const rodSeal = new THREE.Mesh(new THREE.TorusGeometry(ROD_R + 0.15, 0.18, 8, 28), matSeal);
+        rodSeal.rotation.y = Math.PI / 2;
+        rodSeal.position.set(frontX + CAP / 2 + 0.4, 0, 0);
+        cylinderRoot.add(rodSeal);
+
+        // Крепёжные лапы
+        mountRear = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.0, (boreR + WALL) * 2 + 1.5), matMount);
+        mountRear.position.set(capRear.position.x, -(boreR + WALL) - 0.5, 0);
+        mountRear.castShadow = true; cylinderRoot.add(mountRear);
+        mountFront = mountRear.clone();
+        mountFront.position.x = frontX;
+        cylinderRoot.add(mountFront);
+
+        // === Поршень + шток ===
+        pistonGroup = new THREE.Group();
+        cylinderRoot.add(pistonGroup);
+
+        pistonDisc = new THREE.Mesh(new THREE.CylinderGeometry(boreR - 0.08, boreR - 0.08, PISTON_W, 40), matPiston);
+        pistonDisc.rotation.z = Math.PI / 2;
+        pistonDisc.castShadow = true;
+        pistonGroup.add(pistonDisc);
+
+        // магнит/манжеты поршня
+        for (const off of [-PISTON_W / 2 + 0.35, PISTON_W / 2 - 0.35]) {
+            const seal = new THREE.Mesh(new THREE.TorusGeometry(boreR - 0.05, 0.22, 8, 40), matSeal);
+            seal.rotation.y = Math.PI / 2; seal.position.x = off;
+            pistonGroup.add(seal);
+        }
+        // канавка-проточка
+        const groove = new THREE.Mesh(new THREE.CylinderGeometry(boreR - 0.35, boreR - 0.35, 0.6, 40), matCap);
+        groove.rotation.z = Math.PI / 2; pistonGroup.add(groove);
+
+        // шток (выходит вперёд)
+        const rodLen = STROKE + (frontX + CAP / 2 + 0.4) + 6;
+        rodMesh = new THREE.Mesh(new THREE.CylinderGeometry(ROD_R, ROD_R, rodLen, 28), matRod);
+        rodMesh.rotation.z = Math.PI / 2;
+        rodMesh.position.x = rodLen / 2;     // от центра поршня вперёд
+        rodMesh.castShadow = true;
+        pistonGroup.add(rodMesh);
+
+        // проушина на конце штока
+        const eyeBase = new THREE.Mesh(new THREE.CylinderGeometry(ROD_R + 0.2, ROD_R + 0.2, 1.2, 20), matRod);
+        eyeBase.rotation.z = Math.PI / 2; eyeBase.position.x = rodLen + 0.2; pistonGroup.add(eyeBase);
+        const eye = new THREE.Mesh(new THREE.TorusGeometry(0.85, 0.32, 12, 28), matRod);
+        eye.position.x = rodLen + 1.4; pistonGroup.add(eye);
+
+        // === Воздушные полости (рисуем как полупрозрачные цилиндры) ===
+        chamberRear = new THREE.Mesh(new THREE.CylinderGeometry(boreR - 0.12, boreR - 0.12, 1, 40, 1, false, 0, halfArc), matAir);
+        chamberRear.rotation.z = Math.PI / 2;
+        chamberRear.rotation.x = P.cut ? Math.PI : 0;
+        scene.add(chamberRear); cylinderRoot.add(chamberRear);
+
+        chamberFront = new THREE.Mesh(new THREE.CylinderGeometry(boreR - 0.12, boreR - 0.12, 1, 40, 1, false, 0, halfArc), matAir.clone());
+        chamberFront.rotation.z = Math.PI / 2;
+        chamberFront.rotation.x = P.cut ? Math.PI : 0;
+        cylinderRoot.add(chamberFront);
+
+        // === Вектор силы ===
+        forceArrow = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 0, 0), 4, 0x16a34a, 1.2, 0.8);
+        cylinderRoot.add(forceArrow);
+    }
+
+    function addBolts(x, r) {
+        for (let i = 0; i < 8; i++) {
+            const a = (i / 8) * Math.PI * 2;
+            const bolt = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, CAP + 0.2, 6), matValve);
+            bolt.rotation.z = Math.PI / 2;
+            bolt.position.set(x, Math.sin(a) * (r - 0.3), Math.cos(a) * (r - 0.3));
+            cylinderRoot.add(bolt);
+        }
+    }
+
+    function buildValve() {
+        // === Распределитель 5/2 (схематично сбоку под цилиндром) ===
+        valveBlock = new THREE.Group();
+        const vx = barrelLen() / 2 - CAP - 1;
+        valveBlock.position.set(vx, -5.2, 4.5);
+        scene.add(valveBlock);
+
+        const body = new THREE.Mesh(new THREE.BoxGeometry(7, 2.2, 2.2), matValve);
+        body.castShadow = true; valveBlock.add(body);
+        // золотниковые секции
+        for (let i = -1; i <= 1; i++) {
+            const sec = new THREE.Mesh(new THREE.BoxGeometry(0.25, 2.3, 2.3), matCap);
+            sec.position.x = i * 1.8; valveBlock.add(sec);
+        }
+        // катушки соленоидов
+        for (const sx of [-3.8, 3.8]) {
+            const coil = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, 1.4, 20), new THREE.MeshStandardMaterial({ color: 0xca8a04, metalness: 0.5, roughness: 0.5 }));
+            coil.rotation.z = Math.PI / 2; coil.position.x = sx; valveBlock.add(coil);
+        }
+        // вход питания (снизу)
+        const supply = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 1.6, 16), matPipe);
+        supply.position.set(0, -1.8, 0); valveBlock.add(supply);
+
+        // Трубки к задней и передней полостям
+        supplyPipeR = makePipe();
+        supplyPipeF = makePipe();
+        scene.add(supplyPipeR); scene.add(supplyPipeF);
+    }
+
+    function makePipe() {
+        const g = new THREE.Group();
+        scene.add(g);
+        return g;
+    }
+
+    function rebuildPipes() {
+        const rearStart = capRear.position.x + CAP / 2;
+        const frontEnd = capFront.position.x - CAP / 2;
+        curveR = buildOnePipe(supplyPipeR, -2.6, rearStart + 1.2);
+        curveF = buildOnePipe(supplyPipeF, 2.6, frontEnd - 1.2);
+    }
+
+    function buildOnePipe(group, fromX, toX) {
+        group.clear();
+        // труба идёт от клапана (низ-перед) к порту на гильзе
+        const valveY = -5.2, valveZ = 4.5;
+        const pts = [
+            new THREE.Vector3(fromX, valveY + 1.2, valveZ),
+            new THREE.Vector3(fromX, valveY + 3.0, valveZ),
+            new THREE.Vector3(toX, valveY + 3.0, valveZ),
+            new THREE.Vector3(toX, 1.5, valveZ * 0.45),
+            new THREE.Vector3(toX, 0.4, boreR + WALL)
+        ];
+        const curve = new THREE.CatmullRomCurve3(pts);
+        const tube = new THREE.Mesh(new THREE.TubeGeometry(curve, 40, 0.32, 12, false), matPipe);
+        tube.castShadow = true;
+        group.add(tube);
+        // штуцер на гильзе
+        const port = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 1.2, 16), matCap);
+        port.position.set(toX, 0.4 + boreR * 0.5, boreR + WALL - 0.3);
+        port.lookAt(toX, 0, 0); group.add(port);
+        return curve;
+    }
+
+    function buildAirParticles() {
+        const geo = new THREE.SphereGeometry(0.16, 8, 8);
+        const mat = new THREE.MeshBasicMaterial({ color: 0x60a5fa });
+        for (let i = 0; i < 40; i++) {
+            const p = new THREE.Mesh(geo, mat);
+            p.visible = false;
+            p.userData.t = Math.random();
+            scene.add(p);
+            airParticles.push(p);
+        }
+    }
+
+    // ============================ ФИЗИКА ============================
+    function pistonAreaCm2(retract) {
+        const D = P.boreMm / 10; // см
+        const A = Math.PI * D * D / 4;
+        if (retract) {
+            const d = (ROD_R * 2) / boreR * (D / 2); // приблизит. диаметр штока в см
+            const Arod = Math.PI * d * d / 4;
+            return A - Arod;
+        }
+        return A;
+    }
+
+    function pushForceN(retract) {
+        // p (бар) -> Па: *1e5 ; A (см²) -> м²: *1e-4  => F = p*1e5 * A*1e-4 = p*A*10
+        const A = pistonAreaCm2(retract);
+        return P.pressure * A * 10;
+    }
+
+    function rebuildGeometry() {
+        // удаляем и собираем заново при смене диаметра/разреза
+        scene.remove(cylinderRoot);
+        disposeGroup(cylinderRoot);
+        applyBore();
+        buildCylinder();
+        rebuildPipes();
+        applyCut();
+    }
+
+    function disposeGroup(group) {
+        group.traverse(o => {
+            if (o.geometry) o.geometry.dispose();
+            if (o.material) { (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => m.dispose()); }
+        });
+    }
+
+    function updateSim(dt) {
+        // Скорость зависит от давления, диаметра и нагрузки
+        const retract = dir < 0;
+        const F = pushForceN(retract);
+        stalled = (dir !== 0) && (F < P.load + 30);
+
+        let speed = 0;
+        if (!stalled && dir !== 0) {
+            const margin = Math.max(F - P.load, 0);
+            speed = THREE.MathUtils.clamp(2 + margin / 220, 2, 22); // см/с
+        }
+
+        // движение
+        if (dir > 0) {
+            pistonX = Math.min(pistonX + speed * dt, STROKE);
+            if (pistonX >= STROKE) { if (P.auto) { dir = -1; target = 0; } else dir = 0; }
+        } else if (dir < 0) {
+            pistonX = Math.max(pistonX - speed * dt, 0);
+            if (pistonX <= 0) { if (P.auto) { dir = 1; target = STROKE; } else dir = 0; }
+        }
+
+        // позиционирование поршня
+        pistonGroup.position.x = pistonX;
+
+        // полости воздуха
+        const innerLeft = -CAP - 1 + CAP / 2 + 0.3 + 0.2;   // у задней крышки
+        const rearStart = capRear.position.x + CAP / 2;
+        const frontEnd = capFront.position.x - CAP / 2;
+        const pistonLeftFace = pistonX - PISTON_W / 2;
+        const pistonRightFace = pistonX + PISTON_W / 2;
+
+        const rearLen = Math.max(pistonLeftFace - rearStart, 0.05);
+        const frontLen = Math.max(frontEnd - pistonRightFace, 0.05);
+
+        const pressurizeRear = dir > 0 || (dir === 0 && target === STROKE);
+        const pressurizeFront = dir < 0 || (dir === 0 && target === 0);
+
+        chamberRear.scale.y = rearLen;
+        chamberRear.position.x = rearStart + rearLen / 2;
+        chamberRear.visible = P.air && rearLen > 0.1;
+        chamberRear.material.opacity = pressurizeRear ? 0.36 : 0.06;
+        chamberRear.material.color.setHex(pressurizeRear ? 0x3b82f6 : 0x93c5fd);
+
+        chamberFront.scale.y = frontLen;
+        chamberFront.position.x = pistonRightFace + frontLen / 2;
+        chamberFront.visible = P.air && frontLen > 0.1;
+        chamberFront.material.opacity = pressurizeFront ? 0.36 : 0.06;
+        chamberFront.material.color.setHex(pressurizeFront ? 0x3b82f6 : 0x93c5fd);
+
+        // частицы воздуха в активной трубке (кривые трубок построены заранее)
+        updateParticles(dt, pressurizeRear ? curveR : (pressurizeFront ? curveF : null), pressurizeRear ? rearStart : pistonRightFace);
+
+        // вектор силы
+        forceArrow.visible = P.force && dir !== 0 && !stalled;
+        if (forceArrow.visible) {
+            const tipX = capFront.position.x + CAP / 2 + STROKE + 2;
+            forceArrow.position.set(pistonX + PISTON_W / 2, 0, 0);
+            forceArrow.setDirection(new THREE.Vector3(dir, 0, 0));
+            const len = THREE.MathUtils.clamp(F / 400, 2, 9);
+            forceArrow.setLength(len, len * 0.25, len * 0.18);
+            forceArrow.setColor(stalled ? 0xef4444 : 0x16a34a);
+        }
+
+        updateHUD(F, retract);
+    }
+
+    function updateParticles(dt, curve, fallback) {
+        airParticles.forEach((p, i) => {
+            if (!curve || !P.air) { p.visible = false; return; }
+            p.visible = true;
+            p.userData.t += dt * 0.6;
+            if (p.userData.t > 1) p.userData.t -= 1;
+            const t = (p.userData.t + i / airParticles.length) % 1;
+            const pos = curve.getPoint(t);
+            p.position.copy(pos);
+            const s = 0.6 + 0.4 * Math.sin(t * Math.PI);
+            p.scale.setScalar(s);
+        });
+    }
+
+    function updateHUD(F, retract) {
+        const badge = document.getElementById('stat-dir');
+        if (stalled) { badge.textContent = T.dirStall; badge.style.background = '#ef4444'; }
+        else if (dir > 0) { badge.textContent = T.dirExtend; badge.style.background = '#16a34a'; }
+        else if (dir < 0) { badge.textContent = T.dirRetract; badge.style.background = '#f59e0b'; }
+        else { badge.textContent = target === STROKE ? T.dirHoldOut : T.dirHoldIn; badge.style.background = '#64748b'; }
+
+        const posMm = Math.round(pistonX / STROKE * 100);
+        document.getElementById('stat-pos').textContent = posMm + ' ' + T.mm + ' (' + Math.round(pistonX / STROKE * 100) + '%)';
+        document.getElementById('stat-force').textContent = Math.round(F) + ' ' + T.N;
+        document.getElementById('stat-area').textContent = pistonAreaCm2(retract).toFixed(1) + ' ' + T.cm2;
+        const net = Math.round(F - P.load);
+        const netEl = document.getElementById('stat-net');
+        netEl.textContent = (net >= 0 ? '+' : '') + net + ' ' + T.N;
+        netEl.style.color = net >= 0 ? '#16a34a' : '#ef4444';
+    }
+
+    function applyCut() {
+        // перестроение делается в rebuildGeometry; здесь только видимость воздуха
+        chamberRear.visible = P.air;
+        chamberFront.visible = P.air;
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+        const dt = Math.min(clock.getDelta(), 0.05);
+        updateSim(dt);
+        controls.update();
+        renderer.render(scene, camera);
+    }
+
+    // ============================ UI ============================
+    function setupUI() {
+        document.getElementById('btn-extend').addEventListener('click', () => {
+            target = STROKE; dir = pistonX < STROKE ? 1 : 0;
+            P.auto = false; document.getElementById('check-auto').checked = false;
+            setBtn('btn-extend');
+        });
+        document.getElementById('btn-retract').addEventListener('click', () => {
+            target = 0; dir = pistonX > 0 ? -1 : 0;
+            P.auto = false; document.getElementById('check-auto').checked = false;
+            setBtn('btn-retract');
+        });
+        document.getElementById('check-auto').addEventListener('change', e => {
+            P.auto = e.target.checked;
+            if (P.auto && dir === 0) { dir = pistonX < STROKE ? 1 : -1; target = dir > 0 ? STROKE : 0; }
+        });
+
+        document.getElementById('input-pressure').addEventListener('input', e => {
+            P.pressure = parseFloat(e.target.value);
+            document.getElementById('val-pressure').textContent = P.pressure.toFixed(1);
+        });
+        document.getElementById('input-bore').addEventListener('input', e => {
+            P.boreMm = parseInt(e.target.value);
+            document.getElementById('val-bore').textContent = P.boreMm;
+            rebuildGeometry();
+        });
+        document.getElementById('input-load').addEventListener('input', e => {
+            P.load = parseInt(e.target.value);
+            document.getElementById('val-load').textContent = P.load;
+        });
+
+        document.getElementById('check-cut').addEventListener('change', e => { P.cut = e.target.checked; rebuildGeometry(); });
+        document.getElementById('check-air').addEventListener('change', e => { P.air = e.target.checked; });
+        document.getElementById('check-force').addEventListener('change', e => { P.force = e.target.checked; });
+
+        document.querySelectorAll('#lang-switcher button').forEach(b => {
+            if (b.dataset.lang === lang) b.classList.add('active');
+            b.addEventListener('click', () => {
+                lang = b.dataset.lang; T = I18N[lang];
+                document.querySelectorAll('#lang-switcher button').forEach(x => x.classList.remove('active'));
+                b.classList.add('active');
+                applyLang();
+            });
+        });
+    }
+
+    function setBtn(id) {
+        document.getElementById('btn-extend').classList.toggle('active', id === 'btn-extend');
+        document.getElementById('btn-retract').classList.toggle('active', id === 'btn-retract');
+    }
+
+    function applyLang() {
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const key = el.getAttribute('data-i18n');
+            if (T[key]) el.textContent = T[key];
+        });
+    }
+
+    init();
+</script>
+</body>
+</html>

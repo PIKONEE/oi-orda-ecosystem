@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="page_title">Аммиак NH₃ — Водородные связи, взаимодействие с водой</title>
+<script src="../../libs/vendor/three-r128/three.min.js"></script>
+<style>
+
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --blue:#38bdf8;--purple:#a78bfa;--orange:#fb923c;--green:#4ade80;--red:#f87171;
+  --yellow:#facc15;--cyan:#22d3ee;--nitrogen:#6366f1;--hydrogen:#e2e8f0;--oxygen:#ef4444;--lone:#a78bfa;
+  --glass-bg:rgba(28,36,64,0.52);--glass-border:rgba(255,255,255,0.17);
+  --text:#f0f3fa;--text-dim:#96a8c6;
+  --mono:'JetBrains Mono',monospace;--serif:'Playfair Display',serif;--sans:'Nunito',sans-serif;
+}
+body{background:radial-gradient(ellipse at 50% 35%,#272f52 0%,#181f3a 50%,#0e1324 100%);color:var(--text);font-family:var(--sans);overflow:hidden;height:100vh;width:100vw;}
+#canvas-container{position:absolute;inset:0;z-index:0;}canvas{display:block;}
+.glass{background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:16px;box-shadow:0 6px 26px rgba(0,0,0,0.24),inset 0 1px 0 rgba(255,255,255,0.1);}
+::-webkit-scrollbar{width:5px;}::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.17);border-radius:3px;}
+
+#left-panel{position:absolute;top:56px;left:16px;width:370px;z-index:10;padding:24px;display:flex;flex-direction:column;gap:16px;max-height:calc(100vh - 72px);overflow-y:auto;}
+.panel-title{font-family:var(--serif);font-size:26px;font-weight:700;background:linear-gradient(135deg,var(--nitrogen),var(--hydrogen));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.panel-subtitle{font-size:15px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1.5px;}
+.separator{height:1px;background:linear-gradient(90deg,transparent,var(--glass-border),transparent);}
+
+.control-group{display:flex;flex-direction:column;gap:8px;}
+.control-label{display:flex;justify-content:space-between;align-items:baseline;font-size:18px;color:var(--text-dim);}
+.control-value{font-family:var(--mono);font-weight:600;font-size:20px;}
+
+input[type="range"]{-webkit-appearance:none;width:100%;height:10px;border-radius:5px;background:rgba(255,255,255,0.1);outline:none;cursor:pointer;}
+input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:28px;height:28px;border-radius:50%;background:var(--blue);box-shadow:0 0 12px rgba(56,189,248,0.4);cursor:pointer;transition:transform .15s;}
+input[type="range"]::-webkit-slider-thumb:hover{transform:scale(1.15);}
+.slider-purple::-webkit-slider-thumb{background:var(--nitrogen);box-shadow:0 0 12px rgba(99,102,241,0.5);}
+.slider-green::-webkit-slider-thumb{background:var(--green);box-shadow:0 0 12px rgba(74,222,128,0.4);}
+
+.btn{padding:14px 20px;border:none;border-radius:14px;font-family:var(--sans);font-weight:700;font-size:20px;cursor:pointer;transition:all .2s;letter-spacing:.5px;width:100%;}
+.btn-action{background:linear-gradient(135deg,var(--nitrogen),#4f46e5);color:#fff;box-shadow:0 4px 18px rgba(99,102,241,0.3);}
+.btn-action:hover{transform:translateY(-1px);box-shadow:0 6px 22px rgba(99,102,241,0.45);}
+.btn-reset{background:rgba(255,255,255,0.08);color:var(--text);border:1px solid var(--glass-border);font-size:18px;padding:12px 16px;margin-top:6px;}
+.btn-reset:hover{background:rgba(255,255,255,0.14);}
+
+.toggle-row{display:flex;align-items:center;justify-content:space-between;font-size:18px;color:var(--text-dim);}
+.toggle{width:52px;height:28px;border-radius:14px;background:rgba(255,255,255,0.12);position:relative;cursor:pointer;transition:background .3s;}
+.toggle.active{background:var(--blue);}
+.toggle::after{content:'';position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:white;transition:transform .3s;}
+.toggle.active::after{transform:translateX(24px);}
+
+.mode-selector{display:flex;gap:6px;}
+.mode-btn{padding:10px 8px;border:1px solid var(--glass-border);border-radius:10px;background:rgba(255,255,255,0.04);color:var(--text-dim);font-size:15px;cursor:pointer;transition:all .2s;text-align:center;flex:1;}
+.mode-btn.active{background:rgba(99,102,241,0.15);border-color:var(--nitrogen);color:var(--nitrogen);}
+.mode-btn:hover{background:rgba(255,255,255,0.08);}
+.mode-btn .mode-icon{font-size:24px;display:block;margin-bottom:2px;}
+
+/* RIGHT */
+#right-panel{position:absolute;top:16px;right:16px;width:400px;z-index:10;padding:24px;display:flex;flex-direction:column;gap:14px;max-height:calc(100vh - 32px);overflow-y:auto;}
+.stat-row{display:flex;justify-content:space-between;align-items:baseline;}
+.stat-label{font-size:17px;color:var(--text-dim);}
+.stat-value{font-family:var(--mono);font-weight:600;font-size:22px;}
+
+.reaction-box{background:rgba(0,0,0,0.16);border-radius:14px;padding:16px 18px;border:1px solid rgba(255,255,255,0.07);text-align:center;}
+.reaction-eq-big{font-family:var(--serif);font-size:24px;color:var(--text);font-style:italic;line-height:1.8;}
+
+.prop-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.prop-card{background:rgba(0,0,0,0.12);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:10px 12px;text-align:center;}
+.prop-card .prop-val{font-family:var(--mono);font-size:20px;font-weight:700;}
+.prop-card .prop-name{font-size:13px;color:var(--text-dim);margin-top:2px;}
+
+.formula-box{background:rgba(0,0,0,0.14);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:14px 16px;font-family:var(--serif);font-size:19px;line-height:2;color:var(--text-dim);}
+.info-box{background:rgba(0,0,0,0.1);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:14px 16px;font-size:17px;line-height:1.7;color:var(--text-dim);}
+.info-box b{color:var(--text);font-weight:600;}
+
+.legend-item{display:flex;align-items:center;gap:10px;font-size:16px;color:var(--text-dim);}
+.legend-dot{width:16px;height:16px;border-radius:50%;flex-shrink:0;}
+
+/* BOTTOM */
+#bottom-panel{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);z-index:10;padding:16px 36px;display:flex;gap:44px;align-items:center;white-space:nowrap;}
+.bottom-stat{display:flex;flex-direction:column;align-items:center;gap:3px;}
+.bottom-stat .label{font-size:14px;text-transform:uppercase;letter-spacing:1.2px;color:var(--text-dim);}
+.bottom-stat .value{font-family:var(--mono);font-size:26px;font-weight:700;}
+
+#status-bar{position:absolute;top:16px;left:50%;transform:translateX(-50%);z-index:10;padding:12px 28px;display:flex;align-items:center;gap:14px;font-size:20px;font-weight:700;letter-spacing:1px;}
+
+</style>
+</head>
+<body>
+<div id="canvas-container"></div>
+
+<div id="status-bar" class="glass">
+  <span id="status-text" style="color:var(--nitrogen);">🔬 МОЛЕКУЛА NH₃ — СТРУКТУРА</span>
+</div>
+
+<div id="left-panel" class="glass">
+  <div><div class="panel-title" data-i18n="panel_title">Аммиак NH₃</div><div class="panel-subtitle" data-i18n="panel_subtitle">Водородные связи и свойства</div></div>
+  <div class="separator"></div>
+
+  <div class="panel-subtitle" data-i18n="view_mode">Режим просмотра</div>
+  <div class="mode-selector">
+    <div class="mode-btn active" data-mode="molecule"><span class="mode-icon">⚛</span><span data-i18n="mode_molecule">Молекула</span></div>
+    <div class="mode-btn" data-mode="hbonds"><span class="mode-icon">🔗</span><span data-i18n="mode_hbonds">Н-связи</span></div>
+    <div class="mode-btn" data-mode="water"><span class="mode-icon">💧</span><span data-i18n="mode_water">NH₃+H₂O</span></div>
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="control-group">
+    <div class="control-label"><span data-i18n="rotation_speed">Скорость вращения</span><span class="control-value" id="rot-val" style="color:var(--nitrogen);">1.0×</span></div>
+    <input type="range" id="rot-slider" class="slider-purple" min="0" max="30" value="10" step="1">
+  </div>
+  <div class="control-group">
+    <div class="control-label"><span data-i18n="molecule_scale">Масштаб молекулы</span><span class="control-value" id="scale-val" style="color:var(--green);">1.0×</span></div>
+    <input type="range" id="scale-slider" class="slider-green" min="5" max="20" value="10" step="1">
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="toggle-row"><span data-i18n="toggle_lone">Неподелённая пара e⁻</span><div class="toggle active" id="toggle-lone"></div></div>
+  <div class="toggle-row"><span data-i18n="toggle_hbonds">Водородные связи</span><div class="toggle active" id="toggle-hbonds"></div></div>
+  <div class="toggle-row"><span data-i18n="toggle_labels">Подписи атомов</span><div class="toggle active" id="toggle-labels"></div></div>
+  <div class="toggle-row"><span data-i18n="toggle_clouds">Электронные облака</span><div class="toggle" id="toggle-clouds"></div></div>
+
+  <div class="separator"></div>
+  <button class="btn btn-reset" id="btn-reset" data-i18n="btn_reset">↺ Сброс</button>
+</div>
+
+<div id="right-panel" class="glass">
+  <div class="reaction-box" id="main-equation">
+    <div class="reaction-eq-big"><span style="color:var(--nitrogen);">N</span><span style="color:var(--hydrogen);">H₃</span></div>
+    <div style="font-size:16px;color:var(--text-dim);margin-top:4px;" data-i18n="eq_subtitle">Тригональная пирамида, sp³-гибридизация</div>
+  </div>
+
+  <div class="prop-grid">
+    <div class="prop-card"><div class="prop-val" style="color:var(--nitrogen);">107.3°</div><div class="prop-name" data-i18n="prop_angle">Угол H—N—H</div></div>
+    <div class="prop-card"><div class="prop-val" style="color:var(--blue);">1.017 Å</div><div class="prop-name" data-i18n="prop_bond_len">Длина N—H</div></div>
+    <div class="prop-card"><div class="prop-val" style="color:var(--purple);">1.47 D</div><div class="prop-name" data-i18n="prop_dipole">Дипольный момент</div></div>
+    <div class="prop-card"><div class="prop-val" style="color:var(--cyan);">−33 °C</div><div class="prop-name" data-i18n="prop_boiling">T кипения</div></div>
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="stat-row"><span class="stat-label" data-i18n="stat_molar">Молярная масса</span><span class="stat-value" style="color:var(--text);" data-i18n="stat_molar_val">17 г/моль</span></div>
+  <div class="stat-row"><span class="stat-label" data-i18n="stat_hybrid">Гибридизация N</span><span class="stat-value" style="color:var(--nitrogen);">sp³</span></div>
+  <div class="stat-row"><span class="stat-label" data-i18n="stat_lone_pairs">Неподелённых пар</span><span class="stat-value" style="color:var(--lone);">1</span></div>
+  <div class="stat-row"><span class="stat-label" data-i18n="stat_shape_label">Форма молекулы</span><span class="stat-value" style="color:var(--cyan);" id="stat-shape" data-i18n="shape_pyramid">Пирамида</span></div>
+  <div class="stat-row"><span class="stat-label" data-i18n="stat_mode_label">Режим</span><span class="stat-value" id="stat-mode" data-i18n="mode_molecule">Молекула</span></div>
+
+  <div class="separator"></div>
+
+  <div class="panel-subtitle" id="section-title" data-i18n="section_structure">Строение молекулы</div>
+  <div class="info-box" id="section-info">
+    Атом <b>азота</b> в центре связан с тремя атомами <b>водорода</b>. Четвёртая sp³-орбиталь занята <b>неподелённой парой электронов</b>.<br><br>
+    Из-за неподелённой пары угол H—N—H составляет <b>107.3°</b> (меньше тетраэдрического 109.5°).<br><br>
+    Молекула имеет форму <b>тригональной пирамиды</b> и обладает значительным <b>дипольным моментом</b> (1.47 D).
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="panel-subtitle" data-i18n="legend_title">Легенда</div>
+  <div style="display:flex;flex-direction:column;gap:8px;" id="legend-box">
+    <div class="legend-item"><div class="legend-dot" style="background:#6366f1;"></div><span data-i18n="legend_n">N — азот (центральный атом)</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:#e2e8f0;"></div><span data-i18n="legend_h">H — водород</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:#a78bfa;opacity:0.5;"></div><span data-i18n="legend_lone">Неподелённая пара e⁻</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:#94a3b8;"></div><span data-i18n="legend_bond">σ-связь N—H</span></div>
+  </div>
+</div>
+
+<div id="bottom-panel" class="glass">
+  <div class="bottom-stat"><span class="label" data-i18n="b_angle">Угол H-N-H</span><span class="value" style="color:var(--nitrogen);">107.3°</span></div>
+  <div class="bottom-stat"><span class="label" data-i18n="b_bond">Связь N-H</span><span class="value" style="color:var(--blue);">1.017 Å</span></div>
+  <div class="bottom-stat"><span class="label" data-i18n="b_dipole">Дипольμ</span><span class="value" style="color:var(--purple);">1.47 D</span></div>
+  <div class="bottom-stat"><span class="label" data-i18n="stat_mode_label">Режим</span><span class="value" id="b-mode" style="color:var(--nitrogen);">Молекула</span></div>
+</div>
+
+<script>
+// =====================================================================
+//  I18N — встроенные переводы (RU / KZ / EN). Язык: ?lang=ru|kz|en.
+// =====================================================================
+const I18N = {
+  ru: {
+    page_title: 'Аммиак NH₃ — Водородные связи, взаимодействие с водой',
+    panel_title: 'Аммиак NH₃',
+    panel_subtitle: 'Водородные связи и свойства',
+    view_mode: 'Режим просмотра',
+    mode_molecule: 'Молекула',
+    mode_hbonds: 'Н-связи',
+    mode_water: 'NH₃+H₂O',
+    rotation_speed: 'Скорость вращения',
+    molecule_scale: 'Масштаб молекулы',
+    toggle_lone: 'Неподелённая пара e⁻',
+    toggle_hbonds: 'Водородные связи',
+    toggle_labels: 'Подписи атомов',
+    toggle_clouds: 'Электронные облака',
+    btn_reset: '↺ Сброс',
+    eq_subtitle: 'Тригональная пирамида, sp³-гибридизация',
+    prop_angle: 'Угол H—N—H',
+    prop_bond_len: 'Длина N—H',
+    prop_dipole: 'Дипольный момент',
+    prop_boiling: 'T кипения',
+    stat_molar: 'Молярная масса',
+    stat_molar_val: '17 г/моль',
+    stat_hybrid: 'Гибридизация N',
+    stat_lone_pairs: 'Неподелённых пар',
+    stat_shape_label: 'Форма молекулы',
+    stat_mode_label: 'Режим',
+    shape_pyramid: 'Пирамида',
+    shape_associates: 'Ассоциаты',
+    shape_proton: 'Перенос H⁺',
+    section_structure: 'Строение молекулы',
+    section_hbonds: 'Водородные связи',
+    section_water: 'Взаимодействие с водой',
+    legend_title: 'Легенда',
+    legend_n: 'N — азот (центральный атом)',
+    legend_h: 'H — водород',
+    legend_lone: 'Неподелённая пара e⁻',
+    legend_bond: 'σ-связь N—H',
+    b_angle: 'Угол H-N-H',
+    b_bond: 'Связь N-H',
+    b_dipole: 'Дипольμ',
+    status_molecule: '🔬 МОЛЕКУЛА NH₃ — СТРУКТУРА',
+    status_hbonds: '🔗 ВОДОРОДНЫЕ СВЯЗИ МЕЖДУ NH₃',
+    status_water: '💧 NH₃ + H₂O — ДОНОРНО-АКЦЕПТОРНОЕ',
+    info_molecule: 'Атом <b>азота</b> в центре связан с тремя атомами <b>водорода</b>. Четвёртая sp³-орбиталь занята <b>неподелённой парой электронов</b>.<br><br>Из-за неподелённой пары угол H—N—H составляет <b>107.3°</b> (меньше тетраэдрического 109.5°).<br><br>Молекула имеет форму <b>тригональной пирамиды</b> и обладает значительным <b>дипольным моментом</b> (1.47 D).',
+    info_hbonds: '<b>Неподелённая пара</b> азота образует <b>водородную связь</b> с H другой молекулы NH₃.<br><br>Это объясняет аномально высокую <b>температуру кипения</b> (−33 °C) для столь лёгкой молекулы.<br><br>Водородные связи слабее ковалентных (≈ 20 кДж/моль), но играют огромную роль в свойствах аммиака.',
+    info_water: 'Аммиак — <b>основание по Брёнстеду</b>: принимает протон (H⁺) от воды:<br><br><b>NH₃ + H₂O ⇌ NH₄⁺ + OH⁻</b><br><br><b>Неподелённая пара</b> азота атакует протон воды по <b>донорно-акцепторному</b> механизму → образуется ион аммония NH₄⁺ и гидроксид OH⁻.<br><br>Раствор аммиака имеет <b>щелочную реакцию</b> (pH > 7).',
+    eq_molecule: '<div class="reaction-eq-big"><span style="color:var(--nitrogen);">N</span><span style="color:var(--hydrogen);">H₃</span></div><div style="font-size:16px;color:var(--text-dim);margin-top:4px;">Тригональная пирамида, sp³-гибридизация</div>',
+    eq_hbonds: '<div class="reaction-eq-big">NH₃ ···H—NH₂</div><div style="font-size:16px;color:var(--text-dim);margin-top:4px;">Межмолекулярные водородные связи</div>',
+    eq_water: '<div class="reaction-eq-big"><span style="color:var(--nitrogen);">NH₃</span> + <span style="color:var(--cyan);">H₂O</span> ⇌ <span style="color:var(--nitrogen);">NH₄⁺</span> + <span style="color:var(--blue);">OH⁻</span></div><div style="font-size:16px;color:var(--text-dim);margin-top:4px;">Донорно-акцепторный механизм, K_b = 1.8·10⁻⁵</div>',
+    label_lone_pair: 'e⁻ пара',
+    label_hbond: 'Н-связь'
+  },
+  kz: {
+    page_title: 'Аммиак NH₃ — Сутектік байланыстар, сумен әрекеттесу',
+    panel_title: 'Аммиак NH₃',
+    panel_subtitle: 'Сутектік байланыстар және қасиеттер',
+    view_mode: 'Көру режимі',
+    mode_molecule: 'Молекула',
+    mode_hbonds: 'Н-байл.',
+    mode_water: 'NH₃+H₂O',
+    rotation_speed: 'Айналу жылдамдығы',
+    molecule_scale: 'Молекула масштабы',
+    toggle_lone: 'Бөлінбеген жұп e⁻',
+    toggle_hbonds: 'Сутектік байланыстар',
+    toggle_labels: 'Атом белгілері',
+    toggle_clouds: 'Электрон бұлттары',
+    btn_reset: '↺ Қалпына келтіру',
+    eq_subtitle: 'Тригоналды пирамида, sp³-гибридтену',
+    prop_angle: 'H—N—H бұрышы',
+    prop_bond_len: 'N—H ұзындығы',
+    prop_dipole: 'Дипольдік момент',
+    prop_boiling: 'Қайнау T',
+    stat_molar: 'Молярлық масса',
+    stat_molar_val: '17 г/моль',
+    stat_hybrid: 'N гибридтенуі',
+    stat_lone_pairs: 'Бөлінбеген жұптар',
+    stat_shape_label: 'Молекула пішіні',
+    stat_mode_label: 'Режим',
+    shape_pyramid: 'Пирамида',
+    shape_associates: 'Ассоциаттар',
+    shape_proton: 'H⁺ тасымалы',
+    section_structure: 'Молекула құрылысы',
+    section_hbonds: 'Сутектік байланыстар',
+    section_water: 'Сумен әрекеттесу',
+    legend_title: 'Шартты белгілер',
+    legend_n: 'N — азот (орталық атом)',
+    legend_h: 'H — сутек',
+    legend_lone: 'Бөлінбеген жұп e⁻',
+    legend_bond: 'σ-байланыс N—H',
+    b_angle: 'H-N-H бұрышы',
+    b_bond: 'N-H байл.',
+    b_dipole: 'Дипольμ',
+    status_molecule: '🔬 NH₃ МОЛЕКУЛАСЫ — ҚҰРЫЛЫСЫ',
+    status_hbonds: '🔗 NH₃ АРАСЫНДАҒЫ СУТЕКТІК БАЙЛАНЫСТАР',
+    status_water: '💧 NH₃ + H₂O — ДОНОРЛЫ-АКЦЕПТОРЛЫ',
+    info_molecule: '<b>Азот</b> атомы ортада үш <b>сутек</b> атомымен байланысқан. Төртінші sp³-орбиталь <b>бөлінбеген электрон жұбымен</b> толтырылған.<br><br>Бөлінбеген жұп себебінен H—N—H бұрышы <b>107.3°</b> (тетраэдрлік 109.5°-тан аз).<br><br>Молекула <b>тригоналды пирамида</b> пішінде және айтарлықтай <b>дипольдік моментке</b> (1.47 D) ие.',
+    info_hbonds: 'Азоттың <b>бөлінбеген жұбы</b> басқа NH₃ молекуласының H-мен <b>сутектік байланыс</b> түзеді.<br><br>Бұл жеңіл молекула үшін аномалды жоғары <b>қайнау температурасын</b> (−33 °C) түсіндіреді.<br><br>Сутектік байланыстар ковалентті байланыстардан әлсіз (≈ 20 кДж/моль), бірақ аммиак қасиеттерінде маңызды рөл атқарады.',
+    info_water: 'Аммиак — <b>Брёнстед негізі</b>: судан протон (H⁺) қабылдайды:<br><br><b>NH₃ + H₂O ⇌ NH₄⁺ + OH⁻</b><br><br>Азоттың <b>бөлінбеген жұбы</b> судың протонына <b>донорлы-акцепторлы</b> механизммен шабуыл жасайды → аммоний ионы NH₄⁺ және гидроксид OH⁻ түзіледі.<br><br>Аммиак ерітіндісі <b>сілтілік реакцияға</b> (pH > 7) ие.',
+    eq_molecule: '<div class="reaction-eq-big"><span style="color:var(--nitrogen);">N</span><span style="color:var(--hydrogen);">H₃</span></div><div style="font-size:16px;color:var(--text-dim);margin-top:4px;">Тригоналды пирамида, sp³-гибридтену</div>',
+    eq_hbonds: '<div class="reaction-eq-big">NH₃ ···H—NH₂</div><div style="font-size:16px;color:var(--text-dim);margin-top:4px;">Молекулааралық сутектік байланыстар</div>',
+    eq_water: '<div class="reaction-eq-big"><span style="color:var(--nitrogen);">NH₃</span> + <span style="color:var(--cyan);">H₂O</span> ⇌ <span style="color:var(--nitrogen);">NH₄⁺</span> + <span style="color:var(--blue);">OH⁻</span></div><div style="font-size:16px;color:var(--text-dim);margin-top:4px;">Донорлы-акцепторлы механизм, K_b = 1.8·10⁻⁵</div>',
+    label_lone_pair: 'e⁻ жұп',
+    label_hbond: 'Н-байл.'
+  },
+  en: {
+    page_title: 'Ammonia NH₃ — Hydrogen Bonds, Interaction with Water',
+    panel_title: 'Ammonia NH₃',
+    panel_subtitle: 'Hydrogen bonds and properties',
+    view_mode: 'View mode',
+    mode_molecule: 'Molecule',
+    mode_hbonds: 'H-bonds',
+    mode_water: 'NH₃+H₂O',
+    rotation_speed: 'Rotation speed',
+    molecule_scale: 'Molecule scale',
+    toggle_lone: 'Lone pair e⁻',
+    toggle_hbonds: 'Hydrogen bonds',
+    toggle_labels: 'Atom labels',
+    toggle_clouds: 'Electron clouds',
+    btn_reset: '↺ Reset',
+    eq_subtitle: 'Trigonal pyramid, sp³ hybridization',
+    prop_angle: 'H—N—H angle',
+    prop_bond_len: 'N—H length',
+    prop_dipole: 'Dipole moment',
+    prop_boiling: 'Boiling T',
+    stat_molar: 'Molar mass',
+    stat_molar_val: '17 g/mol',
+    stat_hybrid: 'N hybridization',
+    stat_lone_pairs: 'Lone pairs',
+    stat_shape_label: 'Molecular shape',
+    stat_mode_label: 'Mode',
+    shape_pyramid: 'Pyramid',
+    shape_associates: 'Associates',
+    shape_proton: 'H⁺ transfer',
+    section_structure: 'Molecular structure',
+    section_hbonds: 'Hydrogen bonds',
+    section_water: 'Interaction with water',
+    legend_title: 'Legend',
+    legend_n: 'N — nitrogen (central atom)',
+    legend_h: 'H — hydrogen',
+    legend_lone: 'Lone pair e⁻',
+    legend_bond: 'σ-bond N—H',
+    b_angle: 'H-N-H angle',
+    b_bond: 'N-H bond',
+    b_dipole: 'Dipole μ',
+    status_molecule: '🔬 NH₃ MOLECULE — STRUCTURE',
+    status_hbonds: '🔗 HYDROGEN BONDS BETWEEN NH₃',
+    status_water: '💧 NH₃ + H₂O — DONOR-ACCEPTOR',
+    info_molecule: 'The <b>nitrogen</b> atom at the center is bonded to three <b>hydrogen</b> atoms. The fourth sp³ orbital is occupied by a <b>lone pair of electrons</b>.<br><br>Due to the lone pair, the H—N—H angle is <b>107.3°</b> (less than the tetrahedral 109.5°).<br><br>The molecule has a <b>trigonal pyramidal</b> shape and possesses a significant <b>dipole moment</b> (1.47 D).',
+    info_hbonds: 'The <b>lone pair</b> of nitrogen forms a <b>hydrogen bond</b> with H of another NH₃ molecule.<br><br>This explains the anomalously high <b>boiling point</b> (−33 °C) for such a light molecule.<br><br>Hydrogen bonds are weaker than covalent ones (≈ 20 kJ/mol), but play a huge role in ammonia properties.',
+    info_water: 'Ammonia is a <b>Brønsted base</b>: it accepts a proton (H⁺) from water:<br><br><b>NH₃ + H₂O ⇌ NH₄⁺ + OH⁻</b><br><br>The <b>lone pair</b> of nitrogen attacks the water proton via a <b>donor-acceptor</b> mechanism → ammonium ion NH₄⁺ and hydroxide OH⁻ are formed.<br><br>Ammonia solution is <b>alkaline</b> (pH > 7).',
+    eq_molecule: '<div class="reaction-eq-big"><span style="color:var(--nitrogen);">N</span><span style="color:var(--hydrogen);">H₃</span></div><div style="font-size:16px;color:var(--text-dim);margin-top:4px;">Trigonal pyramid, sp³ hybridization</div>',
+    eq_hbonds: '<div class="reaction-eq-big">NH₃ ···H—NH₂</div><div style="font-size:16px;color:var(--text-dim);margin-top:4px;">Intermolecular hydrogen bonds</div>',
+    eq_water: '<div class="reaction-eq-big"><span style="color:var(--nitrogen);">NH₃</span> + <span style="color:var(--cyan);">H₂O</span> ⇌ <span style="color:var(--nitrogen);">NH₄⁺</span> + <span style="color:var(--blue);">OH⁻</span></div><div style="font-size:16px;color:var(--text-dim);margin-top:4px;">Donor-acceptor mechanism, K_b = 1.8·10⁻⁵</div>',
+    label_lone_pair: 'e⁻ pair',
+    label_hbond: 'H-bond'
+  }
+};
+const LANG=(()=>{const q=new URLSearchParams(location.search).get('lang');return(q&&I18N[q])?q:'ru';})();
+const t=(key)=>(I18N[LANG]&&I18N[LANG][key])??(I18N.ru&&I18N.ru[key]);
+
+function applyStaticI18N(){
+  document.documentElement.lang=LANG;
+  const tv=t('page_title');if(tv)document.title=tv;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{const v=t(el.getAttribute('data-i18n'));if(v)el.textContent=v;});
+  document.querySelectorAll('[data-i18n-html]').forEach(el=>{const v=t(el.getAttribute('data-i18n-html'));if(v)el.innerHTML=v;});
+}
+applyStaticI18N();
+// ═══════════════════════════════════════
+const container=document.getElementById('canvas-container');
+const scene=new THREE.Scene();
+scene.fog=new THREE.FogExp2(0x181f3a,0.003);
+const camera=new THREE.PerspectiveCamera(50,innerWidth/innerHeight,0.1,300);
+const renderer=new THREE.WebGLRenderer({antialias: true,alpha:true});
+renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.shadowMap.enabled=false;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.25;
+container.appendChild(renderer.domElement);
+
+scene.add(new THREE.AmbientLight(0x778899,0.75));
+const dL=new THREE.DirectionalLight(0xffeedd,0.8);dL.position.set(6,14,10);dL.castShadow=true;scene.add(dL);
+const pL=new THREE.PointLight(0x6366f1,0.2,20);pL.position.set(-3,5,3);scene.add(pL);
+
+// ═══ MATERIALS ═══
+const nMat=new THREE.MeshStandardMaterial({color:0x6366f1,emissive:0x6366f1,emissiveIntensity:0.15,roughness:0.25,metalness:0.15});
+const hMat=new THREE.MeshStandardMaterial({color:0xe2e8f0,emissive:0xe2e8f0,emissiveIntensity:0.05,roughness:0.3,metalness:0.1});
+const oMat=new THREE.MeshStandardMaterial({color:0xef4444,emissive:0xef4444,emissiveIntensity:0.15,roughness:0.25,metalness:0.15});
+const bondMat=new THREE.MeshStandardMaterial({color:0x94a3b8,roughness:0.35,metalness:0.3});
+const hBondMat=new THREE.MeshBasicMaterial({color:0xfacc15,transparent:true,opacity:0.5});
+const loneMat=new THREE.MeshBasicMaterial({color:0xa78bfa,transparent:true,opacity:0.3});
+
+// ═══ NH3 GEOMETRY (tetrahedral, 107.3° angles) ═══
+const NH_LEN=2.0; // visual bond length
+const ANGLE=107.3*Math.PI/180;
+
+function nh3Positions(){
+  // N at origin, 3 H below in trigonal arrangement
+  const cosA=Math.cos(Math.PI-ANGLE);
+  const sinA=Math.sin(Math.PI-ANGLE);
+  const hY=-NH_LEN*cosA; // negative = below
+  const hR=NH_LEN*sinA;  // radial distance
+  const h1={x:hR,y:hY,z:0};
+  const h2={x:hR*Math.cos(2*Math.PI/3),y:hY,z:hR*Math.sin(2*Math.PI/3)};
+  const h3={x:hR*Math.cos(4*Math.PI/3),y:hY,z:hR*Math.sin(4*Math.PI/3)};
+  return[h1,h2,h3];
+}
+
+// ═══ STATE ═══
+const state={mode:'molecule',rotSpeed:1,molScale:1,showLone:true,showHBonds:true,showLabels:true,showClouds:false};
+
+// ═══ SCENE OBJECTS ═══
+let sceneObjects=[];
+const labelDivs=[];
+
+function clearScene(){
+  sceneObjects.forEach(o=>scene.remove(o));sceneObjects=[];
+  labelDivs.forEach(d=>d.remove());labelDivs.length=0;
+}
+
+function mkLabel(text,color){
+  const d=document.createElement('div');
+  d.style.cssText=`position:absolute;z-index:5;font-family:var(--mono);font-size:18px;font-weight:700;color:${color};pointer-events:none;text-shadow:0 2px 10px rgba(0,0,0,0.9);`;
+  d.textContent=text;document.body.appendChild(d);labelDivs.push(d);return d;
+}
+
+function proj(p){const v=p.clone().project(camera);return{x:v.x*innerWidth/2+innerWidth/2,y:-v.y*innerHeight/2+innerHeight/2};}
+
+// ═══ BUILD NH3 MOLECULE ═══
+function buildNH3(group,ox,oy,oz,scale){
+  const s=scale||1;
+  const hpos=nh3Positions();
+  // Nitrogen
+  const nGeo=new THREE.SphereGeometry(0.7*s,32,32);
+  const nMesh=new THREE.Mesh(nGeo,nMat.clone());
+  nMesh.position.set(ox,oy,oz);nMesh.castShadow=true;
+  group.add(nMesh);sceneObjects.push(nMesh);
+  nMesh.userData={label:state.showLabels?mkLabel('N','#818cf8'):null,el:'N'};
+
+  // Hydrogens + bonds
+  hpos.forEach((hp,i)=>{
+    const hMesh=new THREE.Mesh(new THREE.SphereGeometry(0.45*s,24,24),hMat.clone());
+    hMesh.position.set(ox+hp.x*s,oy+hp.y*s,oz+hp.z*s);hMesh.castShadow=true;
+    group.add(hMesh);sceneObjects.push(hMesh);
+    hMesh.userData={label:state.showLabels?mkLabel('H','#c8d0e0'):null,el:'H'};
+
+    // Bond cylinder
+    const bLen=Math.sqrt(hp.x*hp.x+hp.y*hp.y+hp.z*hp.z)*s;
+    const bGeo=new THREE.CylinderGeometry(0.1*s,0.1*s,bLen*0.7,12);
+    const bMesh=new THREE.Mesh(bGeo,bondMat.clone());
+    bMesh.position.set(ox+hp.x*s*0.5,oy+hp.y*s*0.5,oz+hp.z*s*0.5);
+    // Orient bond
+    const dir=new THREE.Vector3(hp.x,hp.y,hp.z).normalize();
+    const up=new THREE.Vector3(0,1,0);
+    const q=new THREE.Quaternion().setFromUnitVectors(up,dir);
+    bMesh.setRotationFromQuaternion(q);
+    group.add(bMesh);sceneObjects.push(bMesh);
+  });
+
+  // Lone pair
+  if(state.showLone){
+    const loneGeo=new THREE.SphereGeometry(0.5*s,16,16);
+    const loneMesh=new THREE.Mesh(loneGeo,loneMat.clone());
+    loneMesh.position.set(ox,oy+1.4*s,oz);
+    group.add(loneMesh);sceneObjects.push(loneMesh);
+    loneMesh.userData={label:state.showLabels?mkLabel(t('label_lone_pair'),'#a78bfa'):null,isLone:true};
+
+    // Lone pair "lobe"
+    const lobe2=new THREE.Mesh(new THREE.SphereGeometry(0.35*s,12,12),loneMat.clone());
+    lobe2.position.set(ox,oy+1.9*s,oz);
+    group.add(lobe2);sceneObjects.push(lobe2);
+  }
+
+  // Electron clouds
+  if(state.showClouds){
+    hpos.forEach(hp=>{
+      const cGeo=new THREE.SphereGeometry(0.8*s,12,12);
+      const cMat=new THREE.MeshBasicMaterial({color:0x6366f1,transparent:true,opacity:0.06,side:THREE.DoubleSide});
+      const cMesh=new THREE.Mesh(cGeo,cMat);
+      cMesh.position.set(ox+hp.x*s*0.5,oy+hp.y*s*0.5,oz+hp.z*s*0.5);
+      group.add(cMesh);sceneObjects.push(cMesh);
+    });
+  }
+
+  return {n:nMesh, hList:hpos.map((hp,i)=>({x:ox+hp.x*s,y:oy+hp.y*s,z:oz+hp.z*s}))};
+}
+
+// ═══ BUILD H2O MOLECULE ═══
+function buildH2O(group,ox,oy,oz,scale,rotY){
+  const s=scale||1;
+  const ang=104.5*Math.PI/180;
+  const OH_LEN=1.8*s;
+  const oMesh=new THREE.Mesh(new THREE.SphereGeometry(0.55*s,24,24),oMat.clone());
+  oMesh.position.set(ox,oy,oz);oMesh.castShadow=true;
+  group.add(oMesh);sceneObjects.push(oMesh);
+  oMesh.userData={label:state.showLabels?mkLabel('O','#f87171'):null,el:'O'};
+
+  const h1x=OH_LEN*Math.sin(ang/2), h1y=-OH_LEN*Math.cos(ang/2);
+  const h2x=-h1x, h2y=h1y;
+
+  [{x:h1x,y:h1y},{x:h2x,y:h2y}].forEach(hp=>{
+    // Rotate around Y
+    const ry=rotY||0;
+    const rx=hp.x*Math.cos(ry)-0*Math.sin(ry);
+    const rz=hp.x*Math.sin(ry)+0*Math.cos(ry);
+
+    const hMesh=new THREE.Mesh(new THREE.SphereGeometry(0.35*s,16,16),hMat.clone());
+    hMesh.position.set(ox+rx,oy+hp.y,oz+rz);hMesh.castShadow=true;
+    group.add(hMesh);sceneObjects.push(hMesh);
+    hMesh.userData={label:state.showLabels?mkLabel('H','#c8d0e0'):null,el:'H'};
+
+    const bLen=Math.sqrt(rx*rx+hp.y*hp.y+rz*rz);
+    const bGeo=new THREE.CylinderGeometry(0.08*s,0.08*s,bLen*0.65,8);
+    const bMesh=new THREE.Mesh(bGeo,bondMat.clone());
+    bMesh.position.set(ox+rx*0.5,oy+hp.y*0.5,oz+rz*0.5);
+    const dir=new THREE.Vector3(rx,hp.y,rz).normalize();
+    bMesh.setRotationFromQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0),dir));
+    group.add(bMesh);sceneObjects.push(bMesh);
+  });
+}
+
+// ═══ H-BOND DASHED LINE ═══
+function addHBond(group,x1,y1,z1,x2,y2,z2){
+  if(!state.showHBonds) return;
+  const pts=[];const segs=8;
+  for(let i=0;i<=segs;i++){
+    const t=i/segs;
+    pts.push(new THREE.Vector3(x1+(x2-x1)*t,y1+(y2-y1)*t,z1+(z2-z1)*t));
+  }
+  const geo=new THREE.BufferGeometry().setFromPoints(pts);
+  const mat=new THREE.LineDashedMaterial({color:0xfacc15,dashSize:0.3,gapSize:0.15,transparent:true,opacity:0.7});
+  const line=new THREE.Line(geo,mat);
+  line.computeLineDistances();
+  group.add(line);sceneObjects.push(line);
+
+  // "H-bond" label
+  const mid=new THREE.Vector3((x1+x2)/2,(y1+y2)/2,(z1+z2)/2);
+  if(state.showLabels){
+    const lbl=mkLabel(t('label_hbond'),'#facc15');
+    lbl.userData={worldPos:mid};
+    line.userData={label:lbl,mid};
+  }
+}
+
+// ═══ MAIN GROUP (rotates) ═══
+let mainGroup=new THREE.Group();
+scene.add(mainGroup);
+
+function buildMode(){
+  clearScene();
+  scene.remove(mainGroup);
+  mainGroup=new THREE.Group();
+  scene.add(mainGroup);
+
+  const s=state.molScale;
+
+  if(state.mode==='molecule'){
+    buildNH3(mainGroup,0,0,0,s);
+    document.getElementById('status-text').textContent=t('status_molecule');
+    document.getElementById('status-text').style.color='var(--nitrogen)';
+    document.getElementById('stat-mode').textContent=t('mode_molecule');
+    document.getElementById('b-mode').textContent=t('mode_molecule');
+    document.getElementById('stat-shape').textContent=t('shape_pyramid');
+    document.getElementById('section-title').textContent=t('section_structure');
+    document.getElementById('section-info').innerHTML=t('info_molecule');
+    document.getElementById('main-equation').innerHTML=t('eq_molecule');
+  }
+  else if(state.mode==='hbonds'){
+    // Several NH3 molecules with H-bonds between them
+    const m1=buildNH3(mainGroup,-2.5,1.5,0,s*0.8);
+    const m2=buildNH3(mainGroup,2.5,1.5,0,s*0.8);
+    const m3=buildNH3(mainGroup,0,-2,0,s*0.8);
+
+    // H-bonds: H of one → lone pair(N) of another
+    addHBond(mainGroup, -2.5+0.8*0.8*s,1.5-0.6*0.8*s,0, 2.5,1.5+0.8*0.8*s,0);
+    addHBond(mainGroup, 2.5-0.5*0.8*s,1.5-0.6*0.8*s,0.7, 0,  -2+0.8*0.8*s,0);
+    addHBond(mainGroup, 0+0.8*0.8*s,-2-0.5*0.8*s,0, -2.5,1.5+0.8*0.8*s,0);
+
+    document.getElementById('status-text').textContent=t('status_hbonds');
+    document.getElementById('status-text').style.color='var(--yellow)';
+    document.getElementById('stat-mode').textContent=t('mode_hbonds');
+    document.getElementById('b-mode').textContent=t('mode_hbonds');
+    document.getElementById('stat-shape').textContent=t('shape_associates');
+    document.getElementById('section-title').textContent=t('section_hbonds');
+    document.getElementById('section-info').innerHTML=t('info_hbonds');
+    document.getElementById('main-equation').innerHTML=t('eq_hbonds');
+  }
+  else if(state.mode==='water'){
+    // NH3 + H2O → NH4+ + OH-
+    buildNH3(mainGroup,-3,0,0,s*0.85);
+    buildH2O(mainGroup,3,0,0,s*0.85,0);
+
+    // H-bond between N lone pair and H of water
+    addHBond(mainGroup, -3,1.2*0.85*s,0, 3+0.85*1.0,0-0.85*1.2,0);
+
+    // Arrow showing proton transfer
+    const arrowGeo=new THREE.ConeGeometry(0.2,0.6,8);
+    const arrowMat2=new THREE.MeshStandardMaterial({color:0xfacc15,emissive:0xfacc15,emissiveIntensity:0.3});
+    const arrow=new THREE.Mesh(arrowGeo,arrowMat2);
+    arrow.position.set(0,2.5,0);arrow.rotation.z=Math.PI/2;
+    mainGroup.add(arrow);sceneObjects.push(arrow);
+    const arrowBody2=new THREE.Mesh(new THREE.BoxGeometry(2,0.15,0.15),arrowMat2.clone());
+    arrowBody2.position.set(0,2.5,0);mainGroup.add(arrowBody2);sceneObjects.push(arrowBody2);
+
+    document.getElementById('status-text').textContent=t('status_water');
+    document.getElementById('status-text').style.color='var(--cyan)';
+    document.getElementById('stat-mode').textContent=t('mode_water');
+    document.getElementById('b-mode').textContent=t('mode_water');
+    document.getElementById('stat-shape').textContent=t('shape_proton');
+    document.getElementById('section-title').textContent=t('section_water');
+    document.getElementById('section-info').innerHTML=t('info_water');
+    document.getElementById('main-equation').innerHTML=t('eq_water');
+  }
+}
+
+buildMode();
+
+// ═══ UI ═══
+document.querySelectorAll('.mode-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');state.mode=btn.dataset.mode;buildMode();
+  });
+});
+document.getElementById('rot-slider').addEventListener('input',e=>{state.rotSpeed=+e.target.value/10;document.getElementById('rot-val').textContent=state.rotSpeed.toFixed(1)+'×';});
+document.getElementById('scale-slider').addEventListener('input',e=>{state.molScale=+e.target.value/10;document.getElementById('scale-val').textContent=state.molScale.toFixed(1)+'×';buildMode();});
+document.getElementById('toggle-lone').addEventListener('click',function(){this.classList.toggle('active');state.showLone=this.classList.contains('active');buildMode();});
+document.getElementById('toggle-hbonds').addEventListener('click',function(){this.classList.toggle('active');state.showHBonds=this.classList.contains('active');buildMode();});
+document.getElementById('toggle-labels').addEventListener('click',function(){this.classList.toggle('active');state.showLabels=this.classList.contains('active');buildMode();});
+document.getElementById('toggle-clouds').addEventListener('click',function(){this.classList.toggle('active');state.showClouds=this.classList.contains('active');buildMode();});
+document.getElementById('btn-reset').addEventListener('click',()=>{
+  state.mode='molecule';state.rotSpeed=1;state.molScale=1;state.showLone=true;state.showHBonds=true;state.showLabels=true;state.showClouds=false;
+  document.getElementById('rot-slider').value=10;document.getElementById('scale-slider').value=10;
+  document.getElementById('rot-val').textContent='1.0×';document.getElementById('scale-val').textContent='1.0×';
+  document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelector('[data-mode="molecule"]').classList.add('active');
+  document.querySelectorAll('.toggle').forEach(t=>{
+    const id=t.id;
+    if(id==='toggle-clouds')t.classList.remove('active');else t.classList.add('active');
+  });
+  buildMode();
+  camSph={r:12,theta:Math.PI*0.5,phi:Math.PI*0.42};camTarget.set(0,0,0);updateCam();
+});
+
+// ═══ CAMERA ═══
+let isDrag=false,isPan=false,prevM={x:0,y:0};
+let camSph={r:12,theta:Math.PI*0.5,phi:Math.PI*0.42},camTarget=new THREE.Vector3(0,0,0);
+function updateCam(){camera.position.set(camTarget.x+camSph.r*Math.sin(camSph.phi)*Math.cos(camSph.theta),camTarget.y+camSph.r*Math.cos(camSph.phi),camTarget.z+camSph.r*Math.sin(camSph.phi)*Math.sin(camSph.theta));camera.lookAt(camTarget);}
+updateCam();
+renderer.domElement.addEventListener('mousedown',e=>{if(e.button===0)isDrag=true;if(e.button===2)isPan=true;prevM={x:e.clientX,y:e.clientY};});
+renderer.domElement.addEventListener('mousemove',e=>{const dx=e.clientX-prevM.x,dy=e.clientY-prevM.y;prevM={x:e.clientX,y:e.clientY};if(isDrag){camSph.theta-=dx*0.005;camSph.phi=Math.max(0.1,Math.min(Math.PI*0.48,camSph.phi+dy*0.005));updateCam();}if(isPan){const r2=new THREE.Vector3();camera.getWorldDirection(r2);r2.cross(new THREE.Vector3(0,1,0)).normalize();camTarget.addScaledVector(r2,-dx*0.02);camTarget.y=Math.max(-5,camTarget.y+dy*0.02);updateCam();}});
+renderer.domElement.addEventListener('mouseup',()=>{isDrag=false;isPan=false;});
+renderer.domElement.addEventListener('contextmenu',e=>e.preventDefault());
+renderer.domElement.addEventListener('wheel',e=>{camSph.r=Math.max(4,Math.min(30,camSph.r+e.deltaY*0.01));updateCam();});
+
+// ═══ ANIMATE ═══
+const clock=new THREE.Clock();
+function animate(){
+  requestAnimationFrame(animate);
+  const dt=Math.min(clock.getDelta(),0.05);
+
+  // Rotate main group
+  mainGroup.rotation.y+=dt*state.rotSpeed*0.3;
+
+  // Lone pair pulse
+  sceneObjects.forEach(o=>{
+    if(o.userData&&o.userData.isLone){
+      o.material.opacity=0.2+0.15*Math.sin(performance.now()*0.003);
+      o.scale.setScalar(1+0.08*Math.sin(performance.now()*0.002));
+    }
+  });
+
+  // Update labels
+  if(state.showLabels){
+    sceneObjects.forEach(o=>{
+      if(o.userData&&o.userData.label){
+        const wp=new THREE.Vector3();
+        o.getWorldPosition(wp);
+        wp.y+=0.7;
+        const p=proj(wp);
+        o.userData.label.style.left=(p.x-12)+'px';
+        o.userData.label.style.top=(p.y-22)+'px';
+      }
+    });
+    // H-bond labels
+    labelDivs.forEach(d=>{
+      if(d.userData&&d.userData.worldPos){
+        const wp=d.userData.worldPos.clone();
+        mainGroup.localToWorld(wp);
+        const p=proj(wp);
+        d.style.left=(p.x-25)+'px';
+        d.style.top=(p.y-20)+'px';
+      }
+    });
+  }
+
+  renderer.render(scene,camera);
+}
+animate();
+window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+</script>
+</body>
+</html>

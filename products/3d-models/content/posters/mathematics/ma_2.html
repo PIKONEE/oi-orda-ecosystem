@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="page_title">Прямоугольный параллелепипед</title>
+<style>
+
+
+*{margin:0;padding:0;box-sizing:border-box;}
+
+:root{
+  --bg:#f3f2ee;
+  --surface:rgba(255,255,255,0.94);
+  --border:rgba(28,20,55,0.07);
+  --text:#1a1722;
+  --muted:#7a7587;
+  --faint:#aaa5b6;
+  --a:#6d28d9;  --a-dim:rgba(109,40,217,0.10);
+  --b:#0d9488;  --b-dim:rgba(13,148,136,0.10);
+  --c:#d97706;  --c-dim:rgba(217,119,6,0.10);
+  --accent:#6d28d9;
+  --shadow:0 2px 22px rgba(40,25,80,0.07);
+  --shadow-lg:0 18px 56px rgba(45,28,90,0.15);
+}
+
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);overflow:hidden;height:100vh;}
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(1200px 760px at 70% 32%, rgba(139,92,246,0.10), transparent 60%),
+    radial-gradient(820px 560px at 14% 84%, rgba(13,148,136,0.06), transparent 55%);
+}
+
+#canvas-container{position:fixed;inset:0;z-index:1;}
+#labels-layer{position:fixed;inset:0;z-index:40;pointer-events:none;overflow:hidden;}
+
+.dim-label{
+  position:absolute;transform:translate(-50%,-50%);
+  font-family:'Roboto Mono',monospace;font-size:14px;font-weight:600;
+  padding:3px 10px;border-radius:9px;white-space:nowrap;letter-spacing:-0.3px;
+  background:rgba(255,255,255,0.97);box-shadow:0 3px 12px rgba(40,25,80,0.14);
+  transition:opacity 0.18s;
+}
+.dim-label.hidden{opacity:0;}
+.dim-label.la{color:var(--a);border:1px solid rgba(109,40,217,0.28);}
+.dim-label.lb{color:var(--b);border:1px solid rgba(13,148,136,0.28);}
+.dim-label.lc{color:var(--c);border:1px solid rgba(217,119,6,0.28);}
+.dim-label.face{background:#1a1722;color:#fff;border:none;font-weight:600;box-shadow:0 5px 18px rgba(0,0,0,0.3);}
+
+/* ── HEADER ── */
+.header{
+  position:fixed;top:0;left:0;right:0;z-index:200;
+  background:var(--surface);
+  border-bottom:1px solid var(--border);padding:0 38px;height:84px;
+  display:flex;align-items:center;gap:15px;box-shadow:var(--shadow);
+}
+.h-badge{
+  width:46px;height:46px;border-radius:14px;flex-shrink:0;
+  background:linear-gradient(135deg,#6d28d9,#0d9488);
+  display:flex;align-items:center;justify-content:center;box-shadow:0 7px 20px rgba(80,60,180,0.34);
+}
+.h-badge svg{width:25px;height:25px;}
+.header-title{font-size:24px;font-weight:800;letter-spacing:-0.5px;}
+.header-sub{font-size:14px;color:var(--muted);margin-left:auto;text-align:right;line-height:1.45;}
+
+/* cube badge (a=b=c) */
+.cube-badge{
+  position:fixed;top:98px;left:50%;transform:translateX(-50%) translateY(-12px);
+  z-index:150;opacity:0;pointer-events:none;
+  background:linear-gradient(135deg,#6d28d9,#8b5cf6);color:#fff;
+  padding:8px 18px;border-radius:99px;font-size:14.5px;font-weight:700;
+  box-shadow:0 8px 26px rgba(109,40,217,0.4);
+  transition:opacity 0.35s,transform 0.35s cubic-bezier(0.2,1.4,0.4,1);
+  display:flex;align-items:center;gap:8px;
+}
+.cube-badge.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* ── PANEL base ── */
+.panel{
+  position:fixed;z-index:100;background:var(--surface);
+  border:1px solid var(--border);border-radius:22px;box-shadow:var(--shadow-lg);
+}
+.panel h3{font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;color:var(--faint);}
+
+/* ── LEFT (master-detail) ── */
+.panel-left{left:22px;top:98px;width:336px;padding:18px 18px;overflow:hidden;min-height:392px;}
+.ld-list,.ld-detail{transition:transform 0.4s cubic-bezier(0.4,0,0.2,1),opacity 0.28s;}
+.ld-list h3{margin-bottom:12px;padding-left:4px;}
+.ld-detail{position:absolute;inset:18px 18px;transform:translateX(26px);opacity:0;pointer-events:none;overflow-y:auto;}
+.ld-detail::-webkit-scrollbar{width:4px;}
+.ld-detail::-webkit-scrollbar-thumb{background:rgba(40,25,80,0.16);border-radius:4px;}
+.panel-left.detail .ld-list{transform:translateX(-26px);opacity:0;pointer-events:none;}
+.panel-left.detail .ld-detail{transform:translateX(0);opacity:1;pointer-events:auto;}
+
+.metric{
+  display:flex;align-items:center;gap:13px;padding:11px 12px;border-radius:14px;cursor:pointer;
+  border:1px solid transparent;transition:all 0.15s;margin-bottom:2px;
+}
+.metric:hover{background:rgba(28,20,55,0.04);}
+.metric.active{background:rgba(28,20,55,0.05);border-color:rgba(28,20,55,0.10);}
+.metric-ico{
+  width:34px;height:34px;border-radius:10px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:17px;background:rgba(28,20,55,0.06);
+}
+.metric-main{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;}
+.metric-name{font-size:15.5px;font-weight:700;line-height:1.15;}
+.metric-sub{font-family:'Roboto Mono',monospace;font-size:13px;color:var(--muted);}
+.metric-val{font-family:'Roboto Mono',monospace;font-size:22px;font-weight:500;color:var(--text);letter-spacing:-1px;flex-shrink:0;}
+
+.ld-back{display:inline-flex;align-items:center;gap:5px;cursor:pointer;border:none;background:none;
+  font-family:'Inter',sans-serif;font-size:14px;font-weight:700;color:var(--accent);padding:4px 6px 4px 0;margin-bottom:12px;}
+.ld-back:hover{opacity:0.7;}
+.d-tag{display:inline-block;padding:4px 12px;border-radius:99px;font-size:13px;font-weight:700;margin-bottom:10px;background:rgba(28,20,55,0.06);color:var(--text);}
+.d-title{font-size:22px;font-weight:800;letter-spacing:-0.4px;line-height:1.15;margin-bottom:14px;}
+.d-bigval{display:flex;align-items:baseline;gap:9px;margin-bottom:4px;}
+.d-bigval b{font-family:'Roboto Mono',monospace;font-size:39px;font-weight:500;color:var(--accent);letter-spacing:-1.5px;line-height:1;}
+.d-bigval span{font-size:14px;color:var(--muted);font-weight:600;}
+.d-formula{margin:13px 0 4px;padding:13px 15px;border-radius:13px;
+  background:rgba(28,20,55,0.04);border:1px solid rgba(28,20,55,0.08);
+  font-family:'Roboto Mono',monospace;font-size:14px;color:#33303d;font-weight:500;line-height:1.9;white-space:pre-line;}
+.d-para{font-size:15px;line-height:1.62;color:#3a3545;margin-top:13px;}
+
+/* ── RIGHT (controls) ── */
+.panel-right{right:22px;top:98px;width:300px;padding:18px;}
+.panel-right>h3{margin-bottom:13px;padding-left:2px;}
+.dim-slider{margin-bottom:15px;border-radius:15px;padding:12px 14px;border:1px solid;}
+.dim-slider.sa{background:var(--a-dim);border-color:rgba(109,40,217,0.18);}
+.dim-slider.sb{background:var(--b-dim);border-color:rgba(13,148,136,0.18);}
+.dim-slider.sc{background:var(--c-dim);border-color:rgba(217,119,6,0.18);}
+.ds-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.ds-name{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:700;}
+.ds-key{font-family:'Roboto Mono',monospace;font-style:italic;font-size:18px;}
+.sa .ds-key{color:var(--a);} .sb .ds-key{color:var(--b);} .sc .ds-key{color:var(--c);}
+.ds-dimname{color:var(--muted);font-weight:600;font-size:13.5px;}
+.ds-pill{font-family:'Roboto Mono',monospace;font-size:19px;font-weight:500;color:#fff;padding:2px 13px;border-radius:9px;letter-spacing:-0.5px;}
+.sa .ds-pill{background:var(--a);} .sb .ds-pill{background:var(--b);} .sc .ds-pill{background:var(--c);}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:3px;outline:none;cursor:pointer;}
+.sa input[type=range]{background:linear-gradient(90deg,var(--a) var(--fill,50%),rgba(109,40,217,0.16) var(--fill,50%));}
+.sb input[type=range]{background:linear-gradient(90deg,var(--b) var(--fill,50%),rgba(13,148,136,0.16) var(--fill,50%));}
+.sc input[type=range]{background:linear-gradient(90deg,var(--c) var(--fill,50%),rgba(217,119,6,0.16) var(--fill,50%));}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:21px;height:21px;border-radius:50%;background:#fff;cursor:pointer;transition:transform 0.12s;}
+.sa input::-webkit-slider-thumb{border:3px solid var(--a);box-shadow:0 3px 10px rgba(109,40,217,0.4);}
+.sb input::-webkit-slider-thumb{border:3px solid var(--b);box-shadow:0 3px 10px rgba(13,148,136,0.4);}
+.sc input::-webkit-slider-thumb{border:3px solid var(--c);box-shadow:0 3px 10px rgba(217,119,6,0.4);}
+input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.18);}
+
+.show-chip{
+  display:flex;align-items:center;gap:12px;width:100%;padding:12px 14px;margin-top:4px;border-radius:14px;cursor:pointer;
+  background:rgba(28,20,55,0.035);border:1.5px solid transparent;transition:all 0.16s;
+}
+.show-chip:hover{background:rgba(28,20,55,0.06);}
+.show-chip.on{background:rgba(28,20,55,0.06);border-color:rgba(28,20,55,0.14);}
+.chip-ico{width:34px;height:34px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:18px;background:rgba(28,20,55,0.07);transition:all 0.16s;}
+.show-chip.on .chip-ico{background:#1a1722;}
+.chip-text{flex:1;min-width:0;}
+.chip-name{font-size:15px;font-weight:700;}
+.chip-sub{font-size:13px;color:var(--muted);font-family:'Roboto Mono',monospace;}
+.chip-state{width:22px;height:22px;border-radius:50%;flex-shrink:0;border:2px solid rgba(28,20,55,0.16);display:flex;align-items:center;justify-content:center;transition:all 0.16s;}
+.show-chip.on .chip-state{background:#1a1722;border-color:#1a1722;}
+.show-chip.on .chip-state::after{content:'✓';color:#fff;font-size:14px;font-weight:700;}
+
+/* ── HINT ── */
+.hint-bar{
+  position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:100;
+  background:var(--surface);border:1px solid var(--border);border-radius:99px;
+  padding:9px 22px;font-size:13.5px;color:var(--muted);box-shadow:var(--shadow);white-space:nowrap;display:flex;align-items:center;gap:9px;
+}
+.hint-bar kbd{background:rgba(28,20,55,0.07);border-radius:5px;padding:2px 7px;font-family:'Roboto Mono',monospace;font-size:12.5px;}
+.hint-grab{color:var(--a);font-weight:700;}
+.hint-dot{color:var(--faint);}
+
+@media (max-width:1180px){.panel-left{width:300px;}.panel-right{width:268px;}}
+</style>
+</head>
+<body>
+
+<div id="canvas-container"><canvas id="c"></canvas></div>
+<div id="labels-layer"></div>
+
+<header class="header">
+  <div class="h-badge">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linejoin="round">
+      <path d="M4 8 L14 8 L20 4 L10 4 Z"/><path d="M4 8 V18 L14 18 V8"/><path d="M14 18 L20 14 V4"/><path d="M14 8 L20 4"/>
+    </svg>
+  </div>
+  <div class="header-title" data-i18n="header_title">Прямоугольный параллелепипед</div>
+  <div class="header-sub" data-i18n-html="header_sub">Три измерения a · b · c<br>тяните цветные ручки на фигуре</div>
+</header>
+
+<div class="cube-badge" id="cube-badge"><span>🟰</span><span data-i18n="is_cube">Сейчас это куб — a = b = c</span></div>
+
+<!-- LEFT -->
+<div class="panel panel-left" id="panel-left">
+  <div class="ld-list">
+    <h3 data-i18n="props_title">Что получается</h3>
+    <div id="metrics"></div>
+  </div>
+  <div class="ld-detail">
+    <button class="ld-back" onclick="window.showList()"><span>‹</span> <span data-i18n="back">Назад</span></button>
+    <div id="detail-content"></div>
+  </div>
+</div>
+
+<!-- RIGHT -->
+<div class="panel panel-right">
+  <h3 data-i18n="set_title">Измерения</h3>
+
+  <div class="dim-slider sa">
+    <div class="ds-top">
+      <span class="ds-name"><span class="ds-key">a</span><span class="ds-dimname" data-i18n="dn_a">ширина</span></span>
+      <span class="ds-pill" id="pill-a">6.0</span>
+    </div>
+    <input type="range" min="1" max="100" step="0.5" value="6" id="slider-a" oninput="window.setDim('a',+this.value)">
+  </div>
+  <div class="dim-slider sb">
+    <div class="ds-top">
+      <span class="ds-name"><span class="ds-key">b</span><span class="ds-dimname" data-i18n="dn_b">глубина</span></span>
+      <span class="ds-pill" id="pill-b">4.0</span>
+    </div>
+    <input type="range" min="1" max="100" step="0.5" value="4" id="slider-b" oninput="window.setDim('b',+this.value)">
+  </div>
+  <div class="dim-slider sc">
+    <div class="ds-top">
+      <span class="ds-name"><span class="ds-key">c</span><span class="ds-dimname" data-i18n="dn_c">высота</span></span>
+      <span class="ds-pill" id="pill-c">3.0</span>
+    </div>
+    <input type="range" min="1" max="100" step="0.5" value="3" id="slider-c" oninput="window.setDim('c',+this.value)">
+  </div>
+
+  <div class="show-chip" id="chip-diag" onclick="window.toggleDiag()">
+    <div class="chip-ico">📐</div>
+    <div class="chip-text"><span class="chip-name" data-i18n="ch_diag">Диагональ</span><span class="chip-sub">√(a²+b²+c²)</span></div>
+    <div class="chip-state"></div>
+  </div>
+</div>
+
+<div class="hint-bar" data-i18n-html="hint">
+  <span class="hint-grab">Тяните ручки</span><span>— размер</span><span class="hint-dot">·</span>
+  <span>фон — поворот</span><span class="hint-dot">·</span><span>клик грань — площадь</span>
+</div>
+
+<script>
+const I18N={
+ru:{
+  page_title:'Прямоугольный параллелепипед',header_title:'Прямоугольный параллелепипед',
+  header_sub:'Три измерения a · b · c<br>тяните цветные ручки на фигуре',
+  props_title:'Что получается',set_title:'Измерения',back:'Назад',is_cube:'Сейчас это куб — a = b = c',
+  dn_a:'ширина',dn_b:'глубина',dn_c:'высота',
+  ch_diag:'Диагональ',
+  hint:'<span class="hint-grab">Тяните ручки</span><span>— размер</span><span class="hint-dot">·</span><span>фон — поворот</span><span class="hint-dot">·</span><span>клик грань — площадь</span>',
+  m_vol:'Объём',m_surf:'Площадь поверхности',m_diag:'Диагональ',
+  m_fab:'Грань a × b',m_fbc:'Грань b × c',m_fac:'Грань a × c',
+  unit_len:'ед.',unit_area:'ед²',unit_vol:'ед³',
+},
+kz:{
+  page_title:'Тік бұрышты параллелепипед',header_title:'Тік бұрышты параллелепипед',
+  header_sub:'Үш өлшем a · b · c<br>фигурадағы түсті тұтқаларды сүйреңіз',
+  props_title:'Не шығады',set_title:'Өлшемдер',back:'Артқа',is_cube:'Қазір бұл куб — a = b = c',
+  dn_a:'ені',dn_b:'тереңдігі',dn_c:'биіктігі',
+  ch_diag:'Диагональ',
+  hint:'<span class="hint-grab">Тұтқаларды сүйреңіз</span><span>— өлшем</span><span class="hint-dot">·</span><span>фон — бұру</span><span class="hint-dot">·</span><span>қыр — аудан</span>',
+  m_vol:'Көлем',m_surf:'Бет ауданы',m_diag:'Диагональ',
+  m_fab:'Қыр a × b',m_fbc:'Қыр b × c',m_fac:'Қыр a × c',
+  unit_len:'бір.',unit_area:'бір²',unit_vol:'бір³',
+},
+en:{
+  page_title:'Rectangular Cuboid',header_title:'Rectangular Cuboid',
+  header_sub:'Three dimensions a · b · c<br>drag the coloured handles',
+  props_title:'What you get',set_title:'Dimensions',back:'Back',is_cube:'Right now it is a cube — a = b = c',
+  dn_a:'width',dn_b:'depth',dn_c:'height',
+  ch_diag:'Diagonal',
+  hint:'<span class="hint-grab">Drag handles</span><span>— resize</span><span class="hint-dot">·</span><span>background — rotate</span><span class="hint-dot">·</span><span>click face — area</span>',
+  m_vol:'Volume',m_surf:'Surface area',m_diag:'Space diagonal',
+  m_fab:'Face a × b',m_fbc:'Face b × c',m_fac:'Face a × c',
+  unit_len:'u',unit_area:'u²',unit_vol:'u³',
+}
+};
+const LANG=(()=>{const q=new URLSearchParams(location.search).get('lang');return(q&&I18N[q])?q:'ru';})();
+const tr=key=>(I18N[LANG]&&I18N[LANG][key])!==undefined?I18N[LANG][key]:I18N.ru[key];
+function applyStaticI18N(){
+  document.documentElement.lang=LANG;
+  const tv=tr('page_title');if(tv)document.title=tv;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{const v=tr(el.getAttribute('data-i18n'));if(v!==undefined)el.textContent=v;});
+  document.querySelectorAll('[data-i18n-html]').forEach(el=>{const v=tr(el.getAttribute('data-i18n-html'));if(v!==undefined)el.innerHTML=v;});
+}
+applyStaticI18N();
+
+const f1=x=>x.toFixed(1);
+const f2=x=>x.toFixed(2);
+
+const METRICS=[
+  {key:'vol', ico:'📦', i:'m_vol',  val:(a,b,c)=>a*b*c,                         sub:(a,b,c)=>`${f1(a)} × ${f1(b)} × ${f1(c)}`, unit:'unit_vol'},
+  {key:'surf',ico:'🧊', i:'m_surf', val:(a,b,c)=>2*(a*b+b*c+a*c),               sub:(a,b,c)=>`2 × (${f1(a*b)}+${f1(b*c)}+${f1(a*c)})`, unit:'unit_area'},
+  {key:'diag',ico:'📐', i:'m_diag', val:(a,b,c)=>Math.hypot(a,b,c),             sub:(a,b,c)=>`√(${f1(a*a)}+${f1(b*b)}+${f1(c*c)})`, unit:'unit_len'},
+  {key:'fab', ico:'🟪', i:'m_fab',  val:(a,b,c)=>a*b,                           sub:(a,b,c)=>`${f1(a)} × ${f1(b)}`, unit:'unit_area', faces:[2,3]},
+  {key:'fbc', ico:'🟦', i:'m_fbc',  val:(a,b,c)=>b*c,                           sub:(a,b,c)=>`${f1(b)} × ${f1(c)}`, unit:'unit_area', faces:[0,1]},
+  {key:'fac', ico:'🟧', i:'m_fac',  val:(a,b,c)=>a*c,                           sub:(a,b,c)=>`${f1(a)} × ${f1(c)}`, unit:'unit_area', faces:[4,5]},
+];
+function renderMetrics(){
+  document.getElementById('metrics').innerHTML=METRICS.map(m=>`
+    <div class="metric" data-key="${m.key}" onclick="window.openDetail('${m.key}')">
+      <div class="metric-ico">${m.ico}</div>
+      <div class="metric-main"><span class="metric-name">${tr(m.i)}</span><span class="metric-sub" id="ms-${m.key}"></span></div>
+      <span class="metric-val" id="mv-${m.key}">—</span>
+    </div>`).join('');
+}
+function updateMetricValues(){
+  const {a,b,c}=window.A;
+  METRICS.forEach(m=>{
+    const v=document.getElementById('mv-'+m.key);if(v)v.textContent=f1(m.val(a,b,c));
+    const s=document.getElementById('ms-'+m.key);if(s)s.textContent=m.sub(a,b,c);
+  });
+  [['a',a],['b',b],['c',c]].forEach(([k,val])=>{
+    document.getElementById('pill-'+k).textContent=f1(val);
+    document.getElementById('slider-'+k).style.setProperty('--fill',((val-1)/9*100)+'%');
+  });
+  // cube badge
+  const mx=Math.max(a,b,c),mn=Math.min(a,b,c);
+  document.getElementById('cube-badge').classList.toggle('show',(mx-mn)<0.06);
+}
+renderMetrics();
+</script>
+
+<script type="importmap">
+{"imports":{"three":"../../libs/vendor/three-0.160.0/three.module.js"}}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+const canvas=document.getElementById('c');
+const renderer=new THREE.WebGLRenderer({canvas,antialias: true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+
+const scene=new THREE.Scene();scene.background=null;
+const camera=new THREE.PerspectiveCamera(40,innerWidth/innerHeight,0.1,4000);
+const CAM_DIR=new THREE.Vector3(3.6,2.9,14).normalize();
+let camDist=14, camDistTarget=14, userZoom=1.0;
+function computeCamTarget(){
+  const {a,b,c}=window.A;
+  // pad bounding sphere a bit for handles, dim-lines, labels
+  const R=Math.hypot(a,b,c)/2 * 1.55;
+  const fovy=camera.fov*Math.PI/180;
+  const dV=R/Math.sin(fovy/2);
+  // also constrain horizontally accounting for side panels (~660px total)
+  const usableW=Math.max(420,innerWidth-660);
+  const fovx=2*Math.atan(Math.tan(fovy/2)*usableW/innerHeight);
+  const dH=R/Math.sin(fovx/2);
+  return Math.max(dV,dH)*userZoom;
+}
+function applyCamera(){
+  camera.position.copy(CAM_DIR).multiplyScalar(camDist);
+  camera.lookAt(0,0,0);
+}
+camera.position.set(3.6,2.9,14);camera.lookAt(0,0,0);
+
+scene.add(new THREE.AmbientLight(0xffffff,0.68));
+const kL=new THREE.DirectionalLight(0xffffff,1.12);kL.position.set(6,11,9);scene.add(kL);
+const fL=new THREE.DirectionalLight(0xc4b5fd,0.4);fL.position.set(-8,-3,-5);scene.add(fL);
+const rL=new THREE.DirectionalLight(0xffffff,0.5);rL.position.set(-4,8,-9);scene.add(rL);
+
+const V=(x,y,z)=>new THREE.Vector3(x,y,z);
+
+const shadowTex=(()=>{const cv=document.createElement('canvas');cv.width=cv.height=256;const x=cv.getContext('2d');
+  const g=x.createRadialGradient(128,128,8,128,128,124);g.addColorStop(0,'rgba(50,30,90,0.28)');g.addColorStop(1,'rgba(50,30,90,0)');
+  x.fillStyle=g;x.fillRect(0,0,256,256);return new THREE.CanvasTexture(cv);})();
+const shadow=new THREE.Mesh(new THREE.PlaneGeometry(1,1),new THREE.MeshBasicMaterial({map:shadowTex,transparent:true,depthWrite:false}));
+shadow.rotation.x=-Math.PI/2;scene.add(shadow);
+
+const root=new THREE.Group();scene.add(root);
+const box=new THREE.Group();root.add(box);
+
+const COL={a:0x6d28d9,b:0x0d9488,c:0xd97706,face:0xece9f5,faceSel:0x1a1722,vertex:0x4c4658};
+// edge direction -> colour (x=a, y=c, z=b)
+const FACE_NORMALS=[V(1,0,0),V(-1,0,0),V(0,1,0),V(0,-1,0),V(0,0,1),V(0,0,-1)];
+
+const faceMats=FACE_NORMALS.map(()=>new THREE.MeshStandardMaterial({
+  color:COL.face,roughness:0.5,metalness:0.0,transparent:true,opacity:0.55,side:THREE.DoubleSide,
+  emissive:0x000000,emissiveIntensity:0,
+}));
+let selectedFace=-1;
+function applyFaceMats(){
+  faceMats.forEach((m,i)=>{
+    const sel=(i===selectedFace);
+    m.opacity=sel?0.82:0.55;m.depthWrite=false;
+    m.color.setHex(sel?0xc4b5fd:COL.face);
+    m.emissive.setHex(sel?0x6d28d9:0x000000);m.emissiveIntensity=sel?0.3:0;
+    m.needsUpdate=true;
+  });
+}
+
+let facesMesh=null,edgeGroup=null,vertGroup=null,dimGroup=null,diagGroup=null;
+let showDiag=false;
+const handles=[];   // {mesh,key,dir}
+
+function cyl(from,to,r,mat){
+  const dir=new THREE.Vector3().subVectors(to,from),len=dir.length();
+  const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,len,14),mat);
+  m.position.addVectors(from,to).multiplyScalar(0.5);
+  if(len>1e-6)m.quaternion.setFromUnitVectors(V(0,1,0),dir.normalize());return m;
+}
+function cone(at,dir,r,h,mat){
+  const m=new THREE.Mesh(new THREE.ConeGeometry(r,h,14),mat);
+  m.position.copy(at);m.quaternion.setFromUnitVectors(V(0,1,0),dir.clone().normalize());return m;
+}
+function disposeGroup(g){if(!g)return;g.traverse(o=>{if(o.geometry)o.geometry.dispose();});box.remove(g);}
+
+/* All auxiliary sizes (edge thickness, handle, arrows, dim line offset, etc.)
+   are proportional to the figure so it looks the same at a=2 and a=80. */
+function scaleS(){const {a,b,c}=window.A;return Math.max(a,b,c);}
+let HANDLE_BASE=0.17;
+function buildBox(){
+  const {a,b,c}=window.A,hx=a/2,hy=c/2,hz=b/2;
+  const S=scaleS();
+  const er=S*0.0065;            // edge cylinder radius
+  const vr=S*0.010;             // vertex sphere
+  const g =S*0.078;             // distance from box to dim line
+  const dimR=S*0.0030;          // dim line radius
+  const aR=S*0.0125,aH=S*0.030; // arrow radius/height
+  const tR=S*0.0017;            // extension tick radius
+  const hR=S*0.0235;            // handle sphere radius
+  HANDLE_BASE=hR;
+  const dR=S*0.0058;            // diagonal cylinder
+
+  disposeGroup(facesMesh);disposeGroup(edgeGroup);disposeGroup(vertGroup);disposeGroup(dimGroup);disposeGroup(diagGroup);
+  handles.length=0;
+
+  facesMesh=new THREE.Mesh(new THREE.BoxGeometry(a,c,b),faceMats);
+  box.add(facesMesh);
+
+  // verts
+  const verts=[];for(const x of[-hx,hx])for(const y of[-hy,hy])for(const z of[-hz,hz])verts.push(V(x,y,z));
+  const vMat=new THREE.MeshStandardMaterial({color:COL.vertex,roughness:0.4,metalness:0.1});
+  vertGroup=new THREE.Group();verts.forEach(v=>{const s=new THREE.Mesh(new THREE.SphereGeometry(vr,18,14),vMat);s.position.copy(v);vertGroup.add(s);});
+  box.add(vertGroup);
+
+  // edges coloured by direction
+  const matA=new THREE.MeshStandardMaterial({color:COL.a,roughness:0.38,metalness:0.12});
+  const matB=new THREE.MeshStandardMaterial({color:COL.b,roughness:0.38,metalness:0.12});
+  const matC=new THREE.MeshStandardMaterial({color:COL.c,roughness:0.38,metalness:0.12});
+  edgeGroup=new THREE.Group();
+  for(let i=0;i<8;i++)for(let j=i+1;j<8;j++){
+    const dx=Math.abs(verts[i].x-verts[j].x)>1e-6,dy=Math.abs(verts[i].y-verts[j].y)>1e-6,dz=Math.abs(verts[i].z-verts[j].z)>1e-6;
+    const cnt=(dx?1:0)+(dy?1:0)+(dz?1:0);
+    if(cnt===1) edgeGroup.add(cyl(verts[i],verts[j],er, dx?matA:dy?matC:matB));
+  }
+  box.add(edgeGroup);
+
+  // dimension lines (CAD) + handles
+  dimGroup=new THREE.Group();
+  buildDim('a',matA,COL.a, V(-hx,-hy-g,hz),V(hx,-hy-g,hz), V(1,0,0), [V(-hx,-hy,hz),V(hx,-hy,hz)], dimR,aR,aH,tR,hR);
+  buildDim('b',matB,COL.b, V(hx+g,-hy,-hz),V(hx+g,-hy,hz), V(0,0,1), [V(hx,-hy,-hz),V(hx,-hy,hz)], dimR,aR,aH,tR,hR);
+  buildDim('c',matC,COL.c, V(-hx-g,-hy,hz),V(-hx-g,hy,hz), V(0,1,0), [V(-hx,-hy,hz),V(-hx,hy,hz)], dimR,aR,aH,tR,hR);
+  box.add(dimGroup);
+
+  // space diagonal
+  diagGroup=new THREE.Group();
+  const dMat=new THREE.MeshStandardMaterial({color:0xe0463a,roughness:0.4});
+  diagGroup.add(cyl(V(-hx,-hy,-hz),V(hx,hy,hz),dR,dMat));
+  diagGroup.visible=showDiag;box.add(diagGroup);
+
+  applyFaceMats();
+  shadow.scale.setScalar(Math.max(a,b)*2.6);
+  shadow.position.y=-Math.max(hy, Math.hypot(hx,hy,hz)*0.62)-S*0.014;
+  updateLabelAnchors();
+}
+
+function buildDim(key,mat,colHex,e1,e2,dir,corners,dimR,aR,aH,tR,hR){
+  dimGroup.add(cyl(e1,e2,dimR,mat));
+  dimGroup.add(cone(e1,dir.clone().multiplyScalar(-1),aR,aH,mat));
+  dimGroup.add(cone(e2,dir.clone(),aR,aH,mat));
+  const tMat=new THREE.MeshStandardMaterial({color:colHex,roughness:0.5,transparent:true,opacity:0.5});
+  dimGroup.add(cyl(corners[0],e1,tR,tMat));
+  dimGroup.add(cyl(corners[1],e2,tR,tMat));
+  const hMat=new THREE.MeshStandardMaterial({color:colHex,roughness:0.25,metalness:0.2,emissive:colHex,emissiveIntensity:0.18});
+  const h=new THREE.Mesh(new THREE.SphereGeometry(hR,22,18),hMat);
+  h.position.copy(e2);h.userData.handle=key;
+  dimGroup.add(h);
+  handles.push({mesh:h,key,dir:dir.clone(),base:hR});
+}
+
+/* ── LABELS ── */
+const layer=document.getElementById('labels-layer');
+function mkLabel(cls){const d=document.createElement('div');d.className='dim-label '+cls;layer.appendChild(d);return d;}
+const L_a=mkLabel('la'),L_b=mkLabel('lb'),L_c=mkLabel('lc'),L_face=mkLabel('face'),L_diag=mkLabel('lc');
+const anc={a:V(),b:V(),c:V(),face:V(),diag:V()};
+function updateLabelAnchors(){
+  const {a,b,c}=window.A,hx=a/2,hy=c/2,hz=b/2;
+  const S=scaleS(),g=S*0.078,lo=S*0.040;
+  anc.a.set(0,-hy-g-lo,hz);
+  anc.b.set(hx+g+lo,-hy,0);
+  anc.c.set(-hx-g-lo,0,hz);
+  anc.diag.set(0,0,0);
+  if(selectedFace>=0){
+    anc.face.copy(FACE_NORMALS[selectedFace]).multiply(V(hx,hy,hz)).add(FACE_NORMALS[selectedFace].clone().multiplyScalar(S*0.012));
+  }
+  L_a.textContent='a = '+f1(a); L_b.textContent='b = '+f1(b); L_c.textContent='c = '+f1(c);
+  L_diag.className='dim-label la'; L_diag.style.color='#e0463a'; L_diag.style.borderColor='rgba(224,70,58,0.3)';
+  L_diag.textContent='d = '+f2(Math.hypot(a,b,c));
+  if(selectedFace>=0){
+    const fmap={0:[b,c],1:[b,c],2:[a,b],3:[a,b],4:[a,c],5:[a,c]};
+    const [u,w]=fmap[selectedFace];L_face.textContent='S = '+f1(u*w);
+  }
+}
+function project(localVec){
+  const w=localVec.clone().applyMatrix4(box.matrixWorld).project(camera);
+  return {x:(w.x*0.5+0.5)*innerWidth,y:(-w.y*0.5+0.5)*innerHeight,behind:w.z>1};
+}
+function place(el,v,vis){if(!vis){el.classList.add('hidden');return;}const s=project(v);if(s.behind){el.classList.add('hidden');return;}el.classList.remove('hidden');el.style.left=s.x+'px';el.style.top=s.y+'px';}
+function updateLabels(){
+  place(L_a,anc.a,true);place(L_b,anc.b,true);place(L_c,anc.c,true);
+  place(L_face,anc.face,selectedFace>=0);
+  place(L_diag,anc.diag,showDiag);
+}
+
+/* ── SELECTION + DETAIL ── */
+function setSelectedFace(idx){selectedFace=(selectedFace===idx)?-1:idx;applyFaceMats();updateLabelAnchors();}
+function faceToMetric(idx){return ({0:'fbc',1:'fbc',2:'fab',3:'fab',4:'fac',5:'fac'})[idx];}
+
+const DETAIL_ALL={
+ru:{
+  vol:{tag:'Объём',p:'Объём показывает, сколько помещается внутри. Перемножаем три измерения: длину, ширину и высоту. У параллелепипеда они разные, поэтому V = a · b · c.'},
+  surf:{tag:'Поверхность',p:'У параллелепипеда 6 граней — по две одинаковых каждого вида. Поэтому площадь всей поверхности S = 2·(ab + bc + ac): сумма трёх разных граней, взятая дважды.'},
+  diag:{tag:'Диагональ',p:'Диагональ соединяет две противоположные вершины через центр тела. По теореме Пифагора в пространстве d = √(a² + b² + c²). Включите «Диагональ», чтобы увидеть её.'},
+  fab:{tag:'Грань',p:'Это грань со сторонами a и b (верх и низ). Её площадь S = a · b. У параллелепипеда три разных по форме грани — выберите любую на модели.'},
+  fbc:{tag:'Грань',p:'Это грань со сторонами b и c (левая и правая). Её площадь S = b · c. Противоположная грань точно такая же.'},
+  fac:{tag:'Грань',p:'Это грань со сторонами a и c (перёд и зад). Её площадь S = a · c. Две такие грани смотрят в противоположные стороны.'},
+},
+kz:{
+  vol:{tag:'Көлем',p:'Көлем іште қанша сыятынын көрсетеді. Үш өлшемді көбейтеміз: ұзындық, ен, биіктік. Параллелепипедте олар әртүрлі, сондықтан V = a · b · c.'},
+  surf:{tag:'Бет',p:'Параллелепипедте 6 қыр — әр түрден екеуден бірдей. Сондықтан толық бет ауданы S = 2·(ab + bc + ac).'},
+  diag:{tag:'Диагональ',p:'Диагональ дене ортасы арқылы екі қарама-қарсы төбені жалғайды. Кеңістіктегі Пифагор бойынша d = √(a² + b² + c²).'},
+  fab:{tag:'Қыр',p:'Бұл a және b қабырғалы қыр (үсті мен асты). Ауданы S = a · b. Параллелепипедте үш түрлі қыр бар.'},
+  fbc:{tag:'Қыр',p:'Бұл b және c қабырғалы қыр (солы мен оңы). Ауданы S = b · c.'},
+  fac:{tag:'Қыр',p:'Бұл a және c қабырғалы қыр (алды мен арты). Ауданы S = a · c.'},
+},
+en:{
+  vol:{tag:'Volume',p:'Volume shows how much fits inside. Multiply the three dimensions: length, width and height. For a cuboid they differ, so V = a · b · c.'},
+  surf:{tag:'Surface',p:'A cuboid has 6 faces — two identical of each kind. So the total surface area is S = 2·(ab + bc + ac): the three distinct faces, each counted twice.'},
+  diag:{tag:'Diagonal',p:'The space diagonal joins two opposite vertices through the centre. By Pythagoras in 3-D, d = √(a² + b² + c²). Turn on "Diagonal" to see it.'},
+  fab:{tag:'Face',p:'This face has sides a and b (top and bottom). Its area S = a · b. A cuboid has three differently shaped faces — pick any on the model.'},
+  fbc:{tag:'Face',p:'This face has sides b and c (left and right). Its area S = b · c. The opposite face is identical.'},
+  fac:{tag:'Face',p:'This face has sides a and c (front and back). Its area S = a · c.'},
+}
+};
+const DETAIL=DETAIL_ALL[LANG]||DETAIL_ALL.ru;
+
+let savedDiag=false;
+function openDetail(key){
+  const d=DETAIL[key];if(!d)return;
+  const {a,b,c}=window.A;
+  const m=METRICS.find(x=>x.key===key);
+  if(!document.getElementById('panel-left').classList.contains('detail')){savedDiag=showDiag;}
+  document.querySelectorAll('.metric').forEach(el=>el.classList.toggle('active',el.dataset.key===key));
+  if(m.faces){ if(selectedFace<0||!m.faces.includes(selectedFace)){selectedFace=m.faces[0];applyFaceMats();updateLabelAnchors();} }
+  if(key==='diag'&&!showDiag) window.toggleDiag();
+  const calc={
+    vol:`V = a · b · c\n= ${f1(a)} · ${f1(b)} · ${f1(c)} = ${f1(a*b*c)}`,
+    surf:`S = 2·(a·b + b·c + a·c)\n= 2·(${f1(a*b)} + ${f1(b*c)} + ${f1(a*c)}) = ${f1(2*(a*b+b*c+a*c))}`,
+    diag:`d = √(a² + b² + c²)\n= √(${f1(a*a)} + ${f1(b*b)} + ${f1(c*c)}) = ${f2(Math.hypot(a,b,c))}`,
+    fab:`S = a · b = ${f1(a)} · ${f1(b)} = ${f1(a*b)}`,
+    fbc:`S = b · c = ${f1(b)} · ${f1(c)} = ${f1(b*c)}`,
+    fac:`S = a · c = ${f1(a)} · ${f1(c)} = ${f1(a*c)}`,
+  }[key];
+  document.getElementById('detail-content').innerHTML=`
+    <div class="d-tag">${d.tag}</div>
+    <div class="d-title">${tr(m.i)}</div>
+    <div class="d-bigval"><b>${f1(m.val(a,b,c))}</b><span>${tr(m.unit)}</span></div>
+    <div class="d-formula">${calc}</div>
+    <div class="d-para">${d.p}</div>`;
+  document.getElementById('panel-left').classList.add('detail');
+  currentDetail=key;markInteract();
+}
+let currentDetail=null;
+window.openDetail=openDetail;
+window.showList=function(){
+  document.getElementById('panel-left').classList.remove('detail');currentDetail=null;
+  document.querySelectorAll('.metric').forEach(m=>m.classList.remove('active'));
+  if(selectedFace>=0){selectedFace=-1;applyFaceMats();updateLabelAnchors();}
+  if(showDiag!==savedDiag) window.toggleDiag();
+};
+
+/* ── CONTROLS ── */
+window.A={a:6.0,b:4.0,c:3.0};
+window.setDim=function(k,val){
+  window.A[k]=val;buildBox();updateMetricValues();
+  if(currentDetail) openDetail(currentDetail);
+  markInteract();
+};
+window.toggleDiag=function(){
+  showDiag=!showDiag;document.getElementById('chip-diag').classList.toggle('on',showDiag);
+  if(diagGroup)diagGroup.visible=showDiag;markInteract();
+};
+
+/* ── RAYCAST: handles + faces ── */
+const ray=new THREE.Raycaster(),m2=new THREE.Vector2();
+function pick(e,objs){m2.x=(e.clientX/innerWidth)*2-1;m2.y=-(e.clientY/innerHeight)*2+1;ray.setFromCamera(m2,camera);return ray.intersectObjects(objs,false);}
+
+/* ── DRAG: handle-resize OR view-rotate ── */
+let mode=null;          // 'handle' | 'rotate'
+let dragDim=null, pxVec=null, startVal=0, startMouse=null;
+let last={x:0,y:0},dd=0,isDragging=false,rotX=0.30;
+let lastInteract=performance.now()-11000,autoSpeed=0;const AUTO_TARGET=0.0015,IDLE_MS=15000;
+function markInteract(){lastInteract=performance.now();}
+
+function screenPxPerUnit(dirLocal){
+  const o=project(V(0,0,0)),p=project(dirLocal);
+  return {x:p.x-o.x,y:p.y-o.y};
+}
+canvas.addEventListener('mousedown',e=>{
+  markInteract();
+  const hHit=pick(e,handles.map(h=>h.mesh));
+  if(hHit.length>0){
+    const key=hHit[0].object.userData.handle;
+    const hd=handles.find(h=>h.key===key);
+    mode='handle';dragDim=key;startVal=window.A[key];startMouse={x:e.clientX,y:e.clientY};
+    pxVec=screenPxPerUnit(hd.dir);
+    canvas.style.cursor='grabbing';
+    return;
+  }
+  mode='rotate';last={x:e.clientX,y:e.clientY};isDragging=false;dd=0;
+});
+canvas.addEventListener('mousemove',e=>{
+  if(mode==='handle'){
+    const mdx=e.clientX-startMouse.x,mdy=e.clientY-startMouse.y;
+    const denom=pxVec.x*pxVec.x+pxVec.y*pxVec.y;
+    if(denom>1){
+      const units=(mdx*pxVec.x+mdy*pxVec.y)/denom;   // world units handle moved
+      const nv=Math.max(1,Math.min(10,startVal+2*units));
+      window.A[dragDim]=Math.round(nv*10)/10;
+      buildBox();updateMetricValues();
+      document.getElementById('slider-'+dragDim).value=window.A[dragDim];
+      if(currentDetail)openDetail(currentDetail);
+    }
+    markInteract();return;
+  }
+  if(mode==='rotate'){
+    dd=Math.hypot(e.clientX-last.x,e.clientY-last.y);if(dd>4)isDragging=true;
+    if(isDragging){root.rotation.y+=(e.clientX-last.x)*0.010;rotX=Math.max(-1.1,Math.min(1.1,rotX+(e.clientY-last.y)*0.008));root.rotation.x=rotX;markInteract();}
+    last={x:e.clientX,y:e.clientY};return;
+  }
+  // hover cursor for handles
+  const hHit=pick(e,handles.map(h=>h.mesh));
+  canvas.style.cursor=hHit.length>0?'grab':'default';
+});
+window.addEventListener('mouseup',()=>{
+  if(mode==='handle')canvas.style.cursor='default';
+  mode=null;dragDim=null;
+});
+canvas.addEventListener('click',e=>{
+  if(isDragging||mode==='handle')return;
+  const hit=pick(e,[facesMesh]);
+  if(hit.length>0){setSelectedFace(hit[0].face.materialIndex);if(selectedFace>=0)openDetail(faceToMetric(selectedFace));else window.showList();}
+  markInteract();
+});
+canvas.addEventListener('wheel',e=>{e.preventDefault();userZoom=Math.max(0.6,Math.min(1.7,userZoom+e.deltaY*0.0015));markInteract();},{passive:false});
+window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+
+/* ── LOOP ── */
+let t=0;
+function animate(){
+  requestAnimationFrame(animate);t+=0.016;
+  const idle=performance.now()-lastInteract;
+  if(idle>IDLE_MS)autoSpeed+=(AUTO_TARGET-autoSpeed)*0.025;else autoSpeed+=(0-autoSpeed)*0.18;
+  root.rotation.y+=autoSpeed;root.rotation.x=rotX;
+  // camera fit — frozen while dragging a handle so pixel↔unit ratio stays constant
+  if(mode!=='handle'){camDistTarget=computeCamTarget();}
+  camDist+=(camDistTarget-camDist)*0.18;
+  applyCamera();
+  // gentle handle pulse when idle (invites dragging)
+  const pulse=idle>IDLE_MS?(1+Math.sin(t*2.2)*0.10):1;
+  handles.forEach(h=>h.mesh.scale.setScalar(pulse));
+  renderer.render(scene,camera);
+  box.updateWorldMatrix(true,false);
+  updateLabels();
+}
+
+root.rotation.x=rotX;
+buildBox();updateMetricValues();
+// snap camera to its target on the first frame so we don't see it "fly in"
+camDistTarget=computeCamTarget();camDist=camDistTarget;applyCamera();
+animate();
+</script>
+</body>
+</html>

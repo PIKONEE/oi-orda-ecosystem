@@ -1,0 +1,1471 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="page_title">Разложение Перекиси Водорода | 2H₂O₂ → 2H₂O + O₂ | Химия 3D</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background: linear-gradient(135deg, #1a0a2e 0%, #2d1b4e 50%, #1a2a3a 100%);
+            min-height: 100vh;
+            overflow: hidden;
+            color: #fff;
+        }
+
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 20px 30px;
+            background: linear-gradient(180deg, rgba(0, 0, 0, 0.85) 0%, transparent 100%);
+            z-index: 100;
+            text-align: center;
+        }
+
+        .title {
+            font-size: 26px;
+            font-weight: 700;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .title .h2o2 {
+            color: #ce93d8;
+        }
+
+        .title .h2o {
+            color: #4fc3f7;
+        }
+
+        .title .o2 {
+            color: #ef5350;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            opacity: 0.7;
+            margin-top: 8px;
+        }
+
+        .equation-box {
+            position: fixed;
+            top: 85px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(20, 10, 40, 0.95);
+            
+            border-radius: 20px;
+            padding: 18px 35px;
+            border: 2px solid rgba(206, 147, 216, 0.4);
+            z-index: 100;
+            text-align: center;
+        }
+
+        .equation {
+            font-size: 28px;
+            font-weight: 700;
+            font-family: 'Times New Roman', serif;
+        }
+
+        .equation .coef {
+            color: #ffd54f;
+        }
+
+        .equation .h2o2 {
+            color: #ce93d8;
+        }
+
+        .equation .h2o {
+            color: #4fc3f7;
+        }
+
+        .equation .o2 {
+            color: #ef5350;
+        }
+
+        .equation .plus {
+            color: rgba(255, 255, 255, 0.5);
+            margin: 0 8px;
+        }
+
+        .equation .arrow {
+            color: #ffd54f;
+            margin: 0 12px;
+        }
+
+        .catalyst-label {
+            position: absolute;
+            top: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #ff9800;
+            color: #000;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 10px;
+            border-radius: 10px;
+        }
+
+        .reaction-type {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.6);
+            margin-top: 8px;
+        }
+
+        .reaction-type span {
+            color: #ef5350;
+            font-weight: 600;
+        }
+
+        .control-panel {
+            position: fixed;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(20, 10, 40, 0.95);
+            
+            border-radius: 20px;
+            padding: 22px;
+            width: 270px;
+            border: 1px solid rgba(206, 147, 216, 0.3);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+            z-index: 100;
+        }
+
+        .panel-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #ce93d8;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        .control-label {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.6);
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .control-value {
+            color: #ce93d8;
+            font-weight: 600;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.1);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ce93d8, #9c27b0);
+            cursor: pointer;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px 18px;
+            border: none;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .btn.primary {
+            background: linear-gradient(135deg, #ce93d8, #9c27b0);
+            color: #fff;
+        }
+
+        .btn.primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(206, 147, 216, 0.4);
+        }
+
+        .btn.catalyst {
+            background: linear-gradient(135deg, #ff9800, #f57c00);
+            color: #000;
+        }
+
+        .btn.catalyst:hover {
+            box-shadow: 0 10px 30px rgba(255, 152, 0, 0.4);
+        }
+
+        .btn.catalyst.active {
+            background: linear-gradient(135deg, #4caf50, #2e7d32);
+            color: #fff;
+        }
+
+        .btn.secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn.secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .btn.secondary.active {
+            background: rgba(206, 147, 216, 0.2);
+            border-color: #ce93d8;
+            color: #ce93d8;
+        }
+
+        .stages {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .stage {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 10px;
+            border-radius: 8px;
+            margin-bottom: 5px;
+            background: rgba(0, 0, 0, 0.2);
+            transition: all 0.3s;
+            font-size: 11px;
+        }
+
+        .stage.active {
+            background: rgba(206, 147, 216, 0.2);
+            border: 1px solid rgba(206, 147, 216, 0.4);
+        }
+
+        .stage.completed {
+            background: rgba(102, 187, 106, 0.15);
+        }
+
+        .stage-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            flex-shrink: 0;
+        }
+
+        .stage.active .stage-icon {
+            background: #ce93d8;
+            color: #000;
+        }
+
+        .stage.completed .stage-icon {
+            background: #66bb6a;
+            color: #fff;
+        }
+
+        .info-panel {
+            position: fixed;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(20, 10, 40, 0.95);
+            
+            border-radius: 20px;
+            padding: 22px;
+            width: 290px;
+            border: 1px solid rgba(239, 83, 80, 0.3);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+            z-index: 100;
+        }
+
+        .info-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #ef5350;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .molecule-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .molecule-card {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 10px 6px;
+            text-align: center;
+        }
+
+        .molecule-formula {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 2px;
+        }
+
+        .molecule-formula.h2o2 {
+            color: #ce93d8;
+        }
+
+        .molecule-formula.h2o {
+            color: #4fc3f7;
+        }
+
+        .molecule-formula.o2 {
+            color: #ef5350;
+        }
+
+        .molecule-name {
+            font-size: 8px;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .molecule-count {
+            font-size: 20px;
+            font-weight: 700;
+            margin-top: 4px;
+        }
+
+        .catalyst-info {
+            background: rgba(255, 152, 0, 0.15);
+            border: 1px solid rgba(255, 152, 0, 0.3);
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 15px;
+        }
+
+        .catalyst-title {
+            font-size: 11px;
+            color: #ff9800;
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .catalyst-text {
+            font-size: 11px;
+            line-height: 1.5;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .stability-section {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 15px;
+        }
+
+        .stability-title {
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.5);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+
+        .stability-bar {
+            height: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+
+        .stability-fill {
+            height: 100%;
+            border-radius: 6px;
+            transition: width 0.5s ease;
+            background: linear-gradient(90deg, #66bb6a, #ffd54f, #ef5350);
+        }
+
+        .stability-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 9px;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .gas-indicator {
+            background: rgba(239, 83, 80, 0.15);
+            border: 1px solid rgba(239, 83, 80, 0.3);
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .gas-bubbles {
+            font-size: 28px;
+            animation: bubbleFloat 1.5s ease-in-out infinite;
+        }
+
+        @keyframes bubbleFloat {
+            0%, 100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-8px);
+            }
+        }
+
+        .gas-text {
+            flex: 1;
+        }
+
+        .gas-text .title {
+            font-size: 12px;
+            color: #ef5350;
+            font-weight: 600;
+        }
+
+        .gas-text .desc {
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.6);
+            margin-top: 3px;
+        }
+
+        .fact-box {
+            background: rgba(206, 147, 216, 0.1);
+            border: 1px solid rgba(206, 147, 216, 0.3);
+            border-radius: 10px;
+            padding: 12px;
+            font-size: 11px;
+            line-height: 1.5;
+        }
+
+        .fact-box strong {
+            color: #ce93d8;
+        }
+
+        .legend {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(20, 10, 40, 0.95);
+            
+            border-radius: 15px;
+            padding: 12px 25px;
+            display: flex;
+            gap: 20px;
+            z-index: 100;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 11px;
+        }
+
+        .legend-atom {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+        }
+
+        .legend-atom.hydrogen {
+            background: radial-gradient(circle at 30% 30%, #90caf9, #1e88e5);
+            box-shadow: 0 0 8px rgba(100, 181, 246, 0.5);
+        }
+
+        .legend-atom.oxygen {
+            background: radial-gradient(circle at 30% 30%, #ef9a9a, #c62828);
+            box-shadow: 0 0 8px rgba(239, 83, 80, 0.5);
+        }
+
+        .legend-atom.catalyst {
+            background: radial-gradient(circle at 30% 30%, #ffcc80, #e65100);
+            box-shadow: 0 0 8px rgba(255, 152, 0, 0.5);
+        }
+
+        .loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #1a0a2e;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            transition: opacity 0.5s;
+        }
+
+        .loading.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .loading-icon {
+            font-size: 60px;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.1);
+                opacity: 0.7;
+            }
+        }
+
+        .loading-text {
+            margin-top: 20px;
+            font-size: 16px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .bubble-effect {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: 50;
+            overflow: hidden;
+        }
+
+        .bubble {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: radial-gradient(circle at 30% 30%, rgba(239, 83, 80, 0.6), rgba(239, 83, 80, 0.2));
+            border-radius: 50%;
+            animation: rise 3s ease-out forwards;
+        }
+
+        @keyframes rise {
+            0% {
+                transform: translateY(0) scale(1);
+                opacity: 0.8;
+            }
+            100% {
+                transform: translateY(-100vh) scale(0.5);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="loading" id="loading">
+    <div class="loading-icon">🧪</div>
+    <div class="loading-text" data-i18n="loading_text">Подготовка перекиси водорода...</div>
+</div>
+<div class="bubble-effect" id="bubble-effect"></div>
+<div id="canvas-container"></div>
+
+<div class="header">
+    <div class="title" data-i18n-html="title_html">Реакция <span class="h2o2">Разложения</span> Перекиси Водорода</div>
+    <div class="subtitle" data-i18n="subtitle">Каталитическое разложение • Выделение кислорода • 3D модель</div>
+</div>
+
+<div class="equation-box">
+    <div class="catalyst-label" data-i18n="catalyst_label">MnO₂ катализатор</div>
+    <div class="equation">
+        <span class="coef">2</span><span class="h2o2">H₂O₂</span>
+        <span class="arrow">→</span>
+        <span class="coef">2</span><span class="h2o">H₂O</span>
+        <span class="plus">+</span>
+        <span class="o2">O₂</span><span style="font-size: 16px;">↑</span>
+    </div>
+    <div class="reaction-type" data-i18n-html="reaction_type_html">Тип: <span>Разложение</span> • Экзотермическая</div>
+</div>
+
+<div class="control-panel">
+    <div class="panel-title" data-i18n="panel_title_controls">🎬 Управление</div>
+
+    <button class="btn primary" id="btn-start" data-i18n="btn_start" onclick="startReaction()">▶️ Запустить разложение</button>
+
+    <button class="btn catalyst" id="btn-catalyst" data-i18n="btn_catalyst_add" onclick="toggleCatalyst()">⚗️ Добавить катализатор</button>
+
+    <button class="btn secondary" data-i18n="btn_step" onclick="stepReaction()">⏭️ Пошагово</button>
+    <button class="btn secondary" data-i18n="btn_reset" onclick="resetReaction()">🔄 Сбросить</button>
+
+    <div class="control-group">
+        <div class="control-label">
+            <span data-i18n="speed_label">Скорость реакции</span>
+            <span class="control-value" id="speed-value">1.0x</span>
+        </div>
+        <input type="range" id="speed-slider" min="0.3" max="2.5" value="1" step="0.1">
+    </div>
+
+    <div class="control-group">
+        <div class="control-label">
+            <span data-i18n="temp_label">Температура</span>
+            <span class="control-value" id="temp-value">25°C</span>
+        </div>
+        <input type="range" id="temp-slider" min="20" max="80" value="25" step="5">
+    </div>
+
+    <div class="stages">
+        <div class="panel-title" style="margin-bottom: 8px; padding: 0; border: 0; font-size: 12px;" data-i18n="stages_title">📋 Этапы</div>
+        <div class="stage active" id="stage-0">
+            <div class="stage-icon">1</div>
+            <span data-i18n="stage_0">Молекулы H₂O₂</span></div>
+        <div class="stage" id="stage-1">
+            <div class="stage-icon">2</div>
+            <span data-i18n="stage_1">Контакт с катализатором</span></div>
+        <div class="stage" id="stage-2">
+            <div class="stage-icon">3</div>
+            <span data-i18n="stage_2">Разрыв связи O-O</span></div>
+        <div class="stage" id="stage-3">
+            <div class="stage-icon">4</div>
+            <span data-i18n="stage_3">Образование H₂O и O₂</span></div>
+        <div class="stage" id="stage-4">
+            <div class="stage-icon">5</div>
+            <span data-i18n="stage_4">Выделение газа O₂↑</span></div>
+    </div>
+</div>
+
+<div class="info-panel">
+    <div class="info-title" data-i18n="info_title">📊 Ход реакции</div>
+
+    <div class="molecule-info">
+        <div class="molecule-card">
+            <div class="molecule-formula h2o2">H₂O₂</div>
+            <div class="molecule-name" data-i18n="mol_h2o2_name">Перекись</div>
+            <div class="molecule-count" id="count-h2o2">2</div>
+        </div>
+        <div class="molecule-card">
+            <div class="molecule-formula h2o">H₂O</div>
+            <div class="molecule-name" data-i18n="mol_h2o_name">Вода</div>
+            <div class="molecule-count" id="count-h2o">0</div>
+        </div>
+        <div class="molecule-card">
+            <div class="molecule-formula o2">O₂</div>
+            <div class="molecule-name" data-i18n="mol_o2_name">Кислород</div>
+            <div class="molecule-count" id="count-o2">0</div>
+        </div>
+    </div>
+
+    <div class="catalyst-info">
+        <div class="catalyst-title" data-i18n="catalyst_title">⚗️ Катализатор MnO₂</div>
+        <div class="catalyst-text" data-i18n-html="catalyst_text_html">
+            Диоксид марганца <strong>ускоряет</strong> реакцию, но сам не расходуется. Снижает энергию активации в
+            <strong>1000+ раз</strong>!
+        </div>
+    </div>
+
+    <div class="stability-section">
+        <div class="stability-title" data-i18n="stability_title">⚠️ Стабильность H₂O₂</div>
+        <div class="stability-bar">
+            <div class="stability-fill" id="stability-bar" style="width: 70%"></div>
+        </div>
+        <div class="stability-labels">
+            <span data-i18n="stability_unstable">Нестабильно</span>
+            <span data-i18n="stability_stable">Стабильно</span>
+        </div>
+    </div>
+
+    <div class="gas-indicator" id="gas-indicator" style="opacity: 0.3;">
+        <div class="gas-bubbles">🫧</div>
+        <div class="gas-text">
+            <div class="title" data-i18n="gas_indicator_title">Выделение O₂</div>
+            <div class="desc" data-i18n="gas_indicator_desc">Пузырьки кислорода поднимаются вверх</div>
+        </div>
+    </div>
+
+    <div class="fact-box" data-i18n-html="fact_html">
+        <strong>💡 Почему H₂O₂ нестабильна?</strong><br>
+        Связь O-O в перекиси слабая (энергия всего <strong>146 кДж/моль</strong>). При распаде образуются более
+        стабильные H₂O и O₂.
+    </div>
+</div>
+
+<div class="legend">
+    <div class="legend-item">
+        <div class="legend-atom hydrogen"></div>
+        <span data-i18n="legend_h">Водород (H)</span></div>
+    <div class="legend-item">
+        <div class="legend-atom oxygen"></div>
+        <span data-i18n="legend_o">Кислород (O)</span></div>
+    <div class="legend-item">
+        <div class="legend-atom catalyst"></div>
+        <span data-i18n="legend_catalyst">MnO₂ катализатор</span></div>
+</div>
+
+<script src="../../libs/vendor/three-r128/three.min.js"></script>
+<script>
+    // =====================================================================
+    //  I18N — встроенные переводы (RU / KZ / EN). Язык: ?lang=ru|kz|en.
+    // =====================================================================
+    const I18N = {
+        ru: {
+            page_title: 'Разложение Перекиси Водорода | 2H₂O₂ → 2H₂O + O₂ | Химия 3D',
+            loading_text: 'Подготовка перекиси водорода...',
+            title_html: 'Реакция <span class="h2o2">Разложения</span> Перекиси Водорода',
+            subtitle: 'Каталитическое разложение • Выделение кислорода • 3D модель',
+            catalyst_label: 'MnO₂ катализатор',
+            reaction_type_html: 'Тип: <span>Разложение</span> • Экзотермическая',
+            panel_title_controls: '🎬 Управление',
+            btn_start: '▶️ Запустить разложение',
+            btn_catalyst_add: '⚗️ Добавить катализатор',
+            btn_catalyst_active: '✓ Катализатор активен',
+            btn_step: '⏭️ Пошагово',
+            btn_reset: '🔄 Сбросить',
+            speed_label: 'Скорость реакции',
+            temp_label: 'Температура',
+            stages_title: '📋 Этапы',
+            stage_0: 'Молекулы H₂O₂',
+            stage_1: 'Контакт с катализатором',
+            stage_2: 'Разрыв связи O-O',
+            stage_3: 'Образование H₂O и O₂',
+            stage_4: 'Выделение газа O₂↑',
+            info_title: '📊 Ход реакции',
+            mol_h2o2_name: 'Перекись',
+            mol_h2o_name: 'Вода',
+            mol_o2_name: 'Кислород',
+            catalyst_title: '⚗️ Катализатор MnO₂',
+            catalyst_text_html: 'Диоксид марганца <strong>ускоряет</strong> реакцию, но сам не расходуется. Снижает энергию активации в <strong>1000+ раз</strong>!',
+            stability_title: '⚠️ Стабильность H₂O₂',
+            stability_unstable: 'Нестабильно',
+            stability_stable: 'Стабильно',
+            gas_indicator_title: 'Выделение O₂',
+            gas_indicator_desc: 'Пузырьки кислорода поднимаются вверх',
+            fact_html: '<strong>💡 Почему H₂O₂ нестабильна?</strong><br>Связь O-O в перекиси слабая (энергия всего <strong>146 кДж/моль</strong>). При распаде образуются более стабильные H₂O и O₂.',
+            legend_h: 'Водород (H)',
+            legend_o: 'Кислород (O)',
+            legend_catalyst: 'MnO₂ катализатор',
+            alert_no_catalyst: 'Добавьте катализатор MnO₂ для ускорения реакции!'
+        },
+        kz: {
+            page_title: 'Сутектің асқын тотығының ыдырауы | 2H₂O₂ → 2H₂O + O₂ | 3D Химия',
+            loading_text: 'Сутектің асқын тотығы дайындалуда...',
+            title_html: 'Сутектің асқын тотығының <span class="h2o2">ыдырау</span> реакциясы',
+            subtitle: 'Каталиттік ыдырау • Оттек бөлінуі • 3D модель',
+            catalyst_label: 'MnO₂ катализаторы',
+            reaction_type_html: 'Түрі: <span>Ыдырау</span> • Экзотермиялық',
+            panel_title_controls: '🎬 Басқару',
+            btn_start: '▶️ Ыдырауды бастау',
+            btn_catalyst_add: '⚗️ Катализатор қосу',
+            btn_catalyst_active: '✓ Катализатор белсенді',
+            btn_step: '⏭️ Қадамдап',
+            btn_reset: '🔄 Қалпына келтіру',
+            speed_label: 'Реакция жылдамдығы',
+            temp_label: 'Температура',
+            stages_title: '📋 Кезеңдер',
+            stage_0: 'H₂O₂ молекулалары',
+            stage_1: 'Катализатормен жанасу',
+            stage_2: 'O-O байланысының үзілуі',
+            stage_3: 'H₂O және O₂ түзілуі',
+            stage_4: 'O₂↑ газының бөлінуі',
+            info_title: '📊 Реакция барысы',
+            mol_h2o2_name: 'Асқын тотық',
+            mol_h2o_name: 'Су',
+            mol_o2_name: 'Оттек',
+            catalyst_title: '⚗️ MnO₂ катализаторы',
+            catalyst_text_html: 'Марганец диоксиді реакцияны <strong>жылдамдатады</strong>, бірақ өзі шығындалмайды. Активтену энергиясын <strong>1000+ есеге</strong> төмендетеді!',
+            stability_title: '⚠️ H₂O₂ тұрақтылығы',
+            stability_unstable: 'Тұрақсыз',
+            stability_stable: 'Тұрақты',
+            gas_indicator_title: 'O₂ бөлінуі',
+            gas_indicator_desc: 'Оттек көпіршіктері жоғары көтеріледі',
+            fact_html: '<strong>💡 Неліктен H₂O₂ тұрақсыз?</strong><br>Асқын тотықтағы O-O байланысы әлсіз (энергиясы небәрі <strong>146 кДж/моль</strong>). Ыдырау кезінде неғұрлым тұрақты H₂O мен O₂ түзіледі.',
+            legend_h: 'Сутек (H)',
+            legend_o: 'Оттек (O)',
+            legend_catalyst: 'MnO₂ катализаторы',
+            alert_no_catalyst: 'Реакцияны жылдамдату үшін MnO₂ катализаторын қосыңыз!'
+        },
+        en: {
+            page_title: 'Hydrogen Peroxide Decomposition | 2H₂O₂ → 2H₂O + O₂ | 3D Chemistry',
+            loading_text: 'Preparing hydrogen peroxide...',
+            title_html: 'Hydrogen Peroxide <span class="h2o2">Decomposition</span> Reaction',
+            subtitle: 'Catalytic decomposition • Oxygen release • 3D Model',
+            catalyst_label: 'MnO₂ catalyst',
+            reaction_type_html: 'Type: <span>Decomposition</span> • Exothermic',
+            panel_title_controls: '🎬 Controls',
+            btn_start: '▶️ Start decomposition',
+            btn_catalyst_add: '⚗️ Add catalyst',
+            btn_catalyst_active: '✓ Catalyst active',
+            btn_step: '⏭️ Step by step',
+            btn_reset: '🔄 Reset',
+            speed_label: 'Reaction speed',
+            temp_label: 'Temperature',
+            stages_title: '📋 Stages',
+            stage_0: 'H₂O₂ molecules',
+            stage_1: 'Contact with catalyst',
+            stage_2: 'Breaking O-O bond',
+            stage_3: 'Formation of H₂O and O₂',
+            stage_4: 'O₂↑ gas release',
+            info_title: '📊 Reaction progress',
+            mol_h2o2_name: 'Peroxide',
+            mol_h2o_name: 'Water',
+            mol_o2_name: 'Oxygen',
+            catalyst_title: '⚗️ MnO₂ catalyst',
+            catalyst_text_html: 'Manganese dioxide <strong>accelerates</strong> the reaction without being consumed. It lowers the activation energy by <strong>1000+ times</strong>!',
+            stability_title: '⚠️ H₂O₂ stability',
+            stability_unstable: 'Unstable',
+            stability_stable: 'Stable',
+            gas_indicator_title: 'O₂ release',
+            gas_indicator_desc: 'Oxygen bubbles rise to the surface',
+            fact_html: '<strong>💡 Why is H₂O₂ unstable?</strong><br>The O-O bond in peroxide is weak (energy only <strong>146 kJ/mol</strong>). Decomposition produces more stable H₂O and O₂.',
+            legend_h: 'Hydrogen (H)',
+            legend_o: 'Oxygen (O)',
+            legend_catalyst: 'MnO₂ catalyst',
+            alert_no_catalyst: 'Add the MnO₂ catalyst to accelerate the reaction!'
+        }
+    };
+    const LANG = (() => {
+        const q = new URLSearchParams(location.search).get('lang');
+        return (q && I18N[q]) ? q : 'ru';
+    })();
+    const t = (key) => (I18N[LANG] && I18N[LANG][key]) ?? (I18N.ru && I18N.ru[key]);
+
+    function applyStaticI18N() {
+        document.documentElement.lang = LANG;
+        const titleVal = t('page_title');
+        if (titleVal) document.title = titleVal;
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const v = t(el.getAttribute('data-i18n'));
+            if (v) el.textContent = v;
+        });
+        document.querySelectorAll('[data-i18n-html]').forEach(el => {
+            const v = t(el.getAttribute('data-i18n-html'));
+            if (v) el.innerHTML = v;
+        });
+        document.querySelectorAll('[data-i18n-title]').forEach(el => {
+            const v = t(el.getAttribute('data-i18n-title'));
+            if (v) el.setAttribute('title', v);
+        });
+        document.querySelectorAll('[data-i18n-aria-label]').forEach(el => {
+            const v = t(el.getAttribute('data-i18n-aria-label'));
+            if (v) el.setAttribute('aria-label', v);
+        });
+    }
+
+    let scene, camera, renderer;
+    let atoms = [];
+    let bonds = [];
+    let catalyst = null;
+    let catalystActive = false;
+    let reactionStage = 0;
+    let isAnimating = false;
+    let animationSpeed = 1;
+    let temperature = 25;
+    let gasParticles = [];
+
+    const H_RADIUS = 0.4;
+    const O_RADIUS = 0.65;
+    const H_COLOR = 0x64b5f6;
+    const O_COLOR = 0xef5350;
+    const CATALYST_COLOR = 0xff9800;
+
+    // H2O2 структура: H-O-O-H (перекисная связь O-O в центре)
+    const POSITIONS = {
+        // Две молекулы H2O2
+        initial: {
+            mol1: {h1: [-5, 1.5, 0], o1: [-4, 1, 0], o2: [-3, 1, 0], h2: [-2, 1.5, 0]},
+            mol2: {h1: [-5, -1.5, 0], o1: [-4, -1, 0], o2: [-3, -1, 0], h2: [-2, -1.5, 0]}
+        },
+        // Приближение к катализатору
+        approach: {
+            mol1: {h1: [-1.5, 1.2, 0], o1: [-0.5, 0.8, 0], o2: [0.5, 0.8, 0], h2: [1.5, 1.2, 0]},
+            mol2: {h1: [-1.5, -1.2, 0], o1: [-0.5, -0.8, 0], o2: [0.5, -0.8, 0], h2: [1.5, -1.2, 0]}
+        },
+        // Разрыв связи O-O
+        breaking: {
+            mol1: {h1: [-2, 1.5, 0], o1: [-1.2, 1, 0], o2: [1.2, 0.5, 0], h2: [2, 1.5, 0]},
+            mol2: {h1: [-2, -1.5, 0], o1: [-1.2, -1, 0], o2: [1.2, -0.5, 0], h2: [2, -1.5, 0]}
+        },
+        // Образование H2O и O2
+        products: {
+            // 2 молекулы воды (угловая форма)
+            water1: {o: [-4, 0.5, 0], h1: [-5, 1.2, 0], h2: [-3, 1.2, 0]},
+            water2: {o: [-4, -1.5, 0], h1: [-5, -0.8, 0], h2: [-3, -0.8, 0]},
+            // O2 молекула (поднимается)
+            oxygen: {o1: [3, 0, 0], o2: [4.2, 0, 0]}
+        },
+        // Финал: O2 улетел вверх
+        final: {
+            water1: {o: [-4, 0.5, 0], h1: [-5, 1.2, 0], h2: [-3, 1.2, 0]},
+            water2: {o: [-4, -1.5, 0], h1: [-5, -0.8, 0], h2: [-3, -0.8, 0]},
+            oxygen: {o1: [3, 8, 0], o2: [4.2, 8, 0]}
+        }
+    };
+
+    function init() {
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x1a0a2e);
+
+        camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 2, 16);
+        camera.lookAt(0, 0, 0);
+
+        renderer = new THREE.WebGLRenderer({antialias: true});
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        setupLighting();
+        createInitialMolecules();
+        setupControls();
+        setupUI();
+        animate();
+
+        document.getElementById('loading').classList.add('hidden');
+    }
+
+    function setupLighting() {
+        scene.add(new THREE.AmbientLight(0x404060, 0.5));
+
+        const dir = new THREE.DirectionalLight(0xffffff, 0.8);
+        dir.position.set(10, 20, 10);
+        scene.add(dir);
+
+        const purple = new THREE.PointLight(0xce93d8, 0.4, 25);
+        purple.position.set(-8, 5, 5);
+        scene.add(purple);
+
+        const red = new THREE.PointLight(0xef5350, 0.4, 25);
+        red.position.set(8, 5, 5);
+        scene.add(red);
+    }
+
+    function createAtom(type, pos, isCatalyst = false) {
+        const r = type === 'H' ? H_RADIUS : O_RADIUS;
+        const c = isCatalyst ? CATALYST_COLOR : (type === 'H' ? H_COLOR : O_COLOR);
+
+        const geom = new THREE.SphereGeometry(r, 32, 32);
+        const mat = new THREE.MeshStandardMaterial({
+            color: c, roughness: 0.3, metalness: 0.2,
+            emissive: c, emissiveIntensity: 0.15
+        });
+        const mesh = new THREE.Mesh(geom, mat);
+        mesh.position.set(...pos);
+        mesh.userData = {type, target: new THREE.Vector3(...pos), isCatalyst};
+
+        // Свечение
+        const glow = new THREE.Mesh(
+                new THREE.SphereGeometry(r * 1.4, 16, 16),
+                new THREE.MeshBasicMaterial({color: c, transparent: true, opacity: 0.12})
+        );
+        mesh.add(glow);
+
+        scene.add(mesh);
+        if (!isCatalyst) atoms.push(mesh);
+        return mesh;
+    }
+
+    function createBond(a1, a2, isWeak = false) {
+        const group = new THREE.Group();
+        const dir = new THREE.Vector3().subVectors(a2.position, a1.position);
+        const len = dir.length();
+
+        const geom = new THREE.CylinderGeometry(0.07, 0.07, len - 0.6, 8);
+        const mat = new THREE.MeshStandardMaterial({
+            color: isWeak ? 0xffab91 : 0x90a4ae,
+            roughness: 0.5,
+            metalness: 0.3,
+            transparent: true,
+            opacity: 0.85
+        });
+        const cyl = new THREE.Mesh(geom, mat);
+
+        const mid = new THREE.Vector3().addVectors(a1.position, a2.position).multiplyScalar(0.5);
+        cyl.position.copy(mid);
+        cyl.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize());
+
+        group.add(cyl);
+        group.userData = {a1, a2, isWeak};
+        scene.add(group);
+        bonds.push(group);
+        return group;
+    }
+
+    function updateBond(bond) {
+        const {a1, a2} = bond.userData;
+        const dir = new THREE.Vector3().subVectors(a2.position, a1.position);
+        const len = dir.length();
+        const mid = new THREE.Vector3().addVectors(a1.position, a2.position).multiplyScalar(0.5);
+
+        bond.children.forEach(cyl => {
+            cyl.scale.y = Math.max(0.01, (len - 0.6) / 1);
+            cyl.position.copy(mid);
+            if (len > 0.1) cyl.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize());
+        });
+    }
+
+    function createInitialMolecules() {
+        // Очистка
+        atoms.forEach(a => scene.remove(a));
+        bonds.forEach(b => scene.remove(b));
+        if (catalyst) {
+            scene.remove(catalyst);
+            catalyst = null;
+        }
+        gasParticles.forEach(p => scene.remove(p));
+        atoms = [];
+        bonds = [];
+        gasParticles = [];
+
+        const pos = POSITIONS.initial;
+
+        // Молекула H2O2 #1: H-O-O-H
+        const h1_1 = createAtom('H', pos.mol1.h1);
+        const o1_1 = createAtom('O', pos.mol1.o1);
+        const o2_1 = createAtom('O', pos.mol1.o2);
+        const h2_1 = createAtom('H', pos.mol1.h2);
+
+        // Молекула H2O2 #2
+        const h1_2 = createAtom('H', pos.mol2.h1);
+        const o1_2 = createAtom('O', pos.mol2.o1);
+        const o2_2 = createAtom('O', pos.mol2.o2);
+        const h2_2 = createAtom('H', pos.mol2.h2);
+
+        // Связи для молекулы 1
+        createBond(h1_1, o1_1);      // H-O
+        createBond(o1_1, o2_1, true); // O-O (слабая, перекисная!)
+        createBond(o2_1, h2_1);      // O-H
+
+        // Связи для молекулы 2
+        createBond(h1_2, o1_2);
+        createBond(o1_2, o2_2, true);
+        createBond(o2_2, h2_2);
+
+        updateCounts(2, 0, 0);
+        document.getElementById('stability-bar').style.width = '70%';
+        document.getElementById('gas-indicator').style.opacity = '0.3';
+    }
+
+    function createCatalyst() {
+        if (catalyst) return;
+
+        // MnO2 как большая оранжевая сфера
+        const geom = new THREE.SphereGeometry(1.2, 32, 32);
+        const mat = new THREE.MeshStandardMaterial({
+            color: CATALYST_COLOR,
+            roughness: 0.4,
+            metalness: 0.3,
+            emissive: CATALYST_COLOR,
+            emissiveIntensity: 0.2
+        });
+        catalyst = new THREE.Mesh(geom, mat);
+        catalyst.position.set(0, -3, 0);
+
+        // Свечение катализатора
+        const glow = new THREE.Mesh(
+                new THREE.SphereGeometry(1.5, 16, 16),
+                new THREE.MeshBasicMaterial({color: CATALYST_COLOR, transparent: true, opacity: 0.15})
+        );
+        catalyst.add(glow);
+
+        // Метка "MnO₂"
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = 128;
+        canvas.height = 64;
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 28px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('MnO₂', 64, 40);
+
+        const tex = new THREE.CanvasTexture(canvas);
+        const label = new THREE.Sprite(new THREE.SpriteMaterial({map: tex, transparent: true}));
+        label.position.set(0, 1.8, 0);
+        label.scale.set(2, 1, 1);
+        catalyst.add(label);
+
+        scene.add(catalyst);
+    }
+
+    function toggleCatalyst() {
+        catalystActive = !catalystActive;
+        const btn = document.getElementById('btn-catalyst');
+
+        if (catalystActive) {
+            createCatalyst();
+            btn.textContent = t('btn_catalyst_active');
+            btn.classList.add('active');
+
+            // Катализатор поднимается в зону реакции
+            gsapTo(catalyst.position, {y: 0}, 1000);
+        } else {
+            if (catalyst) {
+                gsapTo(catalyst.position, {y: -5}, 500, () => {
+                    scene.remove(catalyst);
+                    catalyst = null;
+                });
+            }
+            btn.textContent = t('btn_catalyst_add');
+            btn.classList.remove('active');
+        }
+    }
+
+    function gsapTo(obj, props, duration, callback) {
+        const start = {};
+        const end = {};
+        for (let key in props) {
+            start[key] = obj[key];
+            end[key] = props[key];
+        }
+        const startTime = Date.now();
+
+        function update() {
+            const elapsed = Date.now() - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            const eased = 1 - Math.pow(1 - progress, 3);
+
+            for (let key in props) {
+                obj[key] = start[key] + (end[key] - start[key]) * eased;
+            }
+
+            if (progress < 1) {
+                requestAnimationFrame(update);
+            } else if (callback) {
+                callback();
+            }
+        }
+
+        update();
+    }
+
+    function updateCounts(h2o2, h2o, o2) {
+        document.getElementById('count-h2o2').textContent = h2o2;
+        document.getElementById('count-h2o').textContent = h2o;
+        document.getElementById('count-o2').textContent = o2;
+    }
+
+    function setTargets(posKey) {
+        const pos = POSITIONS[posKey];
+
+        if (posKey === 'initial' || posKey === 'approach' || posKey === 'breaking') {
+            // Для исходных позиций: 8 атомов (2 молекулы H2O2)
+            const keys = posKey === 'initial' ? ['mol1', 'mol2'] : ['mol1', 'mol2'];
+            let atomIdx = 0;
+
+            keys.forEach(molKey => {
+                const mol = pos[molKey];
+                atoms[atomIdx++].userData.target.set(...mol.h1);
+                atoms[atomIdx++].userData.target.set(...mol.o1);
+                atoms[atomIdx++].userData.target.set(...mol.o2);
+                atoms[atomIdx++].userData.target.set(...mol.h2);
+            });
+        } else if (posKey === 'products' || posKey === 'final') {
+            // Продукты: 2 H2O + O2
+            // Атомы: 0,1,2,3 = mol1 (h,o,o,h), 4,5,6,7 = mol2 (h,o,o,h)
+            // Перегруппируем: H2O1 = (O от mol1, H от mol1, H от mol2)
+            // На самом деле для простоты: water1 (O+2H), water2 (O+2H), O2 (2 оставшихся O)
+
+            // Упростим:
+            // atoms[0]=H, atoms[1]=O, atoms[2]=O, atoms[3]=H (mol1)
+            // atoms[4]=H, atoms[5]=O, atoms[6]=O, atoms[7]=H (mol2)
+
+            // Water1: O(1) + H(0) + H(3)
+            // Water2: O(5) + H(4) + H(7)
+            // O2: O(2) + O(6)
+
+            atoms[1].userData.target.set(...pos.water1.o);   // O
+            atoms[0].userData.target.set(...pos.water1.h1);  // H
+            atoms[3].userData.target.set(...pos.water1.h2);  // H
+
+            atoms[5].userData.target.set(...pos.water2.o);   // O
+            atoms[4].userData.target.set(...pos.water2.h1);  // H
+            atoms[7].userData.target.set(...pos.water2.h2);  // H
+
+            atoms[2].userData.target.set(...pos.oxygen.o1);  // O
+            atoms[6].userData.target.set(...pos.oxygen.o2);  // O
+        }
+    }
+
+    function moveToTargets(speed = 0.04) {
+        let done = true;
+        atoms.forEach(a => {
+            const dist = a.position.distanceTo(a.userData.target);
+            if (dist > 0.02) {
+                a.position.lerp(a.userData.target, speed * animationSpeed);
+                done = false;
+            }
+        });
+        bonds.forEach(updateBond);
+        return done;
+    }
+
+    function updateStageUI() {
+        for (let i = 0; i <= 4; i++) {
+            const el = document.getElementById('stage-' + i);
+            el.classList.remove('active', 'completed');
+            if (i < reactionStage) el.classList.add('completed');
+            else if (i === reactionStage) el.classList.add('active');
+        }
+    }
+
+    function createBubble() {
+        const div = document.createElement('div');
+        div.className = 'bubble';
+        div.style.left = (40 + Math.random() * 20) + '%';
+        div.style.bottom = '30%';
+        div.style.width = (15 + Math.random() * 15) + 'px';
+        div.style.height = div.style.width;
+        document.getElementById('bubble-effect').appendChild(div);
+
+        setTimeout(() => div.remove(), 3000);
+    }
+
+    function startReaction() {
+        if (isAnimating) return;
+        if (reactionStage >= 5) resetReaction();
+
+        if (!catalystActive) {
+            alert(t('alert_no_catalyst'));
+            return;
+        }
+
+        isAnimating = true;
+        runReaction();
+    }
+
+    function runReaction() {
+        if (!isAnimating) return;
+
+        const stages = ['approach', 'breaking', 'products', 'final'];
+
+        if (reactionStage === 0) {
+            setTargets('approach');
+        } else if (reactionStage === 1) {
+            // Разрыв связи O-O
+            setTargets('breaking');
+            document.getElementById('stability-bar').style.width = '30%';
+        } else if (reactionStage === 2) {
+            // Перестройка связей
+            bonds.forEach(b => {
+                if (b.userData.isWeak) {
+                    b.children.forEach(c => c.material.opacity = Math.max(0, c.material.opacity - 0.03));
+                }
+            });
+            setTargets('products');
+        } else if (reactionStage === 3) {
+            // Пересоздаём связи для продуктов
+            if (bonds.some(b => b.userData.isWeak)) {
+                bonds.forEach(b => scene.remove(b));
+                bonds = [];
+
+                // H2O #1: O(1) - H(0), O(1) - H(3)
+                createBond(atoms[1], atoms[0]);
+                createBond(atoms[1], atoms[3]);
+
+                // H2O #2: O(5) - H(4), O(5) - H(7)
+                createBond(atoms[5], atoms[4]);
+                createBond(atoms[5], atoms[7]);
+
+                // O2: O(2) - O(6)
+                createBond(atoms[2], atoms[6]);
+
+                updateCounts(0, 2, 1);
+                document.getElementById('gas-indicator').style.opacity = '1';
+            }
+            setTargets('final');
+        } else if (reactionStage === 4) {
+            // O2 улетает вверх
+            setTargets('final');
+
+            // Пузырьки
+            if (Math.random() < 0.1) createBubble();
+
+            document.getElementById('stability-bar').style.width = '0%';
+        }
+
+        const done = moveToTargets();
+
+        if (done) {
+            reactionStage++;
+            updateStageUI();
+
+            if (reactionStage >= 5) {
+                isAnimating = false;
+                // Продолжаем пузырьки
+                const bubbleInterval = setInterval(() => {
+                    createBubble();
+                }, 300);
+                setTimeout(() => clearInterval(bubbleInterval), 3000);
+                return;
+            }
+        }
+
+        requestAnimationFrame(runReaction);
+    }
+
+    function stepReaction() {
+        if (reactionStage >= 5) {
+            resetReaction();
+            return;
+        }
+
+        if (!catalystActive && reactionStage === 0) {
+            toggleCatalyst();
+            return;
+        }
+
+        const stages = ['approach', 'breaking', 'products', 'final', 'final'];
+        setTargets(stages[reactionStage]);
+
+        // Мгновенный переход
+        atoms.forEach(a => a.position.copy(a.userData.target));
+
+        if (reactionStage === 1) {
+            document.getElementById('stability-bar').style.width = '30%';
+        }
+
+        if (reactionStage === 2) {
+            bonds.forEach(b => scene.remove(b));
+            bonds = [];
+            createBond(atoms[1], atoms[0]);
+            createBond(atoms[1], atoms[3]);
+            createBond(atoms[5], atoms[4]);
+            createBond(atoms[5], atoms[7]);
+            createBond(atoms[2], atoms[6]);
+            updateCounts(0, 2, 1);
+            document.getElementById('gas-indicator').style.opacity = '1';
+        }
+
+        if (reactionStage >= 3) {
+            document.getElementById('stability-bar').style.width = '0%';
+            for (let i = 0; i < 5; i++) setTimeout(createBubble, i * 200);
+        }
+
+        bonds.forEach(updateBond);
+        reactionStage++;
+        updateStageUI();
+    }
+
+    function resetReaction() {
+        isAnimating = false;
+        reactionStage = 0;
+
+        createInitialMolecules();
+        updateStageUI();
+
+        // Сброс катализатора
+        if (catalyst) {
+            catalyst.position.y = catalystActive ? 0 : -3;
+        }
+    }
+
+    function setupControls() {
+        let drag = false, prev = {x: 0, y: 0};
+        let theta = 0, phi = 0.15, radius = 16;
+
+        renderer.domElement.addEventListener('mousedown', e => {
+            drag = true;
+            prev = {x: e.clientX, y: e.clientY};
+        });
+        renderer.domElement.addEventListener('mousemove', e => {
+            if (!drag) return;
+            theta -= (e.clientX - prev.x) * 0.005;
+            phi = Math.max(-0.3, Math.min(0.6, phi + (e.clientY - prev.y) * 0.005));
+            updateCam();
+            prev = {x: e.clientX, y: e.clientY};
+        });
+        renderer.domElement.addEventListener('mouseup', () => drag = false);
+        renderer.domElement.addEventListener('mouseleave', () => drag = false);
+        renderer.domElement.addEventListener('wheel', e => {
+            e.preventDefault();
+            radius = Math.max(10, Math.min(30, radius + e.deltaY * 0.02));
+            updateCam();
+        });
+
+        function updateCam() {
+            camera.position.x = radius * Math.sin(theta) * Math.cos(phi);
+            camera.position.y = radius * Math.sin(phi) + 2;
+            camera.position.z = radius * Math.cos(theta) * Math.cos(phi);
+            camera.lookAt(0, 0, 0);
+        }
+    }
+
+    function setupUI() {
+        document.getElementById('speed-slider').addEventListener('input', e => {
+            animationSpeed = parseFloat(e.target.value);
+            document.getElementById('speed-value').textContent = animationSpeed.toFixed(1) + 'x';
+        });
+
+        document.getElementById('temp-slider').addEventListener('input', e => {
+            temperature = parseInt(e.target.value);
+            document.getElementById('temp-value').textContent = temperature + '°C';
+            // Температура влияет на скорость
+            animationSpeed = 1 + (temperature - 25) / 50;
+            document.getElementById('speed-value').textContent = animationSpeed.toFixed(1) + 'x';
+            document.getElementById('speed-slider').value = animationSpeed;
+        });
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+
+        // Покачивание молекул
+        if (!isAnimating && reactionStage === 0) {
+            const t = Date.now() * 0.001;
+            atoms.forEach((a, i) => {
+                a.position.y += Math.sin(t * 2 + i * 0.5) * 0.002;
+                a.position.x += Math.sin(t * 1.5 + i) * 0.001;
+            });
+            bonds.forEach(updateBond);
+        }
+
+        // Пульсация катализатора
+        if (catalyst && catalystActive) {
+            const t = Date.now() * 0.002;
+            catalyst.scale.setScalar(1 + Math.sin(t) * 0.05);
+            catalyst.children[0].material.opacity = 0.15 + Math.sin(t) * 0.05;
+        }
+
+        renderer.render(scene, camera);
+    }
+
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    init();
+</script>
+</body>
+</html>

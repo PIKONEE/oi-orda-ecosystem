@@ -1,0 +1,1337 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мост: типы конструкций — 3D Модель</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            color: #e2e8f0;
+        }
+
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        /* Loading */
+        .loading {
+            position: absolute;
+            inset: 0;
+            background: #0f172a;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            transition: opacity 0.5s;
+        }
+
+        .loading.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-top-color: #38bdf8;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            margin-top: 20px;
+            font-size: 16px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        /* Header */
+        .header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 20px 30px;
+            background: linear-gradient(180deg, rgba(15, 23, 42, 0.92) 0%, transparent 100%);
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .header h1 {
+            color: #38bdf8;
+            font-size: 26px;
+            font-weight: 700;
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
+        }
+
+        .header p {
+            color: #94a3b8;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        /* Control Panel */
+        .control-panel {
+            position: absolute;
+            top: 100px;
+            left: 20px;
+            width: 320px;
+            background: rgba(15, 23, 42, 0.9);
+            
+            border-radius: 12px;
+            padding: 22px;
+            z-index: 10;
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            border-left: 4px solid #38bdf8;
+            max-height: calc(100vh - 140px);
+            overflow-y: auto;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+        }
+
+        .control-panel::-webkit-scrollbar { width: 6px; }
+        .control-panel::-webkit-scrollbar-thumb {
+            background: rgba(56, 189, 248, 0.4);
+            border-radius: 3px;
+        }
+
+        .section-title {
+            color: #e2e8f0;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+            padding-bottom: 8px;
+            margin-top: 22px;
+        }
+
+        .section-title:first-child { margin-top: 0; }
+
+        /* Preset Buttons */
+        .preset-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+        }
+
+        .btn-preset {
+            padding: 12px 6px;
+            background: rgba(51, 65, 85, 0.6);
+            border: 1px solid rgba(148, 163, 184, 0.15);
+            border-radius: 8px;
+            color: #cbd5e1;
+            font-size: 11px;
+            font-weight: 600;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            line-height: 1.35;
+        }
+
+        .btn-preset:hover {
+            background: rgba(56, 189, 248, 0.15);
+            border-color: rgba(56, 189, 248, 0.4);
+        }
+
+        .btn-preset.active {
+            background: rgba(56, 189, 248, 0.25);
+            border-color: #38bdf8;
+            color: #fff;
+            box-shadow: 0 0 12px rgba(56, 189, 248, 0.3);
+        }
+
+        /* Sliders */
+        .slider-group {
+            margin-bottom: 16px;
+        }
+
+        .slider-group label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            color: #cbd5e1;
+            margin-bottom: 7px;
+        }
+
+        .slider-group label .value {
+            color: #38bdf8;
+            font-weight: 700;
+            font-family: 'Consolas', monospace;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 5px;
+            cursor: pointer;
+            accent-color: #38bdf8;
+            background: rgba(148, 163, 184, 0.2);
+            border-radius: 3px;
+        }
+
+        /* Checkbox */
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 9px 10px;
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .checkbox-item:hover { background: rgba(255, 255, 255, 0.09); }
+
+        .checkbox-item input {
+            accent-color: #38bdf8;
+            cursor: pointer;
+            width: 16px;
+            height: 16px;
+        }
+
+        .checkbox-item label {
+            cursor: pointer;
+            font-size: 13px;
+            color: #e2e8f0;
+            flex: 1;
+        }
+
+        /* Info Panel */
+        .info-panel {
+            position: absolute;
+            top: 100px;
+            right: 20px;
+            width: 260px;
+            background: rgba(15, 23, 42, 0.9);
+            
+            border-radius: 12px;
+            padding: 20px;
+            z-index: 10;
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            border-right: 4px solid #38bdf8;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+        }
+
+        .info-panel h3 {
+            color: #f1f5f9;
+            font-size: 15px;
+            margin: 0 0 15px;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+            padding-bottom: 10px;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 11px;
+            align-items: center;
+        }
+
+        .stat-label {
+            color: #94a3b8;
+            font-size: 12px;
+        }
+
+        .stat-value {
+            color: #f1f5f9;
+            font-weight: 700;
+            font-family: 'Consolas', monospace;
+            font-size: 13px;
+        }
+
+        .verdict {
+            margin-top: 14px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .verdict.safe {
+            background: rgba(74, 222, 128, 0.15);
+            border: 1px solid rgba(74, 222, 128, 0.4);
+            color: #4ade80;
+        }
+
+        .verdict.warn {
+            background: rgba(251, 191, 36, 0.15);
+            border: 1px solid rgba(251, 191, 36, 0.4);
+            color: #fbbf24;
+        }
+
+        .verdict.danger {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            color: #ef4444;
+        }
+
+        /* Description box */
+        .desc-box {
+            position: absolute;
+            bottom: 70px;
+            left: 50%;
+            transform: translateX(-50%);
+            max-width: 620px;
+            width: calc(100% - 60px);
+            background: rgba(15, 23, 42, 0.92);
+            
+            border-radius: 12px;
+            padding: 16px 22px;
+            z-index: 10;
+            border: 1px solid rgba(56, 189, 248, 0.25);
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .desc-box .desc-title {
+            color: #38bdf8;
+            font-size: 15px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .desc-box .desc-text {
+            color: #cbd5e1;
+            font-size: 13px;
+            line-height: 1.55;
+        }
+
+        /* Color legend */
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(15, 23, 42, 0.85);
+            padding: 12px 16px;
+            border-radius: 10px;
+            z-index: 10;
+            font-size: 12px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+
+        .legend-item:last-child { margin-bottom: 0; }
+
+        .legend-color {
+            width: 26px;
+            height: 8px;
+            border-radius: 2px;
+        }
+
+        .hint {
+            position: absolute;
+            bottom: 22px;
+            right: 20px;
+            color: rgba(148, 163, 184, 0.7);
+            font-size: 12px;
+            z-index: 5;
+            pointer-events: none;
+        }
+
+        @media (max-width: 1100px) {
+            .control-panel { width: 270px; }
+            .info-panel { width: 220px; }
+        }
+    </style>
+</head>
+<body>
+<script>
+/* i18n */
+(function(){
+  var lang=new URLSearchParams(location.search).get('lang')||'ru';
+  var T={
+    ru:{title:'🌉 Мост: типы конструкций',subtitle:'Инженерия • Сопротивление материалов • Распределение нагрузки',
+      sec1:'🏗️ Тип моста',sec2:'🚚 Нагрузка',sec3:'👁️ Визуализация',
+      pr1:'Балочный',pr2:'Арочный',pr3:'Висячий',
+      lbl_load:'Вес груза:',lbl_pos:'Положение груза:',
+      pos_center:'Центр',pos_left:'Лево ',pos_right:'Право ',
+      cb1:'Цвет напряжений',cb2:'Деформация (прогиб)',cb3:'Векторы сил в опорах',cb4:'Показать грузовик',
+      info_h3:'📊 Анализ конструкции',sl_type:'Тип:',sl_load:'Нагрузка:',sl_defl:'Макс. прогиб:',sl_react:'Реакция опор:',sl_safety:'Запас прочности:',
+      v_safe:'✓ Конструкция устойчива',v_warn:'⚠ Заметная деформация',v_danger:'✕ Критическая нагрузка!',
+      leg1:'Сжатие',leg2:'Нейтрально',leg3:'Растяжение',
+      hint:'ЛКМ — вращение • ПКМ — панорама • Колесо — зум',loading:'Загрузка 3D модели...',
+      tUnit:' т',knUnit:' кН',mmUnit:' мм',
+      bridgeInfo:{
+        beam:{title:'Балочный мост',shortName:'Балочный',text:'Простейший тип. Балка (пролёт) лежит на двух опорах и работает на изгиб: верхние волокна сжимаются, нижние растягиваются. Дёшев, но ограничен по длине пролёта.',stiffness:1.0,maxSpan:'до 50 м'},
+        arch:{title:'Арочный мост',shortName:'Арочный',text:'Нагрузка передаётся вдоль изогнутой арки и преобразуется в сжатие, которое уходит в опоры (пяты арки). Очень прочен на сжатие, требует мощных боковых упоров.',stiffness:3.2,maxSpan:'до 500 м'},
+        suspension:{title:'Висячий мост',shortName:'Висячий',text:'Настил подвешен на вертикальных тросах к главным кабелям, перекинутым через пилоны. Кабели работают на растяжение. Позволяет перекрывать огромные пролёты.',stiffness:2.4,maxSpan:'до 2000 м'}
+      }},
+    kz:{title:'🌉 Көпір: конструкция түрлері',subtitle:'Инженерия • Материалдар кедергісі • Жүктемені бөлу',
+      sec1:'🏗️ Көпір түрі',sec2:'🚚 Жүктеме',sec3:'👁️ Визуализация',
+      pr1:'Балкалы',pr2:'Доғалы',pr3:'Ілмелі',
+      lbl_load:'Жүк салмағы:',lbl_pos:'Жүк орны:',
+      pos_center:'Орта',pos_left:'Сол ',pos_right:'Оң ',
+      cb1:'Кернеу түсі',cb2:'Деформация (майысу)',cb3:'Тіреу күш векторлары',cb4:'Жүк машинасын көрсету',
+      info_h3:'📊 Конструкция талдауы',sl_type:'Түрі:',sl_load:'Жүктеме:',sl_defl:'Макс. майысу:',sl_react:'Тірек реакциясы:',sl_safety:'Беріктік қоры:',
+      v_safe:'✓ Конструкция тұрақты',v_warn:'⚠ Байқарлық деформация',v_danger:'✕ Критикалық жүктеме!',
+      leg1:'Қысу',leg2:'Бейтарап',leg3:'Созу',
+      hint:'СТ — айналу • ОТ — панорама • Доңғалақ — зум',loading:'3D модель жүктелуде...',
+      tUnit:' т',knUnit:' кН',mmUnit:' мм',
+      bridgeInfo:{
+        beam:{title:'Балкалы көпір',shortName:'Балкалы',text:'Ең қарапайым түрі. Балка (пролет) екі тіреуіште жатып, иілуге жұмыс жасайды. Арзан, бірақ пролет ұзындығы шектеулі.',stiffness:1.0,maxSpan:'50 м дейін'},
+        arch:{title:'Доғалы көпір',shortName:'Доғалы',text:'Жүктеме иілген доға бойымен беріліп, қысуға айналады. Қысуға өте берік, мықты бүйір тіреуіштерді қажет етеді.',stiffness:3.2,maxSpan:'500 м дейін'},
+        suspension:{title:'Ілмелі көпір',shortName:'Ілмелі',text:'Жол беті пилондар арқылы тартылған негізгі тросқа ілінген. Тростар созуда жұмыс жасайды. Үлкен пролеттерді жабуға мүмкіндік береді.',stiffness:2.4,maxSpan:'2000 м дейін'}
+      }},
+    en:{title:'🌉 Bridge: structural types',subtitle:'Engineering • Material Strength • Load Distribution',
+      sec1:'🏗️ Bridge type',sec2:'🚚 Load',sec3:'👁️ Visualization',
+      pr1:'Beam',pr2:'Arch',pr3:'Suspension',
+      lbl_load:'Load weight:',lbl_pos:'Load position:',
+      pos_center:'Center',pos_left:'Left ',pos_right:'Right ',
+      cb1:'Stress color',cb2:'Deformation (deflection)',cb3:'Support force vectors',cb4:'Show truck',
+      info_h3:'📊 Structural analysis',sl_type:'Type:',sl_load:'Load:',sl_defl:'Max. deflection:',sl_react:'Support reaction:',sl_safety:'Safety factor:',
+      v_safe:'✓ Structure stable',v_warn:'⚠ Notable deformation',v_danger:'✕ Critical load!',
+      leg1:'Compression',leg2:'Neutral',leg3:'Tension',
+      hint:'LMB — rotate • RMB — pan • Wheel — zoom',loading:'Loading 3D model...',
+      tUnit:' t',knUnit:' kN',mmUnit:' mm',
+      bridgeInfo:{
+        beam:{title:'Beam bridge',shortName:'Beam',text:'The simplest type. A beam (span) rests on two supports and works in bending: upper fibers compress, lower fibers stretch. Cheap but limited in span length.',stiffness:1.0,maxSpan:'up to 50 m'},
+        arch:{title:'Arch bridge',shortName:'Arch',text:'Load is transferred along the curved arch and converted to compression, which goes into the abutments. Very strong in compression, requires powerful side supports.',stiffness:3.2,maxSpan:'up to 500 m'},
+        suspension:{title:'Suspension bridge',shortName:'Suspension',text:'The deck is suspended on vertical cables from main cables strung over pylons. Cables work in tension. Allows spanning enormous distances.',stiffness:2.4,maxSpan:'up to 2000 m'}
+      }}
+  };
+  window._t=T[lang]||T.ru;
+  document.addEventListener('DOMContentLoaded',function(){
+    var t=window._t;
+    var h1=document.querySelector('.header h1');if(h1)h1.textContent=t.title;
+    var p=document.querySelector('.header p');if(p)p.textContent=t.subtitle;
+    var secs=document.querySelectorAll('.section-title');
+    if(secs[0])secs[0].textContent=t.sec1;
+    if(secs[1])secs[1].textContent=t.sec2;
+    if(secs[2])secs[2].textContent=t.sec3;
+    var pr=document.querySelectorAll('.btn-preset');
+    if(pr[0])pr[0].textContent=t.pr1;
+    if(pr[1])pr[1].textContent=t.pr2;
+    if(pr[2])pr[2].textContent=t.pr3;
+    var sl=document.querySelectorAll('.slider-group label > span:first-child');
+    if(sl[0])sl[0].textContent=t.lbl_load;
+    if(sl[1])sl[1].textContent=t.lbl_pos;
+    var cb=document.querySelectorAll('.checkbox-item label');
+    if(cb[0])cb[0].textContent=t.cb1;
+    if(cb[1])cb[1].textContent=t.cb2;
+    if(cb[2])cb[2].textContent=t.cb3;
+    if(cb[3])cb[3].textContent=t.cb4;
+    var h3=document.querySelector('.info-panel h3');if(h3)h3.textContent=t.info_h3;
+    var st=document.querySelectorAll('.stat-label');
+    if(st[0])st[0].textContent=t.sl_type;
+    if(st[1])st[1].textContent=t.sl_load;
+    if(st[2])st[2].textContent=t.sl_defl;
+    if(st[3])st[3].textContent=t.sl_react;
+    if(st[4])st[4].textContent=t.sl_safety;
+    var v=document.getElementById('verdict');if(v)v.textContent=t.v_safe;
+    var tp=document.getElementById('stat-type');if(tp)tp.textContent=t.pr1;
+    var lg=document.querySelectorAll('.legend-item span');
+    if(lg[0])lg[0].textContent=t.leg1;
+    if(lg[1])lg[1].textContent=t.leg2;
+    if(lg[2])lg[2].textContent=t.leg3;
+    var hint=document.querySelector('.hint');if(hint)hint.textContent=t.hint;
+    var lt=document.querySelector('.loading-text');if(lt)lt.textContent=t.loading;
+    var dt=document.getElementById('desc-title');if(dt)dt.textContent=t.bridgeInfo.beam.title;
+    var dx=document.getElementById('desc-text');if(dx)dx.textContent=t.bridgeInfo.beam.text;
+  });
+})();
+</script>
+
+<div class="loading" id="loading">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">Загрузка 3D модели...</div>
+</div>
+
+<div id="canvas-container"></div>
+
+<div class="header">
+    <h1>🌉 Мост: типы конструкций</h1>
+    <p>Инженерия • Сопротивление материалов • Распределение нагрузки</p>
+</div>
+
+<div class="control-panel">
+    <div class="section-title">🏗️ Тип моста</div>
+    <div class="preset-grid">
+        <div class="btn-preset active" onclick="setBridge('beam', this)">Балочный</div>
+        <div class="btn-preset" onclick="setBridge('arch', this)">Арочный</div>
+        <div class="btn-preset" onclick="setBridge('suspension', this)">Висячий</div>
+    </div>
+
+    <div class="section-title">🚚 Нагрузка</div>
+    <div class="slider-group">
+        <label><span>Вес груза:</span><span class="value" id="val-load">20 т</span></label>
+        <input type="range" id="input-load" min="5" max="100" step="5" value="20">
+    </div>
+    <div class="slider-group">
+        <label><span>Положение груза:</span><span class="value" id="val-pos">Центр</span></label>
+        <input type="range" id="input-pos" min="-100" max="100" step="5" value="0">
+    </div>
+
+    <div class="section-title">👁️ Визуализация</div>
+    <div class="checkbox-item">
+        <input type="checkbox" id="check-stress" checked>
+        <label for="check-stress">Цвет напряжений</label>
+    </div>
+    <div class="checkbox-item">
+        <input type="checkbox" id="check-deform" checked>
+        <label for="check-deform">Деформация (прогиб)</label>
+    </div>
+    <div class="checkbox-item">
+        <input type="checkbox" id="check-forces">
+        <label for="check-forces">Векторы сил в опорах</label>
+    </div>
+    <div class="checkbox-item">
+        <input type="checkbox" id="check-truck" checked>
+        <label for="check-truck">Показать грузовик</label>
+    </div>
+</div>
+
+<div class="info-panel">
+    <h3>📊 Анализ конструкции</h3>
+    <div class="stat-row">
+        <span class="stat-label">Тип:</span>
+        <span class="stat-value" id="stat-type" style="color:#38bdf8">Балочный</span>
+    </div>
+    <div class="stat-row">
+        <span class="stat-label">Нагрузка:</span>
+        <span class="stat-value" id="stat-load">196 кН</span>
+    </div>
+    <div class="stat-row">
+        <span class="stat-label">Макс. прогиб:</span>
+        <span class="stat-value" id="stat-defl" style="color:#fbbf24">— мм</span>
+    </div>
+    <div class="stat-row">
+        <span class="stat-label">Реакция опор:</span>
+        <span class="stat-value" id="stat-react">98 кН</span>
+    </div>
+    <div class="stat-row">
+        <span class="stat-label">Запас прочности:</span>
+        <span class="stat-value" id="stat-safety">—</span>
+    </div>
+    <div class="verdict safe" id="verdict">✓ Конструкция устойчива</div>
+</div>
+
+<div class="desc-box" id="desc-box">
+    <div class="desc-title" id="desc-title">Балочный мост</div>
+    <div class="desc-text" id="desc-text">
+        Простейший тип. Балка (пролёт) лежит на двух опорах и работает на изгиб:
+        верхние волокна сжимаются, нижние растягиваются. Дёшев, но ограничен по длине пролёта.
+    </div>
+</div>
+
+<div class="legend">
+    <div class="legend-item">
+        <div class="legend-color" style="background:#3b82f6"></div>
+        <span>Сжатие</span>
+    </div>
+    <div class="legend-item">
+        <div class="legend-color" style="background:#22c55e"></div>
+        <span>Нейтрально</span>
+    </div>
+    <div class="legend-item">
+        <div class="legend-color" style="background:#ef4444"></div>
+        <span>Растяжение</span>
+    </div>
+</div>
+
+<div class="hint">ЛКМ — вращение • ПКМ — панорама • Колесо — зум</div>
+
+<script type="importmap">
+{
+    "imports": {
+        "three": "../../libs/vendor/three-0.160.0/three.module.js",
+        "three/addons/": "../../libs/vendor/three-0.160.0/addons/"
+    }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ===================== CONFIG =====================
+const CONFIG = {
+    spanLength: 40,        // длина пролёта (мировые единицы)
+    deckY: 6,              // высота настила
+    deckWidth: 6,          // ширина настила
+    segments: 40,          // число сегментов настила для деформации
+    colorCompression: new THREE.Color(0x3b82f6),
+    colorNeutral: new THREE.Color(0x22c55e),
+    colorTension: new THREE.Color(0xef4444),
+    deckBase: new THREE.Color(0x94a3b8)
+};
+
+// Описания мостов
+const BRIDGE_INFO = (window._t && window._t.bridgeInfo) || {
+    beam: {
+        title: 'Балочный мост',shortName:'Балочный',
+        text: 'Простейший тип. Балка (пролёт) лежит на двух опорах и работает на изгиб: верхние волокна сжимаются, нижние растягиваются. Дёшев, но ограничен по длине пролёта.',
+        stiffness: 1.0,maxSpan: 'до 50 м'
+    },
+    arch: {
+        title: 'Арочный мост',shortName:'Арочный',
+        text: 'Нагрузка передаётся вдоль изогнутой арки и преобразуется в сжатие, которое уходит в опоры (пяты арки). Очень прочен на сжатие, требует мощных боковых упоров.',
+        stiffness: 3.2,maxSpan: 'до 500 м'
+    },
+    suspension: {
+        title: 'Висячий мост',shortName:'Висячий',
+        text: 'Настил подвешен на вертикальных тросах к главным кабелям, перекинутым через пилоны. Кабели работают на растяжение. Позволяет перекрывать огромные пролёты.',
+        stiffness: 2.4,maxSpan: 'до 2000 м'
+    }
+};
+
+// ===================== STATE =====================
+let state = {
+    bridge: 'beam',
+    loadTons: 20,
+    posPercent: 0,        // -100..100, позиция груза по пролёту
+    showStress: true,
+    showDeform: true,
+    showForces: false,
+    showTruck: true,
+    deflection: 0         // текущий прогиб (анимируемый)
+};
+
+// ===================== GLOBALS =====================
+let scene, camera, renderer, controls;
+let bridgeGroup;          // содержит текущий мост
+let deckMesh;             // настил (деформируемый)
+let deckGeometry;
+let deckBasePositions;    // исходные позиции вершин настила
+let truckGroup;
+let forceArrows = [];
+let waterMesh;
+
+// ===================== INIT =====================
+function init() {
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0f172a);
+    scene.fog = new THREE.FogExp2(0x0f172a, 0.008);
+
+    const aspect = window.innerWidth / window.innerHeight;
+    camera = new THREE.PerspectiveCamera(42, aspect, 0.1, 500);
+    camera.position.set(2, 14, 62);
+
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = false;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.15;
+    document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+    controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.minDistance = 22;
+    controls.maxDistance = 130;
+    controls.maxPolarAngle = Math.PI / 2 + 0.12;
+    controls.target.set(0, 3, 0);
+
+    setupLighting();
+    createEnvironment();
+    buildBridge('beam');
+    setupUIEvents();
+
+    window.addEventListener('resize', onWindowResize);
+
+    animate();
+
+    document.getElementById('loading').classList.add('hidden');
+}
+
+function setupLighting() {
+    const ambient = new THREE.AmbientLight(0x9aa5b5, 0.75);
+    scene.add(ambient);
+
+    const sun = new THREE.DirectionalLight(0xfff4e0, 1.9);
+    sun.position.set(40, 60, 30);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(2048, 2048);
+    sun.shadow.camera.near = 1;
+    sun.shadow.camera.far = 200;
+    sun.shadow.camera.left = -60;
+    sun.shadow.camera.right = 60;
+    sun.shadow.camera.top = 60;
+    sun.shadow.camera.bottom = -60;
+    sun.shadow.bias = -0.0005;
+    scene.add(sun);
+
+    const fill = new THREE.DirectionalLight(0xaecbff, 0.6);
+    fill.position.set(-30, 25, -20);
+    scene.add(fill);
+
+    const hemi = new THREE.HemisphereLight(0xa8d8ff, 0x3a5340, 0.6);
+    scene.add(hemi);
+}
+
+// ===================== ENVIRONMENT =====================
+function createEnvironment() {
+    // Вода (река под мостом)
+    const waterGeo = new THREE.PlaneGeometry(260, 120, 40, 24);
+    const waterMat = new THREE.MeshStandardMaterial({
+        color: 0x1e3a5f,
+        metalness: 0.6,
+        roughness: 0.25,
+        transparent: true,
+        opacity: 0.85
+    });
+    waterMesh = new THREE.Mesh(waterGeo, waterMat);
+    waterMesh.rotation.x = -Math.PI / 2;
+    waterMesh.position.y = -6;
+    waterMesh.receiveShadow = true;
+    scene.add(waterMesh);
+
+    // Берега (две стороны)
+    const bankMat = new THREE.MeshStandardMaterial({ color: 0x4b6b3f, roughness: 1 });
+    for (const side of [-1, 1]) {
+        const bank = new THREE.Mesh(
+            new THREE.BoxGeometry(40, 14, 120),
+            bankMat
+        );
+        bank.position.set(side * (CONFIG.spanLength / 2 + 22), -1, 0);
+        bank.receiveShadow = true;
+        bank.castShadow = true;
+        scene.add(bank);
+
+        // Дорога на берегу
+        const road = new THREE.Mesh(
+            new THREE.BoxGeometry(40, 0.4, CONFIG.deckWidth + 1),
+            new THREE.MeshStandardMaterial({ color: 0x3a3a3a, roughness: 0.9 })
+        );
+        road.position.set(side * (CONFIG.spanLength / 2 + 22), CONFIG.deckY + 0.05, 0);
+        road.receiveShadow = true;
+        scene.add(road);
+    }
+}
+
+// ===================== TRUCK =====================
+function createTruck() {
+    const g = new THREE.Group();
+
+    const bodyMat = new THREE.MeshStandardMaterial({ color: 0xdc2626, metalness: 0.4, roughness: 0.5 });
+    const cabMat = new THREE.MeshStandardMaterial({ color: 0xb91c1c, metalness: 0.4, roughness: 0.5 });
+    const wheelMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.8 });
+    const glassMat = new THREE.MeshStandardMaterial({ color: 0x93c5fd, metalness: 0.6, roughness: 0.1 });
+
+    // Кузов
+    const trailer = new THREE.Mesh(new THREE.BoxGeometry(7, 2.6, 3.4), bodyMat);
+    trailer.position.set(-1, 2.4, 0);
+    trailer.castShadow = true;
+    g.add(trailer);
+
+    // Кабина
+    const cab = new THREE.Mesh(new THREE.BoxGeometry(2.6, 2.4, 3.2), cabMat);
+    cab.position.set(4, 2.3, 0);
+    cab.castShadow = true;
+    g.add(cab);
+
+    // Лобовое стекло
+    const glass = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.3, 2.8), glassMat);
+    glass.position.set(5.35, 2.8, 0);
+    g.add(glass);
+
+    // Колёса
+    const wheelGeo = new THREE.CylinderGeometry(0.85, 0.85, 0.7, 20);
+    const wheelPos = [
+        [-3.5, 0], [-1, 0], [3.5, 0]
+    ];
+    for (const [wx] of wheelPos) {
+        for (const wz of [-1.6, 1.6]) {
+            const w = new THREE.Mesh(wheelGeo, wheelMat);
+            w.rotation.x = Math.PI / 2;
+            w.position.set(wx, 0.85, wz);
+            w.castShadow = true;
+            g.add(w);
+        }
+    }
+
+    return g;
+}
+
+// ===================== BRIDGE BUILDERS =====================
+function clearBridge() {
+    if (bridgeGroup) {
+        scene.remove(bridgeGroup);
+        bridgeGroup.traverse(o => {
+            if (o.geometry) o.geometry.dispose();
+            if (o.material) {
+                if (Array.isArray(o.material)) o.material.forEach(m => m.dispose());
+                else o.material.dispose();
+            }
+        });
+    }
+    forceArrows = [];
+}
+
+function makeDeck() {
+    // Деформируемый настил вдоль X
+    const L = CONFIG.spanLength;
+    deckGeometry = new THREE.BoxGeometry(L, 0.7, CONFIG.deckWidth, CONFIG.segments, 1, 1);
+    deckGeometry.userData.partName = 'Настил (проезжая часть)';
+
+    const colors = [];
+    const posAttr = deckGeometry.attributes.position;
+    for (let i = 0; i < posAttr.count; i++) {
+        colors.push(CONFIG.deckBase.r, CONFIG.deckBase.g, CONFIG.deckBase.b);
+    }
+    deckGeometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+
+    const deckMat = new THREE.MeshStandardMaterial({
+        vertexColors: true,
+        metalness: 0.3,
+        roughness: 0.7
+    });
+    deckMesh = new THREE.Mesh(deckGeometry, deckMat);
+    deckMesh.position.y = CONFIG.deckY;
+    deckMesh.castShadow = true;
+    deckMesh.receiveShadow = true;
+
+    // Сохраняем исходные позиции
+    deckBasePositions = new Float32Array(posAttr.array);
+
+    // Бордюры по краям
+    const railMat = new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.5, roughness: 0.5 });
+    for (const side of [-1, 1]) {
+        const rail = new THREE.Mesh(
+            new THREE.BoxGeometry(L, 0.5, 0.25),
+            railMat
+        );
+        rail.position.set(0, 0.55, side * (CONFIG.deckWidth / 2 - 0.15));
+        deckMesh.add(rail);
+    }
+
+    return deckMesh;
+}
+
+function makePier(x) {
+    // Опора (бык моста)
+    const g = new THREE.Group();
+    const mat = new THREE.MeshStandardMaterial({ color: 0x6b7280, roughness: 0.85 });
+    const col = new THREE.Mesh(
+        new THREE.CylinderGeometry(1.6, 2.2, CONFIG.deckY + 6, 16),
+        mat
+    );
+    col.position.set(x, (CONFIG.deckY - 6) / 2, 0);
+    col.castShadow = true;
+    col.receiveShadow = true;
+    g.add(col);
+
+    // Опорная подушка
+    const cap = new THREE.Mesh(
+        new THREE.BoxGeometry(4, 0.8, CONFIG.deckWidth + 1),
+        mat
+    );
+    cap.position.set(x, CONFIG.deckY - 0.5, 0);
+    cap.castShadow = true;
+    g.add(cap);
+    g.userData.partName = 'Опора (бык моста)';
+    return g;
+}
+
+function buildBeamBridge() {
+    const g = new THREE.Group();
+    const L = CONFIG.spanLength;
+
+    g.add(makeDeck());
+    g.add(makePier(-L / 2));
+    g.add(makePier(L / 2));
+
+    // Подбалки под настилом (двутавры)
+    const beamMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.7, roughness: 0.4 });
+    for (const z of [-2, 0, 2]) {
+        const beam = new THREE.Mesh(
+            new THREE.BoxGeometry(L, 1.0, 0.5),
+            beamMat
+        );
+        beam.position.set(0, CONFIG.deckY - 0.85, z);
+        beam.castShadow = true;
+        g.add(beam);
+    }
+
+    return g;
+}
+
+function buildArchBridge() {
+    const g = new THREE.Group();
+    const L = CONFIG.spanLength;
+    const half = L / 2;
+
+    g.add(makeDeck());
+
+    // --- Параметры арки ---
+    // Пяты арки опираются на упоры у воды (baseY), вершина почти под настилом (topY).
+    const baseY = -1.5;                 // уровень пят арки (над водой Y=-6)
+    const topY = CONFIG.deckY - 0.9;    // вершина арки чуть ниже настила
+    const rise = topY - baseY;          // подъём арки
+    const archZ = [-2.2, 2.2];          // две арки по бокам
+
+    // Высота арки в точке x (эллиптическая дуга): y = baseY + rise*sqrt(1-(x/half)^2)
+    function archYat(x) {
+        const k = Math.min(Math.abs(x) / half, 1);
+        return baseY + rise * Math.sqrt(Math.max(0, 1 - k * k));
+    }
+
+    const archMat = new THREE.MeshStandardMaterial({
+        color: 0x9a8478, metalness: 0.25, roughness: 0.75
+    });
+
+    // --- Тело арки: труба вдоль точной эллиптической кривой ---
+    for (const z of archZ) {
+        const pts = [];
+        const segs = 60;
+        for (let i = 0; i <= segs; i++) {
+            const t = i / segs;
+            const x = -half + t * L;
+            pts.push(new THREE.Vector3(x, archYat(x), z));
+        }
+        const curve = new THREE.CatmullRomCurve3(pts);
+        const tube = new THREE.TubeGeometry(curve, 90, 0.7, 12, false);
+        const arch = new THREE.Mesh(tube, archMat);
+        arch.castShadow = true;
+        arch.receiveShadow = true;
+        arch.userData.partName = 'Арка (несущая дуга)';
+        g.add(arch);
+    }
+
+    // Поперечные связи между двумя арками (жёсткость)
+    const braceMat = new THREE.MeshStandardMaterial({ color: 0x6b5d52, roughness: 0.8 });
+    for (let i = 1; i < 6; i++) {
+        const t = i / 6;
+        const x = -half + t * L;
+        const y = archYat(x);
+        const brace = new THREE.Mesh(
+            new THREE.BoxGeometry(0.4, 0.4, archZ[1] - archZ[0]),
+            braceMat
+        );
+        brace.position.set(x, y, 0);
+        brace.castShadow = true;
+        g.add(brace);
+    }
+
+    // --- Вертикальные стойки (spandrel columns) арка -> настил ---
+    const colMat = new THREE.MeshStandardMaterial({ color: 0x57534e, roughness: 0.8 });
+    const nCols = 9;
+    for (let i = 1; i < nCols; i++) {
+        const x = -half + (i / nCols) * L;
+        const archY = archYat(x);
+        const colTop = CONFIG.deckY - 0.55;     // низ настила
+        const colHeight = colTop - archY;
+        if (colHeight < 0.4) continue;           // у вершины стойки не нужны
+        for (const z of archZ) {
+            const c = new THREE.Mesh(
+                new THREE.BoxGeometry(0.45, colHeight, 0.45),
+                colMat
+            );
+            c.position.set(x, archY + colHeight / 2, z);
+            c.castShadow = true;
+            g.add(c);
+        }
+    }
+
+    // --- Боковые упоры (abutments) — массивные пяты арки ---
+    const absMat = new THREE.MeshStandardMaterial({ color: 0x6b7280, roughness: 0.9 });
+    for (const side of [-1, 1]) {
+        const ab = new THREE.Mesh(
+            new THREE.BoxGeometry(7, 10, CONFIG.deckWidth + 4),
+            absMat
+        );
+        // верх упора на уровне пят арки, тело уходит вниз к берегу
+        ab.position.set(side * (half + 1.5), baseY - 4, 0);
+        ab.castShadow = true;
+        ab.receiveShadow = true;
+        g.add(ab);
+    }
+
+    return g;
+}
+
+function buildSuspensionBridge() {
+    const g = new THREE.Group();
+    const L = CONFIG.spanLength;
+
+    g.add(makeDeck());
+    g.add(makePier(-L / 2));
+    g.add(makePier(L / 2));
+
+    // Пилоны (башни)
+    const towerMat = new THREE.MeshStandardMaterial({ color: 0x52525b, metalness: 0.6, roughness: 0.4 });
+    const towerHeight = 22;
+    const towerXs = [-L / 2, L / 2];
+    const towerTopY = CONFIG.deckY + towerHeight;
+
+    for (const tx of towerXs) {
+        for (const z of [-2.6, 2.6]) {
+            const leg = new THREE.Mesh(
+                new THREE.BoxGeometry(1.2, towerHeight + 6, 1.2),
+                towerMat
+            );
+            leg.position.set(tx, CONFIG.deckY - 6 + (towerHeight + 6) / 2, z);
+            leg.castShadow = true;
+            g.add(leg);
+        }
+        // Поперечина пилона
+        const cross = new THREE.Mesh(
+            new THREE.BoxGeometry(1.4, 1.4, 6),
+            towerMat
+        );
+        cross.position.set(tx, towerTopY - 1, 0);
+        cross.castShadow = true;
+        g.add(cross);
+    }
+
+    // Главные кабели (катенарии) + вертикальные подвески
+    const cableMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.8, roughness: 0.3 });
+    const sag = 12;          // провисание кабеля
+    const segs = 30;
+
+    for (const z of [-2.6, 2.6]) {
+        const points = [];
+        // боковой анкер слева
+        points.push(new THREE.Vector3(-L / 2 - 18, CONFIG.deckY + 2, z));
+        for (let i = 0; i <= segs; i++) {
+            const t = i / segs;
+            const x = -L / 2 + t * L;
+            // парабола провисания между пилонами
+            const y = towerTopY - sag * 4 * t * (1 - t);
+            points.push(new THREE.Vector3(x, y, z));
+        }
+        // боковой анкер справа
+        points.push(new THREE.Vector3(L / 2 + 18, CONFIG.deckY + 2, z));
+
+        const curve = new THREE.CatmullRomCurve3(points);
+        const tubeGeo = new THREE.TubeGeometry(curve, 80, 0.28, 8, false);
+        const cable = new THREE.Mesh(tubeGeo, cableMat);
+        cable.castShadow = true;
+        g.add(cable);
+
+        // Вертикальные подвески (hangers)
+        const hangerMat = new THREE.MeshStandardMaterial({ color: 0xcbd5e1, metalness: 0.7, roughness: 0.4 });
+        for (let i = 1; i < segs; i++) {
+            const t = i / segs;
+            const x = -L / 2 + t * L;
+            const cableY = towerTopY - sag * 4 * t * (1 - t);
+            const h = cableY - CONFIG.deckY - 0.3;
+            if (h < 0.5) continue;
+            const hanger = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.07, 0.07, h, 6),
+                hangerMat
+            );
+            hanger.position.set(x, CONFIG.deckY + 0.3 + h / 2, z);
+            g.add(hanger);
+        }
+    }
+
+    // Анкерные блоки
+    const anchorMat = new THREE.MeshStandardMaterial({ color: 0x6b7280, roughness: 0.9 });
+    for (const side of [-1, 1]) {
+        const anchor = new THREE.Mesh(
+            new THREE.BoxGeometry(5, 8, CONFIG.deckWidth + 3),
+            anchorMat
+        );
+        anchor.position.set(side * (L / 2 + 18), CONFIG.deckY - 2, 0);
+        anchor.castShadow = true;
+        anchor.receiveShadow = true;
+        g.add(anchor);
+    }
+
+    return g;
+}
+
+function buildBridge(type) {
+    clearBridge();
+    if (type === 'beam') bridgeGroup = buildBeamBridge();
+    else if (type === 'arch') bridgeGroup = buildArchBridge();
+    else if (type === 'suspension') bridgeGroup = buildSuspensionBridge();
+
+    scene.add(bridgeGroup);
+
+    // Грузовик
+    truckGroup = createTruck();
+    truckGroup.position.y = CONFIG.deckY + 0.45;
+    bridgeGroup.add(truckGroup);
+
+    // Векторы реакций опор
+    createForceArrows();
+
+    state.deflection = 0;
+    state._needsDeformRebuild = true;
+    updateTruckPosition();
+    updatePhysics();
+}
+
+// ===================== FORCE ARROWS =====================
+function createForceArrows() {
+    forceArrows = [];
+    const L = CONFIG.spanLength;
+    const arrowXs = [-L / 2, L / 2];
+    for (const ax of arrowXs) {
+        const dir = new THREE.Vector3(0, 1, 0);
+        const origin = new THREE.Vector3(ax, CONFIG.deckY - 6, 0);
+        const arrow = new THREE.ArrowHelper(dir, origin, 5, 0x4ade80, 1.6, 1.0);
+        arrow.visible = false;
+        bridgeGroup.add(arrow);
+        forceArrows.push(arrow);
+    }
+}
+
+// ===================== PHYSICS / DEFORMATION =====================
+function getLoadX() {
+    // позиция груза по пролёту: -100..100 -> -L/2..L/2
+    return (state.posPercent / 100) * (CONFIG.spanLength / 2 - 4);
+}
+
+function updateTruckPosition() {
+    if (!truckGroup) return;
+    truckGroup.visible = state.showTruck;
+    const x = getLoadX();
+    truckGroup.position.x = x;
+}
+
+function clampLoadNorm(loadNorm) {
+    // Груз физически не может стоять точно на опоре — ограничиваем,
+    // чтобы пиковый прогиб никогда не обращался в ноль (защита от NaN).
+    return Math.max(-0.92, Math.min(0.92, loadNorm));
+}
+
+function deflectionShape(xNorm, loadNorm) {
+    // xNorm: -1..1 по пролёту, loadNorm: позиция груза -1..1
+    // Форма прогиба простой балки под точечной нагрузкой (упрощённая, симметричная база)
+    // Используем функцию, максимум под грузом, ноль на опорах
+    const a = (loadNorm + 1) / 2;     // 0..1 позиция груза
+    const xx = (xNorm + 1) / 2;       // 0..1
+    if (xx <= a) {
+        return (xx * (1 - a)) * (1 + a - xx) ;
+    } else {
+        return (a * (1 - xx)) * (1 + xx - a);
+    }
+}
+
+function updatePhysics() {
+    const info = BRIDGE_INFO[state.bridge];
+
+    // Сила: P = m*g, тонны -> кН
+    const loadKN = state.loadTons * 9.81;
+    const reactKN = loadKN / 2;
+
+    // Целевой прогиб (мм) — обратно пропорционален жёсткости типа моста
+    const baseDefl = state.loadTons * 2.6;     // эмпирически
+    const targetDeflMM = baseDefl / info.stiffness;
+
+    // Плавная анимация прогиба
+    const prevDefl = state.deflection;
+    state.deflection += (targetDeflMM - state.deflection) * 0.12;
+    const settled = Math.abs(targetDeflMM - state.deflection) < 0.02;
+    if (settled) state.deflection = targetDeflMM;
+
+    // Перевод мм в мировые единицы для визуализации (усиливаем для наглядности)
+    const worldDefl = (state.deflection / 1000) * 14;
+
+    // Пересобираем геометрию только когда форма реально меняется
+    if (!settled || Math.abs(prevDefl - state.deflection) > 0.001 || state._needsDeformRebuild) {
+        applyDeckDeformation(worldDefl);
+        state._needsDeformRebuild = false;
+    }
+
+    // Запас прочности (условный): предел ~ 90 мм прогиба
+    const limit = 90;
+    const safety = limit / Math.max(state.deflection, 0.01);
+
+    // Обновление UI
+    var _kn=window._t?window._t.knUnit:' кН',_mm=window._t?window._t.mmUnit:' мм';
+    document.getElementById('stat-type').textContent = info.shortName || info.title;
+    document.getElementById('stat-load').textContent = loadKN.toFixed(0) + _kn;
+    document.getElementById('stat-defl').textContent = state.deflection.toFixed(1) + _mm;
+    document.getElementById('stat-react').textContent = reactKN.toFixed(0) + _kn;
+    document.getElementById('stat-safety').textContent = safety.toFixed(1) + 'x';
+
+    const verdict = document.getElementById('verdict');
+    if (state.deflection < 35) {
+        verdict.className = 'verdict safe';
+        verdict.textContent = window._t?window._t.v_safe:'✓ Конструкция устойчива';
+    } else if (state.deflection < 65) {
+        verdict.className = 'verdict warn';
+        verdict.textContent = window._t?window._t.v_warn:'⚠ Заметная деформация';
+    } else {
+        verdict.className = 'verdict danger';
+        verdict.textContent = window._t?window._t.v_danger:'✕ Критическая нагрузка!';
+    }
+
+    // Реакции опор (стрелки)
+    const showF = state.showForces;
+    for (let i = 0; i < forceArrows.length; i++) {
+        forceArrows[i].visible = showF;
+        if (showF) {
+            const len = 3 + (reactKN / 980) * 8;
+            forceArrows[i].setLength(len, 1.6, 1.0);
+        }
+    }
+}
+
+function applyDeckDeformation(maxWorldDefl) {
+    if (!deckGeometry || !deckBasePositions) return;
+    const posAttr = deckGeometry.attributes.position;
+    const colAttr = deckGeometry.attributes.color;
+    const L = CONFIG.spanLength;
+    const loadNorm = clampLoadNorm(state.posPercent / 100);
+    // Пиковый прогиб под грузом — считаем один раз вне цикла
+    const peak = Math.max(deflectionShape(loadNorm, loadNorm), 1e-4);
+
+    for (let i = 0; i < posAttr.count; i++) {
+        const bx = deckBasePositions[i * 3];
+        const by = deckBasePositions[i * 3 + 1];
+        const bz = deckBasePositions[i * 3 + 2];
+
+        const xNorm = bx / (L / 2);   // -1..1
+        let shape = deflectionShape(xNorm, loadNorm) / peak;
+        if (shape < 0) shape = 0;
+        if (shape > 1) shape = 1;
+
+        const dy = state.showDeform ? -maxWorldDefl * shape : 0;
+        posAttr.setXYZ(i, bx, by + dy, bz);
+
+        // Цвет напряжений: верх (by>0) сжатие(синий), низ растяжение(красный)
+        if (state.showStress) {
+            const stress = shape;           // 0..1 интенсивность
+            let c;
+            if (by > 0) {
+                // верхняя грань — сжатие
+                c = CONFIG.colorNeutral.clone().lerp(CONFIG.colorCompression, stress);
+            } else {
+                // нижняя грань — растяжение
+                c = CONFIG.colorNeutral.clone().lerp(CONFIG.colorTension, stress);
+            }
+            colAttr.setXYZ(i, c.r, c.g, c.b);
+        } else {
+            colAttr.setXYZ(i, CONFIG.deckBase.r, CONFIG.deckBase.g, CONFIG.deckBase.b);
+        }
+    }
+    posAttr.needsUpdate = true;
+    colAttr.needsUpdate = true;
+    deckGeometry.computeVertexNormals();
+
+    // Опускаем грузовик вместе с настилом
+    if (truckGroup) {
+        const loadShape = 1;
+        truckGroup.position.y = CONFIG.deckY + 0.45 - maxWorldDefl * (state.showDeform ? loadShape : 0) * 0.9;
+    }
+}
+
+// ===================== UI EVENTS =====================
+function markDirty() { state._needsDeformRebuild = true; }
+
+function setupUIEvents() {
+    document.getElementById('input-load').addEventListener('input', e => {
+        state.loadTons = parseInt(e.target.value);
+        document.getElementById('val-load').textContent = state.loadTons + (window._t?window._t.tUnit:' т');
+        markDirty();
+        updatePhysics();
+    });
+
+    document.getElementById('input-pos').addEventListener('input', e => {
+        state.posPercent = parseInt(e.target.value);
+        const p = state.posPercent;
+        var _pc=window._t||{pos_center:'Центр',pos_left:'Лево ',pos_right:'Право '};
+        document.getElementById('val-pos').textContent =
+            p === 0 ? _pc.pos_center : (p < 0 ? _pc.pos_left + Math.abs(p) + '%' : _pc.pos_right + p + '%');
+        updateTruckPosition();
+        markDirty();
+        updatePhysics();
+    });
+
+    document.getElementById('check-stress').addEventListener('change', e => {
+        state.showStress = e.target.checked;
+        markDirty();
+        updatePhysics();
+    });
+    document.getElementById('check-deform').addEventListener('change', e => {
+        state.showDeform = e.target.checked;
+        markDirty();
+        updatePhysics();
+    });
+    document.getElementById('check-forces').addEventListener('change', e => {
+        state.showForces = e.target.checked;
+        updatePhysics();
+    });
+    document.getElementById('check-truck').addEventListener('change', e => {
+        state.showTruck = e.target.checked;
+        updateTruckPosition();
+    });
+}
+
+window.setBridge = function(type, el) {
+    state.bridge = type;
+    document.querySelectorAll('.btn-preset').forEach(b => b.classList.remove('active'));
+    const target = el || (window.event && window.event.target);
+    if (target) target.classList.add('active');
+
+    const info = BRIDGE_INFO[type];
+    document.getElementById('desc-title').textContent = info.title;
+    document.getElementById('desc-text').textContent = info.text;
+
+    buildBridge(type);
+};
+
+// ===================== RESIZE / LOOP =====================
+function onWindowResize() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+let clock = new THREE.Clock();
+
+function animate() {
+    requestAnimationFrame(animate);
+    const t = clock.getElapsedTime();
+
+    // Лёгкая анимация воды
+    if (waterMesh) {
+        const wp = waterMesh.geometry.attributes.position;
+        for (let i = 0; i < wp.count; i++) {
+            const ox = wp.getX(i);
+            const oy = wp.getY(i);
+            wp.setZ(i, Math.sin(ox * 0.1 + t) * 0.4 + Math.cos(oy * 0.12 + t * 0.8) * 0.3);
+        }
+        wp.needsUpdate = true;
+    }
+
+    // Плавная анимация прогиба к целевому
+    updatePhysics();
+
+    controls.update();
+    renderer.render(scene, camera);
+}
+
+init();
+</script>
+</body>
+</html>

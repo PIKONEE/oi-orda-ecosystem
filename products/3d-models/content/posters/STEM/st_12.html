@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Датчики в Робототехнике</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #1a1a2e;
+            overflow: hidden;
+            color: #fff;
+        }
+
+        #canvas-container {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* UI Overlay */
+        .ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 30px;
+        }
+
+        .header {
+            text-align: center;
+            text-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 5px;
+            background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        p.subtitle {
+            color: #a0a0a0;
+            font-size: 1.1rem;
+        }
+
+        /* Info Card */
+        .info-card {
+            position: absolute;
+            top: 50%;
+            right: 40px;
+            transform: translateY(-50%) translateX(120%); /* Hidden initially */
+            width: 350px;
+            background: rgba(22, 33, 62, 0.95);
+            border: 1px solid #30475e;
+            border-radius: 15px;
+            padding: 25px;
+            
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            pointer-events: auto;
+        }
+
+        .info-card.active {
+            transform: translateY(-50%) translateX(0);
+        }
+
+        .card-header {
+            border-bottom: 2px solid #4facfe;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+
+        .card-title {
+            font-size: 1.4rem;
+            color: #4facfe;
+            font-weight: bold;
+        }
+
+        .section-title {
+            color: #f0f0f0;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 15px;
+            margin-bottom: 5px;
+            opacity: 0.8;
+        }
+
+        .card-text {
+            font-size: 0.95rem;
+            line-height: 1.5;
+            color: #ddd;
+        }
+
+        .hint {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+        }
+
+        /* Tooltip */
+        #tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            transform: translate(-50%, -150%);
+            white-space: nowrap;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+<script>
+/* i18n */
+(function(){
+  var lang=new URLSearchParams(location.search).get('lang')||'ru';
+  var T={
+    ru:{title:'Датчики Роботов',subtitle:'Интерактивный обзор сенсорных систем',
+      hint:'Наведите курсор и кликните на датчик для подробностей',
+      card_title:'Название датчика',card_principle:'Описание...',card_apps:'Примеры...',
+      sec1:'⚙️ Принцип работы',sec2:'🚀 Где применяется',
+      sensors:{
+        Ultrasonic:{name:'Ультразвуковой дальномер',principle:'Работает как летучая мышь (эхолокация). Левый «глаз» посылает звуковой импульс (TRIG), который отражается от препятствия. Правый «глаз» ловит эхо (ECHO). Расстояние вычисляется по формуле: <br><code>S = (Время × Скорость звука) / 2</code>.',apps:'• Обход препятствий<br>• Парктроники<br>• Измерение уровня жидкости<br>• Сканирование помещений'},
+        Infrared:{name:'ИК-датчик препятствий',principle:'Использует пару: ИК-светодиод и фотоприемник. Светодиод постоянно излучает невидимый свет. Если впереди есть объект, свет отражается и попадает на фотоприемник. Компаратор на плате превращает это в цифровой сигнал (0 или 1).',apps:'• Умные краны и сушилки<br>• Роботы-сумоисты (поиск врага)<br>• Счетчики продукции на конвейере'},
+        Line:{name:'Датчик линии (TCRT5000)',principle:'Основан на отражающей способности цвета. Белый цвет хорошо отражает ИК-лучи, черный — поглощает их. Датчик светит вниз и «видит» разницу в возвращаемом свете.',apps:'• Роботы-линейщики (соревнования)<br>• Автоматические тележки на складах (AGV)<br>• Энкодеры (счетчики оборотов колеса)'},
+        Touch:{name:'Датчик касания (Кнопка)',principle:'Самый простой и надежный датчик. Внутри находится механический замыкатель. При физическом контакте цепь замыкается, и микроконтроллер получает сигнал логической единицы.',apps:'• Бамперы роботов-пылесосов<br>• Концевые выключатели 3D-принтеров<br>• Пульты управления<br>• Аварийная остановка'}
+      }},
+    kz:{title:'Роботтардың Датчиктері',subtitle:'Сенсорлық жүйелердің интерактивті шолуы',
+      hint:'Толығырақ білу үшін датчикке апарып, басыңыз',
+      card_title:'Датчик атауы',card_principle:'Сипаттама...',card_apps:'Мысалдар...',
+      sec1:'⚙️ Жұмыс принципі',sec2:'🚀 Қолданылатын жері',
+      sensors:{
+        Ultrasonic:{name:'Ультрадыбыстық дальномер',principle:'Жарқанаттай жұмыс жасайды (эхолокация). Сол «көз» дыбыс импульсін (TRIG) жібереді, ол кедергіден шағылысады. Оң «көз» жаңғырықты (ECHO) ұстайды. Қашықтық формуламен есептеледі: <br><code>S = (Уақыт × Дыбыс жылдамдығы) / 2</code>.',apps:'• Кедергіні айналып өту<br>• Парктроник<br>• Сұйықтық деңгейін өлшеу<br>• Бөлмені сканерлеу'},
+        Infrared:{name:'ИҚ-кедергі датчигі',principle:'Жұп қолданады: ИҚ-диод және фотоқабылдағыш. Диод үнемі көзге көрінбейтін жарық шығарады. Алдыда нысан болса, жарық шағылысып фотоқабылдағышқа түседі. Компаратор оны цифрлық сигналға (0 немесе 1) айналдырады.',apps:'• Автоматты кранлар мен кептіргіштер<br>• Сумо роботтары (жау іздеу)<br>• Конвейерде өнімді санау'},
+        Line:{name:'Сызық датчигі (TCRT5000)',principle:'Түстің шағылысу қасиетіне негізделген. Ақ түс ИҚ сәулелерін жақсы шағылыстырады, қара — жұтады. Датчик төмен қарап, қайтарылған жарықтың айырмашылығын «көреді».',apps:'• Сызық бойынша жүру роботтары (жарыс)<br>• Қоймадағы автоматты арбалар (AGV)<br>• Энкодерлер (дөңгелек айналымын санау)'},
+        Touch:{name:'Сенсорлық датчик (Батырма)',principle:'Ең қарапайым және сенімді датчик. Ішінде механикалық тұйықтаушы бар. Физикалық байланыста тізбек тұйықталып, микроконтроллер логикалық бірлік сигналын алады.',apps:'• Шаңсорғыш роботтардың бамперлері<br>• 3D принтер шектік ажыратқыштары<br>• Басқару пульттері<br>• Авариялық тоқтату'}
+      }},
+    en:{title:'Robot Sensors',subtitle:'Interactive overview of sensor systems',
+      hint:'Hover and click a sensor for details',
+      card_title:'Sensor name',card_principle:'Description...',card_apps:'Examples...',
+      sec1:'⚙️ Working principle',sec2:'🚀 Applications',
+      sensors:{
+        Ultrasonic:{name:'Ultrasonic rangefinder',principle:'Works like a bat (echolocation). The left "eye" sends a sound pulse (TRIG) that bounces off an obstacle. The right "eye" catches the echo (ECHO). Distance is calculated by: <br><code>S = (Time × Speed of sound) / 2</code>.',apps:'• Obstacle avoidance<br>• Parking sensors<br>• Liquid level measurement<br>• Room scanning'},
+        Infrared:{name:'IR obstacle sensor',principle:'Uses a pair: IR LED and photodetector. The LED continuously emits invisible light. If there\'s an object ahead, light reflects onto the photodetector. A comparator converts this to a digital signal (0 or 1).',apps:'• Smart faucets and dryers<br>• Sumo robots (enemy detection)<br>• Product counters on conveyors'},
+        Line:{name:'Line sensor (TCRT5000)',principle:'Based on color reflectivity. White reflects IR rays well, black absorbs them. The sensor shines downward and "sees" the difference in returned light, letting the robot distinguish a line from the background.',apps:'• Line-following robots (competitions)<br>• Automatic warehouse carts (AGV)<br>• Encoders (wheel revolution counters)'},
+        Touch:{name:'Touch sensor (Button)',principle:'The simplest and most reliable sensor. Contains a mechanical contact. On physical contact, the circuit closes and the microcontroller receives a logic high signal.',apps:'• Robot vacuum bumpers<br>• 3D printer limit switches<br>• Remote controls<br>• Emergency stop'}
+      }}
+  };
+  window._t=T[lang]||T.ru;
+  document.addEventListener('DOMContentLoaded',function(){
+    var t=window._t;
+    var h1=document.querySelector('.header h1');if(h1)h1.textContent=t.title;
+    var sub=document.querySelector('.subtitle');if(sub)sub.textContent=t.subtitle;
+    var hint=document.querySelector('.hint');if(hint)hint.textContent=t.hint;
+    var ct=document.getElementById('info-title');if(ct)ct.textContent=t.card_title;
+    var cp=document.getElementById('info-principle');if(cp)cp.textContent=t.card_principle;
+    var ca=document.getElementById('info-apps');if(ca)ca.textContent=t.card_apps;
+    var secs=document.querySelectorAll('.info-card .section-title');
+    if(secs[0])secs[0].textContent=t.sec1;
+    if(secs[1])secs[1].textContent=t.sec2;
+  });
+})();
+</script>
+
+<div id="canvas-container"></div>
+<div id="tooltip">Sensor Name</div>
+
+<div class="ui-layer">
+    <div class="header">
+        <h1>Датчики Роботов</h1>
+        <p class="subtitle">Интерактивный обзор сенсорных систем</p>
+    </div>
+
+    <div class="hint">Наведите курсор и кликните на датчик для подробностей</div>
+</div>
+
+<div class="info-card" id="info-card">
+    <div class="card-header">
+        <div class="card-title" id="info-title">Название датчика</div>
+    </div>
+    <div class="section-title">⚙️ Принцип работы</div>
+    <div class="card-text" id="info-principle">Описание...</div>
+
+    <div class="section-title">🚀 Где применяется</div>
+    <div class="card-text" id="info-apps">Примеры...</div>
+</div>
+
+<script type="importmap">
+    {
+        "imports": {
+            "three": "../../libs/vendor/three-0.160.0/three.module.js",
+            "three/addons/": "../../libs/vendor/three-0.160.0/addons/"
+        }
+    }
+</script>
+
+<script type="module">
+    import * as THREE from 'three';
+    import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+
+    // --- DATA ---
+    const SENSORS = (window._t && window._t.sensors) || {
+        "Ultrasonic": {
+            name: "Ультразвуковой дальномер",
+            principle: "Работает как летучая мышь (эхолокация). Левый 'глаз' посылает звуковой импульс (TRIG), который отражается от препятствия. Правый 'глаз' ловит эхо (ECHO). Расстояние вычисляется по формуле: <br><code>S = (Время × Скорость звука) / 2</code>.",
+            apps: "• Обход препятствий<br>• Парктроники<br>• Измерение уровня жидкости<br>• Сканирование помещений"
+        },
+        "Infrared": {
+            name: "ИК-датчик препятствий",
+            principle: "Использует пару: ИК-светодиод и фотоприемник. Светодиод постоянно излучает невидимый свет. Если впереди есть объект, свет отражается и попадает на фотоприемник. Компаратор на плате превращает это в цифровой сигнал (0 или 1).",
+            apps: "• Умные краны и сушилки<br>• Роботы-сумоисты (поиск врага)<br>• Счетчики продукции на конвейере"
+        },
+        "Line": {
+            name: "Датчик линии (TCRT5000)",
+            principle: "Основан на отражающей способности цвета. Белый цвет хорошо отражает ИК-лучи, черный — поглощает их. Датчик светит вниз и 'видит' разницу в возвращаемом свете, позволяя роботу отличать линию от фона.",
+            apps: "• Роботы-линейщики (соревнования)<br>• Автоматические тележки на складах (AGV)<br>• Энкодеры (счетчики оборотов колеса)"
+        },
+        "Touch": {
+            name: "Датчик касания (Кнопка)",
+            principle: "Самый простой и надежный датчик. Внутри находится механический замыкатель. При физическом контакте цепь замыкается, и микроконтроллер получает сигнал логической единицы.",
+            apps: "• Бамперы роботов-пылесосов<br>• Концевые выключатели 3D-принтеров<br>• Пульты управления<br>• Аварийная остановка"
+        }
+    };
+
+    // --- SETUP ---
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x1a1a2e);
+    scene.fog = new THREE.FogExp2(0x1a1a2e, 0.02);
+
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+    camera.position.set(0, 15, 20);
+
+    const renderer = new THREE.WebGLRenderer({antialias: true});
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = false;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+    // --- LIGHTS ---
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambientLight);
+
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+    dirLight.position.set(10, 20, 10);
+    dirLight.castShadow = true;
+    dirLight.shadow.mapSize.width = 2048;
+    dirLight.shadow.mapSize.height = 2048;
+    scene.add(dirLight);
+
+    const blueSpot = new THREE.SpotLight(0x00f2fe, 2);
+    blueSpot.position.set(-10, 10, -5);
+    blueSpot.lookAt(0, 0, 0);
+    scene.add(blueSpot);
+
+    const purpleSpot = new THREE.SpotLight(0x4facfe, 2);
+    purpleSpot.position.set(10, 10, -5);
+    purpleSpot.lookAt(0, 0, 0);
+    scene.add(purpleSpot);
+
+    // --- CONTROLS ---
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.minDistance = 10;
+    controls.maxDistance = 40;
+    controls.maxPolarAngle = Math.PI / 2 - 0.1;
+
+    // --- MATERIALS ---
+    const mats = {
+                pcbBlue: new THREE.MeshStandardMaterial({color: 0x0055aa, roughness: 0.6, metalness: 0.1}),
+                pcbGreen: new THREE.MeshStandardMaterial({color: 0x006633, roughness: 0.6, metalness: 0.1}),
+                pcbBlack: new THREE.MeshStandardMaterial({color: 0x111111, roughness: 0.5, metalness: 0.1}),
+             metal: new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.2, metalness: 0.9 }),
+        plasticBlack: new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.8 }),
+        ledRed: new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xaa0000, emissiveIntensity: 0.5 }),
+        ledClear: new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.6, roughness: 0.1, metalness: 0.1 }),
+        gold: new THREE.MeshStandardMaterial({ color: 0xffaa00, metalness: 1, roughness: 0.2 }),
+        grid: new THREE.MeshStandardMaterial({ color: 0x333344, roughness: 0.8 })
+    };
+
+    // --- OBJECTS ---
+    const interactiveObjects = [];
+
+    // Floor
+    const floorGeo = new THREE.BoxGeometry(40, 1, 20);
+    const floor = new THREE.Mesh(floorGeo, mats.grid);
+    floor.position.y = -0.5;
+    floor.receiveShadow = true;
+    scene.add(floor);
+
+    // Grid Helper
+    const gridHelper = new THREE.GridHelper(40, 40, 0x4facfe, 0x222233);
+    gridHelper.position.y = 0.01;
+    scene.add(gridHelper);
+
+    // --- SENSOR FACTORY ---
+
+    // 1. Ultrasonic Sensor (HC-SR04)
+    function createUltrasonic() {
+        const group = new THREE.Group();
+
+        // PCB
+        const pcb = new THREE.Mesh(new THREE.BoxGeometry(4.5, 2, 0.2), mats.pcbBlue);
+        pcb.castShadow = true;
+        group.add(pcb);
+
+        // Cylinders (T & R)
+        const cylGeo = new THREE.CylinderGeometry(0.7, 0.7, 1.2, 32);
+        cylGeo.rotateX(Math.PI/2);
+
+        const cylT = new THREE.Mesh(cylGeo, mats.metal);
+        cylT.position.set(-1.2, 0, 0.6);
+        cylT.castShadow = true;
+        group.add(cylT);
+
+        // Mesh screen inside cylinder
+        const meshGeo = new THREE.CircleGeometry(0.5, 16);
+        const meshMat = new THREE.MeshBasicMaterial({color: 0x111111, wireframe: true});
+        const meshT = new THREE.Mesh(meshGeo, meshMat);
+        meshT.position.set(-1.2, 0, 1.21);
+        group.add(meshT);
+
+        const cylR = new THREE.Mesh(cylGeo, mats.metal);
+        cylR.position.set(1.2, 0, 0.6);
+        cylR.castShadow = true;
+        group.add(cylR);
+        const meshR = new THREE.Mesh(meshGeo, meshMat);
+        meshR.position.set(1.2, 0, 1.21);
+        group.add(meshR);
+
+        // Crystal (Oval)
+        const crystal = new THREE.Mesh(new THREE.CapsuleGeometry(0.15, 0.6, 4, 8), mats.metal);
+        crystal.rotation.z = Math.PI/2;
+        crystal.position.set(0, 0, 0.2);
+        group.add(crystal);
+
+        // Pins
+        const pins = new THREE.Group();
+        for(let i=0; i<4; i++) {
+            const p = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.5, 0.1), mats.gold);
+            p.position.x = -0.45 + i*0.3;
+            p.position.y = -1.2;
+            pins.add(p);
+        }
+        group.add(pins);
+
+        // Visual Wave (Animation)
+        const waveGeo = new THREE.RingGeometry(0.7, 0.8, 32);
+        const waveMat = new THREE.MeshBasicMaterial({color: 0x4facfe, transparent: true, opacity: 0, side: THREE.DoubleSide});
+        const wave = new THREE.Mesh(waveGeo, waveMat);
+        wave.position.set(-1.2, 0, 1.3);
+        group.add(wave);
+        group.userData.wave = wave;
+
+        group.userData.id = "Ultrasonic";
+    return group;
+    }
+
+    // 2. IR Obstacle Sensor
+    function createIRSensor() {
+        const group = new THREE.Group();
+
+        // PCB
+        const pcb = new THREE.Mesh(new THREE.BoxGeometry(3.2, 1.4, 0.2), mats.pcbGreen);
+        pcb.castShadow = true;
+        group.add(pcb);
+
+        // IR LED (Clear)
+        const ledGeo = new THREE.CylinderGeometry(0.25, 0.25, 0.6, 16);
+        ledGeo.rotateX(Math.PI / 2);
+        const ledT = new THREE.Mesh(ledGeo, mats.ledClear);
+        ledT.position.set(-1.2, 0, 0.4);
+        group.add(ledT);
+
+        // Photodiode (Black)
+        const ledR = new THREE.Mesh(ledGeo, mats.plasticBlack);
+        ledR.position.set(-0.6, 0, 0.4);
+        group.add(ledR);
+
+        // Potentiometer (Blue box)
+        const pot = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 0.4), new THREE.MeshStandardMaterial({color: 0x0055aa}));
+        pot.position.set(0.5, 0.2, 0.2);
+        group.add(pot);
+        // Screw
+        const screw = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.1, 8), mats.metal);
+        screw.rotation.x = Math.PI / 2;
+        screw.position.set(0.5, 0.2, 0.45);
+        group.add(screw);
+
+        // Chip (Comparator)
+        const chip = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 0.1), mats.plasticBlack);
+        chip.position.set(0, -0.2, 0.15);
+        group.add(chip);
+
+        // Status LED
+        const statLed = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.1, 0.1), mats.ledRed);
+        statLed.position.set(1.2, 0, 0.15);
+        group.add(statLed);
+        group.userData.led = statLed;
+
+        group.userData.id = "Infrared";
+        return group;
+    }
+
+    // 3. Line Sensor (TCRT5000 Module)
+    function createLineSensor() {
+        const group = new THREE.Group();
+
+        // PCB
+        const pcb = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.2, 3.5), mats.pcbBlue);
+        pcb.castShadow = true;
+        group.add(pcb);
+
+        // Sensor Block (Black housing)
+        const block = new THREE.Mesh(new THREE.BoxGeometry(1, 0.5, 0.6), mats.plasticBlack);
+        block.position.set(0, -0.2, 1.2); // Facing down-ish
+        group.add(block);
+
+        // Eyes (facing down)
+        const eyeGeo = new THREE.SphereGeometry(0.15);
+        const eye1 = new THREE.Mesh(eyeGeo, mats.ledClear); // Emitter
+        eye1.position.set(-0.2, -0.45, 1.2);
+        group.add(eye1);
+        const eye2 = new THREE.Mesh(eyeGeo, new THREE.MeshBasicMaterial({color: 0x111111})); // Receiver
+        eye2.position.set(0.2, -0.45, 1.2);
+        group.add(eye2);
+
+        // Chip & Pot
+        const chip = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.1, 0.5), mats.plasticBlack);
+        chip.position.set(0, 0.15, -0.5);
+        group.add(chip);
+
+        const pot = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.1), new THREE.MeshStandardMaterial({color: 0x336699}));
+        pot.rotation.x = -Math.PI / 2;
+        pot.position.set(0, 0.2, -1.2);
+        group.add(pot);
+
+        group.userData.id = "Line";
+        return group;
+    }
+
+    // 4. Touch Sensor (Button Module)
+    function createTouchSensor() {
+        const group = new THREE.Group();
+
+        // PCB
+        const pcb = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.2, 1.5), mats.pcbBlack);
+        pcb.castShadow = true;
+        group.add(pcb);
+
+        // Button Housing
+        const housing = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.6, 1.2), new THREE.MeshStandardMaterial({color: 0x888888}));
+        housing.position.y = 0.4;
+        group.add(housing);
+
+        // Red Button Cap
+        const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.3, 16), new THREE.MeshStandardMaterial({color: 0xff3333}));
+        cap.position.y = 0.8;
+        group.add(cap);
+        group.userData.button = cap;
+
+        // Connector
+        const conn = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.4, 1.0), mats.plasticBlack);
+        conn.position.set(1.0, 0.3, 0);
+        group.add(conn);
+
+        group.userData.id = "Touch";
+        return group;
+    }
+
+    // --- INSTANTIATE ---
+
+    // 1. Ultrasonic (Back Center)
+    const us = createUltrasonic();
+    us.position.set(0, 1.5, -4);
+    scene.add(us);
+    interactiveObjects.push(us);
+
+    // 2. IR (Left)
+    const ir = createIRSensor();
+    ir.position.set(-6, 1.2, 0);
+    ir.rotation.y = Math.PI / 4;
+    scene.add(ir);
+    interactiveObjects.push(ir);
+
+    // 3. Line (Right)
+    const line = createLineSensor();
+    line.position.set(6, 1.0, 0);
+    line.rotation.y = -Math.PI / 4;
+    scene.add(line);
+    interactiveObjects.push(line);
+
+    // 4. Touch (Front)
+    const touch = createTouchSensor();
+    touch.position.set(0, 0.5, 5);
+    scene.add(touch);
+    interactiveObjects.push(touch);
+
+    // Add Labels (Simple Sprites or just use HTML overlay logic)
+    // We will use Raycasting for logic
+
+    // --- INTERACTION ---
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+    let hoveredObj = null;
+    let selectedObj = null;
+
+    const tooltip = document.getElementById('tooltip');
+    const infoCard = document.getElementById('info-card');
+
+    function onMouseMove(event) {
+        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObjects(interactiveObjects, true);
+
+        if (intersects.length > 0) {
+            // Find root group
+            let obj = intersects[0].object;
+            while (obj.parent && !obj.userData.id) {
+                obj = obj.parent;
+            }
+
+            if (obj !== hoveredObj) {
+                if (hoveredObj) hoveredObj.scale.setScalar(1); // Reset prev
+                hoveredObj = obj;
+
+                // Highlight effect
+                hoveredObj.scale.setScalar(1.1);
+
+                tooltip.textContent = SENSORS[hoveredObj.userData.id].name;
+                tooltip.style.opacity = 1;
+                document.body.style.cursor = 'pointer';
+            }
+
+            // Move tooltip
+            tooltip.style.left = event.clientX + 'px';
+            tooltip.style.top = event.clientY + 'px';
+
+        } else {
+            if (hoveredObj) {
+                hoveredObj.scale.setScalar(1);
+                hoveredObj = null;
+                tooltip.style.opacity = 0;
+                document.body.style.cursor = 'default';
+            }
+        }
+    }
+
+    function onClick(event) {
+        if (hoveredObj) {
+            const data = SENSORS[hoveredObj.userData.id];
+
+            // Fill Info Card
+            document.getElementById('info-title').textContent = data.name;
+            document.getElementById('info-principle').innerHTML = data.principle;
+            document.getElementById('info-apps').innerHTML = data.apps;
+
+            infoCard.classList.add('active');
+
+            // Trigger Animation based on type
+            triggerAnimation(hoveredObj);
+        } else {
+            infoCard.classList.remove('active');
+        }
+    }
+
+    function triggerAnimation(obj) {
+        const id = obj.userData.id;
+
+        if (id === "Ultrasonic") {
+            const wave = obj.userData.wave;
+            let s = 1;
+            const anim = setInterval(() => {
+                s += 0.1;
+                wave.scale.setScalar(s);
+                wave.material.opacity = 1 - (s - 1) / 3;
+                if (s > 4) {
+                    clearInterval(anim);
+                    wave.material.opacity = 0;
+                }
+            }, 30);
+        } else if (id === "Infrared") {
+            const led = obj.userData.led;
+            let blink = 0;
+            const anim = setInterval(() => {
+                led.material.emissiveIntensity = blink % 2 === 0 ? 2 : 0.5;
+                blink++;
+                if (blink > 6) clearInterval(anim);
+            }, 100);
+        } else if (id === "Touch") {
+            const btn = obj.userData.button;
+            btn.position.y = 0.5; // Press down
+            setTimeout(() => btn.position.y = 0.8, 200); // Release
+        } else if (id === "Line") {
+            // Blink emitter
+            // Complex to animate material of child without ref, skipping simple flash
+        }
+    }
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mousedown', onClick);
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // --- LOOP ---
+    function animate() {
+        requestAnimationFrame(animate);
+
+        // Gentle float for sensors
+        const time = Date.now() * 0.001;
+        interactiveObjects.forEach((obj, i) => {
+            if (obj !== hoveredObj) {
+                obj.position.y += Math.sin(time + i) * 0.002;
+            }
+        });
+
+        controls.update();
+        renderer.render(scene, camera);
+    }
+
+    animate();
+
+</script>
+</body>
+</html>

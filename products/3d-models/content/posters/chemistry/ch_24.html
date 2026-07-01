@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Полимеризация этилена — CH₂=CH₂</title>
+<style>
+
+
+*{margin:0;padding:0;box-sizing:border-box;}
+
+:root{
+  --bg:#f5f4f0;
+  --surface:rgba(255,255,255,0.90);
+  --border:rgba(0,0,0,0.08);
+  --text:#1c1917;
+  --muted:#78716c;
+  --c-gray:#374151;
+  --h-blue:#bfdbfe;
+  --pi-indigo:#818cf8;
+  --indigo:#4f46e5;
+  --indigo-light:#e0e7ff;
+  --shadow:0 2px 20px rgba(0,0,0,0.07);
+  --shadow-lg:0 8px 44px rgba(0,0,0,0.11);
+}
+
+body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);overflow:hidden;height:100vh;}
+
+body::before{
+  content:'';position:fixed;inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='%23f5f4f0'/%3E%3Ccircle cx='1' cy='1' r='0.6' fill='rgba(0,0,0,0.025)'/%3E%3C/svg%3E");
+  pointer-events:none;z-index:0;
+}
+
+#canvas-container{position:fixed;inset:0;z-index:1;}
+
+/* ── HEADER ── */
+.header{
+  position:fixed;top:0;left:0;right:0;z-index:200;
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  padding:0 48px;height:92px;
+  display:flex;align-items:center;gap:14px;
+  box-shadow:var(--shadow);
+}
+.h-formula{font-family:'DM Mono',monospace;font-size:32px;font-weight:500;letter-spacing:-0.5px;}
+.h-c{color:var(--c-gray);}
+.h-h{color:#3b82f6;}
+.h-eq{color:var(--pi-indigo);font-weight:700;}
+.header-title{font-size:26px;font-weight:700;margin-left:10px;}
+.header-sub{font-size:15px;color:var(--muted);margin-left:auto;text-align:right;line-height:1.4;}
+
+/* ── LEFT PANEL (props) ── */
+.panel-left{
+  position:fixed;left:24px;top:108px;z-index:100;
+  width:320px;
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:24px;
+  padding:20px 22px;
+  box-shadow:var(--shadow-lg);
+}
+.panel-left h3{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:12px;}
+
+.compare-table{width:100%;border-collapse:collapse;font-size:13.5px;}
+.compare-table th{font-family:'DM Mono',monospace;font-size:12.5px;font-weight:500;padding:5px 6px;text-align:center;border-bottom:2px solid var(--border);}
+.compare-table th:nth-child(2){color:var(--pi-indigo);}
+.compare-table th:nth-child(3){color:#0891b2;}
+.compare-table td{padding:5px 6px;border-bottom:1px solid rgba(0,0,0,0.04);line-height:1.3;}
+.compare-table td:nth-child(1){color:var(--muted);font-size:12px;}
+.compare-table td:nth-child(2){text-align:center;color:var(--pi-indigo);font-family:'DM Mono',monospace;font-size:12.5px;}
+.compare-table td:nth-child(3){text-align:center;color:#0891b2;font-family:'DM Mono',monospace;font-size:12.5px;}
+
+/* ── COUNTER PANEL ── */
+.panel-counter{
+  position:fixed;left:24px;z-index:100;
+  width:320px;
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:24px;
+  padding:18px 22px;
+  box-shadow:var(--shadow-lg);
+  text-align:center;
+}
+.counter-n{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:60px;height:60px;border-radius:50%;
+  background:var(--indigo);color:#fff;
+  font-family:'DM Mono',monospace;font-size:28px;font-weight:700;
+  box-shadow:0 4px 16px rgba(79,70,229,0.35);
+  margin-bottom:6px;
+}
+.counter-label{font-size:13px;color:var(--muted);margin-bottom:4px;}
+.counter-formula{font-family:'DM Mono',monospace;font-size:16px;font-weight:500;color:var(--text);margin-bottom:4px;}
+.counter-mass{font-size:13px;color:var(--muted);}
+.counter-mass span{font-family:'DM Mono',monospace;font-weight:600;color:var(--text);}
+
+/* ── RIGHT PANEL (controls) ── */
+.panel-right{
+  position:fixed;right:24px;top:108px;z-index:100;
+  width:295px;
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:24px;
+  padding:20px 20px;
+  box-shadow:var(--shadow-lg);
+  display:flex;flex-direction:column;gap:9px;
+}
+.panel-right h3{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:3px;}
+
+.btn{
+  width:100%;padding:11px 14px;border-radius:14px;
+  font-family:'Syne',sans-serif;font-size:15px;font-weight:600;
+  border:none;cursor:pointer;transition:all .18s;text-align:center;
+}
+.btn-primary{
+  background:linear-gradient(135deg,#4f46e5,#818cf8);
+  color:#fff;box-shadow:0 4px 14px rgba(79,70,229,0.35);
+}
+.btn-primary:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 20px rgba(79,70,229,0.45);}
+.btn-primary:disabled{opacity:0.45;cursor:not-allowed;transform:none;}
+.btn-secondary{background:rgba(79,70,229,0.09);color:var(--indigo);}
+.btn-secondary:hover{background:rgba(79,70,229,0.16);}
+.btn-secondary.active{background:var(--indigo);color:#fff;}
+.btn-ghost{background:rgba(0,0,0,0.05);color:var(--text);}
+.btn-ghost:hover{background:rgba(0,0,0,0.09);}
+.btn-ghost.active{background:rgba(79,70,229,0.12);color:var(--indigo);}
+
+.sep{height:1px;background:var(--border);margin:2px 0;}
+.note-small{font-size:12px;color:var(--muted);text-align:center;}
+
+/* ── STAGE LABEL ── */
+.stage-label{
+  position:fixed;bottom:100px;left:50%;transform:translateX(-50%);
+  z-index:150;
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:30px;
+  padding:9px 24px;font-size:15px;font-weight:600;
+  box-shadow:var(--shadow);
+  transition:opacity .3s;pointer-events:none;
+}
+
+/* ── BOTTOM HINT ── */
+.hint-bar{
+  position:fixed;bottom:28px;left:50%;transform:translateX(-50%);
+  z-index:150;
+  display:flex;gap:18px;
+}
+.hint-pill{
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:20px;
+  padding:7px 18px;font-size:13px;color:var(--muted);
+  box-shadow:var(--shadow);
+  white-space:nowrap;
+}
+.hint-pill span{color:var(--text);font-weight:600;}
+
+/* ── INFO PANEL ── */
+.info-panel{
+  position:fixed;right:24px;top:110px;z-index:300;
+  width:420px;max-height:calc(100vh - 140px);
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:26px;
+  padding:24px 26px;
+  box-shadow:var(--shadow-lg);
+  overflow-y:auto;
+  transform:translateX(460px);
+  transition:transform .38s cubic-bezier(.22,1,.36,1);
+}
+.info-panel.open{transform:translateX(0);}
+.info-close{
+  position:absolute;top:16px;right:18px;z-index:10000;
+  width:30px;height:30px;border-radius:50%;
+  background:rgba(0,0,0,0.07);border:none;cursor:pointer;
+  font-size:16px;color:var(--muted);
+  display:flex;align-items:center;justify-content:center;
+}
+.info-close:hover{background:rgba(0,0,0,0.13);}
+.info-tag{
+  display:inline-block;
+  background:var(--indigo-light);color:var(--indigo);
+  border-radius:10px;padding:3px 10px;font-size:12px;font-weight:600;
+  margin-bottom:14px;
+}
+.info-panel h2{font-size:19px;font-weight:700;margin-bottom:6px;}
+.info-section{margin-top:14px;}
+.info-section h4{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--pi-indigo);margin-bottom:6px;}
+.info-section p{font-size:14px;line-height:1.65;color:#374151;}
+
+/* ── LOADING ── */
+#loading{
+  position:fixed;inset:0;z-index:500;
+  background:var(--bg);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;
+}
+.spinner{
+  width:48px;height:48px;border-radius:50%;
+  border:4px solid rgba(79,70,229,0.15);
+  border-top-color:var(--indigo);
+  animation:spin .9s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+#loading p{font-size:15px;color:var(--muted);}
+
+/* scrollbar */
+.info-panel::-webkit-scrollbar{width:4px;}
+.info-panel::-webkit-scrollbar-track{background:transparent;}
+.info-panel::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.12);border-radius:4px;}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loading">
+  <div class="spinner"></div>
+  <p>Строим полимерную цепь…</p>
+</div>
+
+<!-- CANVAS -->
+<div id="canvas-container"></div>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="h-formula">
+    <span class="h-c">C</span><span class="h-h">H</span><span style="font-size:22px;vertical-align:super;color:#3b82f6;">2</span><span class="h-eq">=</span><span class="h-c">C</span><span class="h-h">H</span><span style="font-size:22px;vertical-align:super;color:#3b82f6;">2</span>
+  </div>
+  <div class="header-title">Полимеризация этилена</div>
+  <div class="header-sub">Радикальная цепная реакция · кликните на молекулу</div>
+</header>
+
+<!-- LEFT: PROPS -->
+<div class="panel-left" id="propsPanel">
+  <h3>Этилен → Полиэтилен</h3>
+  <table class="compare-table">
+    <thead>
+      <tr>
+        <th></th>
+        <th>Этилен</th>
+        <th>Полиэтилен</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>Гибридизация</td><td>sp²</td><td>sp³</td></tr>
+      <tr><td>Угол C–C–C</td><td>120°</td><td>109.5°</td></tr>
+      <tr><td>Связь C–C</td><td>=двойная</td><td>−одинарная</td></tr>
+      <tr><td>π-связь</td><td>✓ есть</td><td>✗ нет</td></tr>
+      <tr><td>Геометрия</td><td>плоская</td><td>объёмная</td></tr>
+      <tr><td>T кипения</td><td>−104 °C</td><td>120–180 °C</td></tr>
+      <tr><td>Раствор.</td><td>раств.</td><td>нераств.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- LEFT: COUNTER (positioned dynamically) -->
+<div class="panel-counter" id="counterPanel">
+  <div class="counter-label">Степень полимеризации</div>
+  <div class="counter-n" id="counterN">1</div>
+  <div class="counter-formula" id="counterFormula">[−CH₂−CH₂−]ₙ</div>
+  <div class="counter-mass">Масса: ~<span id="counterMass">28</span> г/моль</div>
+</div>
+
+<!-- RIGHT: CONTROLS -->
+<div class="panel-right" id="ctrlPanel">
+  <h3>Управление</h3>
+  <button class="btn btn-primary" id="btnAdd">➕ Добавить мономер</button>
+  <button class="btn btn-secondary" id="btnAuto">▶ Авто-полимеризация</button>
+  <button class="btn btn-ghost" id="btnReset">↺ Сбросить</button>
+  <div class="sep"></div>
+  <button class="btn btn-ghost active" id="btnSpin">⏸ Вращение</button>
+  <button class="btn btn-ghost active" id="btnPi">🔮 π-связь видна</button>
+  <div class="note-small">Макс. мономеров: 8</div>
+</div>
+
+<!-- STAGE LABEL -->
+<div class="stage-label" id="stageLabel">Мономер (n=1)</div>
+
+<!-- HINT BAR -->
+<div class="hint-bar">
+  <div class="hint-pill"><span>Клик</span> — подробнее</div>
+  <div class="hint-pill"><span>Перетащить</span> — вращение</div>
+  <div class="hint-pill"><span>Колесо</span> — масштаб</div>
+</div>
+
+<!-- INFO PANEL -->
+<div class="info-panel" id="infoPanel">
+  <button class="info-close" id="infoClose">✕</button>
+  <div class="info-tag" id="infoTag">sp² · плоский · π-связь</div>
+  <h2 id="infoTitle">Этилен CH₂=CH₂ — мономер</h2>
+  <div id="infoBody"></div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "../../libs/vendor/three-0.160.0/three.module.js",
+    "three/addons/": "../../libs/vendor/three-0.160.0/addons/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+// ── SCENE SETUP ──────────────────────────────────────────────────────────────
+const container = document.getElementById('canvas-container');
+const W = () => window.innerWidth, H = () => window.innerHeight;
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(W(), H());
+renderer.shadowMap.enabled = false;
+container.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, W() / H(), 0.1, 200);
+camera.position.set(0, 3, 24);
+camera.lookAt(0, 0, 0);
+
+// ── LIGHTING ─────────────────────────────────────────────────────────────────
+scene.add(new THREE.AmbientLight(0xffffff, 1.2));
+const dirLight = new THREE.DirectionalLight(0xfff8f0, 1.6);
+dirLight.position.set(8, 12, 8);
+scene.add(dirLight);
+const ptLight = new THREE.PointLight(0xddd6fe, 0.6, 30);
+ptLight.position.set(0, 8, 0);
+scene.add(ptLight);
+
+// ── MASTER GROUP (rotates) ────────────────────────────────────────────────────
+const masterGroup = new THREE.Group();
+scene.add(masterGroup);
+
+// ── MATERIALS ─────────────────────────────────────────────────────────────────
+const matC    = new THREE.MeshStandardMaterial({ color: 0x374151, roughness: 0.3, metalness: 0.1 });
+const matH    = new THREE.MeshStandardMaterial({ color: 0xbfdbfe, roughness: 0.4, metalness: 0.0 });
+const matBond = new THREE.MeshStandardMaterial({ color: 0x9ca3af, roughness: 0.5 });
+const matCH   = new THREE.MeshStandardMaterial({ color: 0xcbd5e1, roughness: 0.5 });
+const matChainBond = new THREE.MeshStandardMaterial({ color: 0x6b7280, roughness: 0.5 });
+const matPi   = new THREE.MeshStandardMaterial({ color: 0x818cf8, transparent: true, opacity: 0.7, roughness: 0.2, metalness: 0.1, side: THREE.DoubleSide });
+
+// ── GEOMETRY HELPERS ─────────────────────────────────────────────────────────
+function makeCylinder(p1, p2, radius, mat) {
+  const dir = new THREE.Vector3().subVectors(p2, p1);
+  const len = dir.length();
+  const geom = new THREE.CylinderGeometry(radius, radius, len, 8, 1);
+  const mesh = new THREE.Mesh(geom, mat);
+  const mid = new THREE.Vector3().addVectors(p1, p2).multiplyScalar(0.5);
+  mesh.position.copy(mid);
+  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize());
+  return mesh;
+}
+
+// ── BUILD MONOMER ─────────────────────────────────────────────────────────────
+function buildMonomer() {
+  const g = new THREE.Group();
+  g.userData.isMonomer = true;
+
+  const C1pos = new THREE.Vector3(-1.0, 0, 0);
+  const C2pos = new THREE.Vector3( 1.0, 0, 0);
+  const Hpos  = [
+    new THREE.Vector3(-1.75,  1.15, 0),
+    new THREE.Vector3(-1.75, -1.15, 0),
+    new THREE.Vector3( 1.75,  1.15, 0),
+    new THREE.Vector3( 1.75, -1.15, 0),
+  ];
+
+  // C atoms
+  [C1pos, C2pos].forEach(p => {
+    const m = new THREE.Mesh(new THREE.SphereGeometry(0.36, 20, 16), matC.clone());
+    m.position.copy(p); m.userData.type = 'monomer'; g.add(m);
+  });
+
+  // H atoms
+  Hpos.forEach(p => {
+    const m = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 12), matH.clone());
+    m.position.copy(p); m.userData.type = 'monomer'; g.add(m);
+  });
+
+  // σ C=C bond
+  const sigma = makeCylinder(C1pos, C2pos, 0.10, matBond.clone());
+  sigma.userData.type = 'monomer'; g.add(sigma);
+
+  // π C=C bond (torus in xz plane = flat cloud above/below)
+  const piMat = matPi.clone();
+  const torus = new THREE.Mesh(
+    new THREE.TorusGeometry(1.0, 0.12, 12, 48),
+    piMat
+  );
+  torus.rotation.x = Math.PI / 2; // lie in xz plane
+  torus.userData.type = 'monomer';
+  torus.userData.isPi = true;
+  g.add(torus);
+  g.userData.piMesh = torus;
+  g.userData.piMat  = piMat;
+
+  // C-H bonds
+  [
+    [C1pos, Hpos[0]], [C1pos, Hpos[1]],
+    [C2pos, Hpos[2]], [C2pos, Hpos[3]]
+  ].forEach(([a, b]) => {
+    const c = makeCylinder(a, b, 0.07, matCH.clone());
+    c.userData.type = 'monomer'; g.add(c);
+  });
+
+  return g;
+}
+
+// ── BUILD CHAIN ───────────────────────────────────────────────────────────────
+const BOND   = 2.0;
+const ANGLE  = 35.25 * Math.PI / 180;
+const STEP_X = BOND * Math.cos(ANGLE); // ~1.634
+const STEP_Y = BOND * Math.sin(ANGLE); // ~1.155
+
+function buildChain(n) {
+  const g = new THREE.Group();
+  const total = 2 * n;
+  const cPos = [];
+
+  for (let j = 0; j < total; j++) {
+    const x = j * STEP_X - (total - 1) * STEP_X / 2;
+    const y = (j % 2 === 0) ? 0 : STEP_Y;
+    cPos.push(new THREE.Vector3(x, y - STEP_Y / 2, 0)); // center vertically
+  }
+
+  for (let j = 0; j < total; j++) {
+    const p = cPos[j];
+    // Carbon
+    const cm = new THREE.Mesh(new THREE.SphereGeometry(0.36, 20, 16), matC.clone());
+    cm.position.copy(p); cm.userData.type = 'chain'; g.add(cm);
+
+    // C-C bond to next
+    if (j < total - 1) {
+      const b = makeCylinder(p, cPos[j + 1], 0.09, matChainBond.clone());
+      b.userData.type = 'chain'; g.add(b);
+    }
+
+    // 2 H atoms (axial)
+    [1, -1].forEach(side => {
+      const hm = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 12), matH.clone());
+      hm.position.set(p.x, p.y, p.z + side * 1.0);
+      hm.userData.type = 'chain'; g.add(hm);
+      // H-C bond
+      const hb = makeCylinder(p, hm.position, 0.07, matCH.clone());
+      hb.userData.type = 'chain'; g.add(hb);
+    });
+
+    // terminal extra H
+    if (j === 0) {
+      const hm = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 12), matH.clone());
+      const hp = new THREE.Vector3(p.x - 1.2, p.y, 0);
+      hm.position.copy(hp); hm.userData.type = 'chain'; g.add(hm);
+      const hb = makeCylinder(p, hp, 0.07, matCH.clone());
+      hb.userData.type = 'chain'; g.add(hb);
+    }
+    if (j === total - 1) {
+      const hm = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 12), matH.clone());
+      const hp = new THREE.Vector3(p.x + 1.2, p.y, 0);
+      hm.position.copy(hp); hm.userData.type = 'chain'; g.add(hm);
+      const hb = makeCylinder(p, hp, 0.07, matCH.clone());
+      hb.userData.type = 'chain'; g.add(hb);
+    }
+  }
+
+  return g;
+}
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let nUnits     = 1;
+let isAnimating= false;
+let animT      = 0;
+let autoPlay   = false;
+let autoTimer  = 0;
+let spinning   = true;
+let piVisible  = true;
+const MAX_UNITS = 8;
+
+// Pool monomers (4 of them, always present except the active one)
+const POOL_POSITIONS = [
+  new THREE.Vector3(8,  0,   0),
+  new THREE.Vector3(8,  2.5, 0),
+  new THREE.Vector3(8, -2.5, 0),
+  new THREE.Vector3(8,  0,   2.5),
+];
+const poolMonomers = [];
+const poolBaseY    = [];
+
+// Active monomer (the one flying toward chain)
+let activeMonomer = null;
+let activeStartPos = new THREE.Vector3();
+let activeEndPos   = new THREE.Vector3();
+
+// Chain group
+let chainGroup = null;
+
+function getChainEndX() {
+  // rightmost C x: (2n-1) * STEP_X - (2n-1)*STEP_X/2 = (2n-1)*STEP_X/2
+  return (2 * nUnits - 1) * STEP_X / 2;
+}
+
+function initScene() {
+  // Clear master group
+  while (masterGroup.children.length) masterGroup.remove(masterGroup.children[0]);
+  poolMonomers.length = 0;
+  poolBaseY.length    = 0;
+  activeMonomer = null;
+
+  // Build chain
+  chainGroup = buildChain(nUnits);
+  masterGroup.add(chainGroup);
+
+  // Build pool monomers
+  for (let i = 0; i < 4; i++) {
+    const m = buildMonomer();
+    m.position.copy(POOL_POSITIONS[i]);
+    poolBaseY.push(POOL_POSITIONS[i].y);
+    masterGroup.add(m);
+    poolMonomers.push(m);
+  }
+
+  updatePiVisibility();
+}
+
+function addMonomer() {
+  if (nUnits >= MAX_UNITS || isAnimating) return;
+  if (poolMonomers.length === 0) return;
+
+  isAnimating = true;
+  animT = 0;
+
+  // Pick first pool monomer as active
+  activeMonomer = poolMonomers.shift();
+  poolBaseY.shift();
+
+  activeStartPos.copy(activeMonomer.position);
+  // End position: right end of chain + 2*STEP_X in x, at chain level
+  const endX = getChainEndX() + 2 * STEP_X;
+  activeEndPos.set(endX, -STEP_Y / 2, 0); // match chain y center offset
+}
+
+function smoothstep(t) {
+  t = Math.max(0, Math.min(1, t));
+  return t * t * (3 - 2 * t);
+}
+
+function finishAdd() {
+  nUnits++;
+  // Remove old chain
+  masterGroup.remove(chainGroup);
+  // Remove active monomer
+  if (activeMonomer) masterGroup.remove(activeMonomer);
+  activeMonomer = null;
+
+  // Build new chain
+  chainGroup = buildChain(nUnits);
+  masterGroup.add(chainGroup);
+
+  // Add a replacement pool monomer if below 4 and nUnits < MAX_UNITS
+  if (poolMonomers.length < 4 && nUnits < MAX_UNITS) {
+    const i = poolMonomers.length;
+    const basePos = POOL_POSITIONS[Math.min(i, 3)];
+    const m = buildMonomer();
+    m.position.copy(basePos);
+    poolBaseY.push(basePos.y);
+    masterGroup.add(m);
+    poolMonomers.push(m);
+    if (!piVisible) m.userData.piMat.opacity = 0;
+  }
+
+  isAnimating = false;
+  updateUI();
+  updatePiVisibility();
+}
+
+function updatePiVisibility() {
+  poolMonomers.forEach(m => {
+    if (m.userData.piMat) {
+      m.userData.piMat.opacity = piVisible ? 0.7 : 0;
+    }
+  });
+}
+
+// ── UI UPDATES ────────────────────────────────────────────────────────────────
+const btnAdd   = document.getElementById('btnAdd');
+const btnAuto  = document.getElementById('btnAuto');
+const btnReset = document.getElementById('btnReset');
+const btnSpin  = document.getElementById('btnSpin');
+const btnPi    = document.getElementById('btnPi');
+const stageLabel = document.getElementById('stageLabel');
+const counterN    = document.getElementById('counterN');
+const counterMass = document.getElementById('counterMass');
+
+function updateUI() {
+  counterN.textContent    = nUnits;
+  counterMass.textContent = 28 * nUnits;
+  btnAdd.disabled = (nUnits >= MAX_UNITS || isAnimating);
+
+  const labels = {
+    1: 'Мономер (n=1)',
+    2: 'Олигомер', 3: 'Олигомер',
+    4: 'Короткая цепь', 5: 'Короткая цепь', 6: 'Короткая цепь',
+    7: 'Полимер (n≥7)', 8: 'Полимер (n≥7)',
+  };
+  stageLabel.textContent = labels[nUnits] || `n=${nUnits}`;
+
+  if (nUnits >= MAX_UNITS && autoPlay) {
+    autoPlay = false;
+    btnAuto.textContent = '▶ Авто-полимеризация';
+    btnAuto.classList.remove('active');
+  }
+}
+
+// Position counter panel below props panel
+function positionCounterPanel() {
+  const propsPanel = document.getElementById('propsPanel');
+  const rect = propsPanel.getBoundingClientRect();
+  const counter = document.getElementById('counterPanel');
+  counter.style.left = '24px';
+  counter.style.top  = (rect.bottom + 14) + 'px';
+}
+
+// Also position right panel
+function positionRightPanel() {
+  const rp = document.getElementById('ctrlPanel');
+  rp.style.top = '108px';
+}
+
+// Position info panel below right panel
+function positionInfoPanel() {
+  const ctrl = document.getElementById('ctrlPanel');
+  const rect = ctrl.getBoundingClientRect();
+  const ip = document.getElementById('infoPanel');
+  ip.style.top = (rect.bottom + 14) + 'px';
+}
+
+// ── INFO PANEL ────────────────────────────────────────────────────────────────
+const infoPanel = document.getElementById('infoPanel');
+const infoTitle = document.getElementById('infoTitle');
+const infoTag   = document.getElementById('infoTag');
+const infoBody  = document.getElementById('infoBody');
+const infoClose = document.getElementById('infoClose');
+
+const INFO_DATA = {
+  monomer: {
+    title: 'Этилен CH₂=CH₂ — мономер',
+    tag:   'sp² · плоский · π-связь',
+    sections: [
+      { h: 'Двойная связь C=C', p: 'Состоит из σ-связи (осевое перекрывание sp²-орбиталей) и π-связи (боковое перекрывание p-орбиталей). Длина C=C = 1.34 Å (короче одинарной 1.54 Å). Именно π-связь разрывается при полимеризации — она слабее σ-связи.' },
+      { h: 'sp²-гибридизация', p: 'Три гибридные орбитали лежат в одной плоскости под 120°. Четвёртая негибридизованная p-орбиталь перпендикулярна плоскости → образует π-облако. Молекула строго плоская.' },
+      { h: 'Реакционная способность', p: 'π-связь (~260 кДж/моль) значительно слабее σ-связи (~350 кДж/моль). При инициировании свободным радикалом R· → R–CH₂–CH₂· — цепь начинает расти.' },
+    ]
+  },
+  chain: {
+    title: 'Полиэтилен [–CH₂–CH₂–]ₙ',
+    tag:   'sp³ · зигзаг · σ-связи',
+    sections: [
+      { h: 'Изменение гибридизации', p: 'При полимеризации каждый C переходит sp² → sp³. Четыре эквивалентные σ-связи → тетраэдрическая геометрия, угол 109.5°. Молекула теряет плоскостность, приобретая 3D-зигзаг.' },
+      { h: 'Структура и свойства', p: 'Длина C–C в цепи = 1.54 Å. Зигзагообразная цепь может принимать различные конформации (заторможенная — самая стабильная). Высокая молярная масса (10⁴–10⁶ г/моль) → прочность, химическая инертность.' },
+      { h: 'Применение', p: 'ПЭНД (высокой плотности): трубы, канистры, упаковка. ПЭВД (низкой плотности): плёнки, пакеты. Производство: ~100 млн т/год — самый распространённый пластик. Проблема: не разлагается ~500 лет.' },
+    ]
+  },
+  mechanism: {
+    title: 'Радикальная полимеризация',
+    tag:   'Цепная реакция · 3 стадии',
+    sections: [
+      { h: '① Инициирование', p: 'Инициатор (перекись, AIBN) распадается под действием тепла/UV → 2 свободных радикала R·. Радикал атакует π-связь этилена: R· + CH₂=CH₂ → R–CH₂–CH₂·. Активированная частица содержит неспаренный электрон.' },
+      { h: '② Рост цепи', p: 'R–(CH₂–CH₂)ₙ· + CH₂=CH₂ → R–(CH₂–CH₂)ₙ₊₁·. Каждый акт роста добавляет один мономер (~10⁴–10⁶ раз в секунду!). Средняя степень полимеризации определяется соотношением скоростей роста и обрыва.' },
+      { h: '③ Обрыв цепи', p: 'Два радикала встречаются: рекомбинация (Р· + ·Р → Р–Р) или диспропорционирование (Р–CH₂–CH₂· + ·CH=CH–Р → Р–CH₂–CH₃ + Р–CH=CH₂). Цепь прекращает расти.' },
+    ]
+  }
+};
+
+function openInfo(type) {
+  const d = INFO_DATA[type];
+  if (!d) return;
+  infoTitle.textContent = d.title;
+  infoTag.textContent   = d.tag;
+  infoBody.innerHTML = d.sections.map(s =>
+    `<div class="info-section"><h4>${s.h}</h4><p>${s.p}</p></div>`
+  ).join('');
+  infoPanel.classList.add('open');
+  positionInfoPanel();
+}
+
+infoClose.addEventListener('click', () => infoPanel.classList.remove('open'));
+
+// ── BUTTON EVENTS ─────────────────────────────────────────────────────────────
+btnAdd.addEventListener('click', addMonomer);
+
+btnAuto.addEventListener('click', () => {
+  autoPlay = !autoPlay;
+  btnAuto.textContent = autoPlay ? '⏸ Пауза' : '▶ Авто-полимеризация';
+  btnAuto.classList.toggle('active', autoPlay);
+});
+
+btnReset.addEventListener('click', () => {
+  nUnits = 1;
+  isAnimating = false;
+  animT = 0;
+  autoPlay = false;
+  autoTimer = 0;
+  btnAuto.textContent = '▶ Авто-полимеризация';
+  btnAuto.classList.remove('active');
+  initScene();
+  updateUI();
+});
+
+btnSpin.addEventListener('click', () => {
+  spinning = !spinning;
+  btnSpin.textContent = spinning ? '⏸ Вращение' : '▶ Вращение';
+  btnSpin.classList.toggle('active', spinning);
+});
+
+btnPi.addEventListener('click', () => {
+  piVisible = !piVisible;
+  btnPi.textContent = piVisible ? '🔮 π-связь видна' : '🔮 π-связь скрыта';
+  btnPi.classList.toggle('active', piVisible);
+  updatePiVisibility();
+  if (activeMonomer && activeMonomer.userData.piMat) {
+    activeMonomer.userData.piMat.opacity = piVisible ? 0.7 : 0;
+  }
+});
+
+// ── RAYCASTER / CLICK ─────────────────────────────────────────────────────────
+const raycaster = new THREE.Raycaster();
+const mouse     = new THREE.Vector2();
+let isDragging  = false;
+let mouseDownPos = { x: 0, y: 0 };
+let dragStart    = { x: 0, y: 0 };
+let dragRotStart = { x: 0, y: 0 };
+
+renderer.domElement.addEventListener('mousedown', e => {
+  isDragging   = false;
+  mouseDownPos = { x: e.clientX, y: e.clientY };
+  dragStart    = { x: e.clientX, y: e.clientY };
+  dragRotStart = { x: masterGroup.rotation.y, y: masterGroup.rotation.x };
+});
+
+renderer.domElement.addEventListener('mousemove', e => {
+  if (e.buttons !== 1) return;
+  const dx = e.clientX - mouseDownPos.x;
+  const dy = e.clientY - mouseDownPos.y;
+  if (Math.abs(dx) > 4 || Math.abs(dy) > 4) isDragging = true;
+  if (isDragging) {
+    masterGroup.rotation.y = dragRotStart.x + (e.clientX - dragStart.x) * 0.007;
+    masterGroup.rotation.x = dragRotStart.y + (e.clientY - dragStart.y) * 0.007;
+  }
+});
+
+renderer.domElement.addEventListener('click', e => {
+  if (isDragging) { isDragging = false; return; }
+
+  mouse.set(
+    (e.clientX / W()) * 2 - 1,
+    -(e.clientY / H()) * 2 + 1
+  );
+  raycaster.setFromCamera(mouse, camera);
+
+  // Collect clickable objects from masterGroup
+  const clickables = [];
+  masterGroup.traverse(obj => {
+    if (obj.isMesh) clickables.push(obj);
+  });
+
+  const hits = raycaster.intersectObjects(clickables, false);
+  if (hits.length) {
+    const type = hits[0].object.userData.type;
+    if (type === 'monomer') openInfo('monomer');
+    else if (type === 'chain') openInfo('chain');
+  } else {
+    openInfo('mechanism');
+  }
+});
+
+// ── SCROLL ZOOM ───────────────────────────────────────────────────────────────
+renderer.domElement.addEventListener('wheel', e => {
+  camera.position.z = Math.max(10, Math.min(32, camera.position.z + e.deltaY * 0.03));
+});
+
+// ── ANIMATION LOOP ────────────────────────────────────────────────────────────
+let clock = 0;
+
+function animate() {
+  requestAnimationFrame(animate);
+  clock += 0.016;
+
+  // Slow scene rotation
+  if (spinning && !isDragging) {
+    masterGroup.rotation.y += 0.0014;
+  }
+
+  // Pool monomer bob + spin
+  poolMonomers.forEach((m, i) => {
+    m.position.y = poolBaseY[i] + Math.sin(clock * 0.8 + i * 1.3) * 0.3;
+    m.rotation.y += 0.008;
+  });
+
+  // Add-monomer animation
+  if (isAnimating && activeMonomer) {
+    animT += 0.018;
+    const te = smoothstep(Math.min(animT, 1));
+
+    activeMonomer.position.lerpVectors(activeStartPos, activeEndPos, te);
+    activeMonomer.rotation.y += 0.02;
+
+    // Fade pi bond after midpoint
+    if (animT > 0.5 && activeMonomer.userData.piMat) {
+      const fade = 1 - smoothstep((animT - 0.5) / 0.5);
+      activeMonomer.userData.piMat.opacity = Math.max(0, 0.7 * fade);
+    }
+
+    if (animT >= 1.0) {
+      finishAdd();
+    }
+  }
+
+  // Auto-play
+  if (autoPlay && !isAnimating) {
+    autoTimer++;
+    if (autoTimer >= 120) {
+      autoTimer = 0;
+      if (nUnits < MAX_UNITS) addMonomer();
+    }
+  }
+
+  renderer.render(scene, camera);
+}
+
+// ── RESIZE ────────────────────────────────────────────────────────────────────
+window.addEventListener('resize', () => {
+  camera.aspect = W() / H();
+  camera.updateProjectionMatrix();
+  renderer.setSize(W(), H());
+});
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+initScene();
+updateUI();
+
+setTimeout(() => {
+  positionCounterPanel();
+  positionInfoPanel();
+}, 100);
+
+// Hide loading
+document.getElementById('loading').style.display = 'none';
+animate();
+</script>
+</body>
+</html>

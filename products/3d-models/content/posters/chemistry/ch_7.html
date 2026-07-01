@@ -1,0 +1,1468 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="page_title">Реакция Замещения | Zn + 2HCl → ZnCl₂ + H₂ | Химия 3D</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background: linear-gradient(135deg, #0a1628 0%, #1a2a4a 50%, #0a2030 100%);
+            min-height: 100vh;
+            overflow: hidden;
+            color: #fff;
+        }
+
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 16px 30px;
+            background: linear-gradient(180deg, rgba(0, 0, 0, 0.85) 0%, transparent 100%);
+            z-index: 100;
+            text-align: center;
+        }
+
+        .title {
+            font-size: 26px;
+            font-weight: 700;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .title .zn {
+            color: #90a4ae;
+        }
+
+        .title .hcl {
+            color: #66bb6a;
+        }
+
+        .subtitle {
+            font-size: 13px;
+            opacity: 0.7;
+            margin-top: 5px;
+        }
+
+        .equation-box {
+            position: fixed;
+            top: 78px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(15, 25, 45, 0.95);
+            
+            border-radius: 16px;
+            padding: 14px 28px;
+            border: 2px solid rgba(102, 187, 106, 0.4);
+            z-index: 100;
+            text-align: center;
+        }
+
+        .equation {
+            font-size: 24px;
+            font-weight: 700;
+            font-family: 'Times New Roman', serif;
+        }
+
+        .equation .zn {
+            color: #90a4ae;
+        }
+
+        .equation .hcl {
+            color: #66bb6a;
+        }
+
+        .equation .zncl {
+            color: #42a5f5;
+        }
+
+        .equation .h2 {
+            color: #64b5f6;
+        }
+
+        .equation .coef {
+            color: #ffd54f;
+        }
+
+        .equation .plus {
+            color: rgba(255, 255, 255, 0.5);
+            margin: 0 6px;
+        }
+
+        .equation .arrow {
+            color: #ffd54f;
+            margin: 0 10px;
+        }
+
+        .reaction-type {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.6);
+            margin-top: 6px;
+        }
+
+        .reaction-type span {
+            color: #66bb6a;
+            font-weight: 600;
+        }
+
+        .control-panel {
+            position: fixed;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(15, 25, 45, 0.95);
+            
+            border-radius: 16px;
+            padding: 18px;
+            width: 250px;
+            border: 1px solid rgba(144, 164, 174, 0.3);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            z-index: 100;
+        }
+
+        .panel-title {
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #90a4ae;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .control-group {
+            margin-bottom: 12px;
+        }
+
+        .control-label {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.6);
+            margin-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .control-value {
+            color: #66bb6a;
+            font-weight: 600;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 5px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.1);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #66bb6a, #43a047);
+            cursor: pointer;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 11px 14px;
+            border: none;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            margin-bottom: 7px;
+        }
+
+        .btn.primary {
+            background: linear-gradient(135deg, #66bb6a, #43a047);
+            color: #fff;
+        }
+
+        .btn.primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 187, 106, 0.4);
+        }
+
+        .btn.metal {
+            background: linear-gradient(135deg, #90a4ae, #607d8b);
+            color: #fff;
+        }
+
+        .btn.metal:hover {
+            box-shadow: 0 8px 20px rgba(144, 164, 174, 0.4);
+        }
+
+        .btn.metal.active {
+            background: linear-gradient(135deg, #4caf50, #2e7d32);
+        }
+
+        .btn.secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn.secondary:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .btn.secondary.active {
+            background: rgba(102, 187, 106, 0.2);
+            border-color: #66bb6a;
+            color: #66bb6a;
+        }
+
+        .stages {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .stage {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px;
+            border-radius: 7px;
+            margin-bottom: 4px;
+            background: rgba(0, 0, 0, 0.2);
+            transition: all 0.3s;
+            font-size: 10px;
+        }
+
+        .stage.active {
+            background: rgba(102, 187, 106, 0.2);
+            border: 1px solid rgba(102, 187, 106, 0.4);
+        }
+
+        .stage.completed {
+            background: rgba(66, 165, 245, 0.15);
+        }
+
+        .stage-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            flex-shrink: 0;
+        }
+
+        .stage.active .stage-icon {
+            background: #66bb6a;
+            color: #000;
+        }
+
+        .stage.completed .stage-icon {
+            background: #42a5f5;
+            color: #fff;
+        }
+
+        .info-panel {
+            position: fixed;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(15, 25, 45, 0.95);
+            
+            border-radius: 16px;
+            padding: 18px;
+            width: 270px;
+            border: 1px solid rgba(66, 165, 245, 0.3);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            z-index: 100;
+        }
+
+        .info-title {
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #42a5f5;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .species-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+
+        .species-card {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 8px 4px;
+            text-align: center;
+        }
+
+        .species-formula {
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .species-formula.zn {
+            color: #90a4ae;
+        }
+
+        .species-formula.h-ion {
+            color: #81c784;
+        }
+
+        .species-formula.cl-ion {
+            color: #aed581;
+        }
+
+        .species-formula.zn-ion {
+            color: #64b5f6;
+        }
+
+        .species-formula.h2 {
+            color: #90caf9;
+        }
+
+        .species-name {
+            font-size: 8px;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .species-count {
+            font-size: 16px;
+            font-weight: 700;
+            margin-top: 2px;
+        }
+
+        .activity-series {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 10px;
+            margin-bottom: 12px;
+        }
+
+        .activity-title {
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.5);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+        }
+
+        .activity-row {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 10px;
+            flex-wrap: wrap;
+        }
+
+        .activity-metal {
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .activity-metal.active {
+            background: rgba(102, 187, 106, 0.3);
+            color: #a5d6a7;
+        }
+
+        .activity-metal.zn {
+            background: #78909c;
+            color: #000;
+        }
+
+        .activity-metal.h {
+            background: #42a5f5;
+            color: #000;
+        }
+
+        .activity-metal.inactive {
+            background: rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        .activity-note {
+            font-size: 9px;
+            color: rgba(255, 255, 255, 0.6);
+            margin-top: 6px;
+        }
+
+        .gas-indicator {
+            background: rgba(100, 181, 246, 0.15);
+            border: 1px solid rgba(100, 181, 246, 0.3);
+            border-radius: 10px;
+            padding: 10px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .gas-bubbles {
+            font-size: 24px;
+            animation: bubbleFloat 1.2s ease-in-out infinite;
+        }
+
+        @keyframes bubbleFloat {
+            0%, 100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-5px);
+            }
+        }
+
+        .gas-text .title {
+            font-size: 11px;
+            color: #64b5f6;
+            font-weight: 600;
+        }
+
+        .gas-text .desc {
+            font-size: 9px;
+            color: rgba(255, 255, 255, 0.6);
+            margin-top: 2px;
+        }
+
+        .electron-box {
+            background: rgba(255, 193, 7, 0.1);
+            border: 1px solid rgba(255, 193, 7, 0.3);
+            border-radius: 10px;
+            padding: 10px;
+            margin-bottom: 12px;
+            font-size: 11px;
+        }
+
+        .electron-title {
+            color: #ffc107;
+            font-weight: 600;
+            margin-bottom: 6px;
+            font-size: 10px;
+        }
+
+        .electron-eq {
+            font-family: 'Times New Roman', serif;
+            line-height: 1.6;
+        }
+
+        .electron-eq .ox {
+            color: #ef5350;
+        }
+
+        .electron-eq .red {
+            color: #66bb6a;
+        }
+
+        .fact-box {
+            background: rgba(144, 164, 174, 0.1);
+            border: 1px solid rgba(144, 164, 174, 0.3);
+            border-radius: 10px;
+            padding: 10px;
+            font-size: 10px;
+            line-height: 1.5;
+        }
+
+        .fact-box strong {
+            color: #90a4ae;
+        }
+
+        .legend {
+            position: fixed;
+            bottom: 18px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(15, 25, 45, 0.95);
+            
+            border-radius: 12px;
+            padding: 10px 18px;
+            display: flex;
+            gap: 16px;
+            z-index: 100;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 10px;
+        }
+
+        .legend-atom {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+        }
+
+        .legend-atom.zinc {
+            background: radial-gradient(circle at 30% 30%, #cfd8dc, #607d8b);
+        }
+
+        .legend-atom.hydrogen {
+            background: radial-gradient(circle at 30% 30%, #90caf9, #1e88e5);
+        }
+
+        .legend-atom.chlorine {
+            background: radial-gradient(circle at 30% 30%, #a5d6a7, #43a047);
+        }
+
+        .loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #0a1628;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            transition: opacity 0.5s;
+        }
+
+        .loading.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .loading-icon {
+            font-size: 50px;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.1);
+            }
+        }
+
+        .loading-text {
+            margin-top: 16px;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .bubble-effect {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: 50;
+            overflow: hidden;
+        }
+
+        .bubble {
+            position: absolute;
+            background: radial-gradient(circle at 30% 30%, rgba(100, 181, 246, 0.7), rgba(100, 181, 246, 0.2));
+            border-radius: 50%;
+            animation: rise 2.5s ease-out forwards;
+        }
+
+        @keyframes rise {
+            0% {
+                transform: translateY(0) scale(1);
+                opacity: 0.8;
+            }
+            100% {
+                transform: translateY(-100vh) scale(0.3);
+                opacity: 0;
+            }
+        }
+
+        
+    </style>
+</head>
+<body>
+<div class="loading" id="loading">
+    <div class="loading-icon">⚗️</div>
+    <div class="loading-text" data-i18n="loading_text">Подготовка раствора HCl...</div>
+</div>
+<div class="bubble-effect" id="bubble-effect"></div>
+<div id="canvas-container"></div>
+
+<div class="header">
+    <div class="title" data-i18n-html="title_html">Реакция <span class="hcl">Замещения</span>: <span class="zn">Цинк</span> вытесняет <span class="hcl">Водород</span></div>
+    <div class="subtitle" data-i18n="subtitle">Металл + Кислота • Ряд активности • Ионы в растворе</div>
+</div>
+
+<div class="equation-box">
+    <div class="equation">
+        <span class="zn">Zn</span>
+        <span class="plus">+</span>
+        <span class="coef">2</span><span class="hcl">HCl</span>
+        <span class="arrow">→</span>
+        <span class="zncl">ZnCl₂</span>
+        <span class="plus">+</span>
+        <span class="h2">H₂</span><span style="font-size: 14px;">↑</span>
+    </div>
+    <div class="reaction-type" data-i18n-html="reaction_type_html">Тип: <span>Замещение</span> • Экзотермическая</div>
+</div>
+
+<div class="control-panel">
+    <div class="panel-title" data-i18n="panel_title_controls">🎬 Управление</div>
+
+    <button class="btn metal" id="btn-dip" data-i18n="btn_dip" onclick="dipMetal()">⬇️ Погрузить цинк в кислоту</button>
+    <button class="btn primary" id="btn-start" data-i18n="btn_start" onclick="startReaction()">▶️ Запустить реакцию</button>
+    <button class="btn secondary" data-i18n="btn_step" onclick="stepReaction()">⏭️ Пошагово</button>
+    <button class="btn secondary" data-i18n="btn_reset" onclick="resetReaction()">🔄 Сбросить</button>
+
+    <div class="control-group">
+        <div class="control-label">
+            <span data-i18n="speed_label">Скорость</span>
+            <span class="control-value" id="speed-value">1.0x</span>
+        </div>
+        <input type="range" id="speed-slider" min="0.3" max="2" value="1" step="0.1">
+    </div>
+
+    <button class="btn secondary active" id="btn-ions" data-i18n="btn_ions" onclick="toggleIons()">⚡ Показать ионы</button>
+
+    <div class="stages">
+        <div class="stage active" id="stage-0">
+            <div class="stage-icon">1</div>
+            <span data-i18n="stage_0">Zn над раствором HCl</span></div>
+        <div class="stage" id="stage-1">
+            <div class="stage-icon">2</div>
+            <span data-i18n="stage_1">Погружение металла</span></div>
+        <div class="stage" id="stage-2">
+            <div class="stage-icon">3</div>
+            <span data-i18n="stage_2">Zn⁰ → Zn²⁺ + 2e⁻</span></div>
+        <div class="stage" id="stage-3">
+            <div class="stage-icon">4</div>
+            <span data-i18n="stage_3">2H⁺ + 2e⁻ → H₂↑</span></div>
+        <div class="stage" id="stage-4">
+            <div class="stage-icon">5</div>
+            <span data-i18n="stage_4">Раствор ZnCl₂</span></div>
+    </div>
+</div>
+
+<div class="info-panel">
+    <div class="info-title" data-i18n="info_title">📊 Частицы в системе</div>
+
+    <div class="species-grid">
+        <div class="species-card">
+            <div class="species-formula zn">Zn</div>
+            <div class="species-name" data-i18n="species_zn_name">Металл</div>
+            <div class="species-count" id="count-zn">1</div>
+        </div>
+        <div class="species-card">
+            <div class="species-formula h-ion">H⁺</div>
+            <div class="species-name" data-i18n="species_h_name">Катион</div>
+            <div class="species-count" id="count-h">6</div>
+        </div>
+        <div class="species-card">
+            <div class="species-formula cl-ion">Cl⁻</div>
+            <div class="species-name" data-i18n="species_cl_name">Анион</div>
+            <div class="species-count" id="count-cl">6</div>
+        </div>
+        <div class="species-card">
+            <div class="species-formula zn-ion">Zn²⁺</div>
+            <div class="species-name" data-i18n="species_zn2_name">Катион</div>
+            <div class="species-count" id="count-zn2">0</div>
+        </div>
+        <div class="species-card">
+            <div class="species-formula h2">H₂↑</div>
+            <div class="species-name" data-i18n="species_h2_name">Газ</div>
+            <div class="species-count" id="count-h2">0</div>
+        </div>
+    </div>
+
+    <div class="activity-series">
+        <div class="activity-title" data-i18n="activity_title">⚡ Ряд активности металлов</div>
+        <div class="activity-row">
+            <span class="activity-metal active">K</span>
+            <span class="activity-metal active">Ca</span>
+            <span class="activity-metal active">Mg</span>
+            <span class="activity-metal zn">Zn</span>
+            <span class="activity-metal active">Fe</span>
+            <span style="color: #ffd54f;">›</span>
+            <span class="activity-metal h">H</span>
+            <span style="color: #ffd54f;">›</span>
+            <span class="activity-metal inactive">Cu</span>
+            <span class="activity-metal inactive">Ag</span>
+        </div>
+        <div class="activity-note" data-i18n-html="activity_note_html">Zn <strong>левее</strong> H → вытесняет водород из кислот</div>
+    </div>
+
+    <div class="gas-indicator" id="gas-indicator" style="opacity: 0.3;">
+        <div class="gas-bubbles">🫧</div>
+        <div class="gas-text">
+            <div class="title" data-i18n="gas_title">Выделение H₂</div>
+            <div class="desc" data-i18n="gas_desc">Пузырьки газа поднимаются вверх</div>
+        </div>
+    </div>
+
+    <div class="electron-box">
+        <div class="electron-title" data-i18n="electron_title">⚡ Электронный баланс</div>
+        <div class="electron-eq" data-i18n-html="electron_eq_html">
+            <span class="ox">Zn⁰ − 2e⁻ → Zn²⁺</span> (окисление)<br>
+            <span class="red">2H⁺ + 2e⁻ → H₂⁰</span> (восстановление)
+        </div>
+    </div>
+
+    <div class="fact-box" data-i18n-html="fact_html">
+        <strong>💡 Почему реакция идёт?</strong><br>
+        Цинк — более активный металл, чем водород. Он отдаёт электроны ионам H⁺, которые превращаются в газ H₂.
+    </div>
+</div>
+
+<div class="legend">
+    <div class="legend-item">
+        <div class="legend-atom zinc"></div>
+        <span>Zn</span>
+    </div>
+    <div class="legend-item">
+        <div class="legend-atom hydrogen"></div>
+        <span>H</span>
+    </div>
+    <div class="legend-item">
+        <div class="legend-atom chlorine"></div>
+        <span>Cl</span>
+    </div>
+    <div class="legend-item"><span style="color: #ffc107; font-weight: 700;">e⁻</span><span data-i18n="legend_electron">Электрон</span></div>
+</div>
+
+<script src="../../libs/vendor/three-r128/three.min.js"></script>
+<script>
+    // =====================================================================
+    //  I18N — встроенные переводы (RU / KZ / EN). Язык: ?lang=ru|kz|en.
+    // =====================================================================
+    const I18N = {
+        ru: {
+            page_title: 'Реакция Замещения | Zn + 2HCl → ZnCl₂ + H₂ | Химия 3D',
+            loading_text: 'Подготовка раствора HCl...',
+            title_html: 'Реакция <span class="hcl">Замещения</span>: <span class="zn">Цинк</span> вытесняет <span class="hcl">Водород</span>',
+            subtitle: 'Металл + Кислота • Ряд активности • Ионы в растворе',
+            reaction_type_html: 'Тип: <span>Замещение</span> • Экзотермическая',
+            panel_title_controls: '🎬 Управление',
+            btn_dip: '⬇️ Погрузить цинк в кислоту',
+            btn_dip_active: '✓ Цинк в растворе',
+            btn_start: '▶️ Запустить реакцию',
+            btn_step: '⏭️ Пошагово',
+            btn_reset: '🔄 Сбросить',
+            speed_label: 'Скорость',
+            btn_ions: '⚡ Показать ионы',
+            stage_0: 'Zn над раствором HCl',
+            stage_1: 'Погружение металла',
+            stage_2: 'Zn⁰ → Zn²⁺ + 2e⁻',
+            stage_3: '2H⁺ + 2e⁻ → H₂↑',
+            stage_4: 'Раствор ZnCl₂',
+            info_title: '📊 Частицы в системе',
+            species_zn_name: 'Металл',
+            species_h_name: 'Катион',
+            species_cl_name: 'Анион',
+            species_zn2_name: 'Катион',
+            species_h2_name: 'Газ',
+            activity_title: '⚡ Ряд активности металлов',
+            activity_note_html: 'Zn <strong>левее</strong> H → вытесняет водород из кислот',
+            gas_title: 'Выделение H₂',
+            gas_desc: 'Пузырьки газа поднимаются вверх',
+            electron_title: '⚡ Электронный баланс',
+            electron_eq_html: '<span class="ox">Zn⁰ − 2e⁻ → Zn²⁺</span> (окисление)<br><span class="red">2H⁺ + 2e⁻ → H₂⁰</span> (восстановление)',
+            fact_html: '<strong>💡 Почему реакция идёт?</strong><br>Цинк — более активный металл, чем водород. Он отдаёт электроны ионам H⁺, которые превращаются в газ H₂.',
+            legend_electron: 'Электрон'
+        },
+        kz: {
+            page_title: 'Орынбасу реакциясы | Zn + 2HCl → ZnCl₂ + H₂ | 3D Химия',
+            loading_text: 'HCl ерітіндісі дайындалуда...',
+            title_html: '<span class="hcl">Орынбасу</span> реакциясы: <span class="zn">Мырыш</span> <span class="hcl">сутекті</span> ығыстырады',
+            subtitle: 'Металл + Қышқыл • Активтілік қатары • Ерітіндідегі иондар',
+            reaction_type_html: 'Түрі: <span>Орынбасу</span> • Экзотермиялық',
+            panel_title_controls: '🎬 Басқару',
+            btn_dip: '⬇️ Мырышты қышқылға батыру',
+            btn_dip_active: '✓ Мырыш ерітіндіде',
+            btn_start: '▶️ Реакцияны бастау',
+            btn_step: '⏭️ Қадамдап',
+            btn_reset: '🔄 Қалпына келтіру',
+            speed_label: 'Жылдамдық',
+            btn_ions: '⚡ Иондарды көрсету',
+            stage_0: 'Zn — HCl ерітіндісінің үстінде',
+            stage_1: 'Металды батыру',
+            stage_2: 'Zn⁰ → Zn²⁺ + 2e⁻',
+            stage_3: '2H⁺ + 2e⁻ → H₂↑',
+            stage_4: 'ZnCl₂ ерітіндісі',
+            info_title: '📊 Жүйедегі бөлшектер',
+            species_zn_name: 'Металл',
+            species_h_name: 'Катион',
+            species_cl_name: 'Анион',
+            species_zn2_name: 'Катион',
+            species_h2_name: 'Газ',
+            activity_title: '⚡ Металдардың активтілік қатары',
+            activity_note_html: 'Zn — H-тың <strong>сол жағында</strong> → қышқылдардан сутекті ығыстырады',
+            gas_title: 'H₂ бөлінуі',
+            gas_desc: 'Газ көпіршіктері жоғары көтеріледі',
+            electron_title: '⚡ Электрондық тепе-теңдік',
+            electron_eq_html: '<span class="ox">Zn⁰ − 2e⁻ → Zn²⁺</span> (тотығу)<br><span class="red">2H⁺ + 2e⁻ → H₂⁰</span> (тотықсыздану)',
+            fact_html: '<strong>💡 Реакция неліктен жүреді?</strong><br>Мырыш — сутектен белсендірек металл. Ол H⁺ иондарына электрондарын береді, олар H₂ газына айналады.',
+            legend_electron: 'Электрон'
+        },
+        en: {
+            page_title: 'Substitution Reaction | Zn + 2HCl → ZnCl₂ + H₂ | 3D Chemistry',
+            loading_text: 'Preparing HCl solution...',
+            title_html: '<span class="hcl">Substitution</span> Reaction: <span class="zn">Zinc</span> displaces <span class="hcl">Hydrogen</span>',
+            subtitle: 'Metal + Acid • Activity series • Ions in solution',
+            reaction_type_html: 'Type: <span>Substitution</span> • Exothermic',
+            panel_title_controls: '🎬 Controls',
+            btn_dip: '⬇️ Dip zinc into acid',
+            btn_dip_active: '✓ Zinc in solution',
+            btn_start: '▶️ Start reaction',
+            btn_step: '⏭️ Step by step',
+            btn_reset: '🔄 Reset',
+            speed_label: 'Speed',
+            btn_ions: '⚡ Show ions',
+            stage_0: 'Zn above HCl solution',
+            stage_1: 'Dipping the metal',
+            stage_2: 'Zn⁰ → Zn²⁺ + 2e⁻',
+            stage_3: '2H⁺ + 2e⁻ → H₂↑',
+            stage_4: 'ZnCl₂ solution',
+            info_title: '📊 Species in the system',
+            species_zn_name: 'Metal',
+            species_h_name: 'Cation',
+            species_cl_name: 'Anion',
+            species_zn2_name: 'Cation',
+            species_h2_name: 'Gas',
+            activity_title: '⚡ Metal activity series',
+            activity_note_html: 'Zn is to the <strong>left</strong> of H → displaces hydrogen from acids',
+            gas_title: 'H₂ release',
+            gas_desc: 'Gas bubbles rise upward',
+            electron_title: '⚡ Electron balance',
+            electron_eq_html: '<span class="ox">Zn⁰ − 2e⁻ → Zn²⁺</span> (oxidation)<br><span class="red">2H⁺ + 2e⁻ → H₂⁰</span> (reduction)',
+            fact_html: '<strong>💡 Why does the reaction occur?</strong><br>Zinc is a more active metal than hydrogen. It donates electrons to H⁺ ions, which become H₂ gas.',
+            legend_electron: 'Electron'
+        }
+    };
+    const LANG = (() => {
+        const q = new URLSearchParams(location.search).get('lang');
+        return (q && I18N[q]) ? q : 'ru';
+    })();
+    const t = (key) => (I18N[LANG] && I18N[LANG][key]) ?? (I18N.ru && I18N.ru[key]);
+
+    function applyStaticI18N() {
+        document.documentElement.lang = LANG;
+        const titleVal = t('page_title');
+        if (titleVal) document.title = titleVal;
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const v = t(el.getAttribute('data-i18n'));
+            if (v) el.textContent = v;
+        });
+        document.querySelectorAll('[data-i18n-html]').forEach(el => {
+            const v = t(el.getAttribute('data-i18n-html'));
+            if (v) el.innerHTML = v;
+        });
+        document.querySelectorAll('[data-i18n-title]').forEach(el => {
+            const v = t(el.getAttribute('data-i18n-title'));
+            if (v) el.setAttribute('title', v);
+        });
+        document.querySelectorAll('[data-i18n-aria-label]').forEach(el => {
+            const v = t(el.getAttribute('data-i18n-aria-label'));
+            if (v) el.setAttribute('aria-label', v);
+        });
+    }
+
+    applyStaticI18N();
+let scene, camera, renderer;
+    let zincMetal, beaker, solution;
+    let hIons = [], clIons = [], zn2Ions = [], h2Molecules = [], electrons = [];
+
+    let metalDipped = false;
+    let reactionStage = 0;
+    let isAnimating = false;
+    let animationSpeed = 1;
+    let showIons = true;
+
+    const ZN_COLOR = 0x90a4ae;
+    const H_COLOR = 0x64b5f6;
+    const CL_COLOR = 0x66bb6a;
+    const ZN2_COLOR = 0x42a5f5;
+    const ELECTRON_COLOR = 0xffc107;
+
+    function init() {
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0a1628);
+
+        camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 3, 12);
+        camera.lookAt(0, -1, 0);
+
+        renderer = new THREE.WebGLRenderer({antialias: true});
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        setupLighting();
+        createBeaker();
+        createZincMetal();
+        createIons();
+        setupControls();
+        setupUI();
+        animate();
+
+        document.getElementById('loading').classList.add('hidden');
+    }
+
+    function setupLighting() {
+        scene.add(new THREE.AmbientLight(0x404060, 0.6));
+
+        const dir = new THREE.DirectionalLight(0xffffff, 0.8);
+        dir.position.set(8, 12, 8);
+        scene.add(dir);
+
+        const blueLight = new THREE.PointLight(0x42a5f5, 0.3, 18);
+        blueLight.position.set(-5, 4, 4);
+        scene.add(blueLight);
+
+        const greenLight = new THREE.PointLight(0x66bb6a, 0.3, 18);
+        greenLight.position.set(5, 4, 4);
+        scene.add(greenLight);
+    }
+
+    function createBeaker() {
+        // Стакан
+        const beakerGeom = new THREE.CylinderGeometry(2.8, 2.3, 5.5, 32, 1, true);
+        const beakerMat = new THREE.MeshPhysicalMaterial({
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0.12,
+            roughness: 0.1,
+            side: THREE.DoubleSide
+        });
+        beaker = new THREE.Mesh(beakerGeom, beakerMat);
+        beaker.position.y = -1.25;
+        scene.add(beaker);
+
+        // Дно
+        const bottomGeom = new THREE.CircleGeometry(2.3, 32);
+        const bottomMat = new THREE.MeshPhysicalMaterial({
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0.15
+        });
+        const bottom = new THREE.Mesh(bottomGeom, bottomMat);
+        bottom.rotation.x = -Math.PI / 2;
+        bottom.position.y = -4;
+        scene.add(bottom);
+
+        // Раствор HCl
+        const solutionGeom = new THREE.CylinderGeometry(2.65, 2.2, 4.5, 32);
+        const solutionMat = new THREE.MeshPhysicalMaterial({
+            color: 0x81c784,
+            transparent: true,
+            opacity: 0.32,
+            roughness: 0.3
+        });
+        solution = new THREE.Mesh(solutionGeom, solutionMat);
+        solution.position.y = -1.75;
+        scene.add(solution);
+    }
+
+    function createZincMetal() {
+        const znGeom = new THREE.BoxGeometry(1.3, 0.8, 0.8);
+        const znMat = new THREE.MeshStandardMaterial({
+            color: ZN_COLOR,
+            roughness: 0.25,
+            metalness: 0.85,
+            emissive: ZN_COLOR,
+            emissiveIntensity: 0.08
+        });
+        zincMetal = new THREE.Mesh(znGeom, znMat);
+        zincMetal.position.set(0, 3.5, 0);
+
+        // Грани
+        const edges = new THREE.LineSegments(
+                new THREE.EdgesGeometry(znGeom),
+                new THREE.LineBasicMaterial({color: 0x546e7a})
+        );
+        zincMetal.add(edges);
+
+        scene.add(zincMetal);
+    }
+
+    function createIon(type, pos) {
+        const radius = type === 'H+' ? 0.18 : (type === 'Cl-' ? 0.3 : 0.35);
+        const color = type === 'H+' ? H_COLOR : (type === 'Cl-' ? CL_COLOR : ZN2_COLOR);
+
+        const geom = new THREE.SphereGeometry(radius, 20, 20);
+        const mat = new THREE.MeshStandardMaterial({
+            color: color,
+            roughness: 0.3,
+            metalness: 0.2,
+            emissive: color,
+            emissiveIntensity: 0.2,
+            transparent: true,
+            opacity: 0.9
+        });
+        const ion = new THREE.Mesh(geom, mat);
+        ion.position.set(...pos);
+
+        // Свечение
+        const glow = new THREE.Mesh(
+                new THREE.SphereGeometry(radius * 1.5, 12, 12),
+                new THREE.MeshBasicMaterial({color, transparent: true, opacity: 0.12})
+        );
+        ion.add(glow);
+
+        // Заряд
+        const charge = type === 'H+' ? '+' : (type === 'Cl-' ? '−' : '2+');
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = 32;
+        canvas.height = 32;
+        ctx.fillStyle = type === 'Cl-' ? '#aed581' : '#64b5f6';
+        ctx.font = 'bold 20px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(charge, 16, 22);
+
+        const tex = new THREE.CanvasTexture(canvas);
+        const label = new THREE.Sprite(new THREE.SpriteMaterial({map: tex, transparent: true}));
+        label.position.set(0, radius + 0.25, 0);
+        label.scale.set(0.4, 0.4, 1);
+        ion.add(label);
+
+        ion.userData = {
+            type,
+            velocity: new THREE.Vector3(
+                    (Math.random() - 0.5) * 0.015,
+                    (Math.random() - 0.5) * 0.015,
+                    (Math.random() - 0.5) * 0.015
+            )
+        };
+
+        scene.add(ion);
+        return ion;
+    }
+
+    function createIons() {
+        // 6 H+ и 6 Cl-
+        for (let i = 0; i < 6; i++) {
+            const angle = (i / 6) * Math.PI * 2;
+            const r = 1 + Math.random() * 1;
+
+            hIons.push(createIon('H+', [
+                Math.cos(angle) * r,
+                -2 + Math.random() * 2.5,
+                Math.sin(angle) * r
+            ]));
+
+            clIons.push(createIon('Cl-', [
+                Math.cos(angle + 0.5) * r * 0.8,
+                -2.5 + Math.random() * 2.5,
+                Math.sin(angle + 0.5) * r * 0.8
+            ]));
+        }
+        updateCounts();
+    }
+
+    function createElectron(startPos, targetIon) {
+        const geom = new THREE.SphereGeometry(0.08, 12, 12);
+        const mat = new THREE.MeshBasicMaterial({color: ELECTRON_COLOR});
+        const e = new THREE.Mesh(geom, mat);
+        e.position.copy(startPos);
+
+        const glow = new THREE.Mesh(
+                new THREE.SphereGeometry(0.15, 8, 8),
+                new THREE.MeshBasicMaterial({color: ELECTRON_COLOR, transparent: true, opacity: 0.4})
+        );
+        e.add(glow);
+
+        e.userData = {target: targetIon};
+        scene.add(e);
+        electrons.push(e);
+        return e;
+    }
+
+    function createH2(pos) {
+        const group = new THREE.Group();
+
+        const hMat = new THREE.MeshStandardMaterial({
+            color: H_COLOR,
+            roughness: 0.3,
+            emissive: H_COLOR,
+            emissiveIntensity: 0.15
+        });
+
+        const h1 = new THREE.Mesh(new THREE.SphereGeometry(0.2, 16, 16), hMat);
+        h1.position.x = -0.22;
+        group.add(h1);
+
+        const h2 = new THREE.Mesh(new THREE.SphereGeometry(0.2, 16, 16), hMat.clone());
+        h2.position.x = 0.22;
+        group.add(h2);
+
+        const bond = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.04, 0.04, 0.3, 8),
+                new THREE.MeshStandardMaterial({color: 0x90a4ae})
+        );
+        bond.rotation.z = Math.PI / 2;
+        group.add(bond);
+
+        group.position.copy(pos);
+        group.userData = {velocity: 0.025 + Math.random() * 0.015};
+
+        scene.add(group);
+        h2Molecules.push(group);
+        return group;
+    }
+
+    function createBubble() {
+        const div = document.createElement('div');
+        div.className = 'bubble';
+        div.style.left = (43 + Math.random() * 14) + '%';
+        div.style.bottom = '30%';
+        const size = 8 + Math.random() * 12;
+        div.style.width = size + 'px';
+        div.style.height = size + 'px';
+        document.getElementById('bubble-effect').appendChild(div);
+        setTimeout(() => div.remove(), 2500);
+    }
+
+    function updateCounts() {
+        document.getElementById('count-zn').textContent = zincMetal.scale.x > 0.3 ? '1' : '0';
+        document.getElementById('count-h').textContent = hIons.length;
+        document.getElementById('count-cl').textContent = clIons.length;
+        document.getElementById('count-zn2').textContent = zn2Ions.length;
+        document.getElementById('count-h2').textContent = h2Molecules.length;
+    }
+
+    function updateStageUI() {
+        for (let i = 0; i <= 4; i++) {
+            const el = document.getElementById('stage-' + i);
+            el.classList.remove('active', 'completed');
+            if (i < reactionStage) el.classList.add('completed');
+            else if (i === reactionStage) el.classList.add('active');
+        }
+    }
+
+    function moveIons() {
+        const bounds = {r: 2, yMin: -3.8, yMax: 0.5};
+
+        [...hIons, ...clIons, ...zn2Ions].forEach(ion => {
+            ion.position.add(ion.userData.velocity);
+
+            // Границы
+            const r = Math.sqrt(ion.position.x ** 2 + ion.position.z ** 2);
+            if (r > bounds.r) {
+                ion.userData.velocity.x *= -0.8;
+                ion.userData.velocity.z *= -0.8;
+            }
+            if (ion.position.y < bounds.yMin || ion.position.y > bounds.yMax) {
+                ion.userData.velocity.y *= -0.8;
+            }
+
+            // Случайные толчки
+            if (Math.random() < 0.03) {
+                ion.userData.velocity.x += (Math.random() - 0.5) * 0.008;
+                ion.userData.velocity.y += (Math.random() - 0.5) * 0.008;
+                ion.userData.velocity.z += (Math.random() - 0.5) * 0.008;
+            }
+        });
+    }
+
+    function dipMetal() {
+        if (metalDipped) return;
+        metalDipped = true;
+
+        document.getElementById('btn-dip').textContent = t('btn_dip_active');
+        document.getElementById('btn-dip').classList.add('active');
+
+        const targetY = -1.2;
+        const startY = zincMetal.position.y;
+        const startTime = Date.now();
+
+        function animateDip() {
+            const progress = Math.min((Date.now() - startTime) / 1200, 1);
+            zincMetal.position.y = startY + (targetY - startY) * (1 - Math.pow(1 - progress, 3));
+
+            if (progress < 1) {
+                requestAnimationFrame(animateDip);
+            } else {
+                reactionStage = 1;
+                updateStageUI();
+            }
+        }
+
+        animateDip();
+    }
+
+    function startReaction() {
+        if (isAnimating) return;
+        if (!metalDipped) {
+            dipMetal();
+            setTimeout(startReaction, 1500);
+            return;
+        }
+        if (reactionStage >= 5) resetReaction();
+
+        isAnimating = true;
+        runReaction();
+    }
+
+    function runReaction() {
+        if (!isAnimating) return;
+
+        // Этап 2: Zn → Zn²⁺ + 2e⁻
+        if (reactionStage === 1 && hIons.length >= 2) {
+            reactionStage = 2;
+            updateStageUI();
+
+            // Создаём Zn²⁺
+            const znPos = zincMetal.position.clone();
+            zn2Ions.push(createIon('Zn2+', [znPos.x + 0.8, znPos.y, znPos.z]));
+
+            // Уменьшаем цинк
+            zincMetal.scale.multiplyScalar(0.85);
+
+            // Создаём электроны → к H⁺
+            if (hIons.length >= 2) {
+                createElectron(znPos.clone(), hIons[0]);
+                createElectron(znPos.clone(), hIons[1]);
+            }
+        }
+
+        // Этап 3: Электроны летят к H⁺
+        if (reactionStage === 2 && electrons.length > 0) {
+            let allDone = true;
+            electrons.forEach(e => {
+                if (e.userData.target) {
+                    const dir = new THREE.Vector3().subVectors(e.userData.target.position, e.position);
+                    if (dir.length() > 0.25) {
+                        dir.normalize().multiplyScalar(0.12 * animationSpeed);
+                        e.position.add(dir);
+                        allDone = false;
+                    }
+                }
+            });
+
+            if (allDone) {
+                // Электроны достигли H⁺
+                electrons.forEach(e => scene.remove(e));
+                electrons = [];
+
+                // Удаляем 2 H⁺, создаём H₂
+                for (let i = 0; i < 2 && hIons.length > 0; i++) {
+                    const h = hIons.pop();
+                    scene.remove(h);
+                }
+
+                const h2Pos = new THREE.Vector3(
+                        zincMetal.position.x + (Math.random() - 0.5),
+                        zincMetal.position.y + 0.4,
+                        zincMetal.position.z
+                );
+                createH2(h2Pos);
+
+                reactionStage = 3;
+                updateStageUI();
+                document.getElementById('gas-indicator').style.opacity = '1';
+            }
+        }
+
+        // Этап 4+: H₂ улетает, реакция продолжается
+        if (reactionStage >= 3) {
+            // H₂ поднимается
+            h2Molecules.forEach(mol => {
+                mol.position.y += mol.userData.velocity * animationSpeed;
+                mol.rotation.y += 0.02;
+            });
+
+            // Пузырьки
+            if (Math.random() < 0.06 * animationSpeed) createBubble();
+
+            // Продолжаем реакцию, если есть H⁺
+            if (hIons.length >= 2 && Math.random() < 0.02 * animationSpeed && zincMetal.scale.x > 0.3) {
+                // Ещё одна порция
+                const znPos = zincMetal.position.clone();
+                zn2Ions.push(createIon('Zn2+', [znPos.x + (Math.random() - 0.5), znPos.y, znPos.z + (Math.random() - 0.5)]));
+                zincMetal.scale.multiplyScalar(0.92);
+
+                for (let i = 0; i < 2 && hIons.length > 0; i++) {
+                    const h = hIons.pop();
+                    scene.remove(h);
+                }
+                createH2(new THREE.Vector3(znPos.x, znPos.y + 0.3, znPos.z));
+            }
+
+            // Переход на этап 4
+            if (reactionStage === 3 && h2Molecules.some(m => m.position.y > 2)) {
+                reactionStage = 4;
+                updateStageUI();
+            }
+        }
+
+        moveIons();
+        updateCounts();
+
+        // Завершение
+        if (reactionStage >= 4 && hIons.length === 0) {
+            setTimeout(() => {
+                isAnimating = false;
+            }, 1500);
+        } else if (isAnimating) {
+            requestAnimationFrame(runReaction);
+        }
+    }
+
+    function stepReaction() {
+        if (!metalDipped) {
+            dipMetal();
+            return;
+        }
+        if (reactionStage >= 4) {
+            resetReaction();
+            return;
+        }
+
+        if (reactionStage <= 1) {
+            const znPos = zincMetal.position.clone();
+            zn2Ions.push(createIon('Zn2+', [znPos.x + 1, znPos.y, znPos.z]));
+            zincMetal.scale.multiplyScalar(0.8);
+            reactionStage = 2;
+        } else if (reactionStage === 2) {
+            for (let i = 0; i < 2 && hIons.length > 0; i++) {
+                const h = hIons.pop();
+                scene.remove(h);
+            }
+            createH2(new THREE.Vector3(0, 0, 0));
+            document.getElementById('gas-indicator').style.opacity = '1';
+            reactionStage = 3;
+        } else if (reactionStage === 3) {
+            h2Molecules.forEach(m => m.position.y = 5);
+            for (let i = 0; i < 4; i++) setTimeout(createBubble, i * 100);
+            reactionStage = 4;
+        }
+
+        updateStageUI();
+        updateCounts();
+    }
+
+    function resetReaction() {
+        isAnimating = false;
+        metalDipped = false;
+        reactionStage = 0;
+
+        zincMetal.position.set(0, 3.5, 0);
+        zincMetal.scale.set(1, 1, 1);
+
+        [...hIons, ...clIons, ...zn2Ions, ...h2Molecules, ...electrons].forEach(obj => scene.remove(obj));
+        hIons = [];
+        clIons = [];
+        zn2Ions = [];
+        h2Molecules = [];
+        electrons = [];
+
+        createIons();
+
+        document.getElementById('btn-dip').textContent = t('btn_dip');
+        document.getElementById('btn-dip').classList.remove('active');
+        document.getElementById('gas-indicator').style.opacity = '0.3';
+
+        updateStageUI();
+        updateCounts();
+    }
+
+    function toggleIons() {
+        showIons = !showIons;
+        document.getElementById('btn-ions').classList.toggle('active', showIons);
+        [...hIons, ...clIons, ...zn2Ions].forEach(ion => ion.visible = showIons);
+    }
+
+    function setupControls() {
+        let drag = false, prev = {x: 0, y: 0};
+        let theta = 0, phi = 0.25, radius = 12;
+
+        renderer.domElement.addEventListener('mousedown', e => {
+            drag = true;
+            prev = {x: e.clientX, y: e.clientY};
+        });
+        renderer.domElement.addEventListener('mousemove', e => {
+            if (!drag) return;
+            theta -= (e.clientX - prev.x) * 0.005;
+            phi = Math.max(-0.2, Math.min(0.7, phi + (e.clientY - prev.y) * 0.005));
+            updateCam();
+            prev = {x: e.clientX, y: e.clientY};
+        });
+        renderer.domElement.addEventListener('mouseup', () => drag = false);
+        renderer.domElement.addEventListener('mouseleave', () => drag = false);
+        renderer.domElement.addEventListener('wheel', e => {
+            e.preventDefault();
+            radius = Math.max(7, Math.min(22, radius + e.deltaY * 0.015));
+            updateCam();
+        });
+
+        function updateCam() {
+            camera.position.x = radius * Math.sin(theta) * Math.cos(phi);
+            camera.position.y = radius * Math.sin(phi) + 2;
+            camera.position.z = radius * Math.cos(theta) * Math.cos(phi);
+            camera.lookAt(0, -1, 0);
+        }
+    }
+
+    function setupUI() {
+        document.getElementById('speed-slider').addEventListener('input', e => {
+            animationSpeed = parseFloat(e.target.value);
+            document.getElementById('speed-value').textContent = animationSpeed.toFixed(1) + 'x';
+        });
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+
+        // Покачивание цинка над раствором
+        if (!metalDipped && zincMetal) {
+            const t = Date.now() * 0.001;
+            zincMetal.position.y = 3.5 + Math.sin(t * 2) * 0.08;
+            zincMetal.rotation.y = Math.sin(t) * 0.08;
+        }
+
+        // Движение ионов даже в покое
+        if (!isAnimating) moveIons();
+
+        // H₂ поднимается
+        h2Molecules.forEach(mol => {
+            if (mol.position.y < 8) {
+                mol.position.y += 0.015;
+                mol.rotation.y += 0.008;
+            }
+        });
+
+        renderer.render(scene, camera);
+    }
+
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    init();
+</script>
+</body>
+</html>

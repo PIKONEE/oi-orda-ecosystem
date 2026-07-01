@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="page_title">Движение под углом к горизонту</title>
+<style>
+
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#eef2f6;--surface:rgba(255,255,255,0.94);--border:rgba(20,40,60,0.08);
+  --text:#13202c;--muted:#5a6b78;--faint:#94a4b2;
+  --v:#e11d48;--v-dim:rgba(225,29,72,0.10);
+  --ang:#0891b2;--ang-dim:rgba(8,145,178,0.10);
+  --path:#2563eb;--ball:#e11d48;--vel:#16a34a;--peak:#d97706;
+  --accent:#2563eb;--accent-dim:rgba(37,99,235,0.10);
+  --shadow:0 2px 22px rgba(20,40,70,0.07);--shadow-lg:0 18px 56px rgba(20,40,80,0.15);
+}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);overflow:hidden;height:100vh;}
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(1200px 760px at 70% 28%, rgba(37,99,235,0.10), transparent 60%),radial-gradient(820px 560px at 16% 86%, rgba(225,29,72,0.05), transparent 55%);}
+#canvas-container{position:fixed;inset:0;z-index:1;}
+#labels-layer{position:fixed;inset:0;z-index:40;pointer-events:none;overflow:hidden;}
+.dim-label{position:absolute;transform:translate(-50%,-50%);font-family:'Roboto Mono',monospace;font-size:12.5px;font-weight:600;padding:3px 9px;border-radius:9px;white-space:nowrap;letter-spacing:-0.3px;background:rgba(255,255,255,0.97);box-shadow:0 3px 12px rgba(20,40,70,0.13);transition:opacity 0.18s;}
+.dim-label.hidden{opacity:0;}
+.dim-label.lpeak{background:var(--peak);color:#fff;border:none;box-shadow:0 4px 14px rgba(217,119,6,0.4);}
+.dim-label.lrange{background:var(--path);color:#fff;border:none;box-shadow:0 4px 14px rgba(37,99,235,0.4);}
+.dim-label.lvel{background:var(--vel);color:#fff;border:none;box-shadow:0 4px 14px rgba(22,163,74,0.4);}
+.dim-label.lax{color:var(--muted);border:1px solid rgba(20,40,60,0.12);font-size:12px;}
+.header{position:fixed;top:0;left:0;right:0;z-index:200;background:var(--surface);border-bottom:1px solid var(--border);padding:0 38px;height:84px;display:flex;align-items:center;gap:15px;box-shadow:var(--shadow);}
+.h-badge{width:46px;height:46px;border-radius:14px;flex-shrink:0;background:linear-gradient(135deg,#2563eb,#60a5fa);display:flex;align-items:center;justify-content:center;box-shadow:0 7px 20px rgba(37,99,235,0.36);}
+.h-badge svg{width:25px;height:25px;}
+.header-title{font-size:21px;font-weight:800;letter-spacing:-0.5px;}
+.header-tag{font-family:'Roboto Mono',monospace;font-size:12px;color:var(--accent);background:var(--accent-dim);padding:4px 11px;border-radius:8px;}
+.header-sub{font-size:13px;color:var(--muted);margin-left:auto;text-align:right;line-height:1.45;}
+.eq-banner{position:fixed;top:96px;left:50%;transform:translateX(-50%);z-index:150;background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-lg);padding:9px 22px;font-family:'Roboto Mono',monospace;font-size:14px;font-weight:600;pointer-events:none;display:flex;gap:18px;align-items:center;}
+.eq-banner b{color:var(--accent);}
+.panel{position:fixed;z-index:100;background:var(--surface);border:1px solid var(--border);border-radius:22px;box-shadow:var(--shadow-lg);}
+.panel h3{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;color:var(--faint);}
+.panel-left{left:22px;top:98px;width:334px;padding:18px 18px;overflow:hidden;min-height:430px;}
+.ld-list,.ld-detail{transition:transform 0.4s cubic-bezier(0.4,0,0.2,1),opacity 0.28s;}
+.ld-list h3{margin-bottom:12px;padding-left:4px;}
+.ld-detail{position:absolute;inset:18px 18px;transform:translateX(26px);opacity:0;pointer-events:none;overflow-y:auto;}
+.panel-left.detail .ld-list{transform:translateX(-26px);opacity:0;pointer-events:none;}
+.panel-left.detail .ld-detail{transform:translateX(0);opacity:1;pointer-events:auto;}
+.metric{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:14px;cursor:pointer;border:1px solid transparent;transition:all 0.15s;margin-bottom:2px;}
+.metric:hover{background:rgba(20,40,70,0.04);}
+.metric.active{background:var(--accent-dim);border-color:rgba(37,99,235,0.22);}
+.metric-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0;}
+.metric-main{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;}
+.metric-name{font-size:14px;font-weight:700;line-height:1.15;}
+.metric-sub{font-family:'Roboto Mono',monospace;font-size:11.5px;color:var(--muted);}
+.metric-val{font-family:'Roboto Mono',monospace;font-size:18px;font-weight:500;color:var(--accent);letter-spacing:-1px;flex-shrink:0;}
+.ld-back{display:inline-flex;align-items:center;gap:5px;cursor:pointer;border:none;background:none;font-family:'Inter',sans-serif;font-size:13px;font-weight:700;color:var(--accent);padding:4px 6px 4px 0;margin-bottom:12px;}
+.d-tag{display:inline-block;padding:4px 12px;border-radius:99px;font-size:11.5px;font-weight:700;margin-bottom:10px;background:var(--accent-dim);color:var(--accent);}
+.d-title{font-size:20px;font-weight:800;letter-spacing:-0.4px;line-height:1.15;margin-bottom:14px;}
+.d-bigval{display:flex;align-items:baseline;gap:9px;margin-bottom:4px;}
+.d-bigval b{font-family:'Roboto Mono',monospace;font-size:32px;font-weight:500;color:var(--accent);letter-spacing:-1.5px;line-height:1;}
+.d-bigval span{font-size:13px;color:var(--muted);font-weight:600;}
+.d-formula{margin:13px 0 4px;padding:13px 15px;border-radius:13px;background:linear-gradient(135deg,rgba(96,165,250,0.12),rgba(37,99,235,0.05));border:1px solid rgba(37,99,235,0.16);font-family:'Roboto Mono',monospace;font-size:13px;color:#1e40af;font-weight:500;line-height:1.95;white-space:pre-line;}
+.d-para{font-size:14px;line-height:1.62;color:#2c3744;margin-top:13px;}
+.panel-right{right:22px;top:98px;width:300px;padding:18px;}
+.dim-slider{margin-bottom:13px;border-radius:15px;padding:11px 14px;border:1px solid;}
+.dim-slider.sv{background:var(--v-dim);border-color:rgba(225,29,72,0.18);}
+.dim-slider.sang{background:var(--ang-dim);border-color:rgba(8,145,178,0.18);}
+.ds-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px;}
+.ds-name{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;}
+.ds-key{font-family:'Roboto Mono',monospace;font-style:italic;font-size:16px;}
+.sv .ds-key{color:var(--v);} .sang .ds-key{color:var(--ang);}
+.ds-dimname{color:var(--muted);font-weight:600;font-size:12px;}
+.ds-pill{font-family:'Roboto Mono',monospace;font-size:16px;font-weight:500;color:#fff;padding:2px 11px;border-radius:9px;letter-spacing:-0.5px;}
+.sv .ds-pill{background:var(--v);} .sang .ds-pill{background:var(--ang);}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:3px;outline:none;cursor:pointer;}
+.sv input[type=range]{background:linear-gradient(90deg,var(--v) var(--fill,50%),rgba(225,29,72,0.16) var(--fill,50%));}
+.sang input[type=range]{background:linear-gradient(90deg,var(--ang) var(--fill,50%),rgba(8,145,178,0.16) var(--fill,50%));}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:20px;height:20px;border-radius:50%;background:#fff;cursor:pointer;transition:transform 0.12s;}
+.sv input::-webkit-slider-thumb{border:3px solid var(--v);box-shadow:0 3px 10px rgba(225,29,72,0.4);}
+.sang input::-webkit-slider-thumb{border:3px solid var(--ang);box-shadow:0 3px 10px rgba(8,145,178,0.4);}
+input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.18);}
+.planet-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;color:var(--faint);margin:4px 0 9px 2px;}
+.planets{display:flex;gap:6px;margin-bottom:12px;}
+.pbtn{flex:1;padding:8px 0;border-radius:11px;border:1.5px solid var(--border);background:rgba(255,255,255,0.7);font-family:'Inter',sans-serif;font-size:12px;font-weight:700;color:var(--text);cursor:pointer;transition:all 0.15s;display:flex;flex-direction:column;align-items:center;gap:2px;}
+.pbtn .pg{font-family:'Roboto Mono',monospace;font-size:10px;color:var(--muted);font-weight:500;}
+.pbtn:hover{border-color:var(--accent);}
+.pbtn.sel{border-color:var(--accent);background:var(--accent-dim);color:var(--accent);}
+.pbtn.sel .pg{color:var(--accent);}
+.show-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;color:var(--faint);margin:4px 0 10px 2px;}
+.show-chip{display:flex;align-items:center;gap:12px;width:100%;padding:11px 14px;margin-bottom:8px;border-radius:14px;cursor:pointer;background:rgba(20,40,70,0.035);border:1.5px solid transparent;transition:all 0.16s;}
+.show-chip:hover{background:rgba(20,40,70,0.06);}
+.show-chip.on{background:var(--accent-dim);border-color:rgba(37,99,235,0.30);}
+.chip-ico{width:32px;height:32px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:15px;background:rgba(37,99,235,0.10);transition:all 0.16s;}
+.show-chip.on .chip-ico{background:var(--accent);}
+.chip-text{flex:1;min-width:0;}
+.chip-name{font-size:13.5px;font-weight:700;}
+.chip-sub{font-size:11px;color:var(--muted);font-family:'Roboto Mono',monospace;}
+.chip-state{width:21px;height:21px;border-radius:50%;flex-shrink:0;border:2px solid rgba(20,40,70,0.16);display:flex;align-items:center;justify-content:center;transition:all 0.16s;}
+.show-chip.on .chip-state{background:var(--accent);border-color:var(--accent);}
+.show-chip.on .chip-state::after{content:'✓';color:#fff;font-size:12px;font-weight:700;}
+.hint-bar{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:100;background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:9px 22px;font-size:12.5px;color:var(--muted);box-shadow:var(--shadow);white-space:nowrap;display:flex;align-items:center;gap:9px;}
+.hint-grab{color:var(--accent);font-weight:700;}.hint-dot{color:var(--faint);}
+@media (max-width:1180px){.panel-left{width:300px;}.panel-right{width:272px;}}
+</style>
+</head>
+<body>
+<div id="canvas-container"><canvas id="c"></canvas></div>
+<div id="labels-layer"></div>
+<header class="header">
+  <div class="h-badge"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.7" stroke-linejoin="round"><path d="M3 20 Q10 2 21 14"/><circle cx="21" cy="14" r="1.6" fill="#fff"/><path d="M3 20 H21"/></svg></div>
+  <div class="header-title" data-i18n="header_title">Движение под углом к горизонту</div>
+  <div class="header-tag">v₀ · α · g</div>
+  <div class="header-sub" data-i18n-html="header_sub">Тело брошено под углом — летит по параболе<br>меняйте скорость, угол и силу тяжести</div>
+</header>
+<div class="eq-banner" id="eq-banner"></div>
+<div class="panel panel-left" id="panel-left">
+  <div class="ld-list"><h3 data-i18n="props_title">Характеристики полёта</h3><div id="metrics"></div></div>
+  <div class="ld-detail"><button class="ld-back" onclick="window.showList()"><span>‹</span> <span data-i18n="back">Назад</span></button><div id="detail-content"></div></div>
+</div>
+<div class="panel panel-right">
+  <div class="dim-slider sv"><div class="ds-top"><span class="ds-name"><span class="ds-key">v₀</span><span class="ds-dimname" data-i18n="dn_v">начальная скорость</span></span><span class="ds-pill" id="pill-v">20</span></div>
+    <input type="range" min="5" max="50" step="1" value="20" id="slider-v" oninput="window.setDim('v0',+this.value)"></div>
+  <div class="dim-slider sang"><div class="ds-top"><span class="ds-name"><span class="ds-key">α</span><span class="ds-dimname" data-i18n="dn_ang">угол броска</span></span><span class="ds-pill" id="pill-ang">45°</span></div>
+    <input type="range" min="5" max="85" step="1" value="45" id="slider-ang" oninput="window.setDim('ang',+this.value)"></div>
+  <div class="planet-label" data-i18n="planet_label">Сила тяжести</div>
+  <div class="planets" id="planets"></div>
+  <div class="show-label" data-i18n="show_title">Показать</div>
+  <div class="show-chip on" id="chip-vel" onclick="window.toggleVel()"><div class="chip-ico">➤</div><div class="chip-text"><span class="chip-name" data-i18n="ch_vel">Вектор скорости</span><span class="chip-sub" data-i18n="ch_vel_sub">vₓ постоянна, v_y меняется</span></div><div class="chip-state"></div></div>
+  <div class="show-chip" id="chip-pause" onclick="window.togglePause()"><div class="chip-ico">⏸</div><div class="chip-text"><span class="chip-name" data-i18n="ch_pause">Пауза</span><span class="chip-sub" data-i18n="ch_pause_sub">остановить полёт</span></div><div class="chip-state"></div></div>
+</div>
+<div class="hint-bar" data-i18n-html="hint"><span class="hint-grab">Меняйте v₀ и α</span><span class="hint-dot">·</span><span>выберите планету</span><span class="hint-dot">·</span><span>фон — поворот сцены</span></div>
+
+<script>
+const PLANETS=[{key:'earth',g:9.8,ru:'Земля',kz:'Жер',en:'Earth',ico:'🌍'},{key:'moon',g:1.6,ru:'Луна',kz:'Ай',en:'Moon',ico:'🌙'},{key:'mars',g:3.7,ru:'Марс',kz:'Марс',en:'Mars',ico:'🔴'},{key:'jup',g:24.8,ru:'Юпитер',kz:'Юпитер',en:'Jupiter',ico:'🟠'}];
+const I18N={
+ru:{page_title:'Движение под углом к горизонту',header_title:'Движение под углом к горизонту',header_sub:'Тело брошено под углом — летит по параболе<br>меняйте скорость, угол и силу тяжести',
+  props_title:'Характеристики полёта',back:'Назад',dn_v:'начальная скорость',dn_ang:'угол броска',planet_label:'Сила тяжести',show_title:'Показать',
+  ch_vel:'Вектор скорости',ch_vel_sub:'vₓ постоянна, v_y меняется',ch_pause:'Пауза',ch_pause_sub:'остановить полёт',
+  hint:'<span class="hint-grab">Меняйте v₀ и α</span><span class="hint-dot">·</span><span>выберите планету</span><span class="hint-dot">·</span><span>фон — поворот сцены</span>',
+  m_v0:'Начальная скорость v₀',m_ang:'Угол броска α',m_vx:'Горизонт. скорость vₓ',m_vy:'Вертик. скорость v_y',m_H:'Макс. высота H',m_L:'Дальность L',m_T:'Время полёта T',
+  sub_v0:'модуль скорости',sub_ang:'к горизонту',sub_vx:'v₀·cos α (не меняется)',sub_vy:'v₀·sin α (начальная)',sub_H:'v_y² / 2g',sub_L:'v₀²·sin 2α / g',sub_T:'2·v_y / g',
+  u_v:'м/с',u_ang:'°',u_m:'м',u_t:'с',banner:'g = <b>{g}</b> м/с²'},
+kz:{page_title:'Көкжиекке бұрышпен қозғалыс',header_title:'Көкжиекке бұрышпен қозғалыс',header_sub:'Дене бұрышпен лақтырылған — парабола бойымен ұшады<br>жылдамдықты, бұрышты, ауырлықты өзгертіңіз',
+  props_title:'Ұшу сипаттамалары',back:'Артқа',dn_v:'бастапқы жылдамдық',dn_ang:'лақтыру бұрышы',planet_label:'Ауырлық күші',show_title:'Көрсету',
+  ch_vel:'Жылдамдық векторы',ch_vel_sub:'vₓ тұрақты, v_y өзгереді',ch_pause:'Кідірту',ch_pause_sub:'ұшуды тоқтату',
+  hint:'<span class="hint-grab">v₀ мен α өзгертіңіз</span><span class="hint-dot">·</span><span>планетаны таңдаңыз</span><span class="hint-dot">·</span><span>фон — бұру</span>',
+  m_v0:'Бастапқы жылдамдық v₀',m_ang:'Лақтыру бұрышы α',m_vx:'Көлденең жылдамдық vₓ',m_vy:'Тік жылдамдық v_y',m_H:'Макс. биіктік H',m_L:'Қашықтық L',m_T:'Ұшу уақыты T',
+  sub_v0:'жылдамдық модулі',sub_ang:'көкжиекке',sub_vx:'v₀·cos α (өзгермейді)',sub_vy:'v₀·sin α (бастапқы)',sub_H:'v_y² / 2g',sub_L:'v₀²·sin 2α / g',sub_T:'2·v_y / g',
+  u_v:'м/с',u_ang:'°',u_m:'м',u_t:'с',banner:'g = <b>{g}</b> м/с²'},
+en:{page_title:'Projectile Motion',header_title:'Projectile Motion',header_sub:'A body thrown at an angle follows a parabola<br>change the speed, angle and gravity',
+  props_title:'Flight characteristics',back:'Back',dn_v:'initial speed',dn_ang:'launch angle',planet_label:'Gravity',show_title:'Show',
+  ch_vel:'Velocity vector',ch_vel_sub:'vₓ constant, v_y changes',ch_pause:'Pause',ch_pause_sub:'stop the flight',
+  hint:'<span class="hint-grab">Change v₀ and α</span><span class="hint-dot">·</span><span>pick a planet</span><span class="hint-dot">·</span><span>background — rotate</span>',
+  m_v0:'Initial speed v₀',m_ang:'Launch angle α',m_vx:'Horizontal speed vₓ',m_vy:'Vertical speed v_y',m_H:'Max height H',m_L:'Range L',m_T:'Flight time T',
+  sub_v0:'speed magnitude',sub_ang:'to the horizon',sub_vx:'v₀·cos α (unchanged)',sub_vy:'v₀·sin α (initial)',sub_H:'v_y² / 2g',sub_L:'v₀²·sin 2α / g',sub_T:'2·v_y / g',
+  u_v:'m/s',u_ang:'°',u_m:'m',u_t:'s',banner:'g = <b>{g}</b> m/s²'}
+};
+const LANG=(()=>{const q=new URLSearchParams(location.search).get('lang');return(q&&I18N[q])?q:'ru';})();
+const tr=key=>(I18N[LANG]&&I18N[LANG][key])!==undefined?I18N[LANG][key]:I18N.ru[key];
+function applyStaticI18N(){document.documentElement.lang=LANG;const tv=tr('page_title');if(tv)document.title=tv;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{const v=tr(el.getAttribute('data-i18n'));if(v!==undefined)el.textContent=v;});
+  document.querySelectorAll('[data-i18n-html]').forEach(el=>{const v=tr(el.getAttribute('data-i18n-html'));if(v!==undefined)el.innerHTML=v;});}
+applyStaticI18N();
+const f1=x=>x.toFixed(1);const f2=x=>x.toFixed(2);
+const RAD=d=>d*Math.PI/180;
+window.A={v0:20,ang:45,g:9.8,planet:'earth'};
+const vx=()=>window.A.v0*Math.cos(RAD(window.A.ang));
+const vy=()=>window.A.v0*Math.sin(RAD(window.A.ang));
+const Tf=()=>2*vy()/window.A.g;
+const Hmax=()=>vy()*vy()/(2*window.A.g);
+const Lrange=()=>vx()*Tf();
+const METRICS=[
+  {key:'v0', dot:'var(--v)',  i:'m_v0', fmt:()=>f1(window.A.v0), sub:()=>tr('sub_v0'),u:'u_v'},
+  {key:'ang',dot:'var(--ang)',i:'m_ang',fmt:()=>f1(window.A.ang),sub:()=>tr('sub_ang'),u:'u_ang'},
+  {key:'vx', dot:'#16a34a',   i:'m_vx', fmt:()=>f1(vx()),       sub:()=>tr('sub_vx'),u:'u_v'},
+  {key:'vy', dot:'#16a34a',   i:'m_vy', fmt:()=>f1(vy()),       sub:()=>tr('sub_vy'),u:'u_v'},
+  {key:'H',  dot:'var(--peak)',i:'m_H', fmt:()=>f1(Hmax()),     sub:()=>tr('sub_H'),u:'u_m'},
+  {key:'L',  dot:'var(--path)',i:'m_L', fmt:()=>f1(Lrange()),   sub:()=>tr('sub_L'),u:'u_m'},
+  {key:'T',  dot:'var(--accent)',i:'m_T',fmt:()=>f2(Tf()),      sub:()=>tr('sub_T'),u:'u_t'},
+];
+function renderMetrics(){document.getElementById('metrics').innerHTML=METRICS.map(m=>`
+  <div class="metric" data-key="${m.key}" onclick="window.openDetail('${m.key}')"><div class="metric-dot" style="background:${m.dot}"></div>
+  <div class="metric-main"><span class="metric-name">${tr(m.i)}</span><span class="metric-sub" id="ms-${m.key}"></span></div>
+  <span class="metric-val" id="mv-${m.key}">—</span></div>`).join('');}
+function renderPlanets(){document.getElementById('planets').innerHTML=PLANETS.map(p=>`
+  <button class="pbtn${p.key===window.A.planet?' sel':''}" data-p="${p.key}" onclick="window.setPlanet('${p.key}')">
+    <span>${p.ico} ${p[LANG]}</span><span class="pg">${p.g}</span></button>`).join('');}
+function updateMetricValues(){METRICS.forEach(m=>{const v=document.getElementById('mv-'+m.key);if(v)v.textContent=m.fmt();const s=document.getElementById('ms-'+m.key);if(s)s.textContent=m.sub();});
+  document.getElementById('pill-v').textContent=f1(window.A.v0);document.getElementById('pill-ang').textContent=f1(window.A.ang)+'°';
+  document.getElementById('slider-v').style.setProperty('--fill',((window.A.v0-5)/45*100)+'%');
+  document.getElementById('slider-ang').style.setProperty('--fill',((window.A.ang-5)/80*100)+'%');
+  document.getElementById('eq-banner').innerHTML=tr('banner').replace('{g}',f1(window.A.g))+'  ·  H = <b>'+f1(Hmax())+'</b> '+tr('u_m')+'  ·  L = <b>'+f1(Lrange())+'</b> '+tr('u_m');}
+renderMetrics();renderPlanets();
+</script>
+<script type="importmap">{"imports":{"three":"../../libs/vendor/three-0.160.0/three.module.js"}}</script>
+<script type="module">
+import * as THREE from 'three';
+const canvas=document.getElementById('c');
+const renderer=new THREE.WebGLRenderer({canvas,antialias: true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);renderer.outputColorSpace=THREE.SRGBColorSpace;
+const scene=new THREE.Scene();scene.background=null;
+const camera=new THREE.PerspectiveCamera(42,innerWidth/innerHeight,0.1,9000);
+const CAM_DIR=new THREE.Vector3(0.2,0.18,1).normalize();
+let camDist=80,camDistTarget=80,userZoom=1.0;let showVel=true,paused=false;
+const PI=Math.PI;
+const f1=x=>x.toFixed(1);const f2=x=>x.toFixed(2);
+const RAD=d=>d*PI/180;
+const vxF=()=>window.A.v0*Math.cos(RAD(window.A.ang));
+const vyF=()=>window.A.v0*Math.sin(RAD(window.A.ang));
+const TfF=()=>2*vyF()/window.A.g;
+const HF=()=>vyF()*vyF()/(2*window.A.g);
+const LF=()=>vxF()*TfF();
+function frameSize(){return Math.max(LF(),HF()*1.6,8);}
+function computeCamTarget(){const R0=frameSize()*0.62*1.12;const fovy=camera.fov*PI/180;const dV=R0/Math.sin(fovy/2);const usableW=Math.max(420,innerWidth-660);const fovx=2*Math.atan(Math.tan(fovy/2)*usableW/innerHeight);const dH=R0/Math.sin(fovx/2);return Math.max(dV,dH)*userZoom;}
+function applyCamera(){camera.position.copy(CAM_DIR).multiplyScalar(camDist);camera.lookAt(0,0,0);}
+scene.add(new THREE.AmbientLight(0xffffff,0.82));
+const kL=new THREE.DirectionalLight(0xffffff,0.8);kL.position.set(4,9,12);scene.add(kL);
+const fL=new THREE.DirectionalLight(0x93c5fd,0.3);fL.position.set(-8,-3,4);scene.add(fL);
+const V=(x,y,z)=>new THREE.Vector3(x,y,z);
+const root=new THREE.Group();scene.add(root);
+const obj=new THREE.Group();root.add(obj);
+const fig=new THREE.Group();obj.add(fig);
+const figTarget=new THREE.Vector3();
+const COL={ground:0x94a3b8,grid:0xd5dbe3,path:0x2563eb,ball:0xe11d48,vel:0x16a34a,peak:0xd97706,launch:0x64748b};
+let LU=1;   // line/marker scale (proportional to frame)
+function cyl(from,to,rr,mat){const dir=new THREE.Vector3().subVectors(to,from),len=dir.length();const m=new THREE.Mesh(new THREE.CylinderGeometry(rr,rr,len,10),mat);m.position.addVectors(from,to).multiplyScalar(0.5);if(len>1e-6)m.quaternion.setFromUnitVectors(V(0,1,0),dir.normalize());return m;}
+function cone(at,dir,rr,hh,mat){const m=new THREE.Mesh(new THREE.ConeGeometry(rr,hh,14),mat);m.position.copy(at);m.quaternion.setFromUnitVectors(V(0,1,0),dir.clone().normalize());return m;}
+function sphere(r,mat){return new THREE.Mesh(new THREE.SphereGeometry(r,18,14),mat);}
+const sceneGroup=new THREE.Group();fig.add(sceneGroup);
+const ball=sphere(1,new THREE.MeshStandardMaterial({color:COL.ball,roughness:0.3,metalness:0.2,emissive:COL.ball,emissiveIntensity:0.2}));fig.add(ball);
+const velGroup=new THREE.Group();fig.add(velGroup);
+function disposeG(g){while(g.children.length){const o=g.children[0];o.traverse(x=>{if(x.geometry)x.geometry.dispose();});g.remove(o);}}
+let hiKey=null;
+function buildScene(){
+  disposeG(sceneGroup);
+  const L=LF(),H=HF(),T=TfF();
+  LU=frameSize()*0.0085;
+  ball.geometry.dispose();ball.geometry=new THREE.SphereGeometry(LU*2.4,18,14);
+  // ground
+  const gw=Math.max(L*1.12,8);
+  const grMat=new THREE.MeshStandardMaterial({color:COL.ground,roughness:0.6});
+  sceneGroup.add(cyl(V(-gw*0.06,0,0),V(gw,0,0),LU*0.8,grMat));
+  // height axis
+  sceneGroup.add(cyl(V(0,0,0),V(0,Math.max(H*1.15,4),0),LU*0.6,new THREE.MeshStandardMaterial({color:COL.ground,roughness:0.6})));
+  // faint grid (vertical ticks every nice step on ground)
+  const step=niceStep(L);const tMat=new THREE.MeshBasicMaterial({color:COL.grid,transparent:true,opacity:0.8});
+  for(let x=step;x<=gw;x+=step)sceneGroup.add(cyl(V(x,0,0),V(x,Math.max(H*1.12,3),0),LU*0.28,tMat));
+  // trajectory
+  const N=80,pts=[];for(let i=0;i<=N;i++){const t=T*i/N;pts.push(V(vxF()*t, vyF()*t-0.5*window.A.g*t*t, 0));}
+  const pathHi=(hiKey==='L'||hiKey==='v0'||hiKey==='ang');
+  const pMat=new THREE.MeshStandardMaterial({color:COL.path,roughness:0.3,metalness:0.1,emissive:pathHi?COL.path:0,emissiveIntensity:pathHi?0.4:0});
+  sceneGroup.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),120,LU*(pathHi?1.5:1.0),8,false),pMat));
+  // launch angle arrow at origin
+  const aMat=new THREE.MeshStandardMaterial({color:COL.vel,roughness:0.3,metalness:0.2,emissive:(hiKey==='ang'||hiKey==='v0')?COL.vel:0,emissiveIntensity:(hiKey==='ang'||hiKey==='v0')?0.35:0});
+  const dir0=V(Math.cos(RAD(window.A.ang)),Math.sin(RAD(window.A.ang)),0);
+  const aLen=Math.min(frameSize()*0.22, window.A.v0*0.5+frameSize()*0.05);
+  sceneGroup.add(cyl(V(0,0,0),dir0.clone().multiplyScalar(aLen*0.86),LU*0.9,aMat));
+  sceneGroup.add(cone(dir0.clone().multiplyScalar(aLen*0.93),dir0,LU*2,LU*5.5,aMat));
+  // angle arc
+  {const arcR=aLen*0.5,steps=16,ap=[];for(let i=0;i<=steps;i++){const a=RAD(window.A.ang)*i/steps;ap.push(V(arcR*Math.cos(a),arcR*Math.sin(a),0));}sceneGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(ap),new THREE.LineBasicMaterial({color:COL.vel})));}
+  // peak marker
+  const xPeak=vxF()*(T/2);const peakHi=(hiKey==='H');
+  sceneGroup.add(sphere(LU*(peakHi?3.2:2.2),new THREE.MeshStandardMaterial({color:COL.peak,roughness:0.25,metalness:0.25,emissive:peakHi?COL.peak:0,emissiveIntensity:peakHi?0.5:0})).translateX(xPeak).translateY(H));
+  // landing marker
+  const landHi=(hiKey==='L');
+  sceneGroup.add(sphere(LU*(landHi?3.2:2.2),new THREE.MeshStandardMaterial({color:COL.path,roughness:0.25,metalness:0.25,emissive:landHi?COL.path:0,emissiveIntensity:landHi?0.5:0})).translateX(L).translateY(0));
+  // dashed verticals for H and L
+  const dMat=new THREE.MeshBasicMaterial({color:COL.peak,transparent:true,opacity:0.45});
+  sceneGroup.add(cyl(V(xPeak,0,0),V(xPeak,H,0),LU*0.3,dMat));
+  if(!figFroze)figTarget.set(-L/2,-Math.max(H,2)/2,0);
+  updateLabelAnchors();
+}
+function niceStep(L){const raw=L/6;const p=Math.pow(10,Math.floor(Math.log10(raw)));const n=raw/p;return (n<1.5?1:n<3.5?2:n<7.5?5:10)*p;}
+const figFroze=false;
+/* labels */
+const layer=document.getElementById('labels-layer');
+function mkLabel(cls){const d=document.createElement('div');d.className='dim-label '+cls;layer.appendChild(d);return d;}
+const L_peak=mkLabel('lpeak'),L_range=mkLabel('lrange'),L_vel=mkLabel('lvel'),L_x=mkLabel('lax'),L_y=mkLabel('lax');
+const anc={peak:V(),range:V(),vel:V(),x:V(),y:V()};
+function updateLabelAnchors(){
+  const L=LF(),H=HF(),T=TfF();const xPeak=vxF()*(T/2);
+  anc.peak.set(xPeak,H,0);L_peak.textContent='H = '+f1(H);
+  anc.range.set(L,0,0);L_range.textContent='L = '+f1(L);
+  anc.x.set(Math.max(L*1.06,6),0,0);anc.y.set(0,Math.max(H*1.12,3.4),0);
+  L_x.textContent=LANG==='en'?'distance':'дальность';L_y.textContent=LANG==='en'?'height':'высота';
+}
+let ballT=0;
+function project(localVec){const w=localVec.clone().add(fig.position).applyMatrix4(obj.matrixWorld).project(camera);return {x:(w.x*0.5+0.5)*innerWidth,y:(-w.y*0.5+0.5)*innerHeight,behind:w.z>1};}
+function place(el,v,vis,off){if(!vis){el.classList.add('hidden');return;}const s=project(v);if(s.behind){el.classList.add('hidden');return;}el.classList.remove('hidden');el.style.left=s.x+'px';el.style.top=(s.y+(off||0))+'px';}
+function updateLabels(){
+  place(L_peak,anc.peak,true,-16);place(L_range,anc.range,true,16);
+  place(L_x,anc.x,true,16);place(L_y,anc.y,true,0);
+  // velocity label follows ball
+  if(showVel){const x=vxF()*ballT,y=vyF()*ballT-0.5*window.A.g*ballT*ballT;const vyc=vyF()-window.A.g*ballT;const sp=Math.hypot(vxF(),vyc);anc.vel.set(x,y,0);L_vel.textContent='v = '+f1(sp)+' '+tr('u_v');place(L_vel,anc.vel,y>=-0.01,-22);}else L_vel.classList.add('hidden');
+}
+/* DETAIL */
+const DETAIL_ALL={
+ru:{
+  v0:{tag:'Скорость',p:'v₀ — модуль начальной скорости, с которой тело брошено. Её раскладывают на горизонтальную vₓ = v₀cos α и вертикальную v_y = v₀sin α составляющие, которые дальше «живут» независимо.'},
+  ang:{tag:'Угол',p:'Угол α — это угол между вектором начальной скорости и горизонтом. При α = 45° дальность максимальна. Углы α и 90°−α дают одинаковую дальность (например, 30° и 60°).'},
+  vx:{tag:'Горизонталь',p:'Горизонтальная скорость vₓ = v₀cos α остаётся постоянной на протяжении всего полёта: по горизонтали нет силы (сопротивлением пренебрегаем), поэтому движение равномерное.'},
+  vy:{tag:'Вертикаль',p:'Начальная вертикальная скорость v_y = v₀sin α. Под действием тяжести она уменьшается: v_y(t) = v₀sin α − g·t. В верхней точке она равна нулю, затем тело падает.'},
+  H:{tag:'Высота',p:'Максимальная высота H = v_y²/(2g) = (v₀sin α)²/(2g) достигается в середине полёта, когда вертикальная скорость обращается в ноль. Чем больше угол, тем выше подъём.'},
+  L:{tag:'Дальность',p:'Дальность полёта L = vₓ·T = v₀²·sin 2α / g. Максимум при α = 45°. Если уменьшить g (например, на Луне), дальность сильно вырастет при тех же v₀ и α.'},
+  T:{tag:'Время',p:'Время полёта T = 2·v_y/g = 2·v₀sin α / g — вдвое больше времени подъёма до верхней точки. Оно зависит только от вертикальной скорости и g, но не от горизонтальной.'},
+},
+kz:{
+  v0:{tag:'Жылдамдық',p:'v₀ — дене лақтырылған бастапқы жылдамдық модулі. Ол көлденең vₓ = v₀cos α және тік v_y = v₀sin α құраушыларға жіктеледі.'},
+  ang:{tag:'Бұрыш',p:'α бұрышы — бастапқы жылдамдық пен көкжиек арасындағы бұрыш. α = 45° кезінде қашықтық максимал. α мен 90°−α бірдей қашықтық береді.'},
+  vx:{tag:'Көлденең',p:'Көлденең жылдамдық vₓ = v₀cos α бүкіл ұшу бойы тұрақты: көлденеңінен күш жоқ, сондықтан қозғалыс бірқалыпты.'},
+  vy:{tag:'Тік',p:'Бастапқы тік жылдамдық v_y = v₀sin α. Ауырлық әсерінен кемиді: v_y(t) = v₀sin α − g·t. Жоғарғы нүктеде нөлге тең.'},
+  H:{tag:'Биіктік',p:'Максимал биіктік H = v_y²/(2g) ұшудың ортасында, тік жылдамдық нөлге айналғанда жетеді.'},
+  L:{tag:'Қашықтық',p:'Ұшу қашықтығы L = v₀²·sin 2α / g. Максимум α = 45° кезінде. g кішірейсе (Айда), қашықтық едәуір артады.'},
+  T:{tag:'Уақыт',p:'Ұшу уақыты T = 2·v₀sin α / g — көтерілу уақытынан екі есе көп. Тек тік жылдамдық пен g-ге тәуелді.'},
+},
+en:{
+  v0:{tag:'Speed',p:'v₀ is the magnitude of the initial velocity. It splits into a horizontal part vₓ = v₀cos α and a vertical part v_y = v₀sin α, which then evolve independently.'},
+  ang:{tag:'Angle',p:'The angle α is between the initial velocity and the horizon. The range is largest at α = 45°. Angles α and 90°−α give the same range (e.g. 30° and 60°).'},
+  vx:{tag:'Horizontal',p:'The horizontal speed vₓ = v₀cos α stays constant throughout the flight: there is no horizontal force (ignoring air resistance), so the motion is uniform.'},
+  vy:{tag:'Vertical',p:'The initial vertical speed v_y = v₀sin α. Gravity reduces it: v_y(t) = v₀sin α − g·t. At the top it is zero, then the body falls.'},
+  H:{tag:'Height',p:'The maximum height H = v_y²/(2g) = (v₀sin α)²/(2g) is reached at mid-flight, when the vertical speed becomes zero. A larger angle gives a higher rise.'},
+  L:{tag:'Range',p:'The range L = vₓ·T = v₀²·sin 2α / g. It is maximal at α = 45°. Lowering g (e.g. on the Moon) greatly increases the range for the same v₀ and α.'},
+  T:{tag:'Time',p:'The flight time T = 2·v_y/g = 2·v₀sin α / g — twice the time to reach the top. It depends only on the vertical speed and g, not on the horizontal one.'},
+}
+};
+const DETAIL=DETAIL_ALL[LANG]||DETAIL_ALL.ru;
+function openDetail(key){const d=DETAIL[key];if(!d)return;const m=METRICS.find(x=>x.key===key);
+  document.querySelectorAll('.metric').forEach(el=>el.classList.toggle('active',el.dataset.key===key));
+  hiKey=key;buildScene();
+  const g=window.A.g,VX=vxF(),VY=vyF();
+  const calc={v0:`v₀ = ${f1(window.A.v0)} ${tr('u_v')}`,ang:`α = ${f1(window.A.ang)}°`,
+    vx:`vₓ = v₀·cos α = ${f1(window.A.v0)}·cos ${f1(window.A.ang)}°\n   = ${f1(VX)} ${tr('u_v')}`,
+    vy:`v_y = v₀·sin α = ${f1(window.A.v0)}·sin ${f1(window.A.ang)}°\n   = ${f1(VY)} ${tr('u_v')}`,
+    H:`H = v_y² / (2g) = ${f1(VY)}² / (2·${f1(g)})\n   = ${f1(HF())} ${tr('u_m')}`,
+    L:`L = v₀²·sin 2α / g = ${f1(window.A.v0)}²·sin ${f1(2*window.A.ang)}° / ${f1(g)}\n   = ${f1(LF())} ${tr('u_m')}`,
+    T:`T = 2·v_y / g = 2·${f1(VY)} / ${f1(g)}\n   = ${f2(TfF())} ${tr('u_t')}`}[key];
+  document.getElementById('detail-content').innerHTML=`<div class="d-tag">${d.tag}</div><div class="d-title">${tr(m.i)}</div>
+    <div class="d-bigval"><b>${m.fmt()}</b><span>${tr(m.u)}</span></div><div class="d-formula">${calc}</div><div class="d-para">${d.p}</div>`;
+  document.getElementById('panel-left').classList.add('detail');currentDetail=key;markInteract();}
+let currentDetail=null;window.openDetail=openDetail;
+window.showList=function(){document.getElementById('panel-left').classList.remove('detail');currentDetail=null;
+  document.querySelectorAll('.metric').forEach(m=>m.classList.remove('active'));hiKey=null;buildScene();};
+window.setDim=function(k,val){window.A[k]=val;ballT=0;buildScene();updateMetricValues();if(currentDetail)openDetail(currentDetail);markInteract();};
+window.setPlanet=function(key){const p=PLANETS.find(x=>x.key===key);if(!p)return;window.A.planet=key;window.A.g=p.g;ballT=0;renderPlanets();buildScene();updateMetricValues();if(currentDetail)openDetail(currentDetail);markInteract();};
+window.toggleVel=function(){showVel=!showVel;document.getElementById('chip-vel').classList.toggle('on',showVel);markInteract();};
+window.togglePause=function(){paused=!paused;document.getElementById('chip-pause').classList.toggle('on',paused);markInteract();};
+/* rotate + loop */
+let mode=null,last={x:0,y:0},dd=0,isDragging=false,rotX=0.0;
+let lastInteract=performance.now(),autoSpeed=0;const AUTO_TARGET=0.0,IDLE_MS=15000;
+function markInteract(){lastInteract=performance.now();}
+canvas.addEventListener('mousedown',e=>{markInteract();mode='rotate';last={x:e.clientX,y:e.clientY};isDragging=false;dd=0;});
+canvas.addEventListener('mousemove',e=>{if(mode==='rotate'){dd=Math.hypot(e.clientX-last.x,e.clientY-last.y);if(dd>4)isDragging=true;
+  if(isDragging){root.rotation.y+=(e.clientX-last.x)*0.008;rotX=Math.max(-1.0,Math.min(1.0,rotX+(e.clientY-last.y)*0.006));root.rotation.x=rotX;markInteract();}last={x:e.clientX,y:e.clientY};}});
+window.addEventListener('mouseup',()=>{mode=null;});
+canvas.addEventListener('wheel',e=>{e.preventDefault();userZoom=Math.max(0.6,Math.min(1.7,userZoom+e.deltaY*0.0015));markInteract();},{passive:false});
+window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+function buildVel(){
+  disposeG(velGroup);
+  if(!showVel)return;
+  const x=vxF()*ballT,y=vyF()*ballT-0.5*window.A.g*ballT*ballT;if(y<-0.01)return;
+  const vyc=vyF()-window.A.g*ballT;const vvec=V(vxF(),vyc,0);const sp=vvec.length();if(sp<1e-3)return;
+  const scl=frameSize()*0.16/window.A.v0;const tip=V(x,y,0).add(vvec.clone().multiplyScalar(scl));
+  const mat=new THREE.MeshStandardMaterial({color:COL.vel,roughness:0.3,metalness:0.2});
+  const dir=vvec.clone().normalize();const base=V(x,y,0);
+  velGroup.add(cyl(base,tip.clone().sub(dir.clone().multiplyScalar(LU*5)),LU*0.9,mat));
+  velGroup.add(cone(tip.clone().sub(dir.clone().multiplyScalar(LU*2.5)),dir,LU*1.9,LU*5,mat));
+}
+let t=0;
+function animate(){requestAnimationFrame(animate);t+=0.016;
+  camDistTarget=computeCamTarget();camDist+=(camDistTarget-camDist)*0.16;applyCamera();
+  fig.position.lerp(figTarget,0.18);
+  // advance ball
+  const T=TfF();
+  if(!paused){ballT+=0.016*Math.max(0.6,T/2.2);if(ballT>T+T*0.18)ballT=0;}
+  const bt=Math.min(ballT,T);
+  ball.position.set(vxF()*bt, Math.max(0,vyF()*bt-0.5*window.A.g*bt*bt), 0);
+  ball.visible=ballT<=T+1e-3;
+  buildVel();
+  root.rotation.x=rotX;
+  renderer.render(scene,camera);obj.updateWorldMatrix(true,false);updateLabels();}
+buildScene();updateMetricValues();figTarget.set(-LF()/2,-Math.max(HF(),2)/2,0);fig.position.copy(figTarget);
+camDistTarget=computeCamTarget();camDist=camDistTarget;applyCamera();animate();
+</script>
+</body>
+</html>

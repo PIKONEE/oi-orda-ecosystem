@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="page_title">Коррозия железа — Электрохимический процесс</title>
+<script src="../../libs/vendor/three-r128/three.min.js"></script>
+<style>
+
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --blue:#38bdf8;--purple:#a78bfa;--orange:#fb923c;--green:#4ade80;--red:#f87171;
+  --yellow:#facc15;--cyan:#22d3ee;--rust:#c2410c;--iron:#9ca3af;--water:#67e8f9;
+  --glass-bg:rgba(26,34,60,0.55);--glass-border:rgba(255,255,255,0.16);
+  --text:#eef2f8;--text-dim:#94a6c2;
+  --mono:'JetBrains Mono',monospace;--serif:'Playfair Display',serif;--sans:'Nunito',sans-serif;
+}
+body{background:radial-gradient(ellipse at 50% 35%,#242e50 0%,#161e38 50%,#0d1222 100%);color:var(--text);font-family:var(--sans);overflow:hidden;height:100vh;width:100vw;}
+#canvas-container{position:absolute;inset:0;z-index:0;}canvas{display:block;}
+.glass{background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:16px;box-shadow:0 6px 28px rgba(0,0,0,0.26),inset 0 1px 0 rgba(255,255,255,0.09);}
+::-webkit-scrollbar{width:5px;}::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.16);border-radius:3px;}
+
+#left-panel{position:absolute;top:56px;left:16px;width:370px;z-index:10;padding:24px;display:flex;flex-direction:column;gap:16px;max-height:calc(100vh - 72px);overflow-y:auto;}
+.panel-title{font-family:var(--serif);font-size:26px;font-weight:700;background:linear-gradient(135deg,var(--iron),var(--rust));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.panel-subtitle{font-size:15px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1.5px;}
+.separator{height:1px;background:linear-gradient(90deg,transparent,var(--glass-border),transparent);}
+
+.control-group{display:flex;flex-direction:column;gap:8px;}
+.control-label{display:flex;justify-content:space-between;align-items:baseline;font-size:18px;color:var(--text-dim);}
+.control-value{font-family:var(--mono);font-weight:600;font-size:20px;}
+
+input[type="range"]{-webkit-appearance:none;width:100%;height:10px;border-radius:5px;background:rgba(255,255,255,0.1);outline:none;cursor:pointer;}
+input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:28px;height:28px;border-radius:50%;background:var(--blue);box-shadow:0 0 12px rgba(56,189,248,0.4);cursor:pointer;transition:transform .15s;}
+input[type="range"]::-webkit-slider-thumb:hover{transform:scale(1.15);}
+.slider-red::-webkit-slider-thumb{background:var(--rust);box-shadow:0 0 12px rgba(194,65,12,0.5);}
+.slider-cyan::-webkit-slider-thumb{background:var(--cyan);box-shadow:0 0 12px rgba(103,232,249,0.4);}
+.slider-green::-webkit-slider-thumb{background:var(--green);box-shadow:0 0 12px rgba(74,222,128,0.4);}
+
+.btn{padding:14px 20px;border:none;border-radius:14px;font-family:var(--sans);font-weight:700;font-size:20px;cursor:pointer;transition:all .2s;letter-spacing:.5px;width:100%;}
+.btn-start{background:linear-gradient(135deg,var(--green),#16a34a);color:#052e16;box-shadow:0 4px 18px rgba(74,222,128,0.25);}
+.btn-start:hover{transform:translateY(-1px);box-shadow:0 6px 22px rgba(74,222,128,0.4);}
+.btn-stop{background:linear-gradient(135deg,var(--red),#dc2626);color:#fff;box-shadow:0 4px 18px rgba(248,113,113,0.25);}
+.btn-reset{background:rgba(255,255,255,0.08);color:var(--text);border:1px solid var(--glass-border);font-size:18px;padding:12px 16px;margin-top:6px;}
+.btn-reset:hover{background:rgba(255,255,255,0.14);}
+
+.toggle-row{display:flex;align-items:center;justify-content:space-between;font-size:18px;color:var(--text-dim);}
+.toggle{width:52px;height:28px;border-radius:14px;background:rgba(255,255,255,0.12);position:relative;cursor:pointer;transition:background .3s;}
+.toggle.active{background:var(--blue);}
+.toggle::after{content:'';position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:white;transition:transform .3s;}
+.toggle.active::after{transform:translateX(24px);}
+
+.env-selector{display:flex;gap:6px;}
+.env-btn{padding:10px 8px;border:1px solid var(--glass-border);border-radius:10px;background:rgba(255,255,255,0.04);color:var(--text-dim);font-size:15px;cursor:pointer;transition:all .2s;text-align:center;flex:1;}
+.env-btn.active{background:rgba(56,189,248,0.12);border-color:var(--blue);color:var(--blue);}
+.env-btn:hover{background:rgba(255,255,255,0.08);}
+.env-btn .env-icon{font-size:22px;display:block;margin-bottom:2px;}
+
+/* RIGHT */
+#right-panel{position:absolute;top:16px;right:16px;width:400px;z-index:10;padding:24px;display:flex;flex-direction:column;gap:14px;max-height:calc(100vh - 32px);overflow-y:auto;}
+.stat-row{display:flex;justify-content:space-between;align-items:baseline;}
+.stat-label{font-size:17px;color:var(--text-dim);}
+.stat-value{font-family:var(--mono);font-weight:600;font-size:22px;}
+
+.reaction-box{background:rgba(0,0,0,0.18);border-radius:14px;padding:16px 18px;border:1px solid rgba(255,255,255,0.07);}
+.reaction-title{font-size:18px;font-weight:700;margin-bottom:8px;}
+.reaction-eq{font-family:var(--serif);font-size:19px;line-height:2;color:var(--text);font-style:italic;}
+.reaction-eq .note{font-family:var(--sans);font-size:14px;font-style:normal;color:var(--text-dim);display:block;margin-top:2px;}
+
+.formula-box{background:rgba(0,0,0,0.15);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:14px 16px;font-family:var(--serif);font-size:19px;line-height:2;color:var(--text-dim);}
+.info-box{background:rgba(0,0,0,0.12);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:14px 16px;font-size:17px;line-height:1.7;color:var(--text-dim);}
+.info-box b{color:var(--text);font-weight:600;}
+
+.legend-item{display:flex;align-items:center;gap:10px;font-size:16px;color:var(--text-dim);}
+.legend-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0;}
+
+/* RUST METER */
+.rust-meter{width:100%;height:20px;border-radius:10px;background:rgba(255,255,255,0.08);overflow:hidden;border:1px solid rgba(255,255,255,0.06);}
+.rust-meter-fill{height:100%;border-radius:10px;transition:width .3s;background:linear-gradient(90deg,var(--iron),var(--rust),#7c2d12);}
+
+/* BOTTOM */
+#bottom-panel{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);z-index:10;padding:16px 36px;display:flex;gap:44px;align-items:center;white-space:nowrap;}
+.bottom-stat{display:flex;flex-direction:column;align-items:center;gap:3px;}
+.bottom-stat .label{font-size:14px;text-transform:uppercase;letter-spacing:1.2px;color:var(--text-dim);}
+.bottom-stat .value{font-family:var(--mono);font-size:26px;font-weight:700;}
+
+#status-bar{position:absolute;top:16px;left:50%;transform:translateX(-50%);z-index:10;padding:12px 28px;display:flex;align-items:center;gap:14px;font-size:20px;font-weight:700;letter-spacing:1px;}
+.status-dot{width:16px;height:16px;border-radius:50%;flex-shrink:0;}
+.status-dot.on{animation:blink 1.2s infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.4;}}
+
+</style>
+</head>
+<body>
+<div id="canvas-container"></div>
+
+<div id="status-bar" class="glass">
+  <div class="status-dot" id="status-dot" style="background:var(--text-dim);"></div>
+  <span id="status-text" style="color:var(--text-dim);" data-i18n="status_idle">КОРРОЗИЯ НЕ НАЧАТА</span>
+</div>
+
+<div id="left-panel" class="glass">
+  <div><div class="panel-title" data-i18n="panel_title">Коррозия железа</div><div class="panel-subtitle" data-i18n="panel_subtitle">Электрохимический процесс</div></div>
+  <div class="separator"></div>
+
+  <div class="panel-subtitle" data-i18n="env_label">Среда</div>
+  <div class="env-selector">
+    <div class="env-btn active" data-env="wet"><span class="env-icon">💧</span><span data-i18n="env_wet">Влажный воздух</span></div>
+    <div class="env-btn" data-env="salt"><span class="env-icon">🧂</span><span data-i18n="env_salt">Солёная вода</span></div>
+    <div class="env-btn" data-env="acid"><span class="env-icon">⚗</span><span data-i18n="env_acid">Кислая среда</span></div>
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="control-group">
+    <div class="control-label"><span data-i18n="humidity">Влажность</span><span class="control-value" id="humid-val" style="color:var(--cyan);">70%</span></div>
+    <input type="range" id="humid-slider" class="slider-cyan" min="0" max="100" value="70" step="1">
+  </div>
+  <div class="control-group">
+    <div class="control-label"><span data-i18n="o2_content">Содержание O₂</span><span class="control-value" id="o2-val" style="color:var(--blue);">21%</span></div>
+    <input type="range" id="o2-slider" min="0" max="40" value="21" step="1">
+  </div>
+  <div class="control-group">
+    <div class="control-label"><span data-i18n="process_speed">Скорость процесса</span><span class="control-value" id="speed-val" style="color:var(--green);">1.0×</span></div>
+    <input type="range" id="speed-slider" class="slider-green" min="2" max="50" value="10" step="1">
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="toggle-row"><span data-i18n="toggle_electrons">Электроны в металле</span><div class="toggle active" id="toggle-electrons"></div></div>
+  <div class="toggle-row"><span data-i18n="toggle_ions">Ионы в растворе</span><div class="toggle active" id="toggle-ions"></div></div>
+  <div class="toggle-row"><span data-i18n="toggle_molecules">Молекулы O₂ и H₂O</span><div class="toggle active" id="toggle-molecules"></div></div>
+
+  <div class="separator"></div>
+
+  <button class="btn btn-start" id="btn-start" data-i18n="btn_start">⚡ Начать коррозию</button>
+  <button class="btn btn-reset" id="btn-reset" data-i18n="btn_reset">↺ Сброс</button>
+</div>
+
+<div id="right-panel" class="glass">
+  <div class="panel-title" style="font-size:22px;" data-i18n="processes_title">Процессы коррозии</div>
+
+  <div class="reaction-box" style="border-left:3px solid var(--iron);">
+    <div class="reaction-title" style="color:var(--iron);" data-i18n="anode_title">Анодный участок (окисление)</div>
+    <div class="reaction-eq">Fe⁰ − 2e⁻ → Fe²⁺<span class="note" data-i18n="anode_note">Железо растворяется, отдавая электроны</span></div>
+  </div>
+  <div class="reaction-box" style="border-left:3px solid var(--cyan);">
+    <div class="reaction-title" style="color:var(--cyan);" data-i18n="cathode_title">Катодный участок (восстановление)</div>
+    <div class="reaction-eq">O₂ + 2H₂O + 4e⁻ → 4OH⁻<span class="note" data-i18n="cathode_note">Кислород принимает электроны в присутствии воды</span></div>
+  </div>
+  <div class="reaction-box" style="border-left:3px solid var(--rust);">
+    <div class="reaction-title" style="color:var(--rust);" data-i18n="rust_title">Образование ржавчины</div>
+    <div class="reaction-eq">Fe²⁺ + 2OH⁻ → Fe(OH)₂ → Fe₂O₃·nH₂O<span class="note" data-i18n="rust_note">Гидроксид железа окисляется до ржавчины (оксид железа III)</span></div>
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="stat-row"><span class="stat-label" data-i18n="stat_rust">Степень коррозии</span><span class="stat-value" id="stat-rust" style="color:var(--rust);">0%</span></div>
+  <div class="rust-meter"><div class="rust-meter-fill" id="rust-fill" style="width:0%;"></div></div>
+
+  <div class="stat-row" style="margin-top:8px;"><span class="stat-label" data-i18n="stat_fe">Fe²⁺ ионов в растворе</span><span class="stat-value" id="stat-fe" style="color:var(--iron);">0</span></div>
+  <div class="stat-row"><span class="stat-label" data-i18n="stat_oh">OH⁻ ионов</span><span class="stat-value" id="stat-oh" style="color:var(--cyan);">0</span></div>
+  <div class="stat-row"><span class="stat-label" data-i18n="stat_electrons">Электронов перенесено</span><span class="stat-value" id="stat-electrons" style="color:var(--yellow);">0</span></div>
+  <div class="stat-row"><span class="stat-label" data-i18n="stat_time">Время процесса</span><span class="stat-value" id="stat-time" style="color:var(--blue);">0 с</span></div>
+
+  <div class="separator"></div>
+
+  <div class="panel-subtitle" data-i18n="legend_title">Легенда частиц</div>
+  <div style="display:flex;flex-direction:column;gap:8px;">
+    <div class="legend-item"><div class="legend-dot" style="background:#9ca3af;"></div><span data-i18n="legend_fe">Fe — атомы железа (серые)</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:#4ade80;"></div><span data-i18n="legend_fe2">Fe²⁺ — ионы железа (зелёные)</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:#facc15;"></div><span data-i18n="legend_e">e⁻ — электроны (жёлтые)</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:#ef4444;"></div><span data-i18n="legend_o2">O₂ — молекулы кислорода</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:#67e8f9;"></div><span data-i18n="legend_h2o">H₂O — молекулы воды</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:#38bdf8;"></div><span data-i18n="legend_oh">OH⁻ — гидроксид-ионы</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:#c2410c;"></div><span data-i18n="legend_rust">Fe₂O₃ — ржавчина</span></div>
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="info-box" data-i18n-html="info_corrosion">
+    Коррозия — <b>электрохимический</b> процесс. На поверхности железа возникают микро-гальванические пары:<br><br>
+    На <b>анодном</b> участке Fe отдаёт электроны и переходит в раствор как Fe²⁺.<br><br>
+    <b>Электроны</b> перемещаются по металлу к <b>катодному</b> участку, где O₂ в присутствии H₂O восстанавливается до OH⁻.<br><br>
+    Fe²⁺ + OH⁻ образуют нерастворимый <b>Fe(OH)₂</b>, который далее окисляется до <b>ржавчины Fe₂O₃·nH₂O</b>.<br><br>
+    <b>Соль</b> и <b>кислота</b> ускоряют коррозию, т.к. повышают электропроводность среды.
+  </div>
+</div>
+
+<div id="bottom-panel" class="glass">
+  <div class="bottom-stat"><span class="label" data-i18n="b_rust">Ржавчина</span><span class="value" id="b-rust" style="color:var(--rust);">0%</span></div>
+  <div class="bottom-stat"><span class="label">Fe²⁺</span><span class="value" id="b-fe" style="color:var(--green);">0</span></div>
+  <div class="bottom-stat"><span class="label">e⁻</span><span class="value" id="b-e" style="color:var(--yellow);">0</span></div>
+  <div class="bottom-stat"><span class="label">OH⁻</span><span class="value" id="b-oh" style="color:var(--cyan);">0</span></div>
+  <div class="bottom-stat"><span class="label" data-i18n="b_time">Время</span><span class="value" id="b-time" style="color:var(--blue);">0 с</span></div>
+</div>
+
+<script>
+// =====================================================================
+//  I18N — встроенные переводы (RU / KZ / EN). Язык: ?lang=ru|kz|en.
+// =====================================================================
+const I18N = {
+  ru: {
+    page_title: 'Коррозия железа — Электрохимический процесс',
+    panel_title: 'Коррозия железа',
+    panel_subtitle: 'Электрохимический процесс',
+    env_label: 'Среда',
+    env_wet: 'Влажный воздух',
+    env_salt: 'Солёная вода',
+    env_acid: 'Кислая среда',
+    humidity: 'Влажность',
+    o2_content: 'Содержание O₂',
+    process_speed: 'Скорость процесса',
+    toggle_electrons: 'Электроны в металле',
+    toggle_ions: 'Ионы в растворе',
+    toggle_molecules: 'Молекулы O₂ и H₂O',
+    btn_start: '⚡ Начать коррозию',
+    btn_stop: '⏸ Остановить',
+    btn_continue: '⚡ Продолжить',
+    btn_reset: '↺ Сброс',
+    processes_title: 'Процессы коррозии',
+    anode_title: 'Анодный участок (окисление)',
+    anode_note: 'Железо растворяется, отдавая электроны',
+    cathode_title: 'Катодный участок (восстановление)',
+    cathode_note: 'Кислород принимает электроны в присутствии воды',
+    rust_title: 'Образование ржавчины',
+    rust_note: 'Гидроксид железа окисляется до ржавчины (оксид железа III)',
+    stat_rust: 'Степень коррозии',
+    stat_fe: 'Fe²⁺ ионов в растворе',
+    stat_oh: 'OH⁻ ионов',
+    stat_electrons: 'Электронов перенесено',
+    stat_time: 'Время процесса',
+    legend_title: 'Легенда частиц',
+    legend_fe: 'Fe — атомы железа (серые)',
+    legend_fe2: 'Fe²⁺ — ионы железа (зелёные)',
+    legend_e: 'e⁻ — электроны (жёлтые)',
+    legend_o2: 'O₂ — молекулы кислорода',
+    legend_h2o: 'H₂O — молекулы воды',
+    legend_oh: 'OH⁻ — гидроксид-ионы',
+    legend_rust: 'Fe₂O₃ — ржавчина',
+    info_corrosion: 'Коррозия — <b>электрохимический</b> процесс. На поверхности железа возникают микро-гальванические пары:<br><br>На <b>анодном</b> участке Fe отдаёт электроны и переходит в раствор как Fe²⁺.<br><br><b>Электроны</b> перемещаются по металлу к <b>катодному</b> участку, где O₂ в присутствии H₂O восстанавливается до OH⁻.<br><br>Fe²⁺ + OH⁻ образуют нерастворимый <b>Fe(OH)₂</b>, который далее окисляется до <b>ржавчины Fe₂O₃·nH₂O</b>.<br><br><b>Соль</b> и <b>кислота</b> ускоряют коррозию, т.к. повышают электропроводность среды.',
+    b_rust: 'Ржавчина',
+    b_time: 'Время',
+    status_idle: 'КОРРОЗИЯ НЕ НАЧАТА',
+    status_running: '🔴 КОРРОЗИЯ ИДЁТ',
+    status_paused: 'ПАУЗА',
+    time_unit: 'с'
+  },
+  kz: {
+    page_title: 'Темір коррозиясы — Электрохимиялық процесс',
+    panel_title: 'Темір коррозиясы',
+    panel_subtitle: 'Электрохимиялық процесс',
+    env_label: 'Орта',
+    env_wet: 'Ылғалды ауа',
+    env_salt: 'Тұзды су',
+    env_acid: 'Қышқыл орта',
+    humidity: 'Ылғалдылық',
+    o2_content: 'O₂ құрамы',
+    process_speed: 'Процесс жылдамдығы',
+    toggle_electrons: 'Металдағы электрондар',
+    toggle_ions: 'Ерітіндідегі иондар',
+    toggle_molecules: 'O₂ және H₂O молекулалары',
+    btn_start: '⚡ Коррозияны бастау',
+    btn_stop: '⏸ Тоқтату',
+    btn_continue: '⚡ Жалғастыру',
+    btn_reset: '↺ Қалпына келтіру',
+    processes_title: 'Коррозия процестері',
+    anode_title: 'Анодтық аймақ (тотығу)',
+    anode_note: 'Темір электрондарын бере отырып ериді',
+    cathode_title: 'Катодтық аймақ (тотықсыздану)',
+    cathode_note: 'Оттек су қатысуымен электрондарды қабылдайды',
+    rust_title: 'Тат түзілуі',
+    rust_note: 'Темір гидроксиді татқа (темір III оксиді) дейін тотығады',
+    stat_rust: 'Коррозия дәрежесі',
+    stat_fe: 'Fe²⁺ иондары ерітіндіде',
+    stat_oh: 'OH⁻ иондары',
+    stat_electrons: 'Тасымалданған электрондар',
+    stat_time: 'Процесс уақыты',
+    legend_title: 'Бөлшектер шартты белгілері',
+    legend_fe: 'Fe — темір атомдары (сұр)',
+    legend_fe2: 'Fe²⁺ — темір иондары (жасыл)',
+    legend_e: 'e⁻ — электрондар (сары)',
+    legend_o2: 'O₂ — оттек молекулалары',
+    legend_h2o: 'H₂O — су молекулалары',
+    legend_oh: 'OH⁻ — гидроксид-иондары',
+    legend_rust: 'Fe₂O₃ — тат',
+    info_corrosion: 'Коррозия — <b>электрохимиялық</b> процесс. Темір бетінде микро-гальваникалық жұптар пайда болады:<br><br><b>Анодтық</b> аймақта Fe электрондарын бере отырып ерітіндіге Fe²⁺ ретінде ауысады.<br><br><b>Электрондар</b> металл арқылы <b>катодтық</b> аймаққа жылжиды, мұнда O₂ H₂O қатысуымен OH⁻-ға дейін тотықсызданады.<br><br>Fe²⁺ + OH⁻ ерімейтін <b>Fe(OH)₂</b> түзеді, ол одан әрі <b>тат Fe₂O₃·nH₂O</b>-ға дейін тотығады.<br><br><b>Тұз</b> және <b>қышқыл</b> коррозияны жылдамдатады, себебі ортаның электр өткізгіштігін арттырады.',
+    b_rust: 'Тат',
+    b_time: 'Уақыт',
+    status_idle: 'КОРРОЗИЯ БАСТАЛМАДЫ',
+    status_running: '🔴 КОРРОЗИЯ ЖҮРІП ЖАТЫР',
+    status_paused: 'КІДІРТУ',
+    time_unit: 'с'
+  },
+  en: {
+    page_title: 'Iron Corrosion — Electrochemical Process',
+    panel_title: 'Iron Corrosion',
+    panel_subtitle: 'Electrochemical process',
+    env_label: 'Environment',
+    env_wet: 'Humid air',
+    env_salt: 'Salt water',
+    env_acid: 'Acidic environment',
+    humidity: 'Humidity',
+    o2_content: 'O₂ content',
+    process_speed: 'Process speed',
+    toggle_electrons: 'Electrons in metal',
+    toggle_ions: 'Ions in solution',
+    toggle_molecules: 'O₂ and H₂O molecules',
+    btn_start: '⚡ Start corrosion',
+    btn_stop: '⏸ Stop',
+    btn_continue: '⚡ Continue',
+    btn_reset: '↺ Reset',
+    processes_title: 'Corrosion processes',
+    anode_title: 'Anodic area (oxidation)',
+    anode_note: 'Iron dissolves, giving up electrons',
+    cathode_title: 'Cathodic area (reduction)',
+    cathode_note: 'Oxygen accepts electrons in the presence of water',
+    rust_title: 'Rust formation',
+    rust_note: 'Iron hydroxide oxidizes to rust (iron III oxide)',
+    stat_rust: 'Corrosion degree',
+    stat_fe: 'Fe²⁺ ions in solution',
+    stat_oh: 'OH⁻ ions',
+    stat_electrons: 'Electrons transferred',
+    stat_time: 'Process time',
+    legend_title: 'Particle legend',
+    legend_fe: 'Fe — iron atoms (gray)',
+    legend_fe2: 'Fe²⁺ — iron ions (green)',
+    legend_e: 'e⁻ — electrons (yellow)',
+    legend_o2: 'O₂ — oxygen molecules',
+    legend_h2o: 'H₂O — water molecules',
+    legend_oh: 'OH⁻ — hydroxide ions',
+    legend_rust: 'Fe₂O₃ — rust',
+    info_corrosion: 'Corrosion is an <b>electrochemical</b> process. Micro-galvanic cells form on the iron surface:<br><br>At the <b>anodic</b> area, Fe gives up electrons and enters solution as Fe²⁺.<br><br><b>Electrons</b> travel through the metal to the <b>cathodic</b> area, where O₂ in the presence of H₂O is reduced to OH⁻.<br><br>Fe²⁺ + OH⁻ form insoluble <b>Fe(OH)₂</b>, which further oxidizes to <b>rust Fe₂O₃·nH₂O</b>.<br><br><b>Salt</b> and <b>acid</b> accelerate corrosion by increasing the electrical conductivity of the medium.',
+    b_rust: 'Rust',
+    b_time: 'Time',
+    status_idle: 'CORROSION NOT STARTED',
+    status_running: '🔴 CORROSION IN PROGRESS',
+    status_paused: 'PAUSED',
+    time_unit: 's'
+  }
+};
+const LANG=(()=>{const q=new URLSearchParams(location.search).get('lang');return(q&&I18N[q])?q:'ru';})();
+const t=(key)=>(I18N[LANG]&&I18N[LANG][key])??(I18N.ru&&I18N.ru[key]);
+
+function applyStaticI18N(){
+  document.documentElement.lang=LANG;
+  const tv=t('page_title');if(tv)document.title=tv;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{const v=t(el.getAttribute('data-i18n'));if(v)el.textContent=v;});
+  document.querySelectorAll('[data-i18n-html]').forEach(el=>{const v=t(el.getAttribute('data-i18n-html'));if(v)el.innerHTML=v;});
+}
+applyStaticI18N();
+// ═══════════════════════════════════════
+const container=document.getElementById('canvas-container');
+const scene=new THREE.Scene();
+scene.fog=new THREE.FogExp2(0x161e38,0.003);
+const camera=new THREE.PerspectiveCamera(50,innerWidth/innerHeight,0.1,300);
+const renderer=new THREE.WebGLRenderer({antialias: true,alpha:true});
+renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.shadowMap.enabled=false;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.2;
+container.appendChild(renderer.domElement);
+
+scene.add(new THREE.AmbientLight(0x667788,0.7));
+const dL=new THREE.DirectionalLight(0xffeedd,0.75);dL.position.set(8,18,12);dL.castShadow=true;dL.shadow.mapSize.set(2048,2048);scene.add(dL);
+
+// ═══ IRON BLOCK ═══
+const ironW=12,ironH=2.5,ironD=6;
+const ironGeo=new THREE.BoxGeometry(ironW,ironH,ironD);
+const ironMat=new THREE.MeshStandardMaterial({color:0x9ca3af,roughness:0.35,metalness:0.85});
+const ironMesh=new THREE.Mesh(ironGeo,ironMat);
+ironMesh.position.set(0,ironH/2,0);ironMesh.castShadow=true;ironMesh.receiveShadow=true;
+scene.add(ironMesh);
+
+// Rust overlay (grows)
+const rustGeo=new THREE.BoxGeometry(ironW+0.05,ironH+0.05,ironD+0.05);
+const rustMat=new THREE.MeshStandardMaterial({color:0xc2410c,roughness:0.8,metalness:0.2,transparent:true,opacity:0});
+const rustMesh=new THREE.Mesh(rustGeo,rustMat);
+rustMesh.position.copy(ironMesh.position);
+scene.add(rustMesh);
+
+// Rust spots (individual patches that appear)
+const rustSpots=[];
+function addRustSpot(){
+  const size=0.3+Math.random()*0.6;
+  const geo=new THREE.SphereGeometry(size,8,8);
+  geo.scale(1,0.3,1);
+  const mat=new THREE.MeshStandardMaterial({color:Math.random()>0.5?0xc2410c:0x9a3412,roughness:0.9,metalness:0.1});
+  const m=new THREE.Mesh(geo,mat);
+  const face=Math.floor(Math.random()*3);
+  if(face===0){ // top
+    m.position.set((Math.random()-0.5)*ironW, ironH+0.05, (Math.random()-0.5)*ironD);
+  } else if(face===1){ // front
+    m.position.set((Math.random()-0.5)*ironW, Math.random()*ironH, ironD/2+0.05);
+    m.rotation.x=Math.PI/2;
+  } else { // side
+    m.position.set(ironW/2+0.05, Math.random()*ironH, (Math.random()-0.5)*ironD);
+    m.rotation.z=Math.PI/2;
+  }
+  scene.add(m);
+  rustSpots.push(m);
+}
+
+// ═══ WATER LAYER ═══
+const waterGeo=new THREE.BoxGeometry(ironW+4,0.15,ironD+4);
+const waterMat=new THREE.MeshStandardMaterial({color:0x67e8f9,transparent:true,opacity:0.15,roughness:0.1});
+const waterMesh=new THREE.Mesh(waterGeo,waterMat);
+waterMesh.position.set(0,ironH+0.1,0);
+scene.add(waterMesh);
+
+// Floor
+const fl=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0x141c30,roughness:0.85}));
+fl.rotation.x=-Math.PI/2;fl.position.y=-0.5;fl.receiveShadow=true;scene.add(fl);
+
+// ═══ PARTICLES ═══
+const particles=[];
+const MAX_P=300;
+
+function spawnP(type,x,y,z){
+  if(particles.length>=MAX_P) return;
+  let mesh;
+  if(type==='fe2'){
+    mesh=new THREE.Mesh(new THREE.SphereGeometry(0.25,8,8),new THREE.MeshStandardMaterial({color:0x4ade80,emissive:0x4ade80,emissiveIntensity:0.3,roughness:0.3}));
+  } else if(type==='electron'){
+    mesh=new THREE.Mesh(new THREE.SphereGeometry(0.15,8,8),new THREE.MeshBasicMaterial({color:0xfacc15}));
+  } else if(type==='o2'){
+    const g=new THREE.Group();
+    g.add(new THREE.Mesh(new THREE.SphereGeometry(0.3,8,8),new THREE.MeshStandardMaterial({color:0xef4444,emissive:0xef4444,emissiveIntensity:0.15,roughness:0.3})));
+    const s2=new THREE.Mesh(new THREE.SphereGeometry(0.3,8,8),new THREE.MeshStandardMaterial({color:0xef4444,emissive:0xef4444,emissiveIntensity:0.15,roughness:0.3}));
+    s2.position.x=0.45;g.add(s2);mesh=g;
+  } else if(type==='h2o'){
+    const g=new THREE.Group();
+    g.add(new THREE.Mesh(new THREE.SphereGeometry(0.25,8,8),new THREE.MeshStandardMaterial({color:0x67e8f9,emissive:0x67e8f9,emissiveIntensity:0.1,roughness:0.3,transparent:true,opacity:0.6})));
+    const h1=new THREE.Mesh(new THREE.SphereGeometry(0.15,6,6),new THREE.MeshStandardMaterial({color:0xeef2ff,roughness:0.3,transparent:true,opacity:0.5}));
+    h1.position.set(-0.3,0.2,0);g.add(h1);
+    const h2=h1.clone();h2.position.set(0.3,0.2,0);g.add(h2);mesh=g;
+  } else if(type==='oh'){
+    const g=new THREE.Group();
+    g.add(new THREE.Mesh(new THREE.SphereGeometry(0.22,8,8),new THREE.MeshStandardMaterial({color:0x38bdf8,emissive:0x38bdf8,emissiveIntensity:0.2,roughness:0.3})));
+    const h=new THREE.Mesh(new THREE.SphereGeometry(0.14,6,6),new THREE.MeshStandardMaterial({color:0xbfdbfe,roughness:0.3}));
+    h.position.x=0.22;g.add(h);mesh=g;
+  } else if(type==='rust'){
+    mesh=new THREE.Mesh(new THREE.SphereGeometry(0.2+Math.random()*0.15,6,6),new THREE.MeshStandardMaterial({color:0xc2410c,emissive:0xc2410c,emissiveIntensity:0.1,roughness:0.8}));
+  }
+  mesh.position.set(x||0,y||0,z||0);scene.add(mesh);
+  const sp=1+Math.random()*2;const a=Math.random()*Math.PI*2;
+  particles.push({mesh,type,vx:Math.cos(a)*sp,vy:(Math.random()-0.5)*sp*0.5,vz:Math.sin(a)*sp,life:0,alive:true});
+}
+
+function removeP(i){scene.remove(particles[i].mesh);particles.splice(i,1);}
+
+// ═══ ENVIRONMENT O₂ + H₂O ═══
+function spawnEnvironment(){
+  // O₂ molecules above
+  for(let i=0;i<6;i++) spawnP('o2',(Math.random()-0.5)*14,ironH+1+Math.random()*3,(Math.random()-0.5)*8);
+  // H₂O near surface
+  for(let i=0;i<8;i++) spawnP('h2o',(Math.random()-0.5)*14,ironH+0.3+Math.random()*0.8,(Math.random()-0.5)*8);
+}
+spawnEnvironment();
+
+// ═══ STATE ═══
+const state={
+  running:false,humidity:70,o2:21,speed:1,env:'wet',
+  rustLevel:0,feIons:0,ohIons:0,electronCount:0,time:0,
+  showElectrons:true,showIons:true,showMolecules:true,
+  corrosionTimer:0, spotTimer:0,
+};
+
+// ═══ ENV SPEED FACTOR ═══
+function envFactor(){
+  const base=(state.humidity/100)*(state.o2/21);
+  if(state.env==='salt') return base*2.5;
+  if(state.env==='acid') return base*4;
+  return base;
+}
+
+// ═══ UI ═══
+document.getElementById('humid-slider').addEventListener('input',e=>{state.humidity=+e.target.value;document.getElementById('humid-val').textContent=state.humidity+'%';});
+document.getElementById('o2-slider').addEventListener('input',e=>{state.o2=+e.target.value;document.getElementById('o2-val').textContent=state.o2+'%';});
+document.getElementById('speed-slider').addEventListener('input',e=>{state.speed=+e.target.value/10;document.getElementById('speed-val').textContent=state.speed.toFixed(1)+'×';});
+
+document.querySelectorAll('.env-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.env-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');state.env=btn.dataset.env;
+    waterMat.opacity=state.env==='salt'?0.22:state.env==='acid'?0.18:0.15;
+    waterMat.color.setHex(state.env==='salt'?0x38bdf8:state.env==='acid'?0xfca5a5:0x67e8f9);
+  });
+});
+
+document.getElementById('toggle-electrons').addEventListener('click',function(){this.classList.toggle('active');state.showElectrons=this.classList.contains('active');});
+document.getElementById('toggle-ions').addEventListener('click',function(){this.classList.toggle('active');state.showIons=this.classList.contains('active');});
+document.getElementById('toggle-molecules').addEventListener('click',function(){this.classList.toggle('active');state.showMolecules=this.classList.contains('active');});
+
+const btnStart=document.getElementById('btn-start');
+btnStart.addEventListener('click',()=>{
+  if(!state.running){
+    state.running=true;btnStart.textContent=t('btn_stop');btnStart.className='btn btn-stop';
+    document.getElementById('status-dot').className='status-dot on';
+    document.getElementById('status-dot').style.background='var(--rust)';
+    document.getElementById('status-text').style.color='var(--rust)';
+    document.getElementById('status-text').textContent=t('status_running');
+  } else {
+    state.running=false;btnStart.textContent=t('btn_continue');btnStart.className='btn btn-start';
+    document.getElementById('status-dot').className='status-dot';
+    document.getElementById('status-dot').style.background='var(--text-dim)';
+    document.getElementById('status-text').style.color='var(--text-dim)';
+    document.getElementById('status-text').textContent=t('status_paused');
+  }
+});
+document.getElementById('btn-reset').addEventListener('click',()=>{
+  state.running=false;state.rustLevel=0;state.feIons=0;state.ohIons=0;state.electronCount=0;state.time=0;
+  btnStart.textContent=t('btn_start');btnStart.className='btn btn-start';
+  document.getElementById('status-dot').className='status-dot';
+  document.getElementById('status-dot').style.background='var(--text-dim)';
+  document.getElementById('status-text').style.color='var(--text-dim)';
+  document.getElementById('status-text').textContent=t('status_idle');
+  while(particles.length)removeP(0);
+  rustSpots.forEach(s=>scene.remove(s));rustSpots.length=0;
+  rustMat.opacity=0;ironMat.color.setHex(0x9ca3af);
+  spawnEnvironment();updateUI();
+  camSph={r:22,theta:Math.PI*0.5,phi:Math.PI*0.38};camTarget.set(0,2,0);updateCam();
+});
+
+function updateUI(){
+  const rp=Math.min(100,state.rustLevel).toFixed(1);
+  document.getElementById('stat-rust').textContent=rp+'%';
+  document.getElementById('rust-fill').style.width=rp+'%';
+  document.getElementById('stat-fe').textContent=state.feIons;
+  document.getElementById('stat-oh').textContent=state.ohIons;
+  document.getElementById('stat-electrons').textContent=state.electronCount;
+  document.getElementById('stat-time').textContent=state.time.toFixed(0)+' '+t('time_unit');
+  document.getElementById('b-rust').textContent=Math.round(state.rustLevel)+'%';
+  document.getElementById('b-fe').textContent=state.feIons;
+  document.getElementById('b-e').textContent=state.electronCount;
+  document.getElementById('b-oh').textContent=state.ohIons;
+  document.getElementById('b-time').textContent=state.time.toFixed(0)+' '+t('time_unit');
+}
+updateUI();
+
+// ═══ CAMERA ═══
+let isDrag=false,isPan=false,prevM={x:0,y:0};
+let camSph={r:22,theta:Math.PI*0.5,phi:Math.PI*0.38},camTarget=new THREE.Vector3(0,2,0);
+function updateCam(){camera.position.set(camTarget.x+camSph.r*Math.sin(camSph.phi)*Math.cos(camSph.theta),camTarget.y+camSph.r*Math.cos(camSph.phi),camTarget.z+camSph.r*Math.sin(camSph.phi)*Math.sin(camSph.theta));camera.lookAt(camTarget);}
+updateCam();
+renderer.domElement.addEventListener('mousedown',e=>{if(e.button===0)isDrag=true;if(e.button===2)isPan=true;prevM={x:e.clientX,y:e.clientY};});
+renderer.domElement.addEventListener('mousemove',e=>{const dx=e.clientX-prevM.x,dy=e.clientY-prevM.y;prevM={x:e.clientX,y:e.clientY};if(isDrag){camSph.theta-=dx*0.005;camSph.phi=Math.max(0.1,Math.min(Math.PI*0.48,camSph.phi+dy*0.005));updateCam();}if(isPan){const r2=new THREE.Vector3();camera.getWorldDirection(r2);r2.cross(new THREE.Vector3(0,1,0)).normalize();camTarget.addScaledVector(r2,-dx*0.03);camTarget.y=Math.max(-3,camTarget.y+dy*0.03);updateCam();}});
+renderer.domElement.addEventListener('mouseup',()=>{isDrag=false;isPan=false;});
+renderer.domElement.addEventListener('contextmenu',e=>e.preventDefault());
+renderer.domElement.addEventListener('wheel',e=>{camSph.r=Math.max(8,Math.min(50,camSph.r+e.deltaY*0.02));updateCam();});
+
+// ═══ ANIMATE ═══
+const clock=new THREE.Clock();
+function animate(){
+  requestAnimationFrame(animate);
+  const dt=Math.min(clock.getDelta(),0.05);
+  const ef=envFactor();
+  const spd=state.speed;
+
+  if(state.running && state.rustLevel<100){
+    state.time+=dt;
+    state.corrosionTimer+=dt*spd*ef;
+    state.spotTimer+=dt*spd*ef;
+
+    // Corrosion events
+    if(state.corrosionTimer>0.3){
+      state.corrosionTimer=0;
+
+      // Anodic: Fe → Fe²⁺ + 2e⁻
+      const ax=(Math.random()-0.5)*ironW*0.8;
+      const az=(Math.random()-0.5)*ironD*0.8;
+      spawnP('fe2',ax,ironH+0.3,az);
+      state.feIons++;
+
+      // Electrons travel through metal
+      if(state.showElectrons){
+        for(let i=0;i<2;i++){
+          spawnP('electron',ax+Math.random()-0.5,ironH*Math.random(),az+Math.random()-0.5);
+          state.electronCount++;
+        }
+      }
+
+      // Cathodic: O₂ + 2H₂O + 4e⁻ → 4OH⁻
+      const cx=(Math.random()-0.5)*ironW*0.8;
+      const cz=(Math.random()-0.5)*ironD*0.8;
+      spawnP('oh',cx,ironH+0.4,cz);
+      state.ohIons++;
+
+      // Replenish O₂ and H₂O
+      if(Math.random()<0.3) spawnP('o2',(Math.random()-0.5)*14,ironH+2+Math.random()*2,(Math.random()-0.5)*8);
+      if(Math.random()<0.3) spawnP('h2o',(Math.random()-0.5)*14,ironH+0.3+Math.random()*0.5,(Math.random()-0.5)*8);
+
+      state.rustLevel=Math.min(100,state.rustLevel+0.3*ef);
+    }
+
+    // Rust spots
+    if(state.spotTimer>0.8){
+      state.spotTimer=0;
+      addRustSpot();
+    }
+
+    // Rust overlay
+    rustMat.opacity=Math.min(0.7,state.rustLevel/100*0.7);
+    // Darken iron
+    const darkF=1-state.rustLevel/200;
+    ironMat.color.setRGB(0.61*darkF,0.64*darkF,0.68*darkF);
+
+    // Fe²⁺ + OH⁻ → rust particle near surface
+    let feList=[],ohList=[];
+    particles.forEach((p,i)=>{if(p.type==='fe2'&&p.alive)feList.push(i);if(p.type==='oh'&&p.alive)ohList.push(i);});
+    if(feList.length>0&&ohList.length>0&&Math.random()<0.04*spd*ef){
+      const fi=feList[Math.floor(Math.random()*feList.length)];
+      const oi=ohList[Math.floor(Math.random()*ohList.length)];
+      const pos=particles[fi].mesh.position.clone();
+      removeP(Math.max(fi,oi));removeP(Math.min(fi,oi));
+      spawnP('rust',pos.x,ironH+0.1+Math.random()*0.2,pos.z);
+      state.feIons=Math.max(0,state.feIons-1);
+      state.ohIons=Math.max(0,state.ohIons-1);
+    }
+  }
+
+  // Move particles
+  const hw=ironW/2+3,hd=ironD/2+3;
+  particles.forEach((p,i)=>{
+    if(!p.alive)return;
+    const pos=p.mesh.position;
+
+    // Visibility
+    if(p.type==='electron')p.mesh.visible=state.showElectrons;
+    else if(p.type==='fe2'||p.type==='oh')p.mesh.visible=state.showIons;
+    else if(p.type==='o2'||p.type==='h2o')p.mesh.visible=state.showMolecules;
+
+    if(p.type==='electron'){
+      // Move fast inside metal
+      pos.x+=p.vx*dt*4*spd;pos.z+=p.vz*dt*4*spd;
+      pos.y=ironH*0.3+Math.random()*ironH*0.4;
+      if(Math.abs(pos.x)>hw||Math.abs(pos.z)>hd||p.life>2){p.alive=false;scene.remove(p.mesh);particles.splice(i,1);return;}
+      p.life+=dt;
+    } else if(p.type==='rust'){
+      // Settle on surface
+      if(pos.y>ironH+0.15)pos.y-=dt*0.5;
+      p.mesh.rotation.y+=dt*0.1;
+    } else if(p.type==='fe2'){
+      // Drift upward slowly
+      pos.y+=dt*0.3*spd;pos.x+=p.vx*dt*0.3;pos.z+=p.vz*dt*0.3;
+      p.vx+=(Math.random()-0.5)*dt*2;p.vz+=(Math.random()-0.5)*dt*2;
+      if(pos.y>ironH+5){p.alive=false;scene.remove(p.mesh);particles.splice(i,1);state.feIons=Math.max(0,state.feIons-1);return;}
+    } else if(p.type==='oh'){
+      // Drift near surface
+      pos.x+=p.vx*dt*0.4;pos.z+=p.vz*dt*0.4;pos.y+=Math.sin(performance.now()*0.003+i)*dt*0.2;
+      p.vx+=(Math.random()-0.5)*dt*2;p.vz+=(Math.random()-0.5)*dt*2;
+      if(pos.y<ironH)pos.y=ironH+0.2;if(pos.y>ironH+2)pos.y=ironH+1;
+      if(Math.abs(pos.x)>hw||Math.abs(pos.z)>hd){p.alive=false;scene.remove(p.mesh);particles.splice(i,1);state.ohIons=Math.max(0,state.ohIons-1);return;}
+    } else {
+      // O₂ & H₂O float
+      pos.x+=p.vx*dt*0.4*spd;pos.y+=Math.sin(performance.now()*0.002+i*0.5)*dt*0.3;pos.z+=p.vz*dt*0.4*spd;
+      p.vx+=(Math.random()-0.5)*dt;p.vz+=(Math.random()-0.5)*dt;
+      if(Math.abs(pos.x)>hw){p.vx*=-1;pos.x=Math.sign(pos.x)*hw;}
+      if(Math.abs(pos.z)>hd){p.vz*=-1;pos.z=Math.sign(pos.z)*hd;}
+      if(pos.y<ironH-0.5)pos.y=ironH+0.5;if(pos.y>ironH+5)pos.y=ironH+4;
+      if(p.mesh.rotation) p.mesh.rotation.y+=dt*0.3;
+    }
+  });
+
+  // Water shimmer
+  waterMat.opacity=state.humidity/100*(state.env==='salt'?0.25:state.env==='acid'?0.2:0.18);
+  waterMesh.position.y=ironH+0.08+Math.sin(performance.now()*0.001)*0.03;
+
+  updateUI();
+  renderer.render(scene,camera);
+}
+animate();
+window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+</script>
+</body>
+</html>

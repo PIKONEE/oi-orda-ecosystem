@@ -1,0 +1,1285 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Фазовые переходы — Агрегатные состояния вещества</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 20px 30px;
+            background: linear-gradient(180deg, rgba(0,0,0,0.7) 0%, transparent 100%);
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .header h1 {
+            color: white;
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .header p {
+            color: rgba(255,255,255,0.7);
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        .control-panel {
+            position: absolute;
+            top: 110px;
+            left: 20px;
+            width: 300px;
+            background: rgba(15, 20, 40, 0.95);
+            
+            border-radius: 20px;
+            padding: 24px;
+            z-index: 10;
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+
+        .section-title {
+            color: #f39c12;
+            font-size: 12px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .temperature-display {
+            text-align: center;
+            padding: 20px;
+            background: linear-gradient(135deg, rgba(255,100,50,0.2), rgba(50,100,255,0.2));
+            border-radius: 16px;
+            margin-bottom: 20px;
+        }
+
+        .temp-value {
+            font-size: 48px;
+            font-weight: 700;
+            font-family: 'Consolas', monospace;
+            background: linear-gradient(135deg, #3498db, #e74c3c);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .temp-label {
+            color: rgba(255,255,255,0.6);
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .slider-group {
+            margin-bottom: 20px;
+        }
+
+        .slider-group label {
+            color: rgba(255,255,255,0.85);
+            font-size: 13px;
+            display: block;
+            margin-bottom: 10px;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 12px;
+            border-radius: 6px;
+            -webkit-appearance: none;
+            background: linear-gradient(90deg, #3498db 0%, #2ecc71 33%, #f39c12 66%, #e74c3c 100%);
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: white;
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            border: 3px solid #333;
+        }
+
+        .phase-indicator {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            font-size: 10px;
+            color: rgba(255,255,255,0.5);
+        }
+
+        .substance-select {
+            margin-bottom: 20px;
+        }
+
+        .substance-btn {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 8px;
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            background: rgba(255,255,255,0.05);
+            color: white;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .substance-btn:hover {
+            background: rgba(255,255,255,0.1);
+        }
+
+        .substance-btn.active {
+            border-color: #3498db;
+            background: rgba(52, 152, 219, 0.2);
+        }
+
+        .substance-icon {
+            font-size: 20px;
+        }
+
+        .substance-temps {
+            font-size: 10px;
+            color: rgba(255,255,255,0.5);
+            margin-left: auto;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 14px;
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-heat { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+        .btn-cool { background: linear-gradient(135deg, #3498db, #2980b9); }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        /* Info Panel */
+        .info-panel {
+            position: absolute;
+            top: 110px;
+            right: 20px;
+            width: 320px;
+            background: rgba(15, 20, 40, 0.95);
+            
+            border-radius: 20px;
+            padding: 24px;
+            z-index: 10;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .state-display {
+            text-align: center;
+            padding: 20px;
+            border-radius: 16px;
+            margin-bottom: 16px;
+            transition: all 0.5s;
+        }
+
+        .state-display.solid {
+            background: linear-gradient(135deg, rgba(52,152,219,0.3), rgba(41,128,185,0.3));
+            border: 2px solid #3498db;
+        }
+
+        .state-display.liquid {
+            background: linear-gradient(135deg, rgba(46,204,113,0.3), rgba(39,174,96,0.3));
+            border: 2px solid #2ecc71;
+        }
+
+        .state-display.gas {
+            background: linear-gradient(135deg, rgba(231,76,60,0.3), rgba(192,57,43,0.3));
+            border: 2px solid #e74c3c;
+        }
+
+        .state-icon {
+            font-size: 36px;
+            margin-bottom: 8px;
+        }
+
+        .state-name {
+            font-size: 20px;
+            font-weight: 700;
+            color: white;
+        }
+
+        .state-desc {
+            font-size: 12px;
+            color: rgba(255,255,255,0.6);
+            margin-top: 5px;
+        }
+
+        .transition-box {
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+
+        .transition-title {
+            color: #f39c12;
+            font-size: 11px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+
+        .transition-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .transition-item:last-child {
+            border-bottom: none;
+        }
+
+        .transition-arrow {
+            color: #f39c12;
+            margin: 0 8px;
+        }
+
+        .transition-name {
+            color: rgba(255,255,255,0.7);
+            font-size: 12px;
+            flex: 1;
+        }
+
+        .transition-temp {
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+            font-family: 'Consolas', monospace;
+        }
+
+        .energy-box {
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            padding: 16px;
+        }
+
+        .energy-label {
+            color: rgba(255,255,255,0.6);
+            font-size: 11px;
+            margin-bottom: 8px;
+        }
+
+        .energy-bar {
+            height: 8px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .energy-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3498db, #2ecc71, #f39c12, #e74c3c);
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+
+        /* Phase diagram mini */
+        .phase-diagram {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(15, 20, 40, 0.95);
+            
+            border-radius: 16px;
+            padding: 20px;
+            z-index: 10;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .diagram-title {
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+
+        .diagram-canvas {
+            width: 400px;
+            height: 120px;
+        }
+
+        .hint {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            color: rgba(255,255,255,0.4);
+            font-size: 12px;
+            z-index: 5;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="canvas-container"></div>
+
+    <div class="header">
+        <h1>🌡️ Фазовые переходы</h1>
+        <p><span>Агрегатные состояния • Плавление • Кипение • Сублимация</span></p>
+    </div>
+
+    <div class="control-panel">
+        <div class="temperature-display">
+            <div class="temp-value" id="temp-display">20°C</div>
+            <div class="temp-label">Температура</div>
+        </div>
+
+        <div class="slider-group">
+            <label>Изменение температуры</label>
+            <input type="range" id="temp-slider" min="-100" max="150" value="20">
+            <div class="phase-indicator">
+                <span>-100°C</span>
+                <span>0°C</span>
+                <span>100°C</span>
+                <span>150°C</span>
+            </div>
+        </div>
+
+        <div class="section-title">Вещество</div>
+        <div class="substance-select">
+            <button class="substance-btn active" data-substance="water">
+                <span class="substance-icon">💧</span>
+                <span>Вода (H₂O)</span>
+                <span class="substance-temps">0° / 100°C</span>
+            </button>
+            <button class="substance-btn" data-substance="ethanol">
+                <span class="substance-icon">🧪</span>
+                <span>Этанол (C₂H₅OH)</span>
+                <span class="substance-temps">-114° / 78°C</span>
+            </button>
+            <button class="substance-btn" data-substance="iron">
+                <span class="substance-icon">🔩</span>
+                <span>Железо (Fe)</span>
+                <span class="substance-temps">1538° / 2862°C</span>
+            </button>
+        </div>
+
+        <div class="action-buttons">
+            <button class="btn btn-cool" id="btn-cool">❄️ Охлаждать</button>
+            <button class="btn btn-heat" id="btn-heat">🔥 Нагревать</button>
+        </div>
+    </div>
+
+    <div class="info-panel">
+        <div class="state-display solid" id="state-display">
+            <div class="state-icon" id="state-icon">🧊</div>
+            <div class="state-name" id="state-name">Твёрдое тело</div>
+            <div class="state-desc" id="state-desc">Молекулы в кристаллической решётке</div>
+        </div>
+
+        <div class="transition-box">
+            <div class="transition-title">Фазовые переходы</div>
+            <div class="transition-item">
+                <span style="color:#3498db">Тв.</span>
+                <span class="transition-arrow">→</span>
+                <span style="color:#2ecc71">Жидк.</span>
+                <span class="transition-name">Плавление</span>
+                <span class="transition-temp" id="melt-temp">0°C</span>
+            </div>
+            <div class="transition-item">
+                <span style="color:#2ecc71">Жидк.</span>
+                <span class="transition-arrow">→</span>
+                <span style="color:#e74c3c">Газ</span>
+                <span class="transition-name">Кипение</span>
+                <span class="transition-temp" id="boil-temp">100°C</span>
+            </div>
+            <div class="transition-item">
+                <span style="color:#3498db">Тв.</span>
+                <span class="transition-arrow">→</span>
+                <span style="color:#e74c3c">Газ</span>
+                <span class="transition-name">Сублимация</span>
+                <span class="transition-temp">ниже тройной точки</span>
+            </div>
+        </div>
+
+        <div class="energy-box">
+            <div class="energy-label">Кинетическая энергия молекул</div>
+            <div class="energy-bar">
+                <div class="energy-fill" id="energy-fill" style="width: 30%"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="phase-diagram">
+        <div class="diagram-title">Диаграмма нагревания</div>
+        <canvas class="diagram-canvas" id="phase-canvas"></canvas>
+    </div>
+
+    <div class="hint">ЛКМ — вращение • ПКМ — перемещение • Колёсико — зум</div>
+
+    <script src="../../libs/vendor/three-r128/three.min.js"></script>
+    <script>
+        // Substances data
+        const substances = {
+            water: { name: 'Вода', melt: 0, boil: 100, color: 0x3498db, minTemp: -100, maxTemp: 150 },
+            ethanol: { name: 'Этанол', melt: -114, boil: 78, color: 0x9b59b6, minTemp: -150, maxTemp: 120 },
+            iron: { name: 'Железо', melt: 1538, boil: 2862, color: 0x7f8c8d, minTemp: 0, maxTemp: 3000 }
+        };
+
+        let currentSubstance = 'water';
+        let temperature = 20;
+        let isHeating = false;
+        let isCooling = false;
+
+        // Three.js
+        let scene, camera, renderer, mainGroup;
+        let particles = [];
+        let container3D;
+
+        // Controls
+        let isDragging = false;
+        let isPanning = false;
+        let lastMouse = { x: 0, y: 0 };
+        let rotation = { x: 0.3, y: 0 };
+        let pan = { x: 0, y: 0 };
+
+        const canvasContainer = document.getElementById('canvas-container');
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color('#1a1a2e');
+
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 4, 10);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            canvasContainer.appendChild(renderer.domElement);
+
+            // Lighting
+            scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+            
+            const light1 = new THREE.DirectionalLight(0xffffff, 0.8);
+            light1.position.set(5, 10, 5);
+            scene.add(light1);
+
+            const light2 = new THREE.DirectionalLight(0x88aaff, 0.3);
+            light2.position.set(-5, 5, -5);
+            scene.add(light2);
+
+            mainGroup = new THREE.Group();
+            scene.add(mainGroup);
+
+            createContainer();
+            createParticles();
+            setupControls();
+            updateSubstance();
+            drawPhaseDiagram();
+            animate();
+        }
+
+        function createContainer() {
+            container3D = new THREE.Group();
+
+            // Glass container (beaker)
+            const beakerGeom = new THREE.CylinderGeometry(2, 1.8, 4, 32, 1, true);
+            const beakerMat = new THREE.MeshPhysicalMaterial({
+                color: 0xffffff,
+                transparent: true,
+                opacity: 0.15,
+                roughness: 0.1,
+                metalness: 0,
+                side: THREE.DoubleSide
+            });
+            const beaker = new THREE.Mesh(beakerGeom, beakerMat);
+            beaker.position.y = 0;
+            container3D.add(beaker);
+
+            // Bottom
+            const bottomGeom = new THREE.CylinderGeometry(1.8, 1.8, 0.1, 32);
+            const bottomMat = new THREE.MeshPhysicalMaterial({
+                color: 0xffffff,
+                transparent: true,
+                opacity: 0.2,
+                roughness: 0.1
+            });
+            const bottom = new THREE.Mesh(bottomGeom, bottomMat);
+            bottom.position.y = -2;
+            container3D.add(bottom);
+
+            // Rim
+            const rimGeom = new THREE.TorusGeometry(2, 0.08, 8, 32);
+            const rimMat = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.5 });
+            const rim = new THREE.Mesh(rimGeom, rimMat);
+            rim.rotation.x = Math.PI / 2;
+            rim.position.y = 2;
+            container3D.add(rim);
+
+            // Heat source (burner)
+            const burnerBase = new THREE.Mesh(
+                new THREE.CylinderGeometry(2.5, 2.8, 0.5, 32),
+                new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.8, roughness: 0.3 })
+            );
+            burnerBase.position.y = -2.5;
+            container3D.add(burnerBase);
+
+            // Burner ring
+            const burnerRing = new THREE.Mesh(
+                new THREE.TorusGeometry(1.5, 0.15, 8, 32),
+                new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.7 })
+            );
+            burnerRing.rotation.x = Math.PI / 2;
+            burnerRing.position.y = -2.2;
+            container3D.add(burnerRing);
+            container3D.burnerRing = burnerRing;
+
+            // Flame (initially off)
+            const flameGroup = new THREE.Group();
+            for (let i = 0; i < 8; i++) {
+                const angle = (i / 8) * Math.PI * 2;
+                const flame = new THREE.Mesh(
+                    new THREE.ConeGeometry(0.15, 0.6, 8),
+                    new THREE.MeshBasicMaterial({ 
+                        color: 0xff6600, 
+                        transparent: true, 
+                        opacity: 0.8 
+                    })
+                );
+                flame.position.set(Math.cos(angle) * 1.5, -2, Math.sin(angle) * 1.5);
+                flameGroup.add(flame);
+            }
+            flameGroup.visible = false;
+            container3D.add(flameGroup);
+            container3D.flames = flameGroup;
+
+            // Ice effect (visible when cold)
+            const iceGroup = new THREE.Group();
+            for (let i = 0; i < 12; i++) {
+                const angle = (i / 12) * Math.PI * 2;
+                const frost = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.3, 0.5, 0.1),
+                    new THREE.MeshBasicMaterial({ 
+                        color: 0xaaddff, 
+                        transparent: true, 
+                        opacity: 0.5 
+                    })
+                );
+                frost.position.set(Math.cos(angle) * 1.95, Math.random() * 2 - 1, Math.sin(angle) * 1.95);
+                frost.rotation.y = angle;
+                iceGroup.add(frost);
+            }
+            iceGroup.visible = false;
+            container3D.add(iceGroup);
+            container3D.frost = iceGroup;
+
+            mainGroup.add(container3D);
+        }
+
+        function createParticles() {
+            const sub = substances[currentSubstance];
+            const particleCount = 80;
+
+            // Clear existing
+            particles.forEach(p => mainGroup.remove(p.mesh));
+            particles = [];
+
+            for (let i = 0; i < particleCount; i++) {
+                const geom = new THREE.SphereGeometry(0.12, 16, 16);
+                const mat = new THREE.MeshStandardMaterial({
+                    color: sub.color,
+                    roughness: 0.3,
+                    metalness: 0.2,
+                    emissive: sub.color,
+                    emissiveIntensity: 0.1
+                });
+                const mesh = new THREE.Mesh(geom, mat);
+
+                // Initial grid position for solid
+                const gridSize = Math.ceil(Math.cbrt(particleCount));
+                const xi = i % gridSize;
+                const yi = Math.floor(i / gridSize) % gridSize;
+                const zi = Math.floor(i / (gridSize * gridSize));
+
+                const spacing = 0.4;
+                const offsetX = (gridSize - 1) * spacing / 2;
+                const offsetY = (gridSize - 1) * spacing / 2;
+                const offsetZ = (gridSize - 1) * spacing / 2;
+
+                mesh.position.set(
+                    xi * spacing - offsetX,
+                    yi * spacing - offsetY - 0.5,
+                    zi * spacing - offsetZ
+                );
+
+                mainGroup.add(mesh);
+
+                particles.push({
+                    mesh: mesh,
+                    basePos: mesh.position.clone(),
+                    velocity: new THREE.Vector3(
+                        (Math.random() - 0.5) * 0.02,
+                        (Math.random() - 0.5) * 0.02,
+                        (Math.random() - 0.5) * 0.02
+                    ),
+                    phase: 0 // Random phase for oscillation
+                });
+            }
+        }
+
+        function getPhase(temp) {
+            const sub = substances[currentSubstance];
+            if (temp < sub.melt) return 'solid';
+            if (temp < sub.boil) return 'liquid';
+            return 'gas';
+        }
+
+        function updateParticles() {
+            const sub = substances[currentSubstance];
+            const phase = getPhase(temperature);
+            
+            // Temperature factor (0-1)
+            const tempRange = sub.maxTemp - sub.minTemp;
+            const tempFactor = Math.max(0, Math.min(1, (temperature - sub.minTemp) / tempRange));
+
+            particles.forEach((p, i) => {
+                const mesh = p.mesh;
+
+                if (phase === 'solid') {
+                    // Vibrate in place
+                    const vibration = 0.02 + tempFactor * 0.05;
+                    mesh.position.x = p.basePos.x + Math.sin(Date.now() * 0.01 + i) * vibration;
+                    mesh.position.y = p.basePos.y + Math.sin(Date.now() * 0.012 + i * 1.3) * vibration;
+                    mesh.position.z = p.basePos.z + Math.sin(Date.now() * 0.011 + i * 0.7) * vibration;
+                    
+                    mesh.material.emissiveIntensity = 0.05 + tempFactor * 0.1;
+
+                } else if (phase === 'liquid') {
+                    // Flow around in container
+                    const speed = 0.02 + tempFactor * 0.04;
+                    
+                    p.velocity.x += (Math.random() - 0.5) * speed;
+                    p.velocity.y += (Math.random() - 0.5) * speed - 0.002; // slight gravity
+                    p.velocity.z += (Math.random() - 0.5) * speed;
+
+                    // Damping
+                    p.velocity.multiplyScalar(0.98);
+
+                    mesh.position.add(p.velocity);
+
+                    // Container bounds (cylinder shape)
+                    const radius = 1.6;
+                    const dist = Math.sqrt(mesh.position.x ** 2 + mesh.position.z ** 2);
+                    if (dist > radius) {
+                        const angle = Math.atan2(mesh.position.z, mesh.position.x);
+                        mesh.position.x = Math.cos(angle) * radius;
+                        mesh.position.z = Math.sin(angle) * radius;
+                        p.velocity.x *= -0.5;
+                        p.velocity.z *= -0.5;
+                    }
+
+                    // Floor/ceiling
+                    if (mesh.position.y < -1.8) {
+                        mesh.position.y = -1.8;
+                        p.velocity.y *= -0.5;
+                    }
+                    if (mesh.position.y > 0.5) {
+                        mesh.position.y = 0.5;
+                        p.velocity.y *= -0.5;
+                    }
+
+                    mesh.material.emissiveIntensity = 0.1 + tempFactor * 0.2;
+
+                } else { // gas
+                    // Fast random movement, expand upward
+                    const speed = 0.05 + tempFactor * 0.08;
+                    
+                    p.velocity.x += (Math.random() - 0.5) * speed;
+                    p.velocity.y += (Math.random() - 0.5) * speed + 0.005; // rise
+                    p.velocity.z += (Math.random() - 0.5) * speed;
+
+                    p.velocity.multiplyScalar(0.95);
+
+                    mesh.position.add(p.velocity);
+
+                    // Wider bounds for gas
+                    const radius = 1.8;
+                    const dist = Math.sqrt(mesh.position.x ** 2 + mesh.position.z ** 2);
+                    if (dist > radius) {
+                        const angle = Math.atan2(mesh.position.z, mesh.position.x);
+                        mesh.position.x = Math.cos(angle) * radius;
+                        mesh.position.z = Math.sin(angle) * radius;
+                        p.velocity.x *= -0.3;
+                        p.velocity.z *= -0.3;
+                    }
+
+                    if (mesh.position.y < -1.8) {
+                        mesh.position.y = -1.8;
+                        p.velocity.y = Math.abs(p.velocity.y);
+                    }
+                    if (mesh.position.y > 2.5) {
+                        // Escape (reappear at bottom)
+                        mesh.position.y = -1.5;
+                        mesh.position.x = (Math.random() - 0.5) * 2;
+                        mesh.position.z = (Math.random() - 0.5) * 2;
+                    }
+
+                    mesh.material.emissiveIntensity = 0.2 + tempFactor * 0.3;
+                }
+
+                // Color shift based on temperature
+                const coldColor = new THREE.Color(0x3498db);
+                const hotColor = new THREE.Color(0xe74c3c);
+                mesh.material.color.copy(coldColor).lerp(hotColor, tempFactor);
+            });
+
+            // Update visual effects
+            container3D.flames.visible = isHeating;
+            container3D.frost.visible = temperature < -20;
+
+            // Animate flames
+            if (isHeating) {
+                container3D.flames.children.forEach((flame, i) => {
+                    flame.scale.y = 0.8 + Math.sin(Date.now() * 0.02 + i) * 0.3;
+                    flame.position.y = -2 + Math.sin(Date.now() * 0.015 + i) * 0.1;
+                });
+                container3D.burnerRing.material.emissive = new THREE.Color(0xff4400);
+                container3D.burnerRing.material.emissiveIntensity = 0.5;
+            } else {
+                container3D.burnerRing.material.emissiveIntensity = 0;
+            }
+        }
+
+        function updateUI() {
+            const sub = substances[currentSubstance];
+            const phase = getPhase(temperature);
+
+            // Temperature display
+            document.getElementById('temp-display').textContent = Math.round(temperature) + '°C';
+
+            // State display
+            const stateDisplay = document.getElementById('state-display');
+            const stateIcon = document.getElementById('state-icon');
+            const stateName = document.getElementById('state-name');
+            const stateDesc = document.getElementById('state-desc');
+
+            stateDisplay.className = 'state-display ' + phase;
+
+            if (phase === 'solid') {
+                stateIcon.textContent = '🧊';
+                stateName.textContent = 'Твёрдое тело';
+                stateDesc.textContent = 'Молекулы в кристаллической решётке';
+            } else if (phase === 'liquid') {
+                stateIcon.textContent = '💧';
+                stateName.textContent = 'Жидкость';
+                stateDesc.textContent = 'Молекулы движутся свободно';
+            } else {
+                stateIcon.textContent = '💨';
+                stateName.textContent = 'Газ';
+                stateDesc.textContent = 'Молекулы хаотично разлетаются';
+            }
+
+            // Energy bar
+            const tempRange = sub.maxTemp - sub.minTemp;
+            const energyPercent = Math.max(5, Math.min(100, ((temperature - sub.minTemp) / tempRange) * 100));
+            document.getElementById('energy-fill').style.width = energyPercent + '%';
+
+            // Transition temperatures
+            document.getElementById('melt-temp').textContent = sub.melt + '°C';
+            document.getElementById('boil-temp').textContent = sub.boil + '°C';
+        }
+
+        function updateSubstance() {
+            const sub = substances[currentSubstance];
+            
+            // Update slider range
+            const slider = document.getElementById('temp-slider');
+            slider.min = sub.minTemp;
+            slider.max = sub.maxTemp;
+            
+            // Clamp temperature to new range
+            temperature = Math.max(sub.minTemp, Math.min(sub.maxTemp, temperature));
+            slider.value = temperature;
+
+            // Recreate particles with new color
+            createParticles();
+            updateUI();
+            drawPhaseDiagram();
+        }
+
+        function drawPhaseDiagram() {
+            const canvas = document.getElementById('phase-canvas');
+            const ctx = canvas.getContext('2d');
+            const sub = substances[currentSubstance];
+
+            canvas.width = 400;
+            canvas.height = 120;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Background
+            ctx.fillStyle = 'rgba(255,255,255,0.05)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Calculate positions
+            const padding = 30;
+            const w = canvas.width - padding * 2;
+            const h = canvas.height - padding;
+
+            const tempRange = sub.maxTemp - sub.minTemp;
+            const meltX = padding + ((sub.melt - sub.minTemp) / tempRange) * w;
+            const boilX = padding + ((sub.boil - sub.minTemp) / tempRange) * w;
+            const currentX = padding + ((temperature - sub.minTemp) / tempRange) * w;
+
+            // Draw heating curve
+            ctx.beginPath();
+            ctx.moveTo(padding, h);
+            
+            // Solid heating
+            ctx.lineTo(meltX, h * 0.7);
+            // Melting plateau
+            ctx.lineTo(meltX + 20, h * 0.7);
+            // Liquid heating  
+            ctx.lineTo(boilX, h * 0.4);
+            // Boiling plateau
+            ctx.lineTo(boilX + 20, h * 0.4);
+            // Gas heating
+            ctx.lineTo(canvas.width - padding, h * 0.1);
+
+            ctx.strokeStyle = '#f39c12';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            // Phase labels
+            ctx.fillStyle = '#3498db';
+            ctx.font = '11px sans-serif';
+            ctx.fillText('Твёрдое', padding + 10, h - 10);
+
+            ctx.fillStyle = '#2ecc71';
+            ctx.fillText('Жидкость', meltX + 30, h * 0.55);
+
+            ctx.fillStyle = '#e74c3c';
+            ctx.fillText('Газ', boilX + 30, h * 0.25);
+
+            // Temperature markers
+            ctx.fillStyle = 'rgba(255,255,255,0.5)';
+            ctx.font = '10px monospace';
+            ctx.fillText(sub.melt + '°', meltX - 10, h + 15);
+            ctx.fillText(sub.boil + '°', boilX - 10, h + 15);
+
+            // Current position marker
+            const currentY = temperature < sub.melt ? 
+                h - ((temperature - sub.minTemp) / (sub.melt - sub.minTemp)) * (h * 0.3) :
+                temperature < sub.boil ?
+                h * 0.7 - ((temperature - sub.melt) / (sub.boil - sub.melt)) * (h * 0.3) :
+                h * 0.4 - ((temperature - sub.boil) / (sub.maxTemp - sub.boil)) * (h * 0.3);
+
+            ctx.beginPath();
+            ctx.arc(currentX, Math.max(10, Math.min(h, currentY)), 6, 0, Math.PI * 2);
+            ctx.fillStyle = '#fff';
+            ctx.fill();
+            ctx.strokeStyle = '#f39c12';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+
+        function setupControls() {
+            // Temperature slider
+            document.getElementById('temp-slider').addEventListener('input', (e) => {
+                temperature = parseFloat(e.target.value);
+                updateUI();
+                drawPhaseDiagram();
+            });
+
+            // Substance buttons
+            document.querySelectorAll('.substance-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.substance-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    currentSubstance = btn.dataset.substance;
+                    updateSubstance();
+                });
+            });
+
+            // Heat/Cool buttons
+            const heatBtn = document.getElementById('btn-heat');
+            const coolBtn = document.getElementById('btn-cool');
+
+            heatBtn.addEventListener('mousedown', () => isHeating = true);
+            heatBtn.addEventListener('mouseup', () => isHeating = false);
+            heatBtn.addEventListener('mouseleave', () => isHeating = false);
+
+            coolBtn.addEventListener('mousedown', () => isCooling = true);
+            coolBtn.addEventListener('mouseup', () => isCooling = false);
+            coolBtn.addEventListener('mouseleave', () => isCooling = false);
+
+            // Touch support
+            heatBtn.addEventListener('touchstart', (e) => { e.preventDefault(); isHeating = true; });
+            heatBtn.addEventListener('touchend', () => isHeating = false);
+            coolBtn.addEventListener('touchstart', (e) => { e.preventDefault(); isCooling = true; });
+            coolBtn.addEventListener('touchend', () => isCooling = false);
+
+            // Mouse controls
+            renderer.domElement.addEventListener('contextmenu', (e) => e.preventDefault());
+
+            renderer.domElement.addEventListener('mousedown', (e) => {
+                if (e.button === 0) isDragging = true;
+                else if (e.button === 2) isPanning = true;
+                lastMouse = { x: e.clientX, y: e.clientY };
+            });
+
+            renderer.domElement.addEventListener('mousemove', (e) => {
+                const dx = e.clientX - lastMouse.x;
+                const dy = e.clientY - lastMouse.y;
+
+                if (isDragging) {
+                    rotation.y += dx * 0.008;
+                    rotation.x += dy * 0.008;
+                    rotation.x = Math.max(0.1, Math.min(1, rotation.x));
+                }
+
+                if (isPanning) {
+                    pan.x -= dx * 0.01;
+                    pan.y += dy * 0.01;
+                    mainGroup.position.x = pan.x;
+                    mainGroup.position.y = pan.y;
+                }
+
+                lastMouse = { x: e.clientX, y: e.clientY };
+            });
+
+            renderer.domElement.addEventListener('mouseup', () => {
+                isDragging = false;
+                isPanning = false;
+            });
+            renderer.domElement.addEventListener('mouseleave', () => {
+                isDragging = false;
+                isPanning = false;
+            });
+
+            renderer.domElement.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                camera.position.z = Math.max(5, Math.min(18, camera.position.z + e.deltaY * 0.01));
+            }, { passive: false });
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Auto heat/cool
+            const sub = substances[currentSubstance];
+            if (isHeating && temperature < sub.maxTemp) {
+                temperature += 0.5;
+                document.getElementById('temp-slider').value = temperature;
+                updateUI();
+                drawPhaseDiagram();
+            }
+            if (isCooling && temperature > sub.minTemp) {
+                temperature -= 0.5;
+                document.getElementById('temp-slider').value = temperature;
+                updateUI();
+                drawPhaseDiagram();
+            }
+
+            updateParticles();
+
+            mainGroup.rotation.x = rotation.x;
+            mainGroup.rotation.y = rotation.y;
+
+            renderer.render(scene, camera);
+        }
+
+        init();
+    </script>
+<script>
+(function() {
+    const TEXT_MAP = {
+    "Фазовые переходы — Агрегатные состояния вещества": {
+        "kz": "Фазалық ауысулар — Заттың агрегаттық күйлері",
+        "en": "Phase Transitions — States of Matter"
+    },
+    "Агрегатные состояния • Плавление • Кипение • Сублимация": {
+        "kz": "Агрегаттық күйлер • Балқу • Қайнау • Сублимация",
+        "en": "States of matter • Melting • Boiling • Sublimation"
+    },
+    "Температура": {
+        "kz": "Температура",
+        "en": "Temperature"
+    },
+    "Изменение температуры": {
+        "kz": "Температура өзгерісі",
+        "en": "Temperature change"
+    },
+    "Вещество": {
+        "kz": "Зат",
+        "en": "Substance"
+    },
+    "Вода (H₂O)": {
+        "kz": "Су (H₂O)",
+        "en": "Water (H₂O)"
+    },
+    "Этанол (C₂H₅OH)": {
+        "kz": "Этанол (C₂H₅OH)",
+        "en": "Ethanol (C₂H₅OH)"
+    },
+    "Железо (Fe)": {
+        "kz": "Темір (Fe)",
+        "en": "Iron (Fe)"
+    },
+    "Твёрдое тело": {
+        "kz": "Қатты дене",
+        "en": "Solid"
+    },
+    "Жидкость": {
+        "kz": "Сұйық",
+        "en": "Liquid"
+    },
+    "Газ": {
+        "kz": "Газ",
+        "en": "Gas"
+    },
+    "Молекулы в кристаллической решётке": {
+        "kz": "Кристалдық тордағы молекулалар",
+        "en": "Molecules in crystal lattice"
+    },
+    "Фазовые переходы": {
+        "kz": "Фазалық ауысулар",
+        "en": "Phase Transitions"
+    },
+    "Плавление": {
+        "kz": "Балқу",
+        "en": "Melting"
+    },
+    "Кипение": {
+        "kz": "Қайнау",
+        "en": "Boiling"
+    },
+    "Сублимация": {
+        "kz": "Сублимация",
+        "en": "Sublimation"
+    },
+    "Жидк.": {
+        "kz": "Сұйық",
+        "en": "Liquid"
+    }
+,
+    "Трансформатор — 3D Модель": {
+        "kz": "Трансформатор — 3D Модель",
+        "en": "Transformer — 3D Model"
+    },
+    "🔌 Трансформатор": {
+        "kz": "🔌 Трансформатор",
+        "en": "🔌 Transformer"
+    },
+    "Электромагнитная индукция • Преобразование напряжения": {
+        "kz": "Электромагниттік индукция • Кернеуді түрлендіру",
+        "en": "Electromagnetic induction • Voltage transformation"
+    },
+    "Первичная обмотка": {
+        "kz": "Бірінші орам",
+        "en": "Primary winding"
+    },
+    "Вторичная обмотка": {
+        "kz": "Екінші орам",
+        "en": "Secondary winding"
+    },
+    "витков": {
+        "kz": "орам",
+        "en": "turns"
+    },
+    "Входное напряжение": {
+        "kz": "Кіріс кернеуі",
+        "en": "Input voltage"
+    },
+    "Выходное напряжение": {
+        "kz": "Шығыс кернеуі",
+        "en": "Output voltage"
+    },
+    "Коэффициент трансформации": {
+        "kz": "Трансформация коэффициенті",
+        "en": "Transformation ratio"
+    },
+    "Повышающий": {
+        "kz": "Көтеруші",
+        "en": "Step-up"
+    },
+    "Понижающий": {
+        "kz": "Төмендетуші",
+        "en": "Step-down"
+    },
+    "Показать магнитный поток": {
+        "kz": "Магнит ағынын көрсету",
+        "en": "Show magnetic flux"
+    },
+    "Отображение": {
+        "kz": "Бейнелеу",
+        "en": "Display"
+    },
+    "↺ Сбросить": {
+        "kz": "↺ Қалпына келтіру",
+        "en": "↺ Reset"
+    },
+    "ЛКМ — вращение • ПКМ — перемещение • Колёсико — зум": {
+        "kz": "Сол жақ батырма — айналдыру • Оң жақ батырма — жылжыту • Дөңгелек — масштабтау",
+        "en": "LMB — rotate • RMB — pan • Scroll — zoom"
+    }
+,
+    "🌡️ Фазовые переходы": {
+        "kz": "🌡️ Фазалық ауысулар",
+        "en": "🌡️ Phase Transitions"
+    },
+    "❄️ Охлаждать": {
+        "kz": "❄️ Суыту",
+        "en": "❄️ Cool"
+    },
+    "🔥 Нагревать": {
+        "kz": "🔥 Қыздыру",
+        "en": "🔥 Heat"
+    },
+    "Молекулы свободно движутся": {
+        "kz": "Молекулалар еркін қозғалады",
+        "en": "Molecules move freely"
+    },
+    "Молекулы хаотично разлетаются": {
+        "kz": "Молекулалар хаотикалық таралады",
+        "en": "Molecules scatter chaotically"
+    },
+    "Тв.": {
+        "kz": "Қат.",
+        "en": "Solid"
+    },
+    "ниже тройной точки": {
+        "kz": "үштік нүктеден төмен",
+        "en": "below triple point"
+    },
+    "Кинетическая энергия молекул": {
+        "kz": "Молекулалардың кинетикалық энергиясы",
+        "en": "Kinetic energy of molecules"
+    },
+    "Диаграмма нагревания": {
+        "kz": "Қыздыру диаграммасы",
+        "en": "Heating diagram"
+    }
+,
+    "Молекулы движутся свободно": {"kz": "Молекулалар еркін қозғалады", "en": "Molecules move freely"}
+};
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentLang = urlParams.get('lang') || 'ru';
+
+    if (currentLang === 'ru') return; // No translation needed
+
+    function translateTextNodes(root) {
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
+        const nodes = [];
+        while (walker.nextNode()) nodes.push(walker.currentNode);
+        
+        nodes.forEach(node => {
+            let text = node.textContent;
+            if (!text || !text.trim()) return;
+            
+            const trimmed = text.trim();
+            if (TEXT_MAP[trimmed] && TEXT_MAP[trimmed][currentLang]) {
+                node.textContent = text.replace(trimmed, TEXT_MAP[trimmed][currentLang]);
+            }
+        });
+    }
+
+    function translateAttributes(root) {
+        root.querySelectorAll('[title]').forEach(el => {
+            const t = el.getAttribute('title');
+            if (TEXT_MAP[t] && TEXT_MAP[t][currentLang]) {
+                el.setAttribute('title', TEXT_MAP[t][currentLang]);
+            }
+        });
+        root.querySelectorAll('[placeholder]').forEach(el => {
+            const t = el.getAttribute('placeholder');
+            if (TEXT_MAP[t] && TEXT_MAP[t][currentLang]) {
+                el.setAttribute('placeholder', TEXT_MAP[t][currentLang]);
+            }
+        });
+        // Translate page title
+        const titleText = document.title.trim();
+        if (TEXT_MAP[titleText] && TEXT_MAP[titleText][currentLang]) {
+            document.title = TEXT_MAP[titleText][currentLang];
+        }
+    }
+
+    
+
+    function applyTranslations() {
+        translateTextNodes(document.body);
+        translateAttributes(document);
+        if (typeof translateData === 'function') translateData(currentLang);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', applyTranslations);
+    } else {
+        applyTranslations();
+    }
+
+    // Re-translate after dynamic content changes
+    window.currentLang = currentLang;
+    window._currentLang = currentLang;
+    window._TEXT_MAP = TEXT_MAP;
+
+    // One-time delayed re-translate for dynamic content
+    let _tc=0;const _ti=setInterval(()=>{translateTextNodes(document.body);translateAttributes(document);if(++_tc>=20)clearInterval(_ti);},500);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Нейронная сеть</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { width: 100%; height: 100%; overflow: hidden; }
+        body { font-family: 'Segoe UI','Inter',system-ui,sans-serif; background: linear-gradient(135deg,#0e1630 0%,#15203f 100%); color:#e7eefb; }
+        #canvas-container { position: absolute; inset: 0; }
+        #labels { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+        .label3d { position: absolute; transform: translate(-50%,-50%); font-size: 12px; font-weight: 800; padding: 2px 9px; border-radius: 7px; background: rgba(18,29,54,0.9); border: 1.5px solid rgba(90,130,200,0.55); box-shadow: 0 2px 8px rgba(0,0,0,0.4); white-space: nowrap; color:#cfe0ff; }
+
+        .header { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); text-align: center; z-index: 6; pointer-events: none; width: 92%; }
+        .header h1 { font-size: 25px; font-weight: 800; color:#eaf2ff; text-shadow: 0 1px 6px rgba(0,0,0,0.5); }
+        .header p { font-size: 13.5px; color:#93a7cc; margin-top: 4px; font-weight: 600; }
+
+        .panel { position: absolute; z-index: 7; background: rgba(16,26,48,0.84);   border: 1px solid rgba(90,120,180,0.35); border-radius: 16px; box-shadow: 0 10px 34px rgba(0,0,0,0.4); }
+        .control-panel { top: 88px; left: 22px; width: 312px; padding: 16px 18px; }
+        .info-panel { top: 88px; right: 22px; width: 290px; padding: 16px 18px; }
+
+        .sec-title { font-size: 12px; font-weight: 800; color:#b9c8e6; text-transform: uppercase; letter-spacing: 0.6px; margin: 4px 0 8px; }
+        .param-group { margin-bottom: 11px; }
+        .param-label { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px; }
+        .param-name { font-size: 13px; font-weight: 700; color:#b9c8e6; }
+        .param-value { font-size: 14px; font-weight: 800; color:#22d3ee; font-variant-numeric: tabular-nums; }
+
+        input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; border-radius: 6px; outline: none; cursor: pointer; background: linear-gradient(90deg,#1e3a5f,#2a5a8a); }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 17px; height: 17px; border-radius: 50%; background:#22d3ee; border: 3px solid #0e1630; box-shadow: 0 2px 7px rgba(34,211,238,0.5); cursor: pointer; }
+
+        .seg { display:flex; gap:6px; margin-bottom: 12px; }
+        .seg-btn { flex:1; padding: 9px 4px; border-radius: 9px; border:1.5px solid rgba(90,120,180,0.4); background: rgba(30,45,75,0.5); color:#9fb2d8; font-size:12.5px; font-weight:800; cursor:pointer; transition:all 0.16s; text-align:center; }
+        .seg-btn.active { background: linear-gradient(135deg,#0891b2,#0e7490); color:#fff; border-color:#22d3ee; }
+
+        .toggle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .toggle-btn { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 9px 6px; border-radius: 10px; border: 1.5px solid rgba(90,120,180,0.4); background: rgba(30,45,75,0.5); color:#9fb2d8; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.16s; }
+        .toggle-btn .dot { width: 9px; height: 9px; border-radius: 50%; background:#5a6c8c; transition: all 0.16s; }
+        .toggle-btn.active { background: rgba(34,211,238,0.16); border-color:#22d3ee; color:#eaf6ff; }
+        .toggle-btn.active .dot { background:#22d3ee; box-shadow: 0 0 7px rgba(34,211,238,0.9); }
+
+        .info-title { font-size: 15px; font-weight: 800; color:#eaf2ff; margin-bottom: 8px; }
+        .curve-wrap { background:#0a1224; border-radius: 11px; padding: 8px; margin-bottom: 11px; }
+        #curve { width: 100%; height: 84px; display:block; }
+        .out-row { margin-top: 6px; }
+        .out-bar { display:flex; align-items:center; gap:8px; margin-bottom: 8px; }
+        .out-bar .nm { width: 64px; font-size: 12.5px; color:#b9c8e6; font-weight:700; }
+        .out-bar .track { flex:1; height: 14px; background:#16243f; border-radius: 7px; overflow:hidden; }
+        .out-bar .fill { height:100%; width:0%; border-radius:7px; transition: width 0.25s; }
+        .out-bar .pct { width: 42px; text-align:right; font-size: 12.5px; font-weight:800; font-family:'Consolas',monospace; }
+
+        .formula-panel { position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 7; background: rgba(8,14,28,0.92); color:#cfe0ff; padding: 10px 22px; border-radius: 13px; box-shadow: 0 10px 30px rgba(0,0,0,0.45); text-align: center; max-width: 78%; border:1px solid rgba(90,120,180,0.3); }
+        .formula { font-size: 15px; font-weight: 600; font-family:'Cambria Math','Times New Roman',serif; } .formula b { color:#7fe0a8; }
+        .formula-note { font-size: 12px; color:#7e92ba; margin-top: 4px; }
+        .hint { position: absolute; bottom: 16px; left: 22px; z-index: 7; font-size: 12px; color:#7e92ba; background: rgba(16,26,48,0.7); padding: 7px 13px; border-radius: 9px; border: 1px solid rgba(90,120,180,0.3); }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div id="labels"></div>
+
+    <div class="header">
+        <h1>🧠 Нейронная сеть</h1>
+        <p><span id="h-sub">Слои нейронов • взвешенные связи • прямое распространение</span></p>
+    </div>
+
+    <div class="panel control-panel">
+        <div class="sec-title" data-i18n="inTitle">Входы сети</div>
+        <div class="param-group"><div class="param-label"><span class="param-name">x₁</span><span class="param-value" id="x1-value">0.80</span></div><input type="range" id="x1" min="0" max="100" value="80"></div>
+        <div class="param-group"><div class="param-label"><span class="param-name">x₂</span><span class="param-value" id="x2-value">0.30</span></div><input type="range" id="x2" min="0" max="100" value="30"></div>
+        <div class="param-group"><div class="param-label"><span class="param-name">x₃</span><span class="param-value" id="x3-value">0.60</span></div><input type="range" id="x3" min="0" max="100" value="60"></div>
+
+        <div class="sec-title" data-i18n="actTitle">Функция активации</div>
+        <div class="seg">
+            <button class="seg-btn active" id="a-sig" data-act="sigmoid">Sigmoid</button>
+            <button class="seg-btn" id="a-relu" data-act="relu">ReLU</button>
+            <button class="seg-btn" id="a-tanh" data-act="tanh">tanh</button>
+        </div>
+
+        <div class="toggle-grid">
+            <button class="toggle-btn active" id="t-weights"><span class="dot"></span><span data-i18n="tWeights">Веса связей</span></button>
+            <button class="toggle-btn active" id="t-flow"><span class="dot"></span><span data-i18n="tFlow">Распространение</span></button>
+            <button class="toggle-btn active" id="t-act"><span class="dot"></span><span data-i18n="tAct">Активации</span></button>
+            <button class="toggle-btn active" id="t-labels"><span class="dot"></span><span data-i18n="tLabels">Подписи</span></button>
+        </div>
+    </div>
+
+    <div class="panel info-panel">
+        <div class="info-title">📈 <span data-i18n="infoTitle">Активация и выход</span></div>
+        <div class="curve-wrap"><canvas id="curve" width="256" height="84"></canvas></div>
+        <div class="out-row" id="out-row"></div>
+    </div>
+
+    <div class="formula-panel">
+        <div class="formula" id="verdict">z = Σ wᵢ·xᵢ + b ,&nbsp; a = f(z)</div>
+        <div class="formula-note" data-i18n="note">Каждый нейрон считает взвешенную сумму входов и пропускает её через функцию активации</div>
+    </div>
+
+    <div class="hint"><span data-i18n="hint">ЛКМ — вращение • Колесо — зум • клик по нейрону</span></div>
+
+    <script src="../../libs/vendor/three-r128/three.min.js"></script>
+    <script>
+    const LANG = (new URLSearchParams(window.location.search).get('lang')) || 'ru';
+    const I18N = {
+        ru: { headH:'🧠 Нейронная сеть', headS:'Слои нейронов • взвешенные связи • прямое распространение',
+              inTitle:'Входы сети', actTitle:'Функция активации', tWeights:'Веса связей', tFlow:'Распространение', tAct:'Активации', tLabels:'Подписи',
+              infoTitle:'Активация и выход', note:'Каждый нейрон считает взвешенную сумму входов и пропускает её через функцию активации',
+              hint:'ЛКМ — вращение • Колесо — зум • клик по нейрону',
+              lIn:'Входной слой', lH1:'Скрытый слой 1', lH2:'Скрытый слой 2', lOut:'Выходной слой', clsA:'Класс A', clsB:'Класс B',
+              neuron:'Нейрон', sumTxt:'z = Σwᵢ·aᵢ + b' },
+        kz: { headH:'🧠 Нейрондық желі', headS:'Нейрон қабаттары • салмақты байланыстар • тура тарату',
+              inTitle:'Желі кірістері', actTitle:'Активация функциясы', tWeights:'Байланыс салмағы', tFlow:'Тарату', tAct:'Активациялар', tLabels:'Жазулар',
+              infoTitle:'Активация және шығыс', note:'Әр нейрон кірістердің салмақты қосындысын есептеп, активация функциясынан өткізеді',
+              hint:'СБ — айналдыру • Дөңгелек — масштаб • нейронды басу',
+              lIn:'Кіріс қабаты', lH1:'Жасырын қабат 1', lH2:'Жасырын қабат 2', lOut:'Шығыс қабаты', clsA:'A класы', clsB:'B класы',
+              neuron:'Нейрон', sumTxt:'z = Σwᵢ·aᵢ + b' },
+        en: { headH:'🧠 Neural Network', headS:'Layers of neurons • weighted links • forward propagation',
+              inTitle:'Network inputs', actTitle:'Activation function', tWeights:'Connection weights', tFlow:'Propagation', tAct:'Activations', tLabels:'Labels',
+              infoTitle:'Activation & output', note:'Each neuron computes a weighted sum of its inputs and passes it through an activation function',
+              hint:'LMB — rotate • Wheel — zoom • click a neuron',
+              lIn:'Input layer', lH1:'Hidden layer 1', lH2:'Hidden layer 2', lOut:'Output layer', clsA:'Class A', clsB:'Class B',
+              neuron:'Neuron', sumTxt:'z = Σwᵢ·aᵢ + b' },
+    };
+    const L = I18N[LANG] || I18N.ru;
+
+    const SIZES = [3,5,4,2];
+    let inputs = [0.8,0.3,0.6], actFn = 'sigmoid';
+    let showWeights = true, showFlow = true, showAct = true, showLabels = true;
+    let W = [], Bs = [], acts = [], zs = [];
+    let selected = null;  // {l, j}
+
+    let scene, camera, renderer, root;
+    let nodes = [];          // nodes[l][j] = mesh
+    let conns = [];          // {line, dot, l, i, j, w}
+    const labelDefs = [];
+    const clock = new THREE.Clock();
+    const container = document.getElementById('canvas-container');
+    const labelLayer = document.getElementById('labels');
+    const raycaster = new THREE.Raycaster(); const ndc = new THREE.Vector2();
+
+    let camTheta = Math.PI/2 + 0.25, camPhi = 1.18, camRadius = 17;
+    const camTarget = new THREE.Vector3(0, 0, 0);
+    let dragMode = 0, lastX=0, lastY=0, downX=0, downY=0;
+    let flowFront = -8;
+
+    // seeded RNG for reproducible weights
+    let seed = 1337; function rnd(){ seed = (seed*1103515245 + 12345) & 0x7fffffff; return seed/0x7fffffff; }
+    function gauss(){ return (rnd()+rnd()+rnd()+rnd()-2)*1.1; }
+
+    const layerX = l => -7.5 + l*5.0;
+    const nodeY = (l,j) => (j - (SIZES[l]-1)/2) * 1.7;
+
+    function init() {
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0e1630);
+        scene.fog = new THREE.Fog(0x0e1630, 26, 60);
+        camera = new THREE.PerspectiveCamera(48, window.innerWidth/window.innerHeight, 0.1, 200);
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        container.appendChild(renderer.domElement);
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+        const key = new THREE.DirectionalLight(0xbfe0ff, 0.6); key.position.set(4,10,14); scene.add(key);
+
+        root = new THREE.Group(); scene.add(root);
+        initWeights();
+        buildNetwork();
+        buildOutBars();
+        makeLabels();
+        applyI18N();
+        setupControls();
+        forward(); refreshVisuals();
+        updateCamera();
+        animate();
+    }
+    function mat(c,m,r,o){ return new THREE.MeshStandardMaterial(Object.assign({color:c,metalness:m,roughness:r},o||{})); }
+
+    function initWeights() {
+        for (let l=1;l<SIZES.length;l++){
+            const wl=[], bl=[];
+            for (let j=0;j<SIZES[l];j++){ const row=[]; for (let i=0;i<SIZES[l-1];i++) row.push(gauss()); wl.push(row); bl.push(gauss()*0.5); }
+            W.push(wl); Bs.push(bl);
+        }
+    }
+
+    function buildNetwork() {
+        // connections first (so nodes draw on top)
+        for (let l=1;l<SIZES.length;l++){
+            for (let j=0;j<SIZES[l];j++){
+                for (let i=0;i<SIZES[l-1];i++){
+                    const p0=new THREE.Vector3(layerX(l-1),nodeY(l-1,i),0), p1=new THREE.Vector3(layerX(l),nodeY(l,j),0);
+                    const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints([p0,p1]), new THREE.LineBasicMaterial({transparent:true}));
+                    root.add(line);
+                    const dot=new THREE.Mesh(new THREE.SphereGeometry(0.1,8,8), new THREE.MeshBasicMaterial({color:0x22d3ee})); dot.visible=false; root.add(dot);
+                    conns.push({ line, dot, l, i, j, w:W[l-1][j][i], p0, p1 });
+                }
+            }
+        }
+        // nodes
+        for (let l=0;l<SIZES.length;l++){
+            const arr=[];
+            for (let j=0;j<SIZES[l];j++){
+                const m=new THREE.Mesh(new THREE.SphereGeometry(0.5,24,18), mat(0x2a3c5e,0.3,0.5,{emissive:0x12203c,emissiveIntensity:0.3}));
+                m.position.set(layerX(l),nodeY(l,j),0); m.userData={l,j,clickable:true}; root.add(m); arr.push(m);
+            }
+            nodes.push(arr);
+        }
+        // layer labels
+        labelDefs.push({ key:'lIn', pos:new THREE.Vector3(layerX(0), nodeY(0,0)+1.7, 0) });
+        labelDefs.push({ key:'lH1', pos:new THREE.Vector3(layerX(1), (SIZES[1]-1)/2*1.7+1.4, 0) });
+        labelDefs.push({ key:'lH2', pos:new THREE.Vector3(layerX(2), (SIZES[2]-1)/2*1.7+1.4, 0) });
+        labelDefs.push({ key:'lOut', pos:new THREE.Vector3(layerX(3), (SIZES[3]-1)/2*1.7+1.4, 0) });
+    }
+
+    function buildOutBars(){
+        const row=document.getElementById('out-row');
+        ['clsA','clsB'].forEach((k,i)=>{
+            const b=document.createElement('div'); b.className='out-bar';
+            b.innerHTML='<span class="nm" id="on'+i+'">—</span><div class="track"><div class="fill" id="of'+i+'" style="background:'+(i===0?'#22d3ee':'#f59e0b')+'"></div></div><span class="pct" id="op'+i+'">0%</span>';
+            row.appendChild(b);
+        });
+    }
+
+    function activation(z){ if(actFn==='sigmoid') return 1/(1+Math.exp(-z)); if(actFn==='tanh') return Math.tanh(z); return Math.max(0,z); }
+    function actGlow(a){ if(actFn==='tanh') return (a+1)/2; if(actFn==='relu') return Math.min(1, a/3); return a; }
+
+    function forward() {
+        acts=[inputs.slice()]; zs=[inputs.slice()];
+        for (let l=1;l<SIZES.length;l++){
+            const al=[], zl=[];
+            for (let j=0;j<SIZES[l];j++){
+                let z=Bs[l-1][j]; for (let i=0;i<SIZES[l-1];i++) z+=W[l-1][j][i]*acts[l-1][i];
+                zl.push(z); al.push(activation(z));
+            }
+            zs.push(zl); acts.push(al);
+        }
+    }
+
+    function softmax(arr){ const m=Math.max(...arr); const e=arr.map(v=>Math.exp(v-m)); const s=e.reduce((a,b)=>a+b,0); return e.map(v=>v/s); }
+
+    function nodeColor(g){ // 0..1 -> cool to warm
+        const c=new THREE.Color(); c.setHSL(0.6 - g*0.45, 0.7, 0.35 + g*0.3); return c;
+    }
+
+    function refreshVisuals() {
+        // nodes glow by activation
+        for (let l=0;l<SIZES.length;l++) for (let j=0;j<SIZES[l];j++){
+            const a = l===0 ? inputs[j] : acts[l][j];
+            const g = l===0 ? a : actGlow(a);
+            const m = nodes[l][j];
+            const lit = showAct ? Math.max(0, Math.min(1,g)) : 0.15;
+            m.material.color.copy(nodeColor(lit));
+            m.material.emissive.copy(nodeColor(lit));
+            m.material.emissiveIntensity = 0.25 + lit*1.1;
+            m.scale.setScalar(0.8 + lit*0.5);
+            if (selected && selected.l===l && selected.j===j) m.material.emissive.setHex(0xffffff);
+        }
+        // connections colour by weight sign/magnitude
+        let maxW=0.1; conns.forEach(c=> maxW=Math.max(maxW, Math.abs(c.w)));
+        conns.forEach(c=>{
+            const mag=Math.abs(c.w)/maxW;
+            c.line.material.color.setHex(c.w>=0 ? 0x3b82f6 : 0xef4444);
+            c.line.material.opacity = showWeights ? (0.12 + mag*0.6) : 0.05;
+            c.line.visible = true;
+        });
+        // outputs (softmax of output layer)
+        const out = acts[SIZES.length-1];
+        const probs = softmax(out);
+        const names=[L.clsA, L.clsB];
+        probs.forEach((p,i)=>{ document.getElementById('on'+i).textContent=names[i]; document.getElementById('of'+i).style.width=(p*100)+'%'; document.getElementById('op'+i).textContent=Math.round(p*100)+'%'; });
+        drawCurve();
+        updateVerdict();
+    }
+
+    function updateVerdict(){
+        const v=document.getElementById('verdict');
+        if (selected && selected.l>0){
+            const l=selected.l, j=selected.j; const z=zs[l][j], a=acts[l][j];
+            v.innerHTML = L.neuron+' ['+l+','+(j+1)+']:&nbsp; z = '+z.toFixed(2)+' → f(z) = <b>'+a.toFixed(3)+'</b>';
+        } else {
+            v.innerHTML = 'z = Σ wᵢ·aᵢ + b ,&nbsp; a = f(z)';
+        }
+    }
+
+    function drawCurve(){
+        const c=document.getElementById('curve'), x=c.getContext('2d'), w=c.width, h=c.height; x.clearRect(0,0,w,h);
+        x.strokeStyle='rgba(120,150,210,0.18)'; x.lineWidth=1; x.beginPath(); x.moveTo(0,h/2); x.lineTo(w,h/2); x.stroke(); x.beginPath(); x.moveTo(w/2,0); x.lineTo(w/2,h); x.stroke();
+        x.strokeStyle='#22d3ee'; x.lineWidth=2.2; x.beginPath();
+        for (let px=0;px<=w;px++){ const z=(px/w-0.5)*8; let y=activation(z); let yy; if(actFn==='tanh') yy=h/2 - y*(h/2-6); else if(actFn==='relu') yy=h-4 - Math.min(1,y/4)*(h-8); else yy=h-4 - y*(h-8); if(px===0)x.moveTo(px,yy); else x.lineTo(px,yy); }
+        x.stroke();
+        x.fillStyle='#9fb2d8'; x.font='10px Segoe UI'; x.textAlign='left'; x.fillText(actFn, 6, 13);
+    }
+
+    function makeLabels(){ labelDefs.forEach(d=>{ const el=document.createElement('div'); el.className='label3d'; labelLayer.appendChild(el); d.el=el; }); }
+    function updateLabels(){
+        labelDefs.forEach(d=>{ const txt=L[d.key]||d.key; if(d.el.textContent!==txt) d.el.textContent=txt;
+            if(!showLabels){ d.el.style.display='none'; return; }
+            const v=d.pos.clone().project(camera); if(v.z>1){ d.el.style.display='none'; return; }
+            d.el.style.display='block'; d.el.style.left=(v.x*0.5+0.5)*window.innerWidth+'px'; d.el.style.top=(-v.y*0.5+0.5)*window.innerHeight+'px';
+        });
+    }
+
+    function setupControls() {
+        const bind=(id,idx)=>{ document.getElementById(id).addEventListener('input', e=>{ inputs[idx]=(+e.target.value)/100; document.getElementById(id+'-value').textContent=inputs[idx].toFixed(2); forward(); refreshVisuals(); }); };
+        bind('x1',0); bind('x2',1); bind('x3',2);
+        const aBtns=[['a-sig','sigmoid'],['a-relu','relu'],['a-tanh','tanh']];
+        aBtns.forEach(([id,fn])=>document.getElementById(id).addEventListener('click', ()=>{ actFn=fn; aBtns.forEach(([i2])=>document.getElementById(i2).classList.toggle('active', i2===id)); forward(); refreshVisuals(); }));
+        const tog=(id,fn)=>{ const el=document.getElementById(id); el.addEventListener('click',()=>{ el.classList.toggle('active'); fn(el.classList.contains('active')); refreshVisuals(); }); };
+        tog('t-weights', v=>showWeights=v);
+        tog('t-flow', v=>showFlow=v);
+        tog('t-act', v=>showAct=v);
+        tog('t-labels', v=>showLabels=v);
+
+        const el=renderer.domElement;
+        el.addEventListener('contextmenu', e=>e.preventDefault());
+        el.addEventListener('mousedown', e=>{ dragMode=(e.button===2||e.shiftKey)?2:1; lastX=e.clientX; lastY=e.clientY; downX=e.clientX; downY=e.clientY; });
+        window.addEventListener('mousemove', e=>{ if(!dragMode)return; const dx=e.clientX-lastX,dy=e.clientY-lastY; lastX=e.clientX; lastY=e.clientY; if(dragMode===1){camTheta-=dx*0.005; camPhi=Math.max(0.2,Math.min(Math.PI-0.2,camPhi-dy*0.005));} else {const ps=camRadius*0.0016; const right=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,0); const up=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,1); camTarget.addScaledVector(right,-dx*ps); camTarget.addScaledVector(up,dy*ps);} updateCamera(); });
+        window.addEventListener('mouseup', e=>{ if(dragMode===1 && Math.abs(e.clientX-downX)<5 && Math.abs(e.clientY-downY)<5) tryClick(e); dragMode=0; });
+        el.addEventListener('wheel', e=>{ e.preventDefault(); camRadius=Math.max(10,Math.min(30,camRadius+e.deltaY*0.014)); updateCamera(); }, {passive:false});
+        window.addEventListener('resize', ()=>{ camera.aspect=window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+    }
+
+    function tryClick(e){
+        ndc.x=(e.clientX/window.innerWidth)*2-1; ndc.y=-(e.clientY/window.innerHeight)*2+1;
+        raycaster.setFromCamera(ndc, camera);
+        const all=[]; nodes.forEach(arr=>arr.forEach(m=>all.push(m)));
+        const hits=raycaster.intersectObjects(all,false);
+        if (hits.length){ const u=hits[0].object.userData; selected={l:u.l,j:u.j}; refreshVisuals(); }
+        else { selected=null; refreshVisuals(); }
+    }
+
+    function updateCamera(){ const sp=Math.sin(camPhi),cp=Math.cos(camPhi),st=Math.sin(camTheta),ct=Math.cos(camTheta); camera.position.set(camTarget.x+camRadius*sp*ct, camTarget.y+camRadius*cp, camTarget.z+camRadius*sp*st); camera.lookAt(camTarget); camera.updateMatrixWorld(true); }
+
+    function applyI18N(){
+        document.querySelectorAll('[data-i18n]').forEach(el=>{ const k=el.getAttribute('data-i18n'); if(L[k]!=null) el.textContent=L[k]; });
+        document.querySelector('.header h1').textContent=L.headH;
+        document.getElementById('h-sub').textContent=L.headS;
+        document.title=L.headH.replace(/^[^\wА-Яа-яЁё]+/, ''); document.documentElement.lang=LANG;
+    }
+
+    function animate(){
+        requestAnimationFrame(animate);
+        const dt=Math.min(clock.getDelta(),0.05);
+        // propagation front sweeps left→right
+        if (showFlow){ flowFront += dt*7; if (flowFront > layerX(3)+2) flowFront = layerX(0)-2; }
+        conns.forEach(c=>{
+            const x0=c.p0.x, x1=c.p1.x;
+            if (showFlow && c.line.material.opacity>0.08 && flowFront>=x0 && flowFront<=x1){
+                const f=(flowFront-x0)/(x1-x0);
+                c.dot.position.lerpVectors(c.p0,c.p1,f); c.dot.visible=true;
+                const on = (c.l>0 ? actGlow(acts[c.l][c.j]) : 1);
+                c.dot.material.color.setHex(c.w>=0?0x60a5fa:0xf87171);
+                c.dot.scale.setScalar(0.6+on*0.8);
+            } else c.dot.visible=false;
+        });
+        // selected node pulse
+        if (selected){ const m=nodes[selected.l][selected.j]; m.material.emissiveIntensity = 0.8+Math.sin(clock.elapsedTime*6)*0.4; }
+        updateLabels();
+        renderer.render(scene, camera);
+    }
+
+    init();
+    </script>
+</body>
+</html>

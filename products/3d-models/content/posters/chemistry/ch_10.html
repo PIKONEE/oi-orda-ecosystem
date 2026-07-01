@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="page_title">Химическое равновесие — Принцип Ле Шателье</title>
+<script src="../../libs/vendor/three-r128/three.min.js"></script>
+<style>
+
+
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --blue:#38bdf8;--purple:#a78bfa;--orange:#fb923c;--green:#4ade80;--red:#f87171;
+  --yellow:#facc15;--cyan:#22d3ee;
+  --n2o4:#60a5fa;--no2:#f97316;
+  --glass-bg:rgba(10,14,32,0.65);--glass-border:rgba(255,255,255,0.1);
+  --text:#e2e8f0;--text-dim:#94a3b8;
+  --mono:'JetBrains Mono',monospace;--serif:'Playfair Display',serif;--sans:'Nunito',sans-serif;
+}
+body{background:radial-gradient(ellipse at 35% 25%,#0c1024 0%,#030712 55%,#000 100%);color:var(--text);font-family:var(--sans);overflow:hidden;height:100vh;width:100vw;}
+#canvas-container{position:absolute;inset:0;z-index:0;}
+canvas{display:block;}
+.glass{background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,0.5),inset 0 1px 0 rgba(255,255,255,0.04);}
+::-webkit-scrollbar{width:5px;}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.12);border-radius:3px;}
+
+#left-panel{position:absolute;top:56px;left:16px;width:370px;z-index:10;padding:24px;display:flex;flex-direction:column;gap:16px;max-height:calc(100vh - 72px);overflow-y:auto;}
+.panel-title{font-family:var(--serif);font-size:28px;font-weight:700;background:linear-gradient(135deg,var(--n2o4),var(--no2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.panel-subtitle{font-size:15px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1.5px;}
+.separator{height:1px;background:linear-gradient(90deg,transparent,var(--glass-border),transparent);}
+
+.control-group{display:flex;flex-direction:column;gap:8px;}
+.control-label{display:flex;justify-content:space-between;align-items:baseline;font-size:18px;color:var(--text-dim);}
+.control-value{font-family:var(--mono);font-weight:600;font-size:20px;color:var(--yellow);}
+
+input[type="range"]{-webkit-appearance:none;width:100%;height:10px;border-radius:5px;background:rgba(255,255,255,0.08);outline:none;cursor:pointer;}
+input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:28px;height:28px;border-radius:50%;background:var(--yellow);box-shadow:0 0 12px rgba(251,191,36,0.5);cursor:pointer;transition:transform .15s;}
+input[type="range"]::-webkit-slider-thumb:hover{transform:scale(1.2);}
+.slider-red::-webkit-slider-thumb{background:var(--red);box-shadow:0 0 12px rgba(248,113,113,0.5);}
+.slider-blue::-webkit-slider-thumb{background:var(--blue);box-shadow:0 0 12px rgba(56,189,248,0.5);}
+.slider-purple::-webkit-slider-thumb{background:var(--purple);box-shadow:0 0 12px rgba(167,139,250,0.5);}
+.slider-green::-webkit-slider-thumb{background:var(--green);box-shadow:0 0 12px rgba(74,222,128,0.5);}
+.slider-orange::-webkit-slider-thumb{background:var(--orange);box-shadow:0 0 12px rgba(251,146,60,0.5);}
+
+.btn{padding:14px 20px;border:none;border-radius:14px;font-family:var(--sans);font-weight:700;font-size:20px;cursor:pointer;transition:all .2s;letter-spacing:.5px;width:100%;}
+.btn-start{background:linear-gradient(135deg,var(--green),#16a34a);color:#052e16;box-shadow:0 4px 20px rgba(74,222,128,0.3);}
+.btn-start:hover{transform:translateY(-1px);box-shadow:0 6px 24px rgba(74,222,128,0.45);}
+.btn-stop{background:linear-gradient(135deg,var(--red),#dc2626);color:#450a0a;box-shadow:0 4px 20px rgba(248,113,113,0.3);}
+.btn-reset{background:rgba(255,255,255,0.08);color:var(--text);border:1px solid var(--glass-border);margin-top:4px;font-size:18px;padding:12px 16px;}
+.btn-reset:hover{background:rgba(255,255,255,0.14);}
+
+.btn-action{padding:10px 14px;border:none;border-radius:10px;font-family:var(--sans);font-weight:700;font-size:16px;cursor:pointer;transition:all .2s;flex:1;text-align:center;}
+.btn-add{background:rgba(74,222,128,0.15);color:var(--green);border:1px solid rgba(74,222,128,0.3);}
+.btn-add:hover{background:rgba(74,222,128,0.25);}
+.btn-remove{background:rgba(248,113,113,0.15);color:var(--red);border:1px solid rgba(248,113,113,0.3);}
+.btn-remove:hover{background:rgba(248,113,113,0.25);}
+
+.toggle-row{display:flex;align-items:center;justify-content:space-between;font-size:18px;color:var(--text-dim);}
+.toggle{width:52px;height:28px;border-radius:14px;background:rgba(255,255,255,0.1);position:relative;cursor:pointer;transition:background .3s;}
+.toggle.active{background:var(--blue);}
+.toggle::after{content:'';position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:white;transition:transform .3s;}
+.toggle.active::after{transform:translateX(24px);}
+
+/* RIGHT PANEL */
+#right-panel{position:absolute;top:16px;right:16px;width:400px;z-index:10;padding:24px;display:flex;flex-direction:column;gap:14px;max-height:calc(100vh - 32px);overflow-y:auto;}
+.stat-row{display:flex;justify-content:space-between;align-items:baseline;}
+.stat-label{font-size:17px;color:var(--text-dim);}
+.stat-value{font-family:var(--mono);font-weight:600;font-size:22px;}
+
+.reaction-box{background:rgba(0,0,0,0.35);border-radius:14px;padding:16px 18px;border:1px solid rgba(255,255,255,0.06);text-align:center;}
+.reaction-eq-big{font-family:var(--serif);font-size:26px;color:var(--text);font-style:italic;line-height:1.6;}
+
+.formula-box{background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:14px 16px;font-family:var(--serif);font-size:20px;line-height:1.9;color:var(--text-dim);}
+.formula-box .f{color:var(--text);font-style:italic;}
+
+.info-box{background:rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.05);border-radius:12px;padding:14px 16px;font-size:17px;line-height:1.7;color:var(--text-dim);}
+.info-box b{color:var(--text);font-weight:600;}
+
+.legend-item{display:flex;align-items:center;gap:10px;font-size:16px;color:var(--text-dim);}
+.legend-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0;}
+
+/* SHIFT INDICATOR */
+.shift-indicator{text-align:center;padding:12px;border-radius:12px;font-size:20px;font-weight:700;transition:all .4s;}
+.shift-left{background:rgba(96,165,250,0.15);color:var(--n2o4);border:1px solid rgba(96,165,250,0.3);}
+.shift-right{background:rgba(249,115,22,0.15);color:var(--no2);border:1px solid rgba(249,115,22,0.3);}
+.shift-eq{background:rgba(74,222,128,0.1);color:var(--green);border:1px solid rgba(74,222,128,0.2);}
+
+/* RATE BARS */
+.rate-bar-container{display:flex;align-items:center;gap:10px;font-size:15px;}
+.rate-bar-bg{flex:1;height:14px;border-radius:7px;background:rgba(255,255,255,0.06);overflow:hidden;}
+.rate-bar-fill{height:100%;border-radius:7px;transition:width .5s;}
+.rate-label{width:30px;text-align:right;font-family:var(--mono);font-size:14px;}
+
+/* BOTTOM */
+#bottom-panel{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);z-index:10;padding:16px 36px;display:flex;gap:44px;align-items:center;white-space:nowrap;}
+.bottom-stat{display:flex;flex-direction:column;align-items:center;gap:3px;}
+.bottom-stat .label{font-size:14px;text-transform:uppercase;letter-spacing:1.2px;color:var(--text-dim);}
+.bottom-stat .value{font-family:var(--mono);font-size:26px;font-weight:700;}
+
+/* STATUS */
+#status-bar{position:absolute;top:16px;left:50%;transform:translateX(-50%);z-index:10;padding:12px 28px;display:flex;align-items:center;gap:14px;font-size:20px;font-weight:700;letter-spacing:1px;}
+.status-dot{width:16px;height:16px;border-radius:50%;flex-shrink:0;}
+.status-dot.on{animation:blink 1s infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.4;}}
+
+</style>
+</head>
+<body>
+<div id="canvas-container"></div>
+
+<!-- STATUS -->
+<div id="status-bar" class="glass">
+  <div class="status-dot" id="status-dot" style="background:var(--text-dim);"></div>
+  <span id="status-text" style="color:var(--text-dim);" data-i18n="status_stopped">РЕАКЦИЯ ОСТАНОВЛЕНА</span>
+</div>
+
+<!-- LEFT PANEL -->
+<div id="left-panel" class="glass">
+  <div>
+    <div class="panel-title" data-i18n="panel_title">Химическое равновесие</div>
+    <div class="panel-subtitle" data-i18n="panel_subtitle">Принцип Ле Шателье</div>
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="control-group">
+    <div class="control-label">
+      <span data-i18n="temperature">Температура</span>
+      <span class="control-value" id="temp-val" style="color:var(--red);">300 K</span>
+    </div>
+    <input type="range" id="temp-slider" class="slider-red" min="200" max="600" value="300" step="5">
+    <div style="display:flex;justify-content:space-between;font-size:14px;color:var(--text-dim);">
+      <span>200 K</span><span>600 K</span>
+    </div>
+  </div>
+
+  <div class="control-group">
+    <div class="control-label">
+      <span data-i18n="pressure">Давление (объём сосуда)</span>
+      <span class="control-value" id="pressure-val" style="color:var(--purple);">1.0 атм</span>
+    </div>
+    <input type="range" id="pressure-slider" class="slider-purple" min="5" max="30" value="10" step="1">
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="panel-subtitle" data-i18n="change_conc">Изменить концентрацию</div>
+
+  <div style="display:flex;align-items:center;gap:8px;">
+    <div style="font-size:16px;color:var(--n2o4);font-weight:700;width:60px;">N₂O₄</div>
+    <button class="btn-action btn-add" id="add-n2o4" data-i18n="btn_add">+ Добавить</button>
+    <button class="btn-action btn-remove" id="rem-n2o4" data-i18n="btn_remove">− Убрать</button>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;">
+    <div style="font-size:16px;color:var(--no2);font-weight:700;width:60px;">NO₂</div>
+    <button class="btn-action btn-add" id="add-no2" data-i18n="btn_add">+ Добавить</button>
+    <button class="btn-action btn-remove" id="rem-no2" data-i18n="btn_remove">− Убрать</button>
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="toggle-row">
+    <span data-i18n="toggle_rates">Показать скорости</span>
+    <div class="toggle active" id="toggle-rates"></div>
+  </div>
+  <div class="toggle-row">
+    <span data-i18n="toggle_flashes">Вспышки реакций</span>
+    <div class="toggle active" id="toggle-flashes"></div>
+  </div>
+
+  <div class="separator"></div>
+
+  <button class="btn btn-start" id="btn-start" data-i18n="btn_start">▶ Запуск реакции</button>
+  <button class="btn btn-reset" id="btn-reset" data-i18n="btn_reset">↺ Сброс</button>
+</div>
+
+<!-- RIGHT PANEL -->
+<div id="right-panel" class="glass">
+
+  <div class="reaction-box">
+    <div class="reaction-eq-big">
+      <span style="color:var(--n2o4);">N₂O₄</span> ⇌ <span style="color:var(--no2);">2 NO₂</span>
+    </div>
+    <div style="font-size:16px;color:var(--text-dim);margin-top:4px;" data-i18n="eq_subtitle">бесцветный ⇌ бурый &nbsp;(ΔH = +57 кДж/моль)</div>
+  </div>
+
+  <!-- SHIFT -->
+  <div class="shift-indicator shift-eq" id="shift-indicator">
+    <span data-i18n="shift_eq">⚖ РАВНОВЕСИЕ</span>
+  </div>
+
+  <!-- RATES -->
+  <div id="rates-block">
+    <div style="font-size:15px;color:var(--text-dim);margin-bottom:6px;" data-i18n="rates_title">Скорости реакций</div>
+    <div class="rate-bar-container">
+      <span style="color:var(--n2o4);">V→</span>
+      <div class="rate-bar-bg"><div class="rate-bar-fill" id="rate-fwd" style="width:50%;background:var(--no2);"></div></div>
+      <span class="rate-label" id="rate-fwd-val" style="color:var(--no2);">50</span>
+    </div>
+    <div class="rate-bar-container" style="margin-top:6px;">
+      <span style="color:var(--no2);">V←</span>
+      <div class="rate-bar-bg"><div class="rate-bar-fill" id="rate-rev" style="width:50%;background:var(--n2o4);"></div></div>
+      <span class="rate-label" id="rate-rev-val" style="color:var(--n2o4);">50</span>
+    </div>
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="stat-row">
+    <span class="stat-label" data-i18n="stat_n2o4">Молекул N₂O₄</span>
+    <span class="stat-value" id="stat-n2o4" style="color:var(--n2o4);">0</span>
+  </div>
+  <div class="stat-row">
+    <span class="stat-label" data-i18n="stat_no2">Молекул NO₂</span>
+    <span class="stat-value" id="stat-no2" style="color:var(--no2);">0</span>
+  </div>
+  <div class="stat-row">
+    <span class="stat-label" data-i18n-html="stat_keq">Константа K<sub>eq</sub></span>
+    <span class="stat-value" id="stat-keq" style="color:var(--yellow);">—</span>
+  </div>
+  <div class="stat-row">
+    <span class="stat-label" data-i18n="stat_q">Коэффициент Q</span>
+    <span class="stat-value" id="stat-q" style="color:var(--cyan);">—</span>
+  </div>
+  <div class="stat-row">
+    <span class="stat-label" data-i18n="temperature">Температура</span>
+    <span class="stat-value" id="stat-temp" style="color:var(--red);">300 K</span>
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="panel-subtitle" data-i18n="keq_title">Константа равновесия</div>
+  <div class="formula-box">
+    <div><span class="f">K</span><sub>eq</sub> = [NO₂]² / [N₂O₄]</div>
+    <div style="margin-top:6px;border-top:1px solid rgba(255,255,255,0.06);padding-top:6px;font-size:17px;font-family:var(--sans);font-style:normal;">
+      <span style="color:var(--green);">Q &lt; K</span> → <span data-i18n="q_lt_k">сдвиг вправо (→)</span><br>
+      <span style="color:var(--yellow);">Q = K</span> → <span data-i18n="q_eq_k">равновесие (⚖)</span><br>
+      <span style="color:var(--red);">Q &gt; K</span> → <span data-i18n="q_gt_k">сдвиг влево (←)</span>
+    </div>
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="panel-subtitle" data-i18n="legend_title">Легенда молекул</div>
+  <div style="display:flex;flex-direction:column;gap:8px;">
+    <div class="legend-item"><div class="legend-dot" style="background:var(--n2o4);"></div><span data-i18n="legend_n2o4">N₂O₄ — димер (бесцветный)</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--no2);"></div><span data-i18n="legend_no2">NO₂ — мономер (бурый)</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--yellow);"></div><span data-i18n="legend_flash">Вспышка — момент реакции</span></div>
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="panel-subtitle" data-i18n="le_chatelier_title">Принцип Ле Шателье</div>
+  <div class="info-box" data-i18n-html="le_chatelier_info">
+    Если на систему в равновесии оказать <b>внешнее воздействие</b>, равновесие сместится так, чтобы <b>компенсировать</b> это воздействие.<br><br>
+    🔥 <b>↑ Температура</b> → сдвиг в сторону <b>эндотермической</b> реакции (→ больше NO₂)<br><br>
+    ⬆ <b>↑ Давление</b> → сдвиг в сторону <b>меньшего</b> числа молей газа (← больше N₂O₄)<br><br>
+    🧪 <b>↑ [Реагент]</b> → сдвиг <b>вправо</b>, чтобы его израсходовать<br><br>
+    🧪 <b>↑ [Продукт]</b> → сдвиг <b>влево</b>, чтобы его израсходовать
+  </div>
+</div>
+
+<!-- BOTTOM -->
+<div id="bottom-panel" class="glass">
+  <div class="bottom-stat">
+    <span class="label">N₂O₄</span>
+    <span class="value" id="b-n2o4" style="color:var(--n2o4);">0</span>
+  </div>
+  <div class="bottom-stat">
+    <span class="label">NO₂</span>
+    <span class="value" id="b-no2" style="color:var(--no2);">0</span>
+  </div>
+  <div class="bottom-stat">
+    <span class="label">K<sub>eq</sub></span>
+    <span class="value" id="b-keq" style="color:var(--yellow);">—</span>
+  </div>
+  <div class="bottom-stat">
+    <span class="label">Q</span>
+    <span class="value" id="b-q" style="color:var(--cyan);">—</span>
+  </div>
+  <div class="bottom-stat">
+    <span class="label">T</span>
+    <span class="value" id="b-temp" style="color:var(--red);">300 K</span>
+  </div>
+  <div class="bottom-stat">
+    <span class="label" data-i18n="b_shift">Сдвиг</span>
+    <span class="value" id="b-shift" style="color:var(--green);">⚖</span>
+  </div>
+</div>
+
+<script>
+// =====================================================================
+//  I18N — встроенные переводы (RU / KZ / EN). Язык: ?lang=ru|kz|en.
+// =====================================================================
+const I18N = {
+  ru: {
+    page_title: 'Химическое равновесие — Принцип Ле Шателье',
+    panel_title: 'Химическое равновесие',
+    panel_subtitle: 'Принцип Ле Шателье',
+    temperature: 'Температура',
+    pressure: 'Давление (объём сосуда)',
+    change_conc: 'Изменить концентрацию',
+    btn_add: '+ Добавить',
+    btn_remove: '− Убрать',
+    toggle_rates: 'Показать скорости',
+    toggle_flashes: 'Вспышки реакций',
+    btn_start: '▶ Запуск реакции',
+    btn_pause: '⏸ Пауза',
+    btn_reset: '↺ Сброс',
+    eq_subtitle: 'бесцветный ⇌ бурый  (ΔH = +57 кДж/моль)',
+    shift_eq: '⚖ РАВНОВЕСИЕ',
+    shift_right: '→ СДВИГ ВПРАВО (больше NO₂)',
+    shift_left: '← СДВИГ ВЛЕВО (больше N₂O₄)',
+    rates_title: 'Скорости реакций',
+    stat_n2o4: 'Молекул N₂O₄',
+    stat_no2: 'Молекул NO₂',
+    stat_keq: 'Константа K<sub>eq</sub>',
+    stat_q: 'Коэффициент Q',
+    keq_title: 'Константа равновесия',
+    q_lt_k: 'сдвиг вправо (→)',
+    q_eq_k: 'равновесие (⚖)',
+    q_gt_k: 'сдвиг влево (←)',
+    legend_title: 'Легенда молекул',
+    legend_n2o4: 'N₂O₄ — димер (бесцветный)',
+    legend_no2: 'NO₂ — мономер (бурый)',
+    legend_flash: 'Вспышка — момент реакции',
+    le_chatelier_title: 'Принцип Ле Шателье',
+    le_chatelier_info: 'Если на систему в равновесии оказать <b>внешнее воздействие</b>, равновесие сместится так, чтобы <b>компенсировать</b> это воздействие.<br><br>🔥 <b>↑ Температура</b> → сдвиг в сторону <b>эндотермической</b> реакции (→ больше NO₂)<br><br>⬆ <b>↑ Давление</b> → сдвиг в сторону <b>меньшего</b> числа молей газа (← больше N₂O₄)<br><br>🧪 <b>↑ [Реагент]</b> → сдвиг <b>вправо</b>, чтобы его израсходовать<br><br>🧪 <b>↑ [Продукт]</b> → сдвиг <b>влево</b>, чтобы его израсходовать',
+    b_shift: 'Сдвиг',
+    status_stopped: 'РЕАКЦИЯ ОСТАНОВЛЕНА',
+    status_running: '⚗ РЕАКЦИЯ ИДЁТ',
+    status_eq: '⚗ РАВНОВЕСИЕ ДОСТИГНУТО',
+    status_shift_right: '⚗ СДВИГ → ВПРАВО',
+    status_shift_left: '⚗ СДВИГ ← ВЛЕВО',
+    pressure_unit: 'атм'
+  },
+  kz: {
+    page_title: 'Химиялық тепе-теңдік — Ле Шателье принципі',
+    panel_title: 'Химиялық тепе-теңдік',
+    panel_subtitle: 'Ле Шателье принципі',
+    temperature: 'Температура',
+    pressure: 'Қысым (ыдыс көлемі)',
+    change_conc: 'Концентрацияны өзгерту',
+    btn_add: '+ Қосу',
+    btn_remove: '− Алу',
+    toggle_rates: 'Жылдамдықтарды көрсету',
+    toggle_flashes: 'Реакция жарқылдары',
+    btn_start: '▶ Реакцияны бастау',
+    btn_pause: '⏸ Кідірту',
+    btn_reset: '↺ Қалпына келтіру',
+    eq_subtitle: 'түссіз ⇌ қоңыр  (ΔH = +57 кДж/моль)',
+    shift_eq: '⚖ ТЕПЕ-ТЕҢДІК',
+    shift_right: '→ ОҢҒА ЫҒЫСУ (NO₂ көп)',
+    shift_left: '← СОЛҒА ЫҒЫСУ (N₂O₄ көп)',
+    rates_title: 'Реакция жылдамдықтары',
+    stat_n2o4: 'N₂O₄ молекулалары',
+    stat_no2: 'NO₂ молекулалары',
+    stat_keq: 'K<sub>eq</sub> тұрақтысы',
+    stat_q: 'Q коэффициенті',
+    keq_title: 'Тепе-теңдік тұрақтысы',
+    q_lt_k: 'оңға ығысу (→)',
+    q_eq_k: 'тепе-теңдік (⚖)',
+    q_gt_k: 'солға ығысу (←)',
+    legend_title: 'Молекула шартты белгілері',
+    legend_n2o4: 'N₂O₄ — димер (түссіз)',
+    legend_no2: 'NO₂ — мономер (қоңыр)',
+    legend_flash: 'Жарқыл — реакция сәті',
+    le_chatelier_title: 'Ле Шателье принципі',
+    le_chatelier_info: 'Тепе-теңдіктегі жүйеге <b>сыртқы әсер</b> жасалса, тепе-теңдік осы әсерді <b>компенсациялау</b> үшін ығысады.<br><br>🔥 <b>↑ Температура</b> → <b>эндотермиялық</b> реакция жағына ығысу (→ NO₂ көп)<br><br>⬆ <b>↑ Қысым</b> → газ мольдері <b>аз</b> жағына ығысу (← N₂O₄ көп)<br><br>🧪 <b>↑ [Реагент]</b> → оны жұмсау үшін <b>оңға</b> ығысу<br><br>🧪 <b>↑ [Өнім]</b> → оны жұмсау үшін <b>солға</b> ығысу',
+    b_shift: 'Ығысу',
+    status_stopped: 'РЕАКЦИЯ ТОҚТАТЫЛДЫ',
+    status_running: '⚗ РЕАКЦИЯ ЖҮРІП ЖАТЫР',
+    status_eq: '⚗ ТЕПЕ-ТЕҢДІККЕ ЖЕТТІ',
+    status_shift_right: '⚗ ОҢҒА → ЫҒЫСУ',
+    status_shift_left: '⚗ СОЛҒА ← ЫҒЫСУ',
+    pressure_unit: 'атм'
+  },
+  en: {
+    page_title: 'Chemical Equilibrium — Le Chatelier\'s Principle',
+    panel_title: 'Chemical Equilibrium',
+    panel_subtitle: 'Le Chatelier\'s Principle',
+    temperature: 'Temperature',
+    pressure: 'Pressure (vessel volume)',
+    change_conc: 'Change concentration',
+    btn_add: '+ Add',
+    btn_remove: '− Remove',
+    toggle_rates: 'Show rates',
+    toggle_flashes: 'Reaction flashes',
+    btn_start: '▶ Start reaction',
+    btn_pause: '⏸ Pause',
+    btn_reset: '↺ Reset',
+    eq_subtitle: 'colorless ⇌ brown  (ΔH = +57 kJ/mol)',
+    shift_eq: '⚖ EQUILIBRIUM',
+    shift_right: '→ SHIFT RIGHT (more NO₂)',
+    shift_left: '← SHIFT LEFT (more N₂O₄)',
+    rates_title: 'Reaction rates',
+    stat_n2o4: 'N₂O₄ molecules',
+    stat_no2: 'NO₂ molecules',
+    stat_keq: 'Constant K<sub>eq</sub>',
+    stat_q: 'Quotient Q',
+    keq_title: 'Equilibrium constant',
+    q_lt_k: 'shift right (→)',
+    q_eq_k: 'equilibrium (⚖)',
+    q_gt_k: 'shift left (←)',
+    legend_title: 'Molecule legend',
+    legend_n2o4: 'N₂O₄ — dimer (colorless)',
+    legend_no2: 'NO₂ — monomer (brown)',
+    legend_flash: 'Flash — reaction moment',
+    le_chatelier_title: 'Le Chatelier\'s Principle',
+    le_chatelier_info: 'If an <b>external stress</b> is applied to a system at equilibrium, the equilibrium shifts to <b>counteract</b> that stress.<br><br>🔥 <b>↑ Temperature</b> → shift toward the <b>endothermic</b> reaction (→ more NO₂)<br><br>⬆ <b>↑ Pressure</b> → shift toward <b>fewer</b> moles of gas (← more N₂O₄)<br><br>🧪 <b>↑ [Reactant]</b> → shift <b>right</b> to consume it<br><br>🧪 <b>↑ [Product]</b> → shift <b>left</b> to consume it',
+    b_shift: 'Shift',
+    status_stopped: 'REACTION STOPPED',
+    status_running: '⚗ REACTION IN PROGRESS',
+    status_eq: '⚗ EQUILIBRIUM REACHED',
+    status_shift_right: '⚗ SHIFT → RIGHT',
+    status_shift_left: '⚗ SHIFT ← LEFT',
+    pressure_unit: 'atm'
+  }
+};
+const LANG=(()=>{const q=new URLSearchParams(location.search).get('lang');return(q&&I18N[q])?q:'ru';})();
+const t=(key)=>(I18N[LANG]&&I18N[LANG][key])??(I18N.ru&&I18N.ru[key]);
+
+function applyStaticI18N(){
+  document.documentElement.lang=LANG;
+  const tv=t('page_title');if(tv)document.title=tv;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{const v=t(el.getAttribute('data-i18n'));if(v)el.textContent=v;});
+  document.querySelectorAll('[data-i18n-html]').forEach(el=>{const v=t(el.getAttribute('data-i18n-html'));if(v)el.innerHTML=v;});
+}
+applyStaticI18N();
+// ═══════════════════════════════════════
+// SCENE
+// ═══════════════════════════════════════
+const container = document.getElementById('canvas-container');
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x030712, 0.004);
+
+const camera = new THREE.PerspectiveCamera(50, innerWidth/innerHeight, 0.1, 300);
+const renderer = new THREE.WebGLRenderer({antialias: true, alpha:true});
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = false;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+container.appendChild(renderer.domElement);
+
+scene.add(new THREE.AmbientLight(0x334466, 0.5));
+const dirLight = new THREE.DirectionalLight(0xffeedd, 0.7);
+dirLight.position.set(8, 18, 15);dirLight.castShadow=true;dirLight.shadow.mapSize.set(2048,2048);
+scene.add(dirLight);
+
+// Floor
+const flMesh = new THREE.Mesh(new THREE.PlaneGeometry(100,100), new THREE.MeshStandardMaterial({color:0x080e1e,roughness:0.9}));
+flMesh.rotation.x=-Math.PI/2;flMesh.position.y=-0.5;flMesh.receiveShadow=true;scene.add(flMesh);
+
+// ═══════════════════════════════════════
+// VESSEL (glass container)
+// ═══════════════════════════════════════
+let vesselW = 14, vesselH = 10, vesselD = 8;
+const vesselGroup = new THREE.Group();
+scene.add(vesselGroup);
+
+const glassMat = new THREE.MeshStandardMaterial({color:0x88aacc, transparent:true, opacity:0.1, roughness:0.05, metalness:0.1, side:THREE.DoubleSide});
+const edgeMat = new THREE.LineBasicMaterial({color:0x88aacc, transparent:true, opacity:0.2});
+
+function buildVessel(){
+  while(vesselGroup.children.length) vesselGroup.remove(vesselGroup.children[0]);
+  const w=vesselW, h=vesselH, d=vesselD;
+  // walls
+  const f=new THREE.Mesh(new THREE.PlaneGeometry(w,h),glassMat);f.position.set(0,h/2,d/2);vesselGroup.add(f);
+  const b=f.clone();b.position.z=-d/2;vesselGroup.add(b);
+  const sg=new THREE.PlaneGeometry(d,h);
+  const l=new THREE.Mesh(sg,glassMat);l.rotation.y=Math.PI/2;l.position.set(-w/2,h/2,0);vesselGroup.add(l);
+  const r=l.clone();r.position.x=w/2;vesselGroup.add(r);
+  // bottom
+  const bt=new THREE.Mesh(new THREE.PlaneGeometry(w,d),new THREE.MeshStandardMaterial({color:0x1e293b,roughness:0.5,metalness:0.3}));
+  bt.rotation.x=-Math.PI/2;bt.position.y=0;vesselGroup.add(bt);
+  // top (lid)
+  const tp=new THREE.Mesh(new THREE.PlaneGeometry(w,d),new THREE.MeshStandardMaterial({color:0x334155,roughness:0.3,metalness:0.6,transparent:true,opacity:0.3}));
+  tp.rotation.x=-Math.PI/2;tp.position.y=h;vesselGroup.add(tp);
+  // edges
+  const pts=[[-w/2,0,-d/2],[-w/2,0,d/2],[-w/2,h,d/2],[-w/2,h,-d/2],[-w/2,0,-d/2],
+    [w/2,0,-d/2],[w/2,0,d/2],[w/2,h,d/2],[w/2,h,-d/2],[w/2,0,-d/2]];
+  vesselGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts.map(p=>new THREE.Vector3(...p))),edgeMat));
+  [[[w/2,h,d/2],[-w/2,h,d/2]],[[w/2,h,-d/2],[-w/2,h,-d/2]],
+   [[-w/2,0,d/2],[w/2,0,d/2]],[[-w/2,h,d/2],[w/2,h,d/2]]].forEach(pr=>{
+    vesselGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pr.map(p=>new THREE.Vector3(...p))),edgeMat));
+  });
+}
+buildVessel();
+
+// Gas tint (fills vessel, color changes with NO2 concentration)
+const gasTintGeo = new THREE.BoxGeometry(vesselW-0.3, vesselH-0.3, vesselD-0.3);
+const gasTintMat = new THREE.MeshBasicMaterial({color:0xf97316, transparent:true, opacity:0, side:THREE.BackSide});
+const gasTint = new THREE.Mesh(gasTintGeo, gasTintMat);
+gasTint.position.y = vesselH/2;
+scene.add(gasTint);
+
+// ═══════════════════════════════════════
+// MOLECULES
+// ═══════════════════════════════════════
+const molecules = []; // {mesh, type:'n2o4'|'no2', vx,vy,vz}
+
+const n2o4Mat = new THREE.MeshStandardMaterial({color:0x60a5fa, emissive:0x60a5fa, emissiveIntensity:0.2, roughness:0.3, metalness:0.2});
+const no2Mat = new THREE.MeshStandardMaterial({color:0xf97316, emissive:0xf97316, emissiveIntensity:0.25, roughness:0.3, metalness:0.2});
+
+function createN2O4(){
+  const g = new THREE.Group();
+  // Dimer: two spheres bonded
+  const s1 = new THREE.Mesh(new THREE.SphereGeometry(0.45,12,12), n2o4Mat.clone());
+  s1.position.x = -0.35;
+  g.add(s1);
+  const s2 = new THREE.Mesh(new THREE.SphereGeometry(0.45,12,12), n2o4Mat.clone());
+  s2.position.x = 0.35;
+  g.add(s2);
+  // Bond
+  const bond = new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.12,0.5,8), new THREE.MeshStandardMaterial({color:0x3b82f6,roughness:0.4}));
+  bond.rotation.z = Math.PI/2;
+  g.add(bond);
+  return g;
+}
+
+function createNO2(){
+  const g = new THREE.Group();
+  const s = new THREE.Mesh(new THREE.SphereGeometry(0.38,12,12), no2Mat.clone());
+  g.add(s);
+  return g;
+}
+
+function spawnMolecule(type, x, y, z){
+  const mesh = type==='n2o4' ? createN2O4() : createNO2();
+  if(x===undefined){
+    x = (Math.random()-0.5)*(vesselW-2);
+    y = 0.6+Math.random()*(vesselH-1.5);
+    z = (Math.random()-0.5)*(vesselD-2);
+  }
+  mesh.position.set(x,y,z);
+  mesh.rotation.set(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI);
+  scene.add(mesh);
+  const speed = 1.5 + Math.random()*2;
+  const a = Math.random()*Math.PI*2;
+  const e = (Math.random()-0.5)*Math.PI;
+  molecules.push({
+    mesh, type,
+    vx: Math.cos(a)*Math.cos(e)*speed,
+    vy: Math.sin(e)*speed,
+    vz: Math.sin(a)*Math.cos(e)*speed,
+    alive: true
+  });
+}
+
+function removeMolecule(idx){
+  const m = molecules[idx];
+  scene.remove(m.mesh);
+  molecules.splice(idx, 1);
+}
+
+// Init: 15 N2O4 + 10 NO2
+function initMolecules(){
+  while(molecules.length) { scene.remove(molecules[0].mesh); molecules.shift(); }
+  for(let i=0;i<15;i++) spawnMolecule('n2o4');
+  for(let i=0;i<10;i++) spawnMolecule('no2');
+}
+initMolecules();
+
+// ═══════════════════════════════════════
+// REACTION FLASHES
+// ═══════════════════════════════════════
+const flashes = [];
+function spawnFlash(x, y, z, color){
+  const geo = new THREE.SphereGeometry(0.3,8,8);
+  const mat = new THREE.MeshBasicMaterial({color, transparent:true, opacity:0.9});
+  const m = new THREE.Mesh(geo, mat);
+  m.position.set(x,y,z);scene.add(m);
+  flashes.push({mesh:m, life:0, maxLife:0.4});
+}
+
+// ═══════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════
+const state = {
+  running: false,
+  temperature: 300,
+  pressure: 1.0,
+  showRates: true,
+  showFlashes: true,
+  time: 0,
+  rateFwd: 0,
+  rateRev: 0,
+  keq: 0,
+  reactionTimer: 0,
+};
+
+// ═══════════════════════════════════════
+// PHYSICS: Keq depends on temperature
+// N2O4 ⇌ 2NO2, ΔH = +57 kJ/mol (endothermic forward)
+// ═══════════════════════════════════════
+function computeKeq(T){
+  // Van't Hoff: ln(K2/K1) = -ΔH/R * (1/T2 - 1/T1)
+  // At 298K, Keq ≈ 0.14
+  const K298 = 0.14;
+  const dH = 57000; // J/mol
+  const R = 8.314;
+  const lnK = Math.log(K298) + (-dH/R) * (1/T - 1/298);
+  return Math.exp(lnK);
+}
+
+function countType(type){
+  return molecules.filter(m=>m.type===type&&m.alive).length;
+}
+
+function computeQ(){
+  const nNO2 = countType('no2');
+  const nN2O4 = countType('n2o4');
+  if(nN2O4 === 0) return 9999;
+  // Q = [NO2]^2 / [N2O4], using counts as proxy concentrations
+  // Adjust for volume (pressure)
+  const V = state.pressure; // inversely: higher pressure = smaller volume
+  const cNO2 = nNO2 / (10 / V);
+  const cN2O4 = nN2O4 / (10 / V);
+  if(cN2O4 < 0.01) return 9999;
+  return (cNO2 * cNO2) / cN2O4;
+}
+
+// ═══════════════════════════════════════
+// UI
+// ═══════════════════════════════════════
+document.getElementById('temp-slider').addEventListener('input', e=>{
+  state.temperature = +e.target.value;
+  document.getElementById('temp-val').textContent = state.temperature + ' K';
+});
+
+document.getElementById('pressure-slider').addEventListener('input', e=>{
+  state.pressure = +e.target.value / 10;
+  document.getElementById('pressure-val').textContent = state.pressure.toFixed(1) + ' ' + t('pressure_unit');
+  // Visual: shrink vessel width with higher pressure
+  vesselW = 14 / Math.sqrt(state.pressure);
+  buildVessel();
+  gasTint.scale.x = vesselW / 14;
+});
+
+document.getElementById('add-n2o4').addEventListener('click', ()=>{
+  for(let i=0;i<5;i++) spawnMolecule('n2o4');
+});
+document.getElementById('rem-n2o4').addEventListener('click', ()=>{
+  let removed=0;
+  for(let i=molecules.length-1;i>=0&&removed<5;i--){
+    if(molecules[i].type==='n2o4'){removeMolecule(i);removed++;}
+  }
+});
+document.getElementById('add-no2').addEventListener('click', ()=>{
+  for(let i=0;i<5;i++) spawnMolecule('no2');
+});
+document.getElementById('rem-no2').addEventListener('click', ()=>{
+  let removed=0;
+  for(let i=molecules.length-1;i>=0&&removed<5;i--){
+    if(molecules[i].type==='no2'){removeMolecule(i);removed++;}
+  }
+});
+
+document.getElementById('toggle-rates').addEventListener('click', function(){
+  this.classList.toggle('active');state.showRates=this.classList.contains('active');
+  document.getElementById('rates-block').style.display=state.showRates?'block':'none';
+});
+document.getElementById('toggle-flashes').addEventListener('click', function(){
+  this.classList.toggle('active');state.showFlashes=this.classList.contains('active');
+});
+
+const btnStart=document.getElementById('btn-start');
+btnStart.addEventListener('click',()=>{
+  if(!state.running) startSim(); else stopSim();
+});
+document.getElementById('btn-reset').addEventListener('click', resetAll);
+
+function startSim(){
+  state.running=true;
+  btnStart.textContent=t('btn_pause');btnStart.className='btn btn-stop';
+  document.getElementById('status-dot').className='status-dot on';
+  document.getElementById('status-dot').style.background='var(--green)';
+  document.getElementById('status-text').style.color='var(--green)';
+  document.getElementById('status-text').textContent=t('status_running');
+}
+function stopSim(){
+  state.running=false;
+  btnStart.textContent=t('btn_start');btnStart.className='btn btn-start';
+  document.getElementById('status-dot').className='status-dot';
+  document.getElementById('status-dot').style.background='var(--text-dim)';
+  document.getElementById('status-text').style.color='var(--text-dim)';
+  document.getElementById('status-text').textContent=t('status_stopped');
+}
+function resetAll(){
+  stopSim();state.time=0;
+  state.temperature=300;state.pressure=1.0;
+  document.getElementById('temp-slider').value=300;
+  document.getElementById('temp-val').textContent='300 K';
+  document.getElementById('pressure-slider').value=10;
+  document.getElementById('pressure-val').textContent='1.0 '+t('pressure_unit');
+  vesselW=14;buildVessel();gasTint.scale.x=1;
+  initMolecules();
+  flashes.forEach(f=>scene.remove(f.mesh));flashes.length=0;
+  camSph={r:28,theta:Math.PI*0.5,phi:Math.PI*0.42};camTarget.set(0,5,0);updateCam();
+  updateUI();
+}
+
+function updateUI(){
+  const nN2O4=countType('n2o4'), nNO2=countType('no2');
+  const keq=computeKeq(state.temperature);
+  const Q=computeQ();
+
+  document.getElementById('stat-n2o4').textContent=nN2O4;
+  document.getElementById('stat-no2').textContent=nNO2;
+  document.getElementById('stat-keq').textContent=keq.toFixed(3);
+  document.getElementById('stat-q').textContent=Q>999?'∞':Q.toFixed(3);
+  document.getElementById('stat-temp').textContent=state.temperature+' K';
+
+  document.getElementById('b-n2o4').textContent=nN2O4;
+  document.getElementById('b-no2').textContent=nNO2;
+  document.getElementById('b-keq').textContent=keq.toFixed(2);
+  document.getElementById('b-q').textContent=Q>999?'∞':Q.toFixed(2);
+  document.getElementById('b-temp').textContent=state.temperature+' K';
+
+  // Rates
+  const fwdRate = Math.min(100, Math.max(0, 50 + (keq - Q)*20));
+  const revRate = 100 - fwdRate;
+  state.rateFwd = fwdRate;
+  state.rateRev = revRate;
+  document.getElementById('rate-fwd').style.width=fwdRate+'%';
+  document.getElementById('rate-rev').style.width=revRate+'%';
+  document.getElementById('rate-fwd-val').textContent=Math.round(fwdRate);
+  document.getElementById('rate-rev-val').textContent=Math.round(revRate);
+
+  // Shift indicator
+  const si=document.getElementById('shift-indicator');
+  const bs=document.getElementById('b-shift');
+  const ratio = Q / Math.max(0.001, keq);
+  if(ratio < 0.7){
+    si.className='shift-indicator shift-right';
+    si.textContent=t('shift_right');
+    bs.textContent='→'; bs.style.color='var(--no2)';
+    document.getElementById('status-dot').style.background='var(--no2)';
+    document.getElementById('status-text').style.color='var(--no2)';
+    document.getElementById('status-text').textContent=t('status_shift_right');
+  } else if(ratio > 1.4){
+    si.className='shift-indicator shift-left';
+    si.textContent=t('shift_left');
+    bs.textContent='←'; bs.style.color='var(--n2o4)';
+    document.getElementById('status-dot').style.background='var(--n2o4)';
+    document.getElementById('status-text').style.color='var(--n2o4)';
+    document.getElementById('status-text').textContent=t('status_shift_left');
+  } else {
+    si.className='shift-indicator shift-eq';
+    si.textContent=t('shift_eq');
+    bs.textContent='⚖'; bs.style.color='var(--green)';
+    if(state.running){
+      document.getElementById('status-dot').style.background='var(--green)';
+      document.getElementById('status-text').style.color='var(--green)';
+      document.getElementById('status-text').textContent=t('status_eq');
+    }
+  }
+
+  // Gas tint opacity based on NO2 fraction
+  const total=nN2O4+nNO2;
+  if(total>0){
+    gasTintMat.opacity = (nNO2/total)*0.12;
+  } else {
+    gasTintMat.opacity = 0;
+  }
+}
+
+// ═══════════════════════════════════════
+// CAMERA
+// ═══════════════════════════════════════
+let isDrag=false,isPan=false,prevM={x:0,y:0};
+let camSph={r:28,theta:Math.PI*0.5,phi:Math.PI*0.42};
+let camTarget=new THREE.Vector3(0,5,0);
+
+function updateCam(){
+  camera.position.set(
+    camTarget.x+camSph.r*Math.sin(camSph.phi)*Math.cos(camSph.theta),
+    camTarget.y+camSph.r*Math.cos(camSph.phi),
+    camTarget.z+camSph.r*Math.sin(camSph.phi)*Math.sin(camSph.theta)
+  );camera.lookAt(camTarget);
+}
+updateCam();
+
+renderer.domElement.addEventListener('mousedown',e=>{if(e.button===0)isDrag=true;if(e.button===2)isPan=true;prevM={x:e.clientX,y:e.clientY};});
+renderer.domElement.addEventListener('mousemove',e=>{
+  const dx=e.clientX-prevM.x,dy=e.clientY-prevM.y;prevM={x:e.clientX,y:e.clientY};
+  if(isDrag){camSph.theta-=dx*0.005;camSph.phi=Math.max(0.1,Math.min(Math.PI*0.48,camSph.phi+dy*0.005));updateCam();}
+  if(isPan){const r=new THREE.Vector3();camera.getWorldDirection(r);r.cross(new THREE.Vector3(0,1,0)).normalize();camTarget.addScaledVector(r,-dx*0.04);camTarget.y=Math.max(-2,camTarget.y+dy*0.04);updateCam();}
+});
+renderer.domElement.addEventListener('mouseup',()=>{isDrag=false;isPan=false;});
+renderer.domElement.addEventListener('contextmenu',e=>e.preventDefault());
+renderer.domElement.addEventListener('wheel',e=>{camSph.r=Math.max(8,Math.min(80,camSph.r+e.deltaY*0.03));updateCam();});
+
+// ═══════════════════════════════════════
+// ANIMATE
+// ═══════════════════════════════════════
+const clock=new THREE.Clock();
+
+function animate(){
+  requestAnimationFrame(animate);
+  const dt=Math.min(clock.getDelta(),0.05);
+
+  const keq=computeKeq(state.temperature);
+  const Q=computeQ();
+  const speedMult = 1 + (state.temperature - 300) * 0.003;
+
+  if(state.running){
+    state.time+=dt;
+    state.reactionTimer+=dt;
+
+    // Move molecules
+    const hw=vesselW/2-0.5, hd=vesselD/2-0.5;
+    molecules.forEach(m=>{
+      if(!m.alive)return;
+      const p=m.mesh.position;
+      const thermalSpeed = speedMult * (0.8 + Math.random()*0.4);
+
+      p.x += m.vx * dt * thermalSpeed;
+      p.y += m.vy * dt * thermalSpeed;
+      p.z += m.vz * dt * thermalSpeed;
+
+      // Random direction changes (Brownian motion)
+      m.vx += (Math.random()-0.5)*3*dt;
+      m.vy += (Math.random()-0.5)*3*dt;
+      m.vz += (Math.random()-0.5)*3*dt;
+
+      // Speed limit
+      const spd=Math.sqrt(m.vx*m.vx+m.vy*m.vy+m.vz*m.vz);
+      const maxSpd = 4 * speedMult;
+      if(spd>maxSpd){const f=maxSpd/spd;m.vx*=f;m.vy*=f;m.vz*=f;}
+
+      // Bounce off walls
+      if(p.x<-hw){p.x=-hw;m.vx=Math.abs(m.vx);}
+      if(p.x>hw){p.x=hw;m.vx=-Math.abs(m.vx);}
+      if(p.y<0.5){p.y=0.5;m.vy=Math.abs(m.vy);}
+      if(p.y>vesselH-0.5){p.y=vesselH-0.5;m.vy=-Math.abs(m.vy);}
+      if(p.z<-hd){p.z=-hd;m.vz=Math.abs(m.vz);}
+      if(p.z>hd){p.z=hd;m.vz=-Math.abs(m.vz);}
+
+      // Slow rotation
+      m.mesh.rotation.x += dt*0.5;
+      m.mesh.rotation.y += dt*0.3;
+    });
+
+    // ─── Chemical reactions ───
+    if(state.reactionTimer > 0.15 / speedMult){
+      state.reactionTimer = 0;
+
+      const nN2O4 = countType('n2o4');
+      const nNO2 = countType('no2');
+
+      // Forward: N2O4 → 2NO2  (favored when Q < K)
+      // Reverse: 2NO2 → N2O4  (favored when Q > K)
+      const ratio = Q / Math.max(0.001, keq);
+
+      // Forward probability
+      const fwdProb = nN2O4 > 0 ? Math.max(0, 0.15 * (1 / Math.max(0.1, ratio)) * speedMult) : 0;
+      // Reverse probability
+      const revProb = nNO2 >= 2 ? Math.max(0, 0.08 * ratio * speedMult) : 0;
+
+      // Pressure effect: higher pressure favors fewer moles (reverse)
+      const pressureFactor = state.pressure;
+
+      // Try forward
+      if(Math.random() < fwdProb / pressureFactor && nN2O4 > 0){
+        // Find an N2O4 and split it
+        const idx = molecules.findIndex(m=>m.type==='n2o4'&&m.alive);
+        if(idx>=0){
+          const pos = molecules[idx].mesh.position.clone();
+          removeMolecule(idx);
+          // Spawn 2 NO2
+          spawnMolecule('no2', pos.x-0.5, pos.y, pos.z);
+          spawnMolecule('no2', pos.x+0.5, pos.y, pos.z);
+          if(state.showFlashes) spawnFlash(pos.x, pos.y, pos.z, 0xf97316);
+        }
+      }
+
+      // Try reverse
+      if(Math.random() < revProb * pressureFactor && nNO2 >= 2){
+        // Find two NO2 that are close and combine
+        let found = false;
+        for(let i=0;i<molecules.length&&!found;i++){
+          if(molecules[i].type!=='no2'||!molecules[i].alive) continue;
+          for(let j=i+1;j<molecules.length&&!found;j++){
+            if(molecules[j].type!=='no2'||!molecules[j].alive) continue;
+            const d=molecules[i].mesh.position.distanceTo(molecules[j].mesh.position);
+            if(d < 3.0){
+              const midPos = molecules[i].mesh.position.clone().add(molecules[j].mesh.position).multiplyScalar(0.5);
+              removeMolecule(j);
+              removeMolecule(i);
+              spawnMolecule('n2o4', midPos.x, midPos.y, midPos.z);
+              if(state.showFlashes) spawnFlash(midPos.x, midPos.y, midPos.z, 0x60a5fa);
+              found = true;
+            }
+          }
+        }
+      }
+    }
+  } else {
+    // Idle: still move molecules slowly
+    molecules.forEach(m=>{
+      if(!m.alive)return;
+      const p=m.mesh.position;
+      const hw=vesselW/2-0.5, hd=vesselD/2-0.5;
+      m.vx+=(Math.random()-0.5)*0.5*dt;m.vy+=(Math.random()-0.5)*0.5*dt;m.vz+=(Math.random()-0.5)*0.5*dt;
+      m.vx*=0.98;m.vy*=0.98;m.vz*=0.98;
+      p.x+=m.vx*dt*0.3;p.y+=m.vy*dt*0.3;p.z+=m.vz*dt*0.3;
+      if(p.x<-hw){p.x=-hw;m.vx*=-1;}if(p.x>hw){p.x=hw;m.vx*=-1;}
+      if(p.y<0.5){p.y=0.5;m.vy*=-1;}if(p.y>vesselH-0.5){p.y=vesselH-0.5;m.vy*=-1;}
+      if(p.z<-hd){p.z=-hd;m.vz*=-1;}if(p.z>hd){p.z=hd;m.vz*=-1;}
+      m.mesh.rotation.x+=dt*0.2;m.mesh.rotation.y+=dt*0.15;
+    });
+  }
+
+  // Flashes
+  for(let i=flashes.length-1;i>=0;i--){
+    const f=flashes[i];
+    f.life+=dt;
+    f.mesh.material.opacity=Math.max(0,0.9*(1-f.life/f.maxLife));
+    f.mesh.scale.setScalar(1+f.life*6);
+    if(f.life>f.maxLife){scene.remove(f.mesh);flashes.splice(i,1);}
+  }
+
+  updateUI();
+  renderer.render(scene, camera);
+}
+
+animate();
+updateUI();
+
+window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+</script>
+</body>
+</html>

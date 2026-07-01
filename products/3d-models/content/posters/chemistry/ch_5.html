@@ -1,0 +1,1109 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="page_title">Реакция Синтеза Воды | 2H₂ + O₂ → 2H₂O | Химия 3D</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background: linear-gradient(135deg, #0a0a1a 0%, #1a1a3a 50%, #0a1a2a 100%);
+            min-height: 100vh;
+            overflow: hidden;
+            color: #fff;
+        }
+
+        #canvas-container {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 1;
+        }
+
+        .header {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            padding: 20px 30px;
+            background: linear-gradient(180deg, rgba(0,0,0,0.8) 0%, transparent 100%);
+            z-index: 100;
+            text-align: center;
+        }
+
+        .title {
+            font-size: 28px;
+            font-weight: 700;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        }
+        .title .h { color: #64b5f6; }
+        .title .water { color: #4fc3f7; }
+
+        .subtitle {
+            font-size: 14px;
+            opacity: 0.7;
+            margin-top: 8px;
+        }
+
+        .equation-box {
+            position: fixed;
+            top: 90px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(15, 23, 42, 0.95);
+            
+            border-radius: 20px;
+            padding: 20px 40px;
+            border: 2px solid rgba(255, 213, 79, 0.4);
+            z-index: 100;
+            text-align: center;
+        }
+
+        .equation {
+            font-size: 32px;
+            font-weight: 700;
+            font-family: 'Times New Roman', serif;
+        }
+        .equation .coef { color: #ffd54f; }
+        .equation .h2 { color: #64b5f6; }
+        .equation .o2 { color: #ef5350; }
+        .equation .h2o { color: #4fc3f7; }
+        .equation .plus { color: rgba(255,255,255,0.5); margin: 0 8px; }
+        .equation .arrow { color: #ffd54f; margin: 0 15px; }
+
+        .reaction-type {
+            font-size: 13px;
+            color: rgba(255,255,255,0.6);
+            margin-top: 10px;
+        }
+        .reaction-type span { color: #66bb6a; font-weight: 600; }
+
+        .control-panel {
+            position: fixed;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(15, 23, 42, 0.95);
+            
+            border-radius: 20px;
+            padding: 25px;
+            width: 280px;
+            border: 1px solid rgba(100, 181, 246, 0.3);
+            box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+            z-index: 100;
+        }
+
+        .panel-title {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #64b5f6;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        .control-label {
+            font-size: 12px;
+            color: rgba(255,255,255,0.6);
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .control-value {
+            color: #4fc3f7;
+            font-weight: 600;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(255,255,255,0.1);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px; height: 18px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #64b5f6, #1e88e5);
+            cursor: pointer;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px 20px;
+            border: none;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .btn.primary {
+            background: linear-gradient(135deg, #4fc3f7, #0288d1);
+            color: #fff;
+        }
+        .btn.primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(79, 195, 247, 0.4);
+        }
+
+        .btn.danger {
+            background: linear-gradient(135deg, #ef5350, #c62828);
+            color: #fff;
+        }
+
+        .btn.secondary {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        .btn.secondary:hover { background: rgba(255,255,255,0.2); }
+        .btn.secondary.active {
+            background: rgba(100, 181, 246, 0.2);
+            border-color: #64b5f6;
+            color: #64b5f6;
+        }
+
+        .stages {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .stage {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            border-radius: 10px;
+            margin-bottom: 6px;
+            background: rgba(0,0,0,0.2);
+            transition: all 0.3s;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .stage:hover { background: rgba(255,255,255,0.05); }
+        .stage.active {
+            background: rgba(100, 181, 246, 0.2);
+            border: 1px solid rgba(100, 181, 246, 0.4);
+        }
+        .stage.completed { background: rgba(102, 187, 106, 0.15); }
+
+        .stage-icon {
+            width: 26px; height: 26px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            flex-shrink: 0;
+        }
+        .stage.active .stage-icon { background: #64b5f6; color: #000; }
+        .stage.completed .stage-icon { background: #66bb6a; color: #fff; }
+
+        .info-panel {
+            position: fixed;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(15, 23, 42, 0.95);
+            
+            border-radius: 20px;
+            padding: 25px;
+            width: 300px;
+            border: 1px solid rgba(239, 83, 80, 0.3);
+            box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+            z-index: 100;
+        }
+
+        .info-title {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #ef5350;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .molecule-info {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .molecule-card {
+            flex: 1;
+            background: rgba(0,0,0,0.3);
+            border-radius: 12px;
+            padding: 12px 8px;
+            text-align: center;
+        }
+
+        .molecule-formula {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 3px;
+        }
+        .molecule-formula.h2 { color: #64b5f6; }
+        .molecule-formula.o2 { color: #ef5350; }
+        .molecule-formula.h2o { color: #4fc3f7; }
+
+        .molecule-name {
+            font-size: 9px;
+            color: rgba(255,255,255,0.5);
+        }
+
+        .molecule-count {
+            font-size: 22px;
+            font-weight: 700;
+            margin-top: 5px;
+        }
+
+        .energy-section {
+            background: rgba(0,0,0,0.3);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .energy-title {
+            font-size: 11px;
+            color: rgba(255,255,255,0.5);
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+
+        .energy-bar {
+            height: 24px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 6px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+
+        .energy-fill {
+            height: 100%;
+            border-radius: 6px;
+            transition: width 0.5s ease;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 8px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .energy-fill.breaking { background: linear-gradient(90deg, #ef5350, #ff7043); }
+        .energy-fill.forming { background: linear-gradient(90deg, #66bb6a, #4fc3f7); }
+
+        .energy-result {
+            display: flex;
+            justify-content: space-between;
+            padding-top: 10px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            font-size: 12px;
+        }
+        .energy-result .positive { color: #ef5350; }
+        .energy-result .negative { color: #66bb6a; }
+        .energy-result .net { color: #ffd54f; font-weight: 700; }
+
+        .diagram-box {
+            background: rgba(0,0,0,0.3);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .diagram-canvas {
+            width: 100%;
+            height: 100px;
+            border-radius: 8px;
+        }
+
+        .fact-box {
+            background: rgba(255, 213, 79, 0.1);
+            border: 1px solid rgba(255, 213, 79, 0.3);
+            border-radius: 12px;
+            padding: 12px;
+            font-size: 11px;
+            line-height: 1.5;
+        }
+        .fact-box strong { color: #ffd54f; }
+
+        .legend {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(15, 23, 42, 0.95);
+            
+            border-radius: 15px;
+            padding: 12px 25px;
+            display: flex;
+            gap: 25px;
+            z-index: 100;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+        }
+
+        .legend-atom {
+            width: 20px; height: 20px;
+            border-radius: 50%;
+        }
+        .legend-atom.hydrogen {
+            background: radial-gradient(circle at 30% 30%, #90caf9, #1e88e5);
+            box-shadow: 0 0 8px rgba(100, 181, 246, 0.5);
+        }
+        .legend-atom.oxygen {
+            background: radial-gradient(circle at 30% 30%, #ef9a9a, #c62828);
+            box-shadow: 0 0 8px rgba(239, 83, 80, 0.5);
+        }
+
+        .loading {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: #0a0a1a;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            transition: opacity 0.5s;
+        }
+        .loading.hidden { opacity: 0; pointer-events: none; }
+        .loading-molecule { font-size: 60px; animation: bounce 1s ease-in-out infinite; }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+        .loading-text { margin-top: 20px; font-size: 16px; color: rgba(255,255,255,0.7); }
+
+        .energy-flash {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: radial-gradient(circle, rgba(255,200,50,0.4) 0%, transparent 70%);
+            pointer-events: none;
+            opacity: 0;
+            z-index: 50;
+            transition: opacity 0.2s;
+        }
+        .energy-flash.active { opacity: 1; }
+
+        
+    </style>
+</head>
+<body>
+    <div class="loading" id="loading">
+        <div class="loading-molecule">⚗️</div>
+        <div class="loading-text" data-i18n="loading_text">Подготовка молекул...</div>
+    </div>
+<div class="energy-flash" id="energy-flash"></div>
+    <div id="canvas-container"></div>
+
+    <div class="header">
+        <div class="title" data-i18n-html="title_html">Реакция <span class="h">Синтеза</span> <span class="water">Воды</span></div>
+        <div class="subtitle" data-i18n="subtitle">Экзотермическая реакция соединения • Интерактивная 3D модель</div>
+    </div>
+
+    <div class="equation-box">
+        <div class="equation">
+            <span class="coef">2</span><span class="h2">H₂</span>
+            <span class="plus">+</span>
+            <span class="o2">O₂</span>
+            <span class="arrow">→</span>
+            <span class="coef">2</span><span class="h2o">H₂O</span>
+        </div>
+        <div class="reaction-type" data-i18n-html="reaction_type_html">Тип: <span>Соединение (синтез)</span> • Экзотермическая</div>
+    </div>
+
+    <div class="control-panel">
+        <div class="panel-title" data-i18n="panel_title_controls">🎬 Управление</div>
+
+        <button class="btn primary" id="btn-start" data-i18n="btn_start" onclick="startReaction()">▶️ Запустить реакцию</button>
+        <button class="btn secondary" data-i18n="btn_step" onclick="stepReaction()">⏭️ Пошагово</button>
+        <button class="btn danger" data-i18n="btn_reset" onclick="resetReaction()">🔄 Сбросить</button>
+
+        <div class="control-group">
+            <div class="control-label">
+                <span data-i18n="speed_label">Скорость</span>
+                <span class="control-value" id="speed-value">1.0x</span>
+            </div>
+            <input type="range" id="speed-slider" min="0.3" max="2" value="1" step="0.1">
+        </div>
+
+        <button class="btn secondary active" id="btn-bonds" data-i18n="btn_bonds" onclick="toggleBonds()">🔗 Связи</button>
+
+        <div class="stages">
+            <div class="panel-title" style="margin-bottom: 8px; padding: 0; border: 0; font-size: 13px;" data-i18n="stages_title">📋 Этапы</div>
+            <div class="stage active" id="stage-0"><div class="stage-icon">1</div><span data-i18n="stage_0">Исходные вещества H₂ + O₂</span></div>
+            <div class="stage" id="stage-1"><div class="stage-icon">2</div><span data-i18n="stage_1">Сближение молекул</span></div>
+            <div class="stage" id="stage-2"><div class="stage-icon">3</div><span data-i18n="stage_2">Разрыв связей H-H, O=O</span></div>
+            <div class="stage" id="stage-3"><div class="stage-icon">4</div><span data-i18n="stage_3">Образование O-H связей</span></div>
+            <div class="stage" id="stage-4"><div class="stage-icon">5</div><span data-i18n="stage_4">Выделение энергии</span></div>
+        </div>
+    </div>
+
+    <div class="info-panel">
+        <div class="info-title" data-i18n="info_title">📊 Ход реакции</div>
+
+        <div class="molecule-info">
+            <div class="molecule-card">
+                <div class="molecule-formula h2">H₂</div>
+                <div class="molecule-name" data-i18n="mol_h2_name">Водород</div>
+                <div class="molecule-count" id="count-h2">2</div>
+            </div>
+            <div class="molecule-card">
+                <div class="molecule-formula o2">O₂</div>
+                <div class="molecule-name" data-i18n="mol_o2_name">Кислород</div>
+                <div class="molecule-count" id="count-o2">1</div>
+            </div>
+            <div class="molecule-card">
+                <div class="molecule-formula h2o">H₂O</div>
+                <div class="molecule-name" data-i18n="mol_h2o_name">Вода</div>
+                <div class="molecule-count" id="count-h2o">0</div>
+            </div>
+        </div>
+
+        <div class="energy-section">
+            <div class="energy-title" data-i18n="energy_title">⚡ Энергетика</div>
+            <div style="font-size: 10px; color: rgba(255,255,255,0.4); margin-bottom: 4px;" data-i18n="energy_break_label">Разрыв связей (затрата):</div>
+            <div class="energy-bar">
+                <div class="energy-fill breaking" id="energy-break" style="width: 0%"></div>
+            </div>
+            <div style="font-size: 10px; color: rgba(255,255,255,0.4); margin-bottom: 4px;" data-i18n="energy_form_label">Образование связей (выделение):</div>
+            <div class="energy-bar">
+                <div class="energy-fill forming" id="energy-form" style="width: 0%"></div>
+            </div>
+            <div class="energy-result">
+                <span class="positive">+1370 кДж</span>
+                <span class="negative">−1852 кДж</span>
+                <span class="net">ΔH = −482 кДж</span>
+            </div>
+        </div>
+
+        <div class="diagram-box">
+            <div class="energy-title" data-i18n="diagram_title">📈 Энергетическая диаграмма</div>
+            <canvas id="diagram-canvas" class="diagram-canvas"></canvas>
+        </div>
+
+        <div class="fact-box" data-i18n-html="fact_html">
+            <strong>💡</strong> При сгорании 2 моль H₂ выделяется <strong>482 кДж</strong> энергии. Это основа водородной энергетики!
+        </div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><div class="legend-atom hydrogen"></div><span data-i18n="legend_h">Водород (H)</span></div>
+        <div class="legend-item"><div class="legend-atom oxygen"></div><span data-i18n="legend_o">Кислород (O)</span></div>
+        <div class="legend-item"><span>💧</span><span data-i18n="legend_water">Вода (H₂O)</span></div>
+    </div>
+
+    <script src="../../libs/vendor/three-r128/three.min.js"></script>
+    <script>
+        // =================================================================
+        //  I18N — встроенные переводы (RU / KZ / EN). Язык: ?lang=ru|kz|en.
+        // =================================================================
+        const I18N = {
+            ru: {
+                page_title: 'Реакция Синтеза Воды | 2H₂ + O₂ → 2H₂O | Химия 3D',
+                loading_text: 'Подготовка молекул...',
+                title_html: 'Реакция <span class="h">Синтеза</span> <span class="water">Воды</span>',
+                subtitle: 'Экзотермическая реакция соединения • Интерактивная 3D модель',
+                reaction_type_html: 'Тип: <span>Соединение (синтез)</span> • Экзотермическая',
+                panel_title_controls: '🎬 Управление',
+                btn_start: '▶️ Запустить реакцию',
+                btn_step: '⏭️ Пошагово',
+                btn_reset: '🔄 Сбросить',
+                speed_label: 'Скорость',
+                btn_bonds: '🔗 Связи',
+                stages_title: '📋 Этапы',
+                stage_0: 'Исходные вещества H₂ + O₂',
+                stage_1: 'Сближение молекул',
+                stage_2: 'Разрыв связей H-H, O=O',
+                stage_3: 'Образование O-H связей',
+                stage_4: 'Выделение энергии',
+                info_title: '📊 Ход реакции',
+                mol_h2_name: 'Водород',
+                mol_o2_name: 'Кислород',
+                mol_h2o_name: 'Вода',
+                energy_title: '⚡ Энергетика',
+                energy_break_label: 'Разрыв связей (затрата):',
+                energy_form_label: 'Образование связей (выделение):',
+                diagram_title: '📈 Энергетическая диаграмма',
+                fact_html: '<strong>💡</strong> При сгорании 2 моль H₂ выделяется <strong>482 кДж</strong> энергии. Это основа водородной энергетики!',
+                legend_h: 'Водород (H)',
+                legend_o: 'Кислород (O)',
+                legend_water: 'Вода (H₂O)'
+            },
+            kz: {
+                page_title: 'Су Синтезі Реакциясы | 2H₂ + O₂ → 2H₂O | 3D Химия',
+                loading_text: 'Молекулалар дайындалуда...',
+                title_html: 'Су <span class="h">синтезі</span> <span class="water">реакциясы</span>',
+                subtitle: 'Экзотермиялық қосылу реакциясы • Интерактивті 3D модель',
+                reaction_type_html: 'Түрі: <span>Қосылу (синтез)</span> • Экзотермиялық',
+                panel_title_controls: '🎬 Басқару',
+                btn_start: '▶️ Реакцияны бастау',
+                btn_step: '⏭️ Қадамдап',
+                btn_reset: '🔄 Қалпына келтіру',
+                speed_label: 'Жылдамдық',
+                btn_bonds: '🔗 Байланыстар',
+                stages_title: '📋 Кезеңдер',
+                stage_0: 'Бастапқы заттар H₂ + O₂',
+                stage_1: 'Молекулалардың жақындауы',
+                stage_2: 'H-H, O=O байланыстарының үзілуі',
+                stage_3: 'O-H байланыстарының түзілуі',
+                stage_4: 'Энергия бөлінуі',
+                info_title: '📊 Реакция барысы',
+                mol_h2_name: 'Сутек',
+                mol_o2_name: 'Оттек',
+                mol_h2o_name: 'Су',
+                energy_title: '⚡ Энергетика',
+                energy_break_label: 'Байланыстарды үзу (шығын):',
+                energy_form_label: 'Байланыстарды түзу (бөлу):',
+                diagram_title: '📈 Энергетикалық диаграмма',
+                fact_html: '<strong>💡</strong> 2 моль H₂ жанған кезде <strong>482 кДж</strong> энергия бөлінеді. Бұл сутек энергетикасының негізі!',
+                legend_h: 'Сутек (H)',
+                legend_o: 'Оттек (O)',
+                legend_water: 'Су (H₂O)'
+            },
+            en: {
+                page_title: 'Water Synthesis Reaction | 2H₂ + O₂ → 2H₂O | 3D Chemistry',
+                loading_text: 'Preparing molecules...',
+                title_html: 'Water <span class="h">Synthesis</span> <span class="water">Reaction</span>',
+                subtitle: 'Exothermic combination reaction • Interactive 3D Model',
+                reaction_type_html: 'Type: <span>Combination (synthesis)</span> • Exothermic',
+                panel_title_controls: '🎬 Controls',
+                btn_start: '▶️ Start reaction',
+                btn_step: '⏭️ Step by step',
+                btn_reset: '🔄 Reset',
+                speed_label: 'Speed',
+                btn_bonds: '🔗 Bonds',
+                stages_title: '📋 Stages',
+                stage_0: 'Reactants H₂ + O₂',
+                stage_1: 'Molecules approach',
+                stage_2: 'Breaking H-H, O=O bonds',
+                stage_3: 'Formation of O-H bonds',
+                stage_4: 'Energy release',
+                info_title: '📊 Reaction progress',
+                mol_h2_name: 'Hydrogen',
+                mol_o2_name: 'Oxygen',
+                mol_h2o_name: 'Water',
+                energy_title: '⚡ Energetics',
+                energy_break_label: 'Bond breaking (cost):',
+                energy_form_label: 'Bond formation (release):',
+                diagram_title: '📈 Energy diagram',
+                fact_html: '<strong>💡</strong> Burning 2 mol of H₂ releases <strong>482 kJ</strong> of energy. This is the foundation of hydrogen energy!',
+                legend_h: 'Hydrogen (H)',
+                legend_o: 'Oxygen (O)',
+                legend_water: 'Water (H₂O)'
+            }
+        };
+
+        const LANG = (() => {
+            const q = new URLSearchParams(location.search).get('lang');
+            return (q && I18N[q]) ? q : 'ru';
+        })();
+        const t = (key) => (I18N[LANG] && I18N[LANG][key]) ?? I18N.ru[key];
+
+        function applyStaticI18N() {
+            document.documentElement.lang = LANG;
+            const titleVal = t('page_title');
+            if (titleVal) document.title = titleVal;
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const v = t(el.getAttribute('data-i18n'));
+                if (v) el.textContent = v;
+            });
+            document.querySelectorAll('[data-i18n-html]').forEach(el => {
+                const v = t(el.getAttribute('data-i18n-html'));
+                if (v) el.innerHTML = v;
+            });
+            document.querySelectorAll('[data-i18n-title]').forEach(el => {
+                const v = t(el.getAttribute('data-i18n-title'));
+                if (v) el.setAttribute('title', v);
+            });
+            document.querySelectorAll('[data-i18n-aria-label]').forEach(el => {
+                const v = t(el.getAttribute('data-i18n-aria-label'));
+                if (v) el.setAttribute('aria-label', v);
+            });
+        }
+
+        applyStaticI18N();
+let scene, camera, renderer;
+        let atoms = [];
+        let bonds = [];
+        let reactionStage = 0;
+        let isAnimating = false;
+        let animationSpeed = 1;
+        let showBonds = true;
+        let animationFrame = null;
+
+        const H_RADIUS = 0.5;
+        const O_RADIUS = 0.75;
+        const H_COLOR = 0x64b5f6;
+        const O_COLOR = 0xef5350;
+
+        // Позиции атомов на разных этапах
+        const POSITIONS = {
+            initial: {
+                h: [[-7, 2, 0], [-5.5, 2, 0], [-7, -2, 0], [-5.5, -2, 0]],
+                o: [[6, 0.5, 0], [7.5, -0.5, 0]]
+            },
+            approach: {
+                h: [[-2.5, 1.5, 0], [-1, 1.5, 0], [-2.5, -1.5, 0], [-1, -1.5, 0]],
+                o: [[1.5, 0.5, 0], [3, -0.5, 0]]
+            },
+            breaking: {
+                h: [[-2, 2, 0], [-0.5, 1, 0], [-2, -2, 0], [-0.5, -1, 0]],
+                o: [[1, 0.8, 0], [2.5, -0.8, 0]]
+            },
+            forming: {
+                h: [[-3, 1.5, 0], [-1.5, 2.5, 0], [2, -1.5, 0], [3.5, -2.5, 0]],
+                o: [[-2.25, 2.5, 0], [2.75, -2.5, 0]]
+            },
+            final: {
+                h: [[-4.5, 0.8, 0], [-3, 1.8, 0], [3.5, -0.8, 0], [5, -1.8, 0]],
+                o: [[-3.75, 1.8, 0], [4.25, -1.8, 0]]
+            }
+        };
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a0a1a);
+
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 3, 18);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+            // Освещение
+            scene.add(new THREE.AmbientLight(0x404060, 0.6));
+            const dir = new THREE.DirectionalLight(0xffffff, 1);
+            dir.position.set(10, 20, 10);
+            scene.add(dir);
+
+            const blue = new THREE.PointLight(0x64b5f6, 0.4, 25);
+            blue.position.set(-10, 5, 5);
+            scene.add(blue);
+
+            const red = new THREE.PointLight(0xef5350, 0.4, 25);
+            red.position.set(10, 5, 5);
+            scene.add(red);
+
+            createInitialMolecules();
+            setupControls();
+            setupUI();
+            drawDiagram(0);
+            animate();
+
+            document.getElementById('loading').classList.add('hidden');
+        }
+
+        function createAtom(type, pos) {
+            const r = type === 'H' ? H_RADIUS : O_RADIUS;
+            const c = type === 'H' ? H_COLOR : O_COLOR;
+
+            const geom = new THREE.SphereGeometry(r, 32, 32);
+            const mat = new THREE.MeshStandardMaterial({
+                color: c, roughness: 0.3, metalness: 0.2,
+                emissive: c, emissiveIntensity: 0.1
+            });
+            const mesh = new THREE.Mesh(geom, mat);
+            mesh.position.set(...pos);
+            mesh.userData = { type, target: new THREE.Vector3(...pos) };
+
+            // Свечение
+            const glow = new THREE.Mesh(
+                new THREE.SphereGeometry(r * 1.3, 16, 16),
+                new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.15 })
+            );
+            mesh.add(glow);
+
+            scene.add(mesh);
+            atoms.push(mesh);
+            return mesh;
+        }
+
+        function createBond(a1, a2, isDouble = false) {
+            const group = new THREE.Group();
+            const offsets = isDouble ? [-0.12, 0.12] : [0];
+
+            offsets.forEach(off => {
+                const dir = new THREE.Vector3().subVectors(a2.position, a1.position);
+                const len = dir.length();
+                const geom = new THREE.CylinderGeometry(0.08, 0.08, len - 0.8, 8);
+                const mat = new THREE.MeshStandardMaterial({
+                    color: 0x90a4ae, roughness: 0.5, metalness: 0.3,
+                    transparent: true, opacity: 0.9
+                });
+                const cyl = new THREE.Mesh(geom, mat);
+
+                const mid = new THREE.Vector3().addVectors(a1.position, a2.position).multiplyScalar(0.5);
+                cyl.position.copy(mid);
+                cyl.position.y += off;
+                cyl.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize());
+
+                group.add(cyl);
+            });
+
+            group.userData = { a1, a2, isDouble };
+            group.visible = showBonds;
+            scene.add(group);
+            bonds.push(group);
+            return group;
+        }
+
+        function updateBond(bond) {
+            const { a1, a2, isDouble } = bond.userData;
+            const dir = new THREE.Vector3().subVectors(a2.position, a1.position);
+            const len = dir.length();
+            const mid = new THREE.Vector3().addVectors(a1.position, a2.position).multiplyScalar(0.5);
+
+            bond.children.forEach((cyl, i) => {
+                cyl.scale.y = (len - 0.8) / (len > 0.8 ? len - 0.8 : 1);
+                cyl.position.copy(mid);
+                if (isDouble) cyl.position.y += (i === 0 ? -0.12 : 0.12);
+                if (len > 0.1) cyl.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize());
+            });
+        }
+
+        function createInitialMolecules() {
+            // Очистка
+            atoms.forEach(a => scene.remove(a));
+            bonds.forEach(b => scene.remove(b));
+            atoms = [];
+            bonds = [];
+
+            const pos = POSITIONS.initial;
+
+            // 4 атома H (2 молекулы H2)
+            pos.h.forEach(p => createAtom('H', p));
+
+            // 2 атома O (1 молекула O2)
+            pos.o.forEach(p => createAtom('O', p));
+
+            // Связи H-H
+            createBond(atoms[0], atoms[1]);
+            createBond(atoms[2], atoms[3]);
+
+            // Связь O=O (двойная)
+            createBond(atoms[4], atoms[5], true);
+
+            updateCounts(2, 1, 0);
+        }
+
+        function updateCounts(h2, o2, h2o) {
+            document.getElementById('count-h2').textContent = h2;
+            document.getElementById('count-o2').textContent = o2;
+            document.getElementById('count-h2o').textContent = h2o;
+        }
+
+        function setTargets(posKey) {
+            const pos = POSITIONS[posKey];
+            atoms.forEach((a, i) => {
+                if (a.userData.type === 'H') {
+                    const idx = atoms.filter((x, j) => j < i && x.userData.type === 'H').length;
+                    a.userData.target.set(...pos.h[idx]);
+                } else {
+                    const idx = atoms.filter((x, j) => j < i && x.userData.type === 'O').length;
+                    a.userData.target.set(...pos.o[idx]);
+                }
+            });
+        }
+
+        function moveToTargets(speed = 0.05) {
+            let done = true;
+            atoms.forEach(a => {
+                const dist = a.position.distanceTo(a.userData.target);
+                if (dist > 0.01) {
+                    a.position.lerp(a.userData.target, speed * animationSpeed);
+                    done = false;
+                }
+            });
+            bonds.forEach(updateBond);
+            return done;
+        }
+
+        function updateStageUI() {
+            for (let i = 0; i <= 4; i++) {
+                const el = document.getElementById('stage-' + i);
+                el.classList.remove('active', 'completed');
+                if (i < reactionStage) el.classList.add('completed');
+                else if (i === reactionStage) el.classList.add('active');
+            }
+        }
+
+        function startReaction() {
+            if (isAnimating) return;
+            if (reactionStage >= 5) resetReaction();
+            isAnimating = true;
+            runReaction();
+        }
+
+        function runReaction() {
+            if (!isAnimating) return;
+
+            const stages = ['approach', 'breaking', 'forming', 'final'];
+            if (reactionStage < stages.length) {
+                setTargets(stages[reactionStage]);
+            }
+
+            const done = moveToTargets();
+
+            // Эффекты на разных этапах
+            if (reactionStage === 1) {
+                document.getElementById('energy-break').style.width = '100%';
+            }
+            if (reactionStage === 2) {
+                // Связи исчезают при разрыве
+                bonds.forEach(b => {
+                    b.children.forEach(c => c.material.opacity = Math.max(0, c.material.opacity - 0.02));
+                });
+            }
+            if (reactionStage === 3 && bonds[0].children[0].material.opacity < 0.1) {
+                // Пересоздаём связи для воды
+                bonds.forEach(b => scene.remove(b));
+                bonds = [];
+                // H2O: O связан с двумя H
+                createBond(atoms[4], atoms[0]); // O1 - H1
+                createBond(atoms[4], atoms[1]); // O1 - H2
+                createBond(atoms[5], atoms[2]); // O2 - H3
+                createBond(atoms[5], atoms[3]); // O2 - H4
+                document.getElementById('energy-form').style.width = '100%';
+                updateCounts(0, 0, 2);
+            }
+            if (reactionStage === 4) {
+                document.getElementById('energy-flash').classList.add('active');
+                atoms.forEach(a => a.material.emissiveIntensity = 0.3);
+            }
+
+            drawDiagram((reactionStage + 1) / 5);
+
+            if (done) {
+                reactionStage++;
+                updateStageUI();
+
+                if (reactionStage >= 5) {
+                    isAnimating = false;
+                    setTimeout(() => {
+                        document.getElementById('energy-flash').classList.remove('active');
+                        atoms.forEach(a => a.material.emissiveIntensity = 0.1);
+                    }, 500);
+                    return;
+                }
+            }
+
+            animationFrame = requestAnimationFrame(runReaction);
+        }
+
+        function stepReaction() {
+            if (reactionStage >= 5) {
+                resetReaction();
+                return;
+            }
+
+            const stages = ['approach', 'breaking', 'forming', 'final'];
+            setTargets(stages[reactionStage]);
+
+            // Мгновенный переход
+            atoms.forEach(a => a.position.copy(a.userData.target));
+            bonds.forEach(updateBond);
+
+            if (reactionStage === 1) {
+                document.getElementById('energy-break').style.width = '100%';
+            }
+            if (reactionStage === 2) {
+                bonds.forEach(b => scene.remove(b));
+                bonds = [];
+                createBond(atoms[4], atoms[0]);
+                createBond(atoms[4], atoms[1]);
+                createBond(atoms[5], atoms[2]);
+                createBond(atoms[5], atoms[3]);
+                document.getElementById('energy-form').style.width = '100%';
+                updateCounts(0, 0, 2);
+            }
+            if (reactionStage === 3) {
+                document.getElementById('energy-flash').classList.add('active');
+                setTimeout(() => document.getElementById('energy-flash').classList.remove('active'), 400);
+            }
+
+            reactionStage++;
+            updateStageUI();
+            drawDiagram(reactionStage / 5);
+        }
+
+        function resetReaction() {
+            if (animationFrame) cancelAnimationFrame(animationFrame);
+            isAnimating = false;
+            reactionStage = 0;
+
+            document.getElementById('energy-break').style.width = '0%';
+            document.getElementById('energy-form').style.width = '0%';
+            document.getElementById('energy-flash').classList.remove('active');
+
+            createInitialMolecules();
+            updateStageUI();
+            drawDiagram(0);
+        }
+
+        function toggleBonds() {
+            showBonds = !showBonds;
+            document.getElementById('btn-bonds').classList.toggle('active', showBonds);
+            bonds.forEach(b => b.visible = showBonds);
+        }
+
+        function drawDiagram(progress) {
+            const canvas = document.getElementById('diagram-canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = canvas.offsetWidth * 2;
+            canvas.height = canvas.offsetHeight * 2;
+            ctx.scale(2, 2);
+
+            const w = canvas.offsetWidth, h = canvas.offsetHeight;
+
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            ctx.fillRect(0, 0, w, h);
+
+            // Оси
+            ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+            ctx.beginPath();
+            ctx.moveTo(20, 5);
+            ctx.lineTo(20, h - 15);
+            ctx.lineTo(w - 5, h - 15);
+            ctx.stroke();
+
+            // Кривая реакции
+            const pts = [
+                { x: 25, y: h - 35 },
+                { x: w * 0.35, y: h - 35 },
+                { x: w * 0.5, y: 20 },
+                { x: w * 0.65, y: 30 },
+                { x: w * 0.8, y: h - 20 },
+                { x: w - 10, y: h - 20 }
+            ];
+
+            ctx.strokeStyle = '#ffd54f';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(pts[0].x, pts[0].y);
+            for (let i = 1; i < pts.length; i++) {
+                const xc = (pts[i].x + pts[i - 1].x) / 2;
+                const yc = (pts[i].y + pts[i - 1].y) / 2;
+                ctx.quadraticCurveTo(pts[i - 1].x, pts[i - 1].y, xc, yc);
+            }
+            ctx.stroke();
+
+            // Точка прогресса
+            const px = 25 + (w - 35) * progress;
+            let py = h - 35;
+            if (progress > 0.2 && progress < 0.5) py = h - 35 - (20 - (h - 35)) * ((progress - 0.2) / 0.3);
+            else if (progress >= 0.5 && progress < 0.7) py = 20 + (h - 20 - 20) * ((progress - 0.5) / 0.2);
+            else if (progress >= 0.7) py = h - 20;
+
+            ctx.beginPath();
+            ctx.arc(px, py, 4, 0, Math.PI * 2);
+            ctx.fillStyle = '#4fc3f7';
+            ctx.fill();
+
+            // Подписи
+            ctx.fillStyle = 'rgba(255,255,255,0.5)';
+            ctx.font = '8px Arial';
+            ctx.fillText('E', 8, 12);
+            ctx.fillText('2H₂+O₂', 22, h - 22);
+            ctx.fillText('2H₂O', w - 35, h - 8);
+
+            // ΔH стрелка
+            if (progress > 0.8) {
+                ctx.strokeStyle = '#66bb6a';
+                ctx.beginPath();
+                ctx.moveTo(w - 25, h - 35);
+                ctx.lineTo(w - 25, h - 20);
+                ctx.stroke();
+                ctx.fillStyle = '#66bb6a';
+                ctx.fillText('ΔH<0', w - 40, h - 26);
+            }
+        }
+
+        function setupControls() {
+            let drag = false, prev = { x: 0, y: 0 };
+            let theta = 0, phi = 0.2, radius = 18;
+
+            renderer.domElement.addEventListener('mousedown', e => { drag = true; prev = { x: e.clientX, y: e.clientY }; });
+            renderer.domElement.addEventListener('mousemove', e => {
+                if (!drag) return;
+                theta -= (e.clientX - prev.x) * 0.005;
+                phi = Math.max(-0.5, Math.min(0.8, phi + (e.clientY - prev.y) * 0.005));
+                updateCam();
+                prev = { x: e.clientX, y: e.clientY };
+            });
+            renderer.domElement.addEventListener('mouseup', () => drag = false);
+            renderer.domElement.addEventListener('mouseleave', () => drag = false);
+            renderer.domElement.addEventListener('wheel', e => {
+                e.preventDefault();
+                radius = Math.max(10, Math.min(35, radius + e.deltaY * 0.02));
+                updateCam();
+            });
+
+            function updateCam() {
+                camera.position.x = radius * Math.sin(theta) * Math.cos(phi);
+                camera.position.y = radius * Math.sin(phi) + 2;
+                camera.position.z = radius * Math.cos(theta) * Math.cos(phi);
+                camera.lookAt(0, 0, 0);
+            }
+        }
+
+        function setupUI() {
+            document.getElementById('speed-slider').addEventListener('input', e => {
+                animationSpeed = parseFloat(e.target.value);
+                document.getElementById('speed-value').textContent = animationSpeed.toFixed(1) + 'x';
+            });
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Покачивание в состоянии покоя
+            if (!isAnimating && reactionStage === 0) {
+                const t = Date.now() * 0.001;
+                atoms.forEach((a, i) => {
+                    a.position.y += Math.sin(t * 2 + i) * 0.003;
+                });
+                bonds.forEach(updateBond);
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            drawDiagram(reactionStage / 5);
+        });
+
+        init();
+    </script>
+</body>
+</html>

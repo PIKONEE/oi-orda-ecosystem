@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Блоки и Полиспасты</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            color: #e2e8f0;
+        }
+
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        /* Header */
+        .header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 20px 30px;
+            background: linear-gradient(180deg, rgba(15, 23, 42, 0.9) 0%, transparent 100%);
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .header h1 {
+            color: #38bdf8; /* Light Blue */
+            font-size: 26px;
+            font-weight: 700;
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
+        }
+
+        .header p {
+            color: #94a3b8;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        /* Control Panel */
+        .control-panel {
+            position: absolute;
+            top: 100px;
+            left: 20px;
+            width: 340px;
+            background: rgba(15, 23, 42, 0.9);
+            
+            border-radius: 12px;
+            padding: 24px;
+            z-index: 10;
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            border-left: 4px solid #38bdf8;
+            max-height: calc(100vh - 140px);
+            overflow-y: auto;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+        }
+
+        .section-title {
+            color: #e2e8f0;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+            padding-bottom: 8px;
+            margin-top: 20px;
+        }
+
+        .section-title:first-child {
+            margin-top: 0;
+        }
+
+        /* Mode Buttons */
+        .preset-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .btn-preset {
+            padding: 10px 5px;
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid #475569;
+            border-radius: 6px;
+            color: #cbd5e1;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+            line-height: 1.4;
+        }
+
+        .btn-preset:hover {
+            background: #334155;
+            color: #fff;
+        }
+
+        .btn-preset.active {
+            background: #38bdf8;
+            color: #0f172a;
+            border-color: #38bdf8;
+            font-weight: bold;
+            box-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
+        }
+
+        /* Sliders */
+        .slider-group {
+            margin-bottom: 20px;
+        }
+
+        .slider-group label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            color: #cbd5e1;
+            margin-bottom: 8px;
+        }
+
+        .slider-group label span.value {
+            color: #38bdf8;
+            font-weight: 600;
+            font-family: 'Consolas', monospace;
+        }
+
+        .slider-group input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+            height: 6px;
+            border-radius: 3px;
+            -webkit-appearance: none;
+            background: #334155;
+        }
+
+        .slider-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #f8fafc;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+            border: 2px solid #38bdf8;
+            transition: transform 0.1s;
+        }
+
+        .slider-group input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+        }
+
+        /* Checkboxes */
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px;
+            background: rgba(30, 41, 59, 0.5);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .checkbox-item:hover {
+            background: rgba(30, 41, 59, 0.8);
+        }
+
+        .checkbox-item input {
+            accent-color: #38bdf8;
+            cursor: pointer;
+        }
+
+        .checkbox-item label {
+            cursor: pointer;
+            font-size: 13px;
+            color: #e2e8f0;
+            flex: 1;
+        }
+
+        /* Info Panel */
+        .info-panel {
+            position: absolute;
+            top: 100px;
+            right: 20px;
+            width: 280px;
+            background: rgba(15, 23, 42, 0.9);
+            
+            border-radius: 12px;
+            padding: 20px;
+            z-index: 10;
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            border-right: 4px solid #38bdf8;
+        }
+
+        .info-panel h3 {
+            color: #f1f5f9;
+            font-size: 16px;
+            margin: 0 0 15px;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+            padding-bottom: 10px;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            align-items: center;
+        }
+
+        .stat-label {
+            color: #94a3b8;
+            font-size: 13px;
+        }
+
+        .stat-value {
+            color: #f1f5f9;
+            font-weight: 700;
+            font-family: 'Consolas', monospace;
+            font-size: 14px;
+        }
+
+        /* Formula */
+        .formula-panel {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(15, 23, 42, 0.95);
+            
+            padding: 15px 30px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+            z-index: 10;
+        }
+
+        .formula {
+            color: #fff;
+            font-size: 20px;
+            font-family: 'Times New Roman', serif;
+            letter-spacing: 1px;
+        }
+
+        .formula-sub {
+            font-size: 12px;
+            color: #94a3b8;
+            margin-top: 5px;
+        }
+
+        .hint {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            color: rgba(148, 163, 184, 0.6);
+            font-size: 12px;
+            pointer-events: none;
+        }
+
+        /* Labels on screen */
+        .world-label {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .world-label.visible {
+            opacity: 1;
+        }
+
+        /* Rope Animation */
+        @keyframes ropePulse {
+            0% {
+                border-color: #eab308;
+            }
+            50% {
+                border-color: #fff;
+            }
+            100% {
+                border-color: #eab308;
+            }
+        }
+    </style>
+</head>
+<body>
+<script>
+/* i18n */
+(function(){
+  var lang=new URLSearchParams(location.search).get('lang')||'ru';
+  var T={
+    ru:{title:'🏗️ Блоки и Полиспасты',subtitle:'Физика • Простые механизмы • Выигрыш в силе',
+      sec1:'⚙️ Тип системы',sec2:'✋ Управление',sec3:'👁️ Визуализация',
+      preset1:'Неподвижный\n(1:1)',preset2:'Подвижный\n(1:2)',preset3:'Полиспаст\n(1:4)',
+      lbl_pull:'Тянуть веревку:',lbl_mass:'Масса груза:',
+      cb_forces:'Векторы сил (F, mg)',cb_dims:'Метки расстояний (h, L)',
+      info_h3:'📊 Показатели',sl_ma:'Выигрыш в силе (MA):',sl_load:'Вес груза (P):',
+      sl_force:'Усилие руки (F):',sl_h:'Поднято на (h):',sl_l:'Вытянуто веревки (L):',
+      formula_sub:'Золотое правило: выигрываем в силе — теряем в расстоянии',
+      hint:'ЛКМ - Вращение • ПКМ - Панорама • Колесо - Зум',
+      nUnit:' Н',mUnit:' м',kgUnit:' кг'},
+    kz:{title:'🏗️ Блоктар және Полиспасттар',subtitle:'Физика • Қарапайым механизмдер • Күш жеңісі',
+      sec1:'⚙️ Жүйе түрі',sec2:'✋ Басқару',sec3:'👁️ Визуализация',
+      preset1:'Қозғалмайтын\n(1:1)',preset2:'Қозғалмалы\n(1:2)',preset3:'Полиспаст\n(1:4)',
+      lbl_pull:'Арқанды тарту:',lbl_mass:'Жүктің массасы:',
+      cb_forces:'Күш векторлары (F, mg)',cb_dims:'Қашықтық белгілері (h, L)',
+      info_h3:'📊 Көрсеткіштер',sl_ma:'Күш жеңісі (MA):',sl_load:'Жүк салмағы (P):',
+      sl_force:'Қол күші (F):',sl_h:'Көтерілді (h):',sl_l:'Арқан созылды (L):',
+      formula_sub:'Алтын ереже: күшті ұтсаң — қашықтықты ұтыласың',
+      hint:'СТ - Айналу • ОТ - Панорама • Доңғалақ - Зум',
+      nUnit:' Н',mUnit:' м',kgUnit:' кг'},
+    en:{title:'🏗️ Pulleys & Block Tackle',subtitle:'Physics • Simple Machines • Mechanical Advantage',
+      sec1:'⚙️ System type',sec2:'✋ Control',sec3:'👁️ Visualization',
+      preset1:'Fixed\n(1:1)',preset2:'Movable\n(1:2)',preset3:'Block & Tackle\n(1:4)',
+      lbl_pull:'Pull rope:',lbl_mass:'Load mass:',
+      cb_forces:'Force vectors (F, mg)',cb_dims:'Distance labels (h, L)',
+      info_h3:'📊 Indicators',sl_ma:'Mechanical advantage (MA):',sl_load:'Load weight (P):',
+      sl_force:'Hand force (F):',sl_h:'Lifted height (h):',sl_l:'Rope pulled (L):',
+      formula_sub:'Golden rule: gain in force — lose in distance',
+      hint:'LMB - Rotate • RMB - Pan • Wheel - Zoom',
+      nUnit:' N',mUnit:' m',kgUnit:' kg'}
+  };
+  window._t=T[lang]||T.ru;
+  document.addEventListener('DOMContentLoaded',function(){
+    var t=window._t;
+    var h1=document.querySelector('.header h1');if(h1)h1.textContent=t.title;
+    var p=document.querySelector('.header p');if(p)p.textContent=t.subtitle;
+    var secs=document.querySelectorAll('.section-title');
+    if(secs[0])secs[0].textContent=t.sec1;
+    if(secs[1])secs[1].textContent=t.sec2;
+    if(secs[2])secs[2].textContent=t.sec3;
+    var pr=document.querySelectorAll('.btn-preset');
+    if(pr[0])pr[0].innerHTML=t.preset1.replace('\n','<br>');
+    if(pr[1])pr[1].innerHTML=t.preset2.replace('\n','<br>');
+    if(pr[2])pr[2].innerHTML=t.preset3.replace('\n','<br>');
+    var sl=document.querySelectorAll('.slider-group label > span:first-child');
+    if(sl[0])sl[0].textContent=t.lbl_pull;
+    if(sl[1])sl[1].textContent=t.lbl_mass;
+    var cb=document.querySelectorAll('.checkbox-item label');
+    if(cb[0])cb[0].textContent=t.cb_forces;
+    if(cb[1])cb[1].textContent=t.cb_dims;
+    var h3=document.querySelector('.info-panel h3');if(h3)h3.textContent=t.info_h3;
+    var st=document.querySelectorAll('.stat-label');
+    if(st[0])st[0].textContent=t.sl_ma;
+    if(st[1])st[1].textContent=t.sl_load;
+    if(st[2])st[2].textContent=t.sl_force;
+    if(st[3])st[3].textContent=t.sl_h;
+    if(st[4])st[4].textContent=t.sl_l;
+    var fs=document.querySelector('.formula-sub');if(fs)fs.textContent=t.formula_sub;
+    var hint=document.querySelector('.hint');if(hint)hint.textContent=t.hint;
+  });
+})();
+</script>
+
+<div id="canvas-container"></div>
+<div id="labels-container"></div>
+
+<div class="header">
+    <h1>🏗️ Блоки и Полиспасты</h1>
+    <p>Физика • Простые механизмы • Выигрыш в силе</p>
+</div>
+
+<div class="control-panel">
+    <div class="section-title">⚙️ Тип системы</div>
+    <div class="preset-grid">
+        <div class="btn-preset active" onclick="setSystem(1)">Неподвижный<br>(1:1)</div>
+        <div class="btn-preset" onclick="setSystem(2)">Подвижный<br>(1:2)</div>
+        <div class="btn-preset" onclick="setSystem(3)">Полиспаст<br>(1:4)</div>
+    </div>
+
+    <div class="section-title">✋ Управление</div>
+    <div class="slider-group">
+        <label><span>Тянуть веревку:</span><span class="value" id="val-pull">0%</span></label>
+        <input type="range" id="input-pull" min="0" max="100" step="1" value="0">
+    </div>
+
+    <div class="slider-group">
+        <label><span>Масса груза:</span><span class="value" id="val-mass">50 кг</span></label>
+        <input type="range" id="input-mass" min="10" max="100" step="10" value="50">
+    </div>
+
+    <div class="section-title">👁️ Визуализация</div>
+    <div class="checkbox-item">
+        <input type="checkbox" id="check-forces" checked>
+        <label for="check-forces">Векторы сил (F, mg)</label>
+    </div>
+    <div class="checkbox-item">
+        <input type="checkbox" id="check-dims" checked>
+        <label for="check-dims">Метки расстояний (h, L)</label>
+    </div>
+</div>
+
+<div class="info-panel">
+    <h3>📊 Показатели</h3>
+    <div class="stat-row">
+        <span class="stat-label">Выигрыш в силе (MA):</span>
+        <span class="stat-value" id="stat-ma" style="color: #38bdf8">1x</span>
+    </div>
+    <div class="stat-row">
+        <span class="stat-label">Вес груза (P):</span>
+        <span class="stat-value" id="stat-load">490 Н</span>
+    </div>
+    <div class="stat-row">
+        <span class="stat-label">Усилие руки (F):</span>
+        <span class="stat-value" id="stat-force" style="color: #eab308">490 Н</span>
+    </div>
+    <div class="stat-row" style="margin-top:15px; border-top:1px solid #334155; padding-top:10px;">
+        <span class="stat-label">Поднято на (h):</span>
+        <span class="stat-value" id="stat-h">0.0 м</span>
+    </div>
+    <div class="stat-row">
+        <span class="stat-label">Вытянуто веревки (L):</span>
+        <span class="stat-value" id="stat-l">0.0 м</span>
+    </div>
+</div>
+
+<div class="formula-panel">
+    <div class="formula" id="formula-text">F = P</div>
+    <div class="formula-sub">Золотое правило: выигрываем в силе — теряем в расстоянии</div>
+</div>
+
+<div class="hint">ЛКМ - Вращение • ПКМ - Панорама • Колесо - Зум</div>
+
+<!-- Three.js -->
+<script type="importmap">
+    {
+        "imports": {
+            "three": "../../libs/vendor/three-0.160.0/three.module.js",
+            "three/addons/": "../../libs/vendor/three-0.160.0/addons/"
+        }
+    }
+</script>
+
+<script type="module">
+    import * as THREE from 'three';
+    import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+
+    // --- Configuration ---
+    const CONFIG = {
+        beamHeight: 18,
+        ropeColor: 0xeab308, // Yellow rope
+        metalColor: 0x94a3b8,
+        pulleyColor: 0x475569,
+        loadColor: 0xef4444,
+        forceColor: 0xeab308,
+        gravityColor: 0xef4444,
+        gravity: 9.8
+    };
+
+    // --- State ---
+    let state = {
+        systemType: 1, // 1=Fixed, 2=Movable, 3=Block&Tackle
+        pullPercent: 0,
+        loadMass: 50,
+        MA: 1 // Mechanical Advantage
+    };
+
+    // --- Globals ---
+    let scene, camera, renderer, controls;
+    let systemGroup; // Holds current pulley setup
+    let loadMesh;
+    let handMesh;
+    let ropeLine;
+    let arrowF, arrowP;
+
+    // Labels
+    let labelsContainer;
+    let lblH, lblL;
+
+    // --- Initialization ---
+    function init() {
+        labelsContainer = document.getElementById('labels-container');
+
+        // Scene
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0f172a);
+        scene.fog = new THREE.FogExp2(0x0f172a, 0.015);
+
+        // Camera
+        const aspect = window.innerWidth / window.innerHeight;
+        camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 100);
+        camera.position.set(0, 15, 35);
+        camera.lookAt(0, 8, 0);
+
+        // Renderer
+        renderer = new THREE.WebGLRenderer({antialias: true, alpha: true});
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = false;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        // Lights
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
+        dirLight.position.set(10, 20, 10);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
+        scene.add(dirLight);
+
+        const fillLight = new THREE.PointLight(0x38bdf8, 0.3);
+        fillLight.position.set(-10, 5, -10);
+        scene.add(fillLight);
+
+        // Controls
+        controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.maxPolarAngle = Math.PI / 2 - 0.05;
+        controls.target.set(0, 10, 0);
+
+        // Environment
+        createEnvironment();
+
+        // Initial System
+        setSystem(1);
+
+        // Listeners
+        window.addEventListener('resize', onWindowResize, false);
+        setupUI();
+
+        // Start
+        animate();
+    }
+
+    function createEnvironment() {
+        // Floor
+        const floorGeo = new THREE.CircleGeometry(30, 64);
+        const floorMat = new THREE.MeshStandardMaterial({
+            color: 0x1e293b,
+            roughness: 0.8,
+            metalness: 0.1
+        });
+        const floor = new THREE.Mesh(floorGeo, floorMat);
+        floor.rotation.x = -Math.PI / 2;
+        floor.receiveShadow = true;
+        scene.add(floor);
+
+        // Grid
+        const grid = new THREE.GridHelper(60, 30, 0x334155, 0x1e293b);
+        grid.position.y = 0.01;
+        scene.add(grid);
+
+        // Support Structure (Gantry)
+        const postGeo = new THREE.CylinderGeometry(0.5, 0.5, 20, 16);
+        const postMat = new THREE.MeshStandardMaterial({color: 0x64748b});
+
+        const postL = new THREE.Mesh(postGeo, postMat);
+        postL.position.set(-8, 10, 0);
+        postL.castShadow = true;
+        scene.add(postL);
+
+        const postR = new THREE.Mesh(postGeo, postMat);
+        postR.position.set(8, 10, 0);
+        postR.castShadow = true;
+        scene.add(postR);
+
+        const beamGeo = new THREE.BoxGeometry(18, 1, 1);
+        const beam = new THREE.Mesh(beamGeo, postMat);
+        beam.position.set(0, 20, 0);
+        beam.castShadow = true;
+        scene.add(beam);
+    }
+
+    function createPulley(x, y, z, isHorizontal = false) {
+        const group = new THREE.Group();
+        group.position.set(x, y, z);
+
+        // Wheel
+        const wheelGeo = new THREE.CylinderGeometry(1.5, 1.5, 0.5, 32);
+        const wheelMat = new THREE.MeshStandardMaterial({color: CONFIG.pulleyColor});
+        const wheel = new THREE.Mesh(wheelGeo, wheelMat);
+        wheel.rotation.x = Math.PI / 2; // Face Z
+        wheel.castShadow = true;
+        group.add(wheel);
+
+        // Axle
+        const axleGeo = new THREE.CylinderGeometry(0.2, 0.2, 0.8, 16);
+        const axleMat = new THREE.MeshStandardMaterial({color: 0xbdc3c7});
+        const axle = new THREE.Mesh(axleGeo, axleMat);
+        axle.rotation.x = Math.PI / 2;
+        group.add(axle);
+
+        // Bracket (U-shape simplified)
+        const bracketGeo = new THREE.BoxGeometry(3.2, 0.2, 0.8);
+        const bracket = new THREE.Mesh(bracketGeo, wheelMat);
+        bracket.position.y = 1.6; // Above wheel
+        group.add(bracket);
+
+        // Hook/Loop at top of bracket
+        const hookGeo = new THREE.TorusGeometry(0.3, 0.1, 8, 16);
+        const hook = new THREE.Mesh(hookGeo, axleMat);
+        hook.position.y = 1.8;
+        hook.rotation.y = Math.PI / 2;
+        group.add(hook);
+
+        return {group, wheel};
+    }
+
+    function createLoad() {
+        const geo = new THREE.BoxGeometry(3, 3, 3);
+        const mat = new THREE.MeshStandardMaterial({color: CONFIG.loadColor, roughness: 0.4});
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.castShadow = true;
+
+        // Hook on load
+        const hookGeo = new THREE.TorusGeometry(0.4, 0.1, 8, 16);
+        const hook = new THREE.Mesh(hookGeo, new THREE.MeshStandardMaterial({color: 0xbdc3c7}));
+        hook.position.y = 1.6;
+        hook.rotation.y = Math.PI / 2;
+        mesh.add(hook);
+
+        return mesh;
+    }
+
+    function createHand() {
+        // Simple visual for "Force Input"
+        const geo = new THREE.ConeGeometry(0.5, 1.5, 16);
+        const mat = new THREE.MeshBasicMaterial({color: CONFIG.forceColor});
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.rotation.x = -Math.PI; // Point down
+        return mesh;
+    }
+
+    // --- System Builders ---
+
+    window.setSystem = function (type) {
+        state.systemType = type;
+
+        // UI Reset
+        document.querySelectorAll('.btn-preset').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.btn-preset')[type - 1].classList.add('active');
+        state.pullPercent = 0;
+        document.getElementById('input-pull').value = 0;
+
+        // Cleanup
+        if (systemGroup) scene.remove(systemGroup);
+        if (lblH) lblH.remove();
+        if (lblL) lblL.remove();
+
+        systemGroup = new THREE.Group();
+        scene.add(systemGroup);
+
+        // Common Elements
+        loadMesh = createLoad();
+        systemGroup.add(loadMesh);
+
+        handMesh = createHand();
+        systemGroup.add(handMesh);
+
+        // Arrows
+        arrowF = new THREE.ArrowHelper(new THREE.Vector3(0, -1, 0), new THREE.Vector3(), 3, CONFIG.forceColor, 1, 1);
+        arrowP = new THREE.ArrowHelper(new THREE.Vector3(0, -1, 0), new THREE.Vector3(), 3, CONFIG.gravityColor, 1, 1);
+        systemGroup.add(arrowF);
+        systemGroup.add(arrowP);
+
+        // Create Rope Geometry (Dynamic)
+        const ropeGeo = new THREE.BufferGeometry();
+        // Initial buffer
+        const pos = new Float32Array(50 * 3);
+        ropeGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+        const ropeMat = new THREE.LineBasicMaterial({color: CONFIG.ropeColor, linewidth: 3});
+        ropeLine = new THREE.Line(ropeGeo, ropeMat);
+        ropeLine.frustumCulled = false; // Always render
+        systemGroup.add(ropeLine);
+
+        // Create Labels
+        lblH = document.createElement('div');
+        lblH.className = 'world-label';
+        lblH.textContent = "h";
+        labelsContainer.appendChild(lblH);
+
+        lblL = document.createElement('div');
+        lblL.className = 'world-label';
+        lblL.textContent = "L";
+        labelsContainer.appendChild(lblL);
+
+        // Specifics
+        if (type === 1) { // Fixed
+            state.MA = 1;
+            document.getElementById('formula-text').innerHTML = "F = P";
+            // 1 Fixed Pulley at top
+            const p1 = createPulley(0, 19, 0); // Attached to beam (y=20) - 1 unit
+            // Hook to beam
+            // Visual hanger
+            const hanger = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 2), new THREE.MeshBasicMaterial({color: 0x555}));
+            hanger.position.set(0, 19.5, 0);
+            systemGroup.add(hanger);
+            systemGroup.add(p1.group);
+
+            systemGroup.userData.pulleys = [p1];
+        } else if (type === 2) { // Movable
+            state.MA = 2;
+            document.getElementById('formula-text').innerHTML = "F = P / 2";
+            // 1 Fixed (redirect) + 1 Movable
+            // Fixed at top right to redirect pull down
+            const pFixed = createPulley(3, 19, 0);
+            const hanger = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 2), new THREE.MeshBasicMaterial({color: 0x555}));
+            hanger.position.set(3, 19.5, 0);
+            systemGroup.add(hanger);
+            systemGroup.add(pFixed.group);
+
+            // Movable attached to load
+            const pMov = createPulley(0, 0, 0); // Y controlled by animation
+            // Invert movable pulley bracket visually? Usually block is upside down?
+            // Let's keep it simple: rope goes under wheel.
+            // But we need to attach load to pulley axle.
+            // Let's add a hook at bottom of pulley group
+            const hook = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.1), new THREE.MeshBasicMaterial({color: 0x999}));
+            hook.position.y = -1.8;
+            hook.rotation.y = Math.PI / 2;
+            pMov.group.add(hook);
+
+            systemGroup.add(pMov.group);
+
+            systemGroup.userData.pulleys = [pFixed, pMov];
+        } else if (type === 3) { // Block & Tackle (4 pulleys)
+            state.MA = 4;
+            document.getElementById('formula-text').innerHTML = "F = P / 4";
+
+            // Top Block (2 pulleys side by side or coaxial)
+            // Let's do coaxial for standard look (double sheave)
+            const pTop1 = createPulley(0, 19, 0.8);
+            const pTop2 = createPulley(0, 19, -0.8);
+            // Single Hanger
+            const hanger = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 3), new THREE.MeshBasicMaterial({color: 0x555}));
+            hanger.position.set(0, 19.5, 0);
+            systemGroup.add(hanger);
+            systemGroup.add(pTop1.group);
+            systemGroup.add(pTop2.group);
+
+            // Bottom Block (2 pulleys)
+            const pBot1 = createPulley(0, 0, 0.8);
+            const pBot2 = createPulley(0, 0, -0.8);
+            // Flip bottom block visually
+            pBot1.group.rotation.z = Math.PI;
+            pBot2.group.rotation.z = Math.PI;
+            // Connector for load
+            const connector = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 3), new THREE.MeshBasicMaterial({color: 0x555}));
+            connector.position.y = -1.5; // Relative to bottom block center
+            // We need a parent group for bottom block to move them together
+            const bottomBlock = new THREE.Group();
+            bottomBlock.add(pBot1.group);
+            bottomBlock.add(pBot2.group);
+            // Add load hook
+            const hook = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.1), new THREE.MeshBasicMaterial({color: 0x999}));
+            hook.position.y = 2; // Since flipped, up is down relative to world
+            pBot1.group.add(hook); // Hacky visual
+
+            systemGroup.add(bottomBlock);
+            systemGroup.userData.pulleys = [pTop1, pTop2, pBot1, pBot2]; // Store for rotation
+            systemGroup.userData.bottomBlock = bottomBlock;
+        }
+
+        updatePhysics();
+    }
+
+    // --- Physics & Animation ---
+
+    function updatePhysics() {
+        const maxRopePull = 12; // meters
+        const pullDist = (state.pullPercent / 100) * maxRopePull;
+
+        // Height gained = Pull / MA
+        const liftHeight = pullDist / state.MA;
+
+        // Initial load Y (resting on floor approx)
+        const startY = 2;
+        const currentY = startY + liftHeight;
+
+        // --- Update Positions ---
+
+        // Hand Position
+        // Hand pulls DOWN. Start high.
+        const handStartY = 18;
+        const handY = handStartY - pullDist;
+
+        // Calculate Force
+        const loadWeight = state.loadMass * CONFIG.gravity;
+        const inputForce = loadWeight / state.MA;
+
+        // UI Updates
+        document.getElementById('stat-ma').textContent = state.MA + "x";
+        var _n=window._t?window._t.nUnit:' Н',_m=window._t?window._t.mUnit:' м';
+        document.getElementById('stat-load').textContent = Math.round(loadWeight) + _n;
+        document.getElementById('stat-force').textContent = Math.round(inputForce) + _n;
+        document.getElementById('stat-h').textContent = liftHeight.toFixed(2) + _m;
+        document.getElementById('stat-l').textContent = pullDist.toFixed(2) + _m;
+
+        // --- Visual Updates ---
+        loadMesh.position.y = currentY;
+
+        // System Specific Logic
+        if (state.systemType === 1) {
+            // Fixed Pulley
+            // Hand X offset to right
+            const handX = 4;
+            handMesh.position.set(handX, handY, 0);
+
+            // Rope: Load -> Top Pulley -> Hand
+            const pTop = systemGroup.userData.pulleys[0].group.position;
+            const r = 1.5; // pulley radius
+
+            updateRopePoints([
+                new THREE.Vector3(0, currentY + 1.6, 0), // Load hook
+                new THREE.Vector3(0, pTop.y, 0), // Up to pulley center? No, tangent.
+                // Tangent left side of pulley
+                new THREE.Vector3(-r, pTop.y, 0),
+                // Over top
+                new THREE.Vector3(0, pTop.y + r, 0),
+                // Tangent right side
+                new THREE.Vector3(r, pTop.y, 0),
+                // Down to hand
+                new THREE.Vector3(handX, handY + 0.5, 0)
+            ]);
+
+            // Rotate pulley
+            const rot = pullDist / r; // Radians
+            systemGroup.userData.pulleys[0].wheel.rotation.y = rot; // Cylinder Y is rotation axis
+        } else if (state.systemType === 2) {
+            // Movable Pulley
+            // Rope: Ceiling (-3) -> Movable Pulley (0) -> Fixed Pulley (3) -> Hand
+            // Load attached to Movable Pulley
+
+            const pFixed = systemGroup.userData.pulleys[0].group;
+            const pMov = systemGroup.userData.pulleys[1].group;
+
+            // Move Pulley
+            // Pulley axle is at load hook height + offset
+            pMov.position.y = currentY + 2.5;
+
+            const r = 1.5;
+            const handX = 6;
+            handMesh.position.set(handX, handY, 0);
+
+            // Anchor point on ceiling
+            const anchor = new THREE.Vector3(-3, 19, 0); // Left side
+            // Add visual anchor
+            // (skipped for brevity)
+
+            updateRopePoints([
+                anchor,
+                new THREE.Vector3(-3, pMov.position.y, 0), // Down to movable left
+                new THREE.Vector3(0, pMov.position.y - r, 0), // Under
+                new THREE.Vector3(3, pMov.position.y, 0), // Up from movable right
+                new THREE.Vector3(3, pFixed.position.y, 0), // To fixed left
+                new THREE.Vector3(3 + r, pFixed.position.y, 0), // Over fixed
+                new THREE.Vector3(handX, handY + 0.5, 0) // To Hand
+            ]);
+
+            // Rotation
+            const rot = pullDist / r;
+            systemGroup.userData.pulleys[0].wheel.rotation.y = rot; // Fixed spins fast
+            systemGroup.userData.pulleys[1].wheel.rotation.y = -rot / 2; // Movable spins half speed?
+            // Rope length passing movable = 2 * dh. Rotation = 2*dh/r = same relative to center?
+            // Actually rope moves past fixed pulley at V, past movable at V/2?
+            // No, rope speed is constant V everywhere. So all pulleys spin same speed.
+        } else if (state.systemType === 3) {
+            // Polyplast 4
+            // Top Block (Fixed), Bottom Block (Movable)
+            const bottomBlock = systemGroup.userData.bottomBlock;
+            bottomBlock.position.y = currentY + 2.5;
+
+            const handX = 6;
+            handMesh.position.set(handX, handY, 0);
+
+            const r = 1.5;
+            const topY = 19;
+            const botY = bottomBlock.position.y;
+
+            // Rope Path:
+            // Fixed Top1 -> Down to Bot1 -> Up to Top2 -> Down to Bot2 -> Up to Anchor(Top)
+            // Or usually: Anchor on fixed block -> Down Bot1 -> Up Top1 -> Down Bot2 -> Up Top2 -> Hand
+            // Let's do: Anchor Top -> Bot1 -> Top1 -> Bot2 -> Top2 -> Hand
+
+            // Anchor at Top Block (offset z)
+            const pts = [];
+            pts.push(new THREE.Vector3(-r, topY - 1, 0.8)); // Anchor
+            pts.push(new THREE.Vector3(-r, botY, 0.8)); // Down to Bot1
+            // Under Bot1
+            pts.push(new THREE.Vector3(r, botY, 0.8));
+            // Up to Top1
+            pts.push(new THREE.Vector3(r, topY, 0.8));
+            // Over Top1 (cross to other side?)
+            // Usually pulleys are side-by-side or coaxial. Ours are coaxial z-offset.
+            // Let's simplified path:
+            // ... Top1 -> (Cross over) -> Bot2 ...
+            // This is complex to draw perfectly with lines.
+            // Simple zig-zag visual:
+            pts.push(new THREE.Vector3(r, botY, -0.8)); // Down to Bot2
+            pts.push(new THREE.Vector3(-r, botY, -0.8)); // Under Bot2
+            pts.push(new THREE.Vector3(-r, topY, -0.8)); // Up to Top2
+            pts.push(new THREE.Vector3(r, topY, -0.8)); // Over Top2
+            pts.push(new THREE.Vector3(handX, handY + 0.5, 0)); // Hand
+
+            updateRopePoints(pts);
+        }
+
+        // Arrow Positions
+        arrowP.position.copy(loadMesh.position);
+        arrowP.setLength(loadWeight / 20); // Scale visual
+
+        arrowF.position.copy(handMesh.position);
+        arrowF.setLength(inputForce / 20);
+
+        if (!document.getElementById('check-forces').checked) {
+            arrowP.visible = false;
+            arrowF.visible = false;
+        } else {
+            arrowP.visible = true;
+            arrowF.visible = true;
+        }
+
+        // Labels
+        if (document.getElementById('check-dims').checked) {
+            updateLabelsUI();
+        } else {
+            lblH.classList.remove('visible');
+            lblL.classList.remove('visible');
+        }
+    }
+
+    function updateRopePoints(points) {
+        const positions = ropeLine.geometry.attributes.position.array;
+        // Simple line drawing between points
+        // We have fixed buffer size (50 verts). Fill needed, zero rest.
+        let idx = 0;
+
+        if (points.length < 2) return;
+
+        // CatmullRom for smoothness? Line is fine for tension.
+        for (let i = 0; i < points.length; i++) {
+            positions[idx++] = points[i].x;
+            positions[idx++] = points[i].y;
+            positions[idx++] = points[i].z;
+        }
+
+        // Fill rest with last point to hide
+        const last = points[points.length - 1];
+        while (idx < positions.length) {
+            positions[idx++] = last.x;
+            positions[idx++] = last.y;
+            positions[idx++] = last.z;
+        }
+
+        ropeLine.geometry.attributes.position.needsUpdate = true;
+    }
+
+    function updateLabelsUI() {
+        // H Label (next to load)
+        const posH = loadMesh.position.clone();
+        posH.x -= 3;
+        posH.y /= 2; // Mid height
+        projectLabel(lblH, posH, `h = ${(loadMesh.position.y - 2).toFixed(1)}м`);
+
+        // L Label (next to hand rope)
+        const posL = handMesh.position.clone();
+        posL.y += 2;
+        projectLabel(lblL, posL, `L`);
+    }
+
+    function projectLabel(el, pos3d, text) {
+        const vector = pos3d.clone();
+        vector.project(camera);
+        const x = (vector.x * 0.5 + 0.5) * window.innerWidth;
+        const y = (-(vector.y * 0.5) + 0.5) * window.innerHeight;
+
+        el.style.left = `${x}px`;
+        el.style.top = `${y}px`;
+        el.textContent = text;
+        el.classList.add('visible');
+    }
+
+    // --- UI Listeners ---
+    function setupUI() {
+        const inputPull = document.getElementById('input-pull');
+        inputPull.addEventListener('input', (e) => {
+            state.pullPercent = parseInt(e.target.value);
+            document.getElementById('val-pull').textContent = state.pullPercent + '%';
+            updatePhysics();
+        });
+
+        const inputMass = document.getElementById('input-mass');
+        inputMass.addEventListener('input', (e) => {
+            state.loadMass = parseInt(e.target.value);
+            document.getElementById('val-mass').textContent = state.loadMass + (window._t?window._t.kgUnit:' кг');
+            updatePhysics();
+        });
+
+        document.getElementById('check-forces').addEventListener('change', updatePhysics);
+        document.getElementById('check-dims').addEventListener('change', updatePhysics);
+    }
+
+    function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        updatePhysics();
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        if (document.getElementById('check-dims').checked) updateLabelsUI();
+        renderer.render(scene, camera);
+    }
+
+    // Start
+    init();
+
+</script>
+</body>
+</html>
