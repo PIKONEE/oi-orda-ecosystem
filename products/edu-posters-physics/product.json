@@ -1,0 +1,28 @@
+{
+  "product_id": 12,
+  "slug": "edu-posters-physics",
+  "name": "Виртуальные стенды — Физика",
+  "version": "1.0.0",
+  "publisher": "Oi-Orda",
+  "android_namespace": "kz.digitouch.edupostersphysics",
+  "engine": "webview2",
+  "content_dir": "content",
+  "entry_html": "index.html",
+  "icon": "assets/icon.svg",
+  "variants": [
+    {
+      "id": 0,
+      "slug": "all",
+      "name": "Виртуальные стенды — Физика"
+    }
+  ],
+  "window": {
+    "title": "Виртуальные стенды — Физика",
+    "fullscreen": true
+  },
+  "security": {
+    "anti_copy": true,
+    "flag_secure": true,
+    "skip_activation": false
+  }
+}

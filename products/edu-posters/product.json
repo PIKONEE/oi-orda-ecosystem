@@ -1,0 +1,28 @@
+{
+  "product_id": 9,
+  "slug": "edu-posters",
+  "name": "Виртуальные стенды",
+  "version": "1.0.0",
+  "publisher": "Oi-Orda",
+  "android_namespace": "kz.digitouch.eduposters",
+  "engine": "webview2",
+  "content_dir": "content",
+  "entry_html": "index.html",
+  "icon": "assets/icon.svg",
+  "variants": [
+    {
+      "id": 0,
+      "slug": "all",
+      "name": "Виртуальные стенды"
+    }
+  ],
+  "window": {
+    "title": "Виртуальные стенды",
+    "fullscreen": true
+  },
+  "security": {
+    "anti_copy": true,
+    "flag_secure": true,
+    "skip_activation": false
+  }
+}
