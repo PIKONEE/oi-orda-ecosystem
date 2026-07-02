@@ -10,11 +10,10 @@
   "entry_html": "index.html",
   "icon": "assets/icon.svg",
   "variants": [
-    {
-      "id": 0,
-      "slug": "all",
-      "name": "Виртуальные стенды"
-    }
+    {"id": 0, "slug": "all", "name": "Виртуальные стенды — все предметы"},
+    {"id": 1, "slug": "biology", "name": "Виртуальные стенды — Биология"},
+    {"id": 2, "slug": "chemistry", "name": "Виртуальные стенды — Химия"},
+    {"id": 3, "slug": "physics", "name": "Виртуальные стенды — Физика"}
   ],
   "window": {
     "title": "Виртуальные стенды",

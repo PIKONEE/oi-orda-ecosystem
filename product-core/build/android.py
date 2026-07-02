@@ -2,14 +2,12 @@
 """
 Сборка Android APK из product.json.
 
-Шаги:
-1. Копирует android_shell/ шаблон во временную папку.
-2. Подставляет namespace, applicationId, app_name из product.json.
-3. Копирует content/ в assets/content/.
-4. Генерирует assets/product_config.json (с секретом для Licensing.kt).
-5. Копирует activation.html шаблон.
-6. Запускает gradlew assembleRelease.
-7. Копирует APK в builds/android/.
+Одно-вариантный продукт → один APK (<slug>-release.apk).
+Много-вариантный (product.json variants > 1) → по APK на вариант
+(<slug>-<variant_slug>-release.apk): контент фильтруется под предмет и шифруется
+ключом варианта derive_content_key(master, product_id, variant_id) — как флейворы
+плакатов, но из одного продукта. applicationId делается уникальным на вариант,
+чтобы приложения предметов сосуществовали на устройстве.
 
 Вызов:
     python -m build.android <путь_к_папке_продукта> [--debug]
@@ -74,25 +72,49 @@ def _load_public_key(product_dir: Path):
     return None
 
 
-def _encrypt_assets_content(content_dir: Path, product_id: int):
-    """Шифрует assets/content/* ключом контента продукта (как на Windows)."""
+def _encrypt_assets_content(content_dir: Path, product_id: int, variant_id: int = 0):
+    """Шифрует assets/content/* ключом контента продукта (variant 0 = как раньше)."""
     keystore = CORE_ROOT / "ecosystem.keys"
     if not keystore.exists():
         log("⚠ ecosystem.keys не найден — контент НЕ шифруется")
         return
     from product_core import _protocol as proto
     ks = json.loads(keystore.read_text(encoding="utf-8"))
-    key = proto.derive_content_key(bytes.fromhex(ks["content_master"]), product_id)
+    key = proto.derive_content_key(bytes.fromhex(ks["content_master"]), product_id, variant_id)
     n = 0
     for p in content_dir.rglob("*"):
         if p.is_file():
             p.write_bytes(proto.encrypt_content(p.read_bytes(), key))
             n += 1
-    log(f"🔒 Контент зашифрован: {n} файлов")
+    log(f"🔒 Контент зашифрован: {n} файлов (вариант {variant_id})")
+
+
+def _filter_content_for_variant(content_dir: Path, variant_slug: str):
+    """Оставляет в content только контент варианта (предмета). all/None — не трогает.
+
+    Конвенция: посты предмета лежат в content/posters/<slug>/, а data.json имеет
+    subjects[].key. Для варианта <slug> удаляем posters/<другие> и оставляем в
+    data.json только этот предмет."""
+    if not variant_slug or variant_slug == "all":
+        return
+    posters = content_dir / "posters"
+    if posters.is_dir():
+        for d in list(posters.iterdir()):
+            if d.is_dir() and d.name != variant_slug:
+                shutil.rmtree(d)
+    dj = content_dir / "data.json"
+    if dj.exists():
+        try:
+            data = json.loads(dj.read_text(encoding="utf-8"))
+            if isinstance(data, dict) and isinstance(data.get("subjects"), list):
+                data["subjects"] = [s for s in data["subjects"] if s.get("key") == variant_slug]
+                dj.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+        except Exception as e:  # noqa
+            log(f"⚠ data.json не отфильтрован: {e}")
 
 
 def build_android(product_dir: str, debug: bool = False):
-    """Главная функция сборки Android APK."""
+    """Собирает APK продукта. Много-вариантный продукт → список APK, иначе один APK."""
     _ensure_java_home()
 
     product_dir = Path(product_dir).resolve()
@@ -106,24 +128,22 @@ def build_android(product_dir: str, debug: bool = False):
     name = cfg.get("name", slug)
     namespace = cfg.get("android_namespace", f"kz.digitouch.{slug.replace('-', '')}")
     version = cfg.get("version", "1.0.0")
+    variants = cfg.get("variants") or [{"id": 0, "slug": "all", "name": name}]
+    multi = len(variants) > 1
+    skip_act = cfg.get("security", {}).get("skip_activation", False)
 
-    log(f"Сборка: {name} v{version} (Android)")
+    log(f"Сборка: {name} v{version} (Android)" + (f" — {len(variants)} вариантов" if multi else ""))
 
-    # 1. Копируем android_shell в каталог сборки.
-    #    ВАЖНО: путь сборки должен быть БЕЗ не-ASCII символов — Android Gradle Plugin
-    #    отказывается собирать из путей с кириллицей (наш product_dir может быть таким,
-    #    напр. D:\Windsurf\в\...). Поэтому собираем в ASCII-temp, исходники не трогаем.
+    # 1. android_shell → ASCII-temp (Gradle не собирает из путей с кириллицей)
     build_base = os.environ.get("OILAB_BUILD_DIR") or tempfile.gettempdir()
     work = Path(build_base) / f"oilab_android_{slug}"
     if not _is_ascii(str(work)):
-        log(f"⚠ путь сборки не-ASCII: {work}")
-        log("  задайте ASCII-путь через переменную окружения OILAB_BUILD_DIR (напр. D:\\oilab_build)")
+        log(f"⚠ путь сборки не-ASCII: {work} — задайте OILAB_BUILD_DIR (напр. D:\\oilab_build)")
     if work.exists():
         shutil.rmtree(work)
     shutil.copytree(ANDROID_SHELL, work)
     log(f"Каталог сборки: {work}")
 
-    # local.properties с путём к Android SDK (иначе Gradle не найдёт SDK)
     sdk = (os.environ.get("ANDROID_SDK_ROOT") or os.environ.get("ANDROID_HOME")
            or os.path.join(os.environ.get("LOCALAPPDATA", ""), "Android", "Sdk"))
     if os.path.isdir(sdk):
@@ -132,105 +152,106 @@ def build_android(product_dir: str, debug: bool = False):
     else:
         log("⚠ Android SDK не найден — задайте ANDROID_SDK_ROOT")
 
-    # 2. Подставляем applicationId/версию в build.gradle.kts.
-    #    namespace (пакет R/BuildConfig) НЕ трогаем — он должен совпадать с пакетом
-    #    исходников kz.digitouch.shell, иначе `R` и `.MainActivity` не разрешатся.
-    #    applicationId (id установки) делаем уникальным на продукт — он может отличаться.
-    gradle_app = work / "app" / "build.gradle.kts"
-    text = gradle_app.read_text(encoding="utf-8")
-    text = text.replace('applicationId = "kz.digitouch.shell"', f'applicationId = "{namespace}"')
-    text = text.replace('versionName = "1.0.0"', f'versionName = "{version}"')
-    gradle_app.write_text(text, encoding="utf-8")
-
-    # 3. Подставляем app_name в strings.xml
-    strings = work / "app" / "src" / "main" / "res" / "values" / "strings.xml"
-    strings.write_text(
-        f'<?xml version="1.0" encoding="utf-8"?>\n<resources>\n'
-        f'    <string name="app_name">{name}</string>\n</resources>\n',
-        encoding="utf-8")
-
-    # 4. Копируем content/ в assets/content/
-    assets_dir = work / "app" / "src" / "main" / "assets"
-    assets_dir.mkdir(parents=True, exist_ok=True)
-    content_src = product_dir / cfg.get("content_dir", "content")
-    if content_src.exists():
-        shutil.copytree(content_src, assets_dir / "content")
-        log("content/ → assets/content/")
-        if not cfg.get("security", {}).get("skip_activation", False):
-            _encrypt_assets_content(assets_dir / "content", cfg.get("product_id", 0))
-        else:
-            log("skip_activation — контент не шифруется")
-
-    # 5. Копируем activation.html шаблон
-    templates_dst = assets_dir / "templates"
-    templates_dst.mkdir(exist_ok=True)
-    if SHELL_TEMPLATES.exists():
-        for f in SHELL_TEMPLATES.iterdir():
-            shutil.copy2(f, templates_dst / f.name)
-
-    # 6. Генерируем product_config.json (v4: публичный ключ Ed25519 для Licensing.init)
-    product_config = {
-        "product_id": cfg.get("product_id", 0),
-        "entry_html": cfg.get("entry_html", "index.html"),
-        "window_title": cfg.get("name", slug),
-        "anti_copy": cfg.get("security", {}).get("anti_copy", True),
-        "flag_secure": cfg.get("security", {}).get("flag_secure", True),
-        "skip_activation": cfg.get("security", {}).get("skip_activation", False),
-    }
-    pub = _load_public_key(product_dir)
-    if pub:
-        product_config["public_key"] = pub
-    else:
-        log("⚠ публичный ключ не найден в _secret.py — активация не будет работать")
-
-    # Ключ контента (обфусцирован XOR-маской) — для короткого ключа активации
-    # и расшифровки контента. Извлекаемо реверс-инженером = защита уровня v3 (как договорились).
-    # QR/v4-only: ключ контента НЕ встраиваем — он приходит ВНУТРИ лицензии (QR).
-    log("v4-only сборка: ключ контента в APK не встроен")
-    with open(assets_dir / "product_config.json", "w", encoding="utf-8") as f:
-        json.dump(product_config, f, ensure_ascii=False)
-    log("product_config.json сгенерирован")
-
-    # 7. Запускаем Gradle
     gradlew = "gradlew.bat" if platform.system() == "Windows" else "gradlew"
     gradlew_path = work / gradlew
     if not gradlew_path.exists():
         log("⚠ gradlew не найден. Нужен Gradle wrapper.")
-        log("  Скопируйте gradle/ wrapper из любого Android-проекта.")
         return None
 
-    build_type = "Debug" if debug else "Release"
-    task = f"assemble{build_type}"
-    log(f"Gradle: {task}")
-
-    result = subprocess.run(
-        [str(gradlew_path), task, "--stacktrace"],
-        cwd=str(work), env=os.environ.copy())
-    if result.returncode != 0:
-        raise RuntimeError("Gradle сборка завершилась с ошибкой")
-
-    # 8. Копируем APK
-    bt = "debug" if debug else "release"
-    apk_dir = work / "app" / "build" / "outputs" / "apk" / bt
-    apk_src = None
-    if apk_dir.exists():
-        for f in apk_dir.iterdir():
-            if f.suffix == ".apk":
-                apk_src = f
-                break
-
+    gradle_app = work / "app" / "build.gradle.kts"
+    gradle_orig = gradle_app.read_text(encoding="utf-8")   # исходный текст — подставляем на каждый вариант
+    strings_xml = work / "app" / "src" / "main" / "res" / "values" / "strings.xml"
+    assets_dir = work / "app" / "src" / "main" / "assets"
+    content_src = product_dir / cfg.get("content_dir", "content")
+    pub = _load_public_key(product_dir)
     builds_dir = product_dir / "builds" / "android"
     builds_dir.mkdir(parents=True, exist_ok=True)
+    bt_dir = "debug" if debug else "release"
+    task = "assembleDebug" if debug else "assembleRelease"
 
-    if apk_src and apk_src.exists():
-        apk_dst = builds_dir / f"{slug}-{bt}.apk"
-        shutil.copy2(apk_src, apk_dst)
-        size_mb = apk_dst.stat().st_size / (1024 * 1024)
-        log(f"✅ APK: {apk_dst} ({size_mb:.1f} MB)")
-        return apk_dst
-    else:
-        log("⚠ APK не найден в выходной папке Gradle")
-        return None
+    apks = []
+    for v in variants:
+        vslug = v.get("slug", "all")
+        vid = int(v.get("id", 0))
+        vname = v.get("name", name)
+        disp = vname if multi else name
+        # applicationId уникален на вариант (кроме "all"/одно-вариантного) — чтобы приложения сосуществовали
+        appid = namespace if (not multi or vslug == "all") else f"{namespace}.{vslug.replace('-', '')}"
+
+        # build.gradle.kts (из исходного текста каждый раз)
+        gtxt = gradle_orig.replace('applicationId = "kz.digitouch.shell"', f'applicationId = "{appid}"')
+        gtxt = gtxt.replace('versionName = "1.0.0"', f'versionName = "{version}"')
+        gradle_app.write_text(gtxt, encoding="utf-8")
+
+        # strings.xml (app_name)
+        strings_xml.write_text(
+            '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n'
+            f'    <string name="app_name">{disp}</string>\n</resources>\n',
+            encoding="utf-8")
+
+        # content → assets/content (сброс + фильтр варианта + шифрование ключом варианта)
+        cdst = assets_dir / "content"
+        if cdst.exists():
+            shutil.rmtree(cdst)
+        if content_src.exists():
+            shutil.copytree(content_src, cdst)
+            if multi:
+                _filter_content_for_variant(cdst, vslug)
+            if not skip_act:
+                _encrypt_assets_content(cdst, cfg.get("product_id", 0), vid)
+            else:
+                log("skip_activation — контент не шифруется")
+
+        # templates (activation.html) — plaintext
+        templates_dst = assets_dir / "templates"
+        templates_dst.mkdir(exist_ok=True)
+        if SHELL_TEMPLATES.exists():
+            for f in SHELL_TEMPLATES.iterdir():
+                shutil.copy2(f, templates_dst / f.name)
+
+        # product_config.json (v4: публичный ключ + вариант; ключа контента в APK нет)
+        product_config = {
+            "product_id": cfg.get("product_id", 0),
+            "variant_id": vid,
+            "entry_html": cfg.get("entry_html", "index.html"),
+            "window_title": disp,
+            "anti_copy": cfg.get("security", {}).get("anti_copy", True),
+            "flag_secure": cfg.get("security", {}).get("flag_secure", True),
+            "skip_activation": skip_act,
+        }
+        if pub:
+            product_config["public_key"] = pub
+        else:
+            log("⚠ публичный ключ не найден в _secret.py — активация не будет работать")
+        (assets_dir / "product_config.json").write_text(
+            json.dumps(product_config, ensure_ascii=False), encoding="utf-8")
+
+        # Gradle
+        log(f"Gradle ({vslug}): {task}")
+        result = subprocess.run([str(gradlew_path), task, "--stacktrace"],
+                                cwd=str(work), env=os.environ.copy())
+        if result.returncode != 0:
+            raise RuntimeError(f"Gradle сборка ({vslug}) завершилась с ошибкой")
+
+        # APK → builds/android/
+        apk_dir = work / "app" / "build" / "outputs" / "apk" / bt_dir
+        apk_src = None
+        if apk_dir.exists():
+            for f in apk_dir.iterdir():
+                if f.suffix == ".apk":
+                    apk_src = f
+                    break
+        apk_name = f"{slug}-{bt_dir}.apk" if not multi else f"{slug}-{vslug}-{bt_dir}.apk"
+        if apk_src and apk_src.exists():
+            apk_dst = builds_dir / apk_name
+            shutil.copy2(apk_src, apk_dst)
+            size_mb = apk_dst.stat().st_size / (1024 * 1024)
+            log(f"✅ APK: {apk_dst} ({size_mb:.1f} MB)")
+            apks.append(apk_dst)
+        else:
+            log(f"⚠ APK не найден ({vslug})")
+
+    return apks if multi else (apks[0] if apks else None)
 
 
 if __name__ == "__main__":
