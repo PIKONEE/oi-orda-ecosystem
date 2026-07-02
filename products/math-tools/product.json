@@ -1,27 +1,25 @@
 {
   "product_id": 5,
   "slug": "math-tools",
-  "name": "Математическая лаборатория",
+  "name": "Interactive Math",
   "version": "1.0.0",
   "publisher": "Oi-Orda",
-
   "android_namespace": "kz.digitouch.mathtools",
-
   "engine": "webview2",
-
   "content_dir": "content",
   "entry_html": "index.html",
   "icon": "assets/icon.svg",
-
   "variants": [
-    {"id": 0, "slug": "default", "name": "Графики и вероятности"}
+    {
+      "id": 0,
+      "slug": "default",
+      "name": "Графики и вероятности"
+    }
   ],
-
   "window": {
-    "title": "Математическая лаборатория",
+    "title": "Interactive Math",
     "fullscreen": false
   },
-
   "security": {
     "anti_copy": false,
     "flag_secure": false,

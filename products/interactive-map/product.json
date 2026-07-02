@@ -1,27 +1,25 @@
 {
   "product_id": 4,
   "slug": "interactive-map",
-  "name": "Historic map",
+  "name": "Historic Map",
   "version": "1.0.0",
   "publisher": "Oi-Orda",
-
   "android_namespace": "kz.digitouch.interactivemap",
-
   "engine": "webview2",
-
   "content_dir": "content",
   "entry_html": "index.html",
   "icon": "assets/icon.svg",
-
   "variants": [
-    {"id": 0, "slug": "history", "name": "История Казахстана"}
+    {
+      "id": 0,
+      "slug": "history",
+      "name": "История Казахстана"
+    }
   ],
-
   "window": {
-    "title": "Интерактивная карта истории — Oi-Orda",
+    "title": "Historic Map",
     "fullscreen": true
   },
-
   "security": {
     "anti_copy": true,
     "flag_secure": true,

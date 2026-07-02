@@ -1,25 +1,24 @@
 {
   "product_id": 2,
   "slug": "smart-dictionary",
-  "name": "Умный словарь",
+  "name": "Smart Dictionary",
   "version": "1.0.0",
   "publisher": "Oi-Orda",
-
   "android_namespace": "kz.digitouch.smartdictionary",
-
   "content_dir": "content",
   "entry_html": "index.html",
   "icon": "assets/icon.svg",
-
   "variants": [
-    {"id": 0, "slug": "english", "name": "Английский язык"}
+    {
+      "id": 0,
+      "slug": "english",
+      "name": "Английский язык"
+    }
   ],
-
   "window": {
-    "title": "Умный словарь — Oi-Orda",
+    "title": "Smart Dictionary",
     "fullscreen": true
   },
-
   "security": {
     "anti_copy": true,
     "flag_secure": true,

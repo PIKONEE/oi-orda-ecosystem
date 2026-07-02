@@ -1,7 +1,7 @@
 {
   "product_id": 9,
   "slug": "virtual-stands",
-  "name": "Виртуальные стенды",
+  "name": "Virtual Stands",
   "version": "1.0.0",
   "publisher": "Oi-Orda",
   "android_namespace": "kz.digitouch.virtualstands",
@@ -10,13 +10,29 @@
   "entry_html": "index.html",
   "icon": "assets/icon.svg",
   "variants": [
-    {"id": 0, "slug": "all", "name": "Виртуальные стенды — все предметы"},
-    {"id": 1, "slug": "biology", "name": "Виртуальные стенды — Биология"},
-    {"id": 2, "slug": "chemistry", "name": "Виртуальные стенды — Химия"},
-    {"id": 3, "slug": "physics", "name": "Виртуальные стенды — Физика"}
+    {
+      "id": 0,
+      "slug": "all",
+      "name": "Virtual Stands — All subjects"
+    },
+    {
+      "id": 1,
+      "slug": "biology",
+      "name": "Virtual Stands — Biology"
+    },
+    {
+      "id": 2,
+      "slug": "chemistry",
+      "name": "Virtual Stands — Chemistry"
+    },
+    {
+      "id": 3,
+      "slug": "physics",
+      "name": "Virtual Stands — Physics"
+    }
   ],
   "window": {
-    "title": "Виртуальные стенды",
+    "title": "Virtual Stands",
     "fullscreen": true
   },
   "security": {

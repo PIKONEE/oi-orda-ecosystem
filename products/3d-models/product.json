@@ -1,27 +1,25 @@
 {
   "product_id": 3,
   "slug": "3d-models",
-  "name": "3D-модели",
+  "name": "3D Models",
   "version": "1.0.0",
   "publisher": "Oi-Orda",
-
   "android_namespace": "kz.digitouch.models3d",
-
   "engine": "webview2",
-
   "content_dir": "content",
   "entry_html": "index.html",
   "icon": "assets/icon.svg",
-
   "variants": [
-    {"id": 0, "slug": "all", "name": "Все предметы"}
+    {
+      "id": 0,
+      "slug": "all",
+      "name": "Все предметы"
+    }
   ],
-
   "window": {
-    "title": "3D-модели",
+    "title": "3D Models",
     "fullscreen": false
   },
-
   "security": {
     "anti_copy": true,
     "flag_secure": true,
