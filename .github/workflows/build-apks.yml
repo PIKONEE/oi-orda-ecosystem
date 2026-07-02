@@ -50,7 +50,7 @@ jobs:
           python -c "import os,json; open('ecosystem.keys','w').write(json.dumps({'content_master': os.environ['OI_CONTENT_MASTER'].strip()}))"
           python -c "import json; assert len(json.load(open('ecosystem.keys'))['content_master'])==64, 'bad content_master'; print('ecosystem.keys OK')"
           ok=""; fail=""
-          for slug in smart-dictionary interactive-map music-encyclopedia speech-therapy math-tools 3d-models edu-posters; do
+          for slug in smart-dictionary interactive-map music-encyclopedia speech-therapy math-tools 3d-models virtual-stands; do
             echo "::group::build $slug"
             if python -m build ../products/$slug --android; then ok="$ok $slug"; else fail="$fail $slug"; fi
             echo "::endgroup::"

@@ -1,10 +1,10 @@
 {
   "product_id": 9,
-  "slug": "edu-posters",
+  "slug": "virtual-stands",
   "name": "Виртуальные стенды",
   "version": "1.0.0",
   "publisher": "Oi-Orda",
-  "android_namespace": "kz.digitouch.eduposters",
+  "android_namespace": "kz.digitouch.virtualstands",
   "engine": "webview2",
   "content_dir": "content",
   "entry_html": "index.html",
