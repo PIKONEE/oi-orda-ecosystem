@@ -54,11 +54,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     private val cameraPermLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) launchScan()
-        else runOnUiThread { webView.evaluateJavascript("if(typeof onActivationError==='function')onActivationError('Нет доступа к камере');", null) }
+        // Без разрешения камера не нужна для «QR из файла» и ручного ввода —
+        // открываем сканер в режиме no_camera, а не глухую ошибку.
+        if (granted) launchScan() else launchScan(noCamera = true)
     }
-    private fun launchScan() {
-        scanLauncher.launch(Intent(this, QrScanActivity::class.java))
+    private fun launchScan(noCamera: Boolean = false) {
+        scanLauncher.launch(Intent(this, QrScanActivity::class.java)
+            .putExtra(QrScanActivity.EXTRA_NO_CAMERA, noCamera))
     }
     private fun activateWith(key: String) {
         val (ok, message) = Licensing.activateLicense(this, key)
