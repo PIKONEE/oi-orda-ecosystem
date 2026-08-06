@@ -51,7 +51,23 @@ object Licensing {
     // Секрет HMAC и вариант сборки берём из assets/product_config.json
     private var SECRET = ByteArray(0)
     private var VARIANT_ID = 0
+    private var PRODUCT_ID = 0
     private var loaded = false
+
+    /**
+     * Совместимость с оболочкой. В LEGACY-20 публичный ключ и ключ контента не
+     * нужны: подпись симметричная, контент не шифруется. Принимаем те же
+     * аргументы, что и боевое ядро, чтобы MainActivity не пришлось менять.
+     */
+    fun init(publicKey: IntArray, productId: Int, embeddedKey: ByteArray? = null) {
+        PRODUCT_ID = productId
+    }
+
+    /**
+     * Контент в этой сборке лежит открытым — отдаём как есть.
+     * Оставлено ради единого кода отдачи ассетов в MainActivity.
+     */
+    fun decryptContent(raw: ByteArray): ByteArray? = raw
 
     /** Читает product_config.json (секрет подписи + вариант). */
     private fun ensureLoaded(context: Context) {
@@ -242,12 +258,10 @@ object Licensing {
         }
     }
 
+    // Совпадает по типам с боевым ядром — оболочка одна и та же.
     data class LicenseStatus(
-        val valid: Boolean,
-        val reason: String = "",
-        val expiresAt: String = "",
-        val daysLeft: Int = 0,
-        val variantId: Int = 0,
+        val valid: Boolean, val reason: String,
+        val variantId: Int? = null, val expiresAt: String? = null, val daysLeft: Int? = null
     )
 
     fun getLicenseStatus(context: Context): LicenseStatus {
@@ -259,6 +273,7 @@ object Licensing {
         val expires = parseIso(obj.optString("expires_at"))
             ?: return LicenseStatus(false, "Повреждена дата окончания")
         val activated = parseIso(obj.optString("activated_at"))
+        val variant = obj.optInt("variant_id", 0)
 
         val now = Date()
         // Защита от перевода часов назад
@@ -267,11 +282,10 @@ object Licensing {
             return LicenseStatus(false, "Часы устройства переведены назад")
         }
         if (now.after(expires)) {
-            return LicenseStatus(false, "Срок лицензии истёк", isoFormat(expires), 0,
-                obj.optInt("variant_id", 0))
+            return LicenseStatus(false, "Срок лицензии истёк", variant, isoFormat(expires), 0)
         }
         val days = ((expires.time - now.time) / 86_400_000L).toInt()
-        return LicenseStatus(true, "", isoFormat(expires), days, obj.optInt("variant_id", 0))
+        return LicenseStatus(true, "", variant, isoFormat(expires), days)
     }
 
     fun isActivated(context: Context): Boolean = getLicenseStatus(context).valid
