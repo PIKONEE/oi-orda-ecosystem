@@ -153,15 +153,16 @@ class QrScanActivity : AppCompatActivity() {
 
         if (bmp == null) {
             val path = uri.path.orEmpty()
-            // Съёмные носители (/storage/sda1, /storage/XXXX-XXXX) вообще не читаются
-            // напрямую — с Android 10 к ним есть доступ ТОЛЬКО через системный выбор
-            // файлов. Разрешение на хранилище тут не поможет, просить его бессмысленно.
+            // Съёмный носитель (/storage/sda1, /storage/XXXX-XXXX) — не внутренняя память.
             val removable = uri.scheme == "file" &&
                 path.startsWith("/storage/") &&
                 !path.startsWith("/storage/emulated/") &&
                 !path.startsWith("/storage/self/")
 
-            val needsPerm = uri.scheme == "file" && !removable && !afterPermission &&
+            // Разрешение спрашиваем ВСЕГДА, в том числе для флешки: на Android 9 и
+            // старше оно открывает и съёмные носители. С Android 10 не поможет — но
+            // тогда сработает подсказка ниже, уже после реальной попытки.
+            val needsPerm = uri.scheme == "file" && !afterPermission &&
                 ContextCompat.checkSelfPermission(this, storagePermission()) !=
                     PackageManager.PERMISSION_GRANTED
 
