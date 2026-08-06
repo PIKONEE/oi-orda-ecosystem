@@ -1,6 +1,11 @@
 package kz.digitouch.shell
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -56,25 +61,107 @@ class QrScanActivity : AppCompatActivity() {
     private val scanner = BarcodeScanning.getClient(
         BarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_QR_CODE).build())
 
-    private val pickImage = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        if (uri == null) return@registerForActivityResult
+    // ─── Выбор картинки с QR ────────────────────────────────────────
+    // Штатный путь — SAF (OpenDocument): всегда отдаёт content:// с выданным
+    // правом чтения. Встроенные файловые менеджеры досок нередко возвращают
+    // file:// — тогда читаем файл напрямую, при необходимости спросив
+    // разрешение на хранилище (иначе open failed EACCES).
+    private val pickImageSaf = registerForActivityResult(
+        ActivityResultContracts.OpenDocument()) { uri -> uri?.let { decodeQrFromUri(it) } }
+
+    private val pickImageLegacy = registerForActivityResult(
+        ActivityResultContracts.GetContent()) { uri -> uri?.let { decodeQrFromUri(it) } }
+
+    private var pendingUri: Uri? = null
+    private val storagePermLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()) { granted ->
+        val u = pendingUri
+        pendingUri = null
+        if (granted && u != null) decodeQrFromUri(u, afterPermission = true)
+        else Toast.makeText(this,
+            "Нет доступа к файлу. Выберите картинку через «Файлы» или введите ключ вручную.",
+            Toast.LENGTH_LONG).show()
+    }
+
+    private fun storagePermission(): String =
+        if (android.os.Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_IMAGES
+        else Manifest.permission.READ_EXTERNAL_STORAGE
+
+    private fun pickImage() {
+        // SAF доступен не на всех прошивках досок — если активити нет, идём legacy-путём
         try {
-            val img = InputImage.fromFilePath(this, uri)
-            scanner.process(img)
-                .addOnSuccessListener { list ->
-                    val raw = list.firstOrNull { it.rawValue != null }?.rawValue
-                    if (raw != null) deliver(raw)
-                    else Toast.makeText(this,
-                        "QR-код не найден на изображении. Попробуйте другой файл или введите ключ вручную.",
-                        Toast.LENGTH_LONG).show()
-                }
-                .addOnFailureListener {
-                    Toast.makeText(this, "Не удалось прочитать изображение: ${it.message}",
-                        Toast.LENGTH_LONG).show()
-                }
+            pickImageSaf.launch(arrayOf("image/*"))
         } catch (e: Exception) {
-            Toast.makeText(this, "Не удалось открыть файл: ${e.message}", Toast.LENGTH_LONG).show()
+            try {
+                pickImageLegacy.launch("image/*")
+            } catch (e2: Exception) {
+                Toast.makeText(this, "Не найдено приложение для выбора файла: ${e2.message}",
+                    Toast.LENGTH_LONG).show()
+            }
         }
+    }
+
+    /** Читает картинку и по content://, и по file://; крупные ужимает, чтобы не словить OOM. */
+    private fun loadBitmap(uri: Uri): Bitmap? {
+        fun open(): java.io.InputStream? = try {
+            contentResolver.openInputStream(uri)
+        } catch (e: Exception) {
+            val p = uri.path
+            if (uri.scheme == "file" && p != null) {
+                val f = java.io.File(p)
+                if (f.canRead()) java.io.FileInputStream(f) else null
+            } else null
+        }
+
+        // 1) габариты — чтобы посчитать коэффициент уменьшения
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        open()?.use { BitmapFactory.decodeStream(it, null, bounds) } ?: return null
+
+        var sample = 1
+        val maxSide = maxOf(bounds.outWidth, bounds.outHeight)
+        while (maxSide / sample > 2200) sample *= 2
+
+        // 2) собственно декодирование
+        val opts = BitmapFactory.Options().apply { inSampleSize = sample }
+        return open()?.use { BitmapFactory.decodeStream(it, null, opts) }
+    }
+
+    private fun decodeQrFromUri(uri: Uri, afterPermission: Boolean = false) {
+        val bmp = try {
+            loadBitmap(uri)
+        } catch (e: Exception) {
+            null
+        }
+
+        if (bmp == null) {
+            // Скорее всего file:// без разрешения на хранилище — спросим один раз
+            val needsPerm = uri.scheme == "file" && !afterPermission &&
+                ContextCompat.checkSelfPermission(this, storagePermission()) !=
+                    PackageManager.PERMISSION_GRANTED
+            if (needsPerm) {
+                pendingUri = uri
+                storagePermLauncher.launch(storagePermission())
+            } else {
+                Toast.makeText(this,
+                    "Не удалось открыть файл. Попробуйте выбрать картинку через «Файлы» " +
+                    "или введите ключ вручную.",
+                    Toast.LENGTH_LONG).show()
+            }
+            return
+        }
+
+        scanner.process(InputImage.fromBitmap(bmp, 0))
+            .addOnSuccessListener { list ->
+                val raw = list.firstOrNull { it.rawValue != null }?.rawValue
+                if (raw != null) deliver(raw)
+                else Toast.makeText(this,
+                    "QR-код не найден на изображении. Попробуйте другой файл или введите ключ вручную.",
+                    Toast.LENGTH_LONG).show()
+            }
+            .addOnFailureListener {
+                Toast.makeText(this, "Не удалось распознать изображение: ${it.message}",
+                    Toast.LENGTH_LONG).show()
+            }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -88,7 +175,7 @@ class QrScanActivity : AppCompatActivity() {
                 CameraSelector.LENS_FACING_BACK else CameraSelector.LENS_FACING_FRONT
             bind()
         }
-        findViewById<Button>(R.id.btnFromFile).setOnClickListener { pickImage.launch("image/*") }
+        findViewById<Button>(R.id.btnFromFile).setOnClickListener { pickImage() }
         findViewById<Button>(R.id.btnManual).setOnClickListener { setResult(RESULT_CANCELED); finish() }
         findViewById<Button>(R.id.btnCancel).setOnClickListener { setResult(RESULT_CANCELED); finish() }
 
