@@ -2,9 +2,11 @@
 (function () {
     'use strict';
 
-    // Cache-busting: new value every page load so updated poster images
-    // always reload after a normal refresh (filenames are reused).
-    const ASSET_VERSION = Date.now();
+    // Версия ассетов. РОВНО константа, а не Date.now(): при Date.now() каждый
+    // запуск давал новые URL, кэш WebView становился бесполезен и каждая
+    // картинка заново читалась и расшифровывалась при любой прокрутке.
+    // Менять вручную, если файлы картинок обновились при том же имени.
+    const ASSET_VERSION = '3';
 
     const state = {
         catalog: null,
@@ -97,6 +99,8 @@
         empty.hidden = true;
 
         const subjKey = subj.key;
+        // Собираем во фрагменте — одна вставка в документ вместо N перерисовок.
+        const frag = document.createDocumentFragment();
         for (let i = 0; i < state.filteredPosters.length; i++) {
             const p = state.filteredPosters[i];
             const card = document.createElement('div');
@@ -107,18 +111,37 @@
                 ? `<div class="card-title">${escapeHtml(p.title_ru)}</div>`
                 : `<div class="card-title empty">Без названия</div>`;
 
+            // В сетке — лёгкое превью (~480px), а не полноразмерный стенд:
+            // карточка всего ~220px, полноразмерная картинка декодировалась
+            // впустую и съедала память. Полный файл открывается только в модалке.
             card.innerHTML = `
                 <div class="card-thumb">
                     <span class="card-num">№ ${p.num}</span>
-                    <img loading="lazy" src="posters/${subjKey}/ru/${p.file}?v=${ASSET_VERSION}" alt="${p.num}">
+                    <img loading="lazy" decoding="async" width="480" height="360"
+                         src="${thumbUrl(subjKey, p.file)}"
+                         data-full="posters/${subjKey}/ru/${p.file}?v=${ASSET_VERSION}"
+                         alt="${p.num}">
                 </div>
                 <div class="card-body">
                     ${titleHtml}
                 </div>
             `;
+            // Если превью почему-то нет — подставляем оригинал, карточка не пустеет.
+            const thumbImg = card.querySelector('img');
+            thumbImg.addEventListener('error', function onErr() {
+                thumbImg.removeEventListener('error', onErr);
+                thumbImg.src = thumbImg.dataset.full;
+            });
             card.addEventListener('click', () => openModal(i));
-            grid.appendChild(card);
+            frag.appendChild(card);
         }
+        grid.appendChild(frag);
+    }
+
+    /** Путь к превью: posters/<предмет>/thumbs/<имя>.jpg */
+    function thumbUrl(subjKey, file) {
+        const base = String(file).replace(/\.[^.]+$/, '');
+        return `posters/${subjKey}/thumbs/${base}.jpg?v=${ASSET_VERSION}`;
     }
 
     // === Modal ===
@@ -222,9 +245,16 @@
 
     // === Wire-up ===
     function bindEvents() {
+        // Поиск с задержкой: без неё каждая нажатая буква пересобирала всю
+        // сетку (сотни карточек) — из-за этого ввод ощутимо тормозил.
+        let searchTimer = null;
         document.getElementById('searchInput').addEventListener('input', e => {
-            state.searchQuery = e.target.value;
-            applyFilter();
+            const val = e.target.value;
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(() => {
+                state.searchQuery = val;
+                applyFilter();
+            }, 180);
         });
 
         document.getElementById('modalClose').addEventListener('click', closeModal);
