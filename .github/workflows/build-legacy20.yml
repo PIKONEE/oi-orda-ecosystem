@@ -1,0 +1,72 @@
+name: build-legacy20
+
+# Запасная сборка на СТАРОЙ схеме активации: короткий ключ из 20 символов,
+# QR-сканера нет. Работает только в ветке legacy-20char и не влияет на
+# основную сборку (build-apks.yml) — там ядро v4/QR остаётся как есть.
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - legacy-20char
+    paths:
+      - 'product-core-legacy20/**'
+      - 'products/**'
+      - '.github/workflows/build-legacy20.yml'
+
+jobs:
+  apks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-34 build-tools;34.0.0'
+
+      - name: Make gradlew executable
+        run: chmod +x product-core-legacy20/android_shell/gradlew
+
+      - name: Build APKs (legacy 20-char activation)
+        env:
+          OI_CONTENT_MASTER: ${{ secrets.OI_CONTENT_MASTER }}
+        run: |
+          set -u
+          java -version
+          cd product-core-legacy20
+          # секрет подписи выводится из мастер-ключа (см. _legacy_secret)
+          python -c "import os,json; open('ecosystem.keys','w').write(json.dumps({'content_master': os.environ['OI_CONTENT_MASTER'].strip()}))"
+          python -c "import json; assert len(json.load(open('ecosystem.keys'))['content_master'])==64, 'bad content_master'; print('ecosystem.keys OK')"
+          ok=""; fail=""
+          for slug in 3d-models virtual-stands; do
+            echo "::group::build $slug"
+            if python -m build ../products/$slug --android; then ok="$ok $slug"; else fail="$fail $slug"; fi
+            echo "::endgroup::"
+          done
+          echo "=== OK:$ok ==="
+          echo "=== FAILED:$fail ==="
+          mkdir -p ../_apks
+          find ../products -path '*/builds/android/*.apk' -exec cp {} ../_apks/ \;
+          echo "--- collected APKs ---"
+          ls -la ../_apks || true
+          [ -z "$fail" ]
+
+      - name: Upload APKs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: oi-orda-apks-legacy20
+          path: _apks/*.apk
+          if-no-files-found: warn
