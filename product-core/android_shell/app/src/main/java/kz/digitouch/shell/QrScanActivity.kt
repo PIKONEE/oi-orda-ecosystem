@@ -113,9 +113,14 @@ class QrScanActivity : AppCompatActivity() {
             } else null
         }
 
-        // 1) габариты — чтобы посчитать коэффициент уменьшения
+        // 1) габариты — чтобы посчитать коэффициент уменьшения.
+        // ВНИМАНИЕ: при inJustDecodeBounds decodeStream ВСЕГДА возвращает null (это
+        // его штатное поведение), поэтому проверять надо сам поток, а не результат
+        // декодирования — иначе функция всегда отдаёт null и файл «не открывается».
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        open()?.use { BitmapFactory.decodeStream(it, null, bounds) } ?: return null
+        val probe = open() ?: return null
+        probe.use { BitmapFactory.decodeStream(it, null, bounds) }
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
 
         var sample = 1
         val maxSide = maxOf(bounds.outWidth, bounds.outHeight)
@@ -123,7 +128,8 @@ class QrScanActivity : AppCompatActivity() {
 
         // 2) собственно декодирование
         val opts = BitmapFactory.Options().apply { inSampleSize = sample }
-        return open()?.use { BitmapFactory.decodeStream(it, null, opts) }
+        val input = open() ?: return null
+        return input.use { BitmapFactory.decodeStream(it, null, opts) }
     }
 
     private fun decodeQrFromUri(uri: Uri, afterPermission: Boolean = false) {
