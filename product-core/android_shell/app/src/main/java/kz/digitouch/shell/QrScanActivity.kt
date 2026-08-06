@@ -62,15 +62,16 @@ class QrScanActivity : AppCompatActivity() {
         BarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_QR_CODE).build())
 
     // ─── Выбор картинки с QR ────────────────────────────────────────
-    // Штатный путь — SAF (OpenDocument): всегда отдаёт content:// с выданным
-    // правом чтения. Встроенные файловые менеджеры досок нередко возвращают
-    // file:// — тогда читаем файл напрямую, при необходимости спросив
-    // разрешение на хранилище (иначе open failed EACCES).
-    private val pickImageSaf = registerForActivityResult(
-        ActivityResultContracts.OpenDocument()) { uri -> uri?.let { decodeQrFromUri(it) } }
-
-    private val pickImageLegacy = registerForActivityResult(
-        ActivityResultContracts.GetContent()) { uri -> uri?.let { decodeQrFromUri(it) } }
+    // Показываем ВЫБОР приложения, а не отдаём его на откуп системе: на досках
+    // встроенный файловый менеджер назначен обработчиком по умолчанию и
+    // перехватывает открытие, а он часто отдаёт file:// (или вовсе не читается).
+    // createChooser выводит список всегда, игнорируя приложение по умолчанию,
+    // и первым пунктом добавляем системный выбор файлов — единственный путь
+    // к съёмным носителям (флешке).
+    private val pickLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()) { res ->
+        if (res.resultCode == RESULT_OK) res.data?.data?.let { decodeQrFromUri(it) }
+    }
 
     private var pendingUri: Uri? = null
     private val storagePermLauncher = registerForActivityResult(
@@ -88,16 +89,27 @@ class QrScanActivity : AppCompatActivity() {
         else Manifest.permission.READ_EXTERNAL_STORAGE
 
     private fun pickImage() {
-        // SAF доступен не на всех прошивках досок — если активити нет, идём legacy-путём
+        val getContent = Intent(Intent.ACTION_GET_CONTENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "image/*"
+        }
+        val chooser = Intent.createChooser(getContent, "Чем открыть картинку с QR-кодом")
+
+        // Системный выбор файлов (SAF) добавляем отдельным пунктом: он не всегда
+        // откликается на ACTION_GET_CONTENT, а к флешке доступ есть только через него.
+        val saf = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "image/*"
+        }
+        if (saf.resolveActivity(packageManager) != null) {
+            chooser.putExtra(Intent.EXTRA_INITIAL_INTENTS, arrayOf(saf))
+        }
+
         try {
-            pickImageSaf.launch(arrayOf("image/*"))
+            pickLauncher.launch(chooser)
         } catch (e: Exception) {
-            try {
-                pickImageLegacy.launch("image/*")
-            } catch (e2: Exception) {
-                Toast.makeText(this, "Не найдено приложение для выбора файла: ${e2.message}",
-                    Toast.LENGTH_LONG).show()
-            }
+            Toast.makeText(this, "Не найдено приложение для выбора файла: ${e.message}",
+                Toast.LENGTH_LONG).show()
         }
     }
 
