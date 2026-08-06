@@ -134,15 +134,30 @@ class QrScanActivity : AppCompatActivity() {
         }
 
         if (bmp == null) {
-            // Скорее всего file:// без разрешения на хранилище — спросим один раз
-            val needsPerm = uri.scheme == "file" && !afterPermission &&
+            val path = uri.path.orEmpty()
+            // Съёмные носители (/storage/sda1, /storage/XXXX-XXXX) вообще не читаются
+            // напрямую — с Android 10 к ним есть доступ ТОЛЬКО через системный выбор
+            // файлов. Разрешение на хранилище тут не поможет, просить его бессмысленно.
+            val removable = uri.scheme == "file" &&
+                path.startsWith("/storage/") &&
+                !path.startsWith("/storage/emulated/") &&
+                !path.startsWith("/storage/self/")
+
+            val needsPerm = uri.scheme == "file" && !removable && !afterPermission &&
                 ContextCompat.checkSelfPermission(this, storagePermission()) !=
                     PackageManager.PERMISSION_GRANTED
-            if (needsPerm) {
-                pendingUri = uri
-                storagePermLauncher.launch(storagePermission())
-            } else {
-                Toast.makeText(this,
+
+            when {
+                needsPerm -> {
+                    pendingUri = uri
+                    storagePermLauncher.launch(storagePermission())
+                }
+                removable -> Toast.makeText(this,
+                    "Флешку нельзя открыть этим файловым менеджером. Нажмите «QR из файла» " +
+                    "ещё раз и выберите флешку в системном окне — либо скопируйте картинку " +
+                    "во внутреннюю память, либо введите ключ вручную.",
+                    Toast.LENGTH_LONG).show()
+                else -> Toast.makeText(this,
                     "Не удалось открыть файл. Попробуйте выбрать картинку через «Файлы» " +
                     "или введите ключ вручную.",
                     Toast.LENGTH_LONG).show()
