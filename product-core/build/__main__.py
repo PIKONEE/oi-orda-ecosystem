@@ -27,6 +27,9 @@ def main():
     ap.add_argument("--clean", action="store_true", help="Очистить перед сборкой")
     ap.add_argument("--debug", "-d", action="store_true", help="Android debug build")
     ap.add_argument("--no-installer", action="store_true", help="Без Inno Setup")
+    ap.add_argument("--legacy20", action="store_true",
+                    help="Запасная сборка: активация коротким ключом (20 симв.), "
+                         "ключ контента встроен в APK — защита слабее")
     ap.add_argument("--nuitka", action="store_true",
                     help="Защищённый режим: компиляция в машинный код (медленнее)")
     args = ap.parse_args()
@@ -57,7 +60,7 @@ def main():
         print("=" * 60)
         try:
             from .android import build_android
-            apk = build_android(args.product_dir, args.debug)
+            apk = build_android(args.product_dir, args.debug, legacy20=args.legacy20)
             results["android"] = ("✅", str(apk) if apk else "APK не найден")
         except Exception as e:
             results["android"] = ("❌", str(e))

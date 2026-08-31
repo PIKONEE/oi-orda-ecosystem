@@ -72,6 +72,16 @@ def _load_public_key(product_dir: Path):
     return None
 
 
+def _content_key(product_id: int, variant_id: int = 0):
+    """Ключ контента продукта/варианта из ecosystem.keys (None, если ключей нет)."""
+    keystore = CORE_ROOT / "ecosystem.keys"
+    if not keystore.exists():
+        return None
+    from product_core import _protocol as proto
+    ks = json.loads(keystore.read_text(encoding="utf-8"))
+    return proto.derive_content_key(bytes.fromhex(ks["content_master"]), product_id, variant_id)
+
+
 def _encrypt_assets_content(content_dir: Path, product_id: int, variant_id: int = 0):
     """Шифрует assets/content/* ключом контента продукта (variant 0 = как раньше)."""
     keystore = CORE_ROOT / "ecosystem.keys"
@@ -113,8 +123,14 @@ def _filter_content_for_variant(content_dir: Path, variant_slug: str):
             log(f"⚠ data.json не отфильтрован: {e}")
 
 
-def build_android(product_dir: str, debug: bool = False):
-    """Собирает APK продукта. Много-вариантный продукт → список APK, иначе один APK."""
+def build_android(product_dir: str, debug: bool = False, legacy20: bool = False):
+    """Собирает APK продукта. Много-вариантный продукт → список APK, иначе один APK.
+
+    legacy20=True — «запасная» сборка с активацией коротким ключом (20 символов):
+    ключ контента кладётся В APK (обфусцирован XOR-маской), поэтому активация
+    возможна без QR и без длинной лицензии. Защита слабее — контент можно достать
+    из APK, — поэтому такие сборки только как крайний вариант.
+    """
     _ensure_java_home()
 
     product_dir = Path(product_dir).resolve()
@@ -219,6 +235,17 @@ def build_android(product_dir: str, debug: bool = False):
             "flag_secure": cfg.get("security", {}).get("flag_secure", True),
             "skip_activation": skip_act,
         }
+        if legacy20:
+            # Ключ контента в APK для короткого ключа. XOR-маска — чтобы ключ
+            # не лежал в assets открытым текстом (см. MainActivity: ck_mask^ck_data).
+            ck = _content_key(cfg.get("product_id", 0), vid)
+            if ck:
+                mask = os.urandom(32)
+                product_config["ck_mask"] = list(mask)
+                product_config["ck_data"] = [m ^ c for m, c in zip(mask, ck)]
+                log(f"🔓 legacy20 ({vslug}): ключ контента встроен в APK")
+            else:
+                log("⚠ legacy20: нет ecosystem.keys — короткий ключ работать не будет")
         if pub:
             product_config["public_key"] = pub
         else:
@@ -241,7 +268,9 @@ def build_android(product_dir: str, debug: bool = False):
                 if f.suffix == ".apk":
                     apk_src = f
                     break
-        apk_name = f"{slug}-{bt_dir}.apk" if not multi else f"{slug}-{vslug}-{bt_dir}.apk"
+        suffix = "-legacy20" if legacy20 else ""
+        apk_name = (f"{slug}{suffix}-{bt_dir}.apk" if not multi
+                    else f"{slug}-{vslug}{suffix}-{bt_dir}.apk")
         if apk_src and apk_src.exists():
             apk_dst = builds_dir / apk_name
             shutil.copy2(apk_src, apk_dst)
