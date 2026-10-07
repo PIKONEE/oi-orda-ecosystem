@@ -147,11 +147,9 @@ function detailHtml(e){
   const c = catOf(e.cat), era = activeEra(e.year), d = evDetail(e);
   const lead = (d && d.lead) || evDesc(e);
   let html = "";
-  // верхняя панель: «назад» | название карты (чтобы было понятно, что за карта) | категория
+  // верхняя панель
   html += `<div class="d-bar">` +
     `<button class="d-back" id="dBack"><span class="d-ar">‹</span>${esc(t("back"))}</button>` +
-    `<div class="d-brand"><div class="d-brand-t">${esc(t("appTitle"))}</div>` +
-    `<div class="d-brand-s">${esc(t("tagline"))}</div></div>` +
     `<span class="d-bar-cat"><span class="d-dot" style="background:${c.color}"></span>${esc(catName(c))}</span>` +
     `</div>`;
   // центрированная «страница»
