@@ -19,6 +19,14 @@ v4 = асимметричная подпись Ed25519:
             --device <DEVICE_ID> [--months 12] [--note "Школа №5"]
         Выпустить ПОДПИСАННУЮ лицензию для устройства. Печатает строку лицензии.
 
+        Добавьте --qr [файл.png|файл.svg] — рядом со строкой лицензии выведет QR-код
+        (в терминале) и, если указан файл, сохранит картинку для отправки клиенту.
+
+    python -m product_core.keygen qr <LICENSE> [--out файл.png|файл.svg]
+        QR-код для УЖЕ выданной лицензии/ключа. Ключей разработчика не требует —
+        работает где угодно (в т.ч. в облачном чате). Нужен пакет segno:
+        pip install "product-core[qr]"
+
     python -m product_core.keygen verify <LICENSE> --device <DEVICE_ID>
         Проверить лицензию публичным ключом.
 
@@ -112,6 +120,34 @@ def _db():
     return conn
 
 
+def _emit_qr(text: str, out: str | None = None) -> None:
+    """QR с текстом лицензии: в терминал и (если задан out) в файл .png/.svg."""
+    try:
+        import segno
+    except ImportError:
+        print("❌ Для QR нужен пакет segno:  pip install segno   (или pip install \"product-core[qr]\")")
+        sys.exit(1)
+    ext = os.path.splitext(out)[1].lower() if out else ""
+    if out and ext not in (".png", ".svg"):
+        print("❌ Файл QR должен быть .png или .svg"); sys.exit(1)
+    qr = segno.make(text.strip(), error="m")   # байтовый режим, коррекция M
+    print()
+    qr.terminal(compact=True)
+    if out:
+        qr.save(out, scale=8, border=4, dark="#000000", light="#ffffff")
+        print(f"  🖼  QR сохранён: {out}")
+    print()
+
+
+def cmd_qr(args):
+    text = args.license.strip()
+    if not text:
+        print("❌ Пустая лицензия"); sys.exit(1)
+    if proto.decode_license(text) is None:
+        print("  ⚠️  Строка не похожа на лицензию OL1-… — QR всё равно создан.")
+    _emit_qr(text, args.out)
+
+
 def cmd_genlicense(args):
     for name, val, hi in (("product_id", args.product_id, 255),
                           ("variant_id", args.variant_id, 255),
@@ -149,6 +185,8 @@ def cmd_genlicense(args):
     if args.note:
         print(f"  Заметка:     {args.note}")
     print()
+    if args.qr is not None:
+        _emit_qr(license_str, args.qr or None)
 
 
 def cmd_genshort(args):
@@ -181,6 +219,8 @@ def cmd_genshort(args):
     print(f"  Устройство:  {device_id}")
     print(f"  Срок:        {args.months} мес. (с момента активации)")
     print()
+    if args.qr is not None:
+        _emit_qr(key, args.qr or None)
 
 
 def cmd_verify(args):
@@ -236,16 +276,24 @@ def main():
     g.add_argument("--device", required=True, help="Device ID устройства (16 hex)")
     g.add_argument("--months", type=int, default=12)
     g.add_argument("--note", default="")
+    g.add_argument("--qr", nargs="?", const="", default=None, metavar="ФАЙЛ",
+                   help="показать QR лицензии; с ФАЙЛом (.png/.svg) — ещё и сохранить")
 
-    gs = sub.add_parser("genshort", help="Выпустить короткий ключ (20 символов, симметричный)")
+    gs =sub.add_parser("genshort", help="Выпустить короткий ключ (20 символов, симметричный)")
     gs.add_argument("product_id", type=int)
     gs.add_argument("variant_id", type=int)
     gs.add_argument("client_id", type=int)
     gs.add_argument("--device", required=True, help="Device ID устройства (16 hex)")
     gs.add_argument("--months", type=int, default=12)
     gs.add_argument("--note", default="")
+    gs.add_argument("--qr", nargs="?", const="", default=None, metavar="ФАЙЛ",
+                    help="показать QR ключа; с ФАЙЛом (.png/.svg) — ещё и сохранить")
 
-    v = sub.add_parser("verify", help="Проверить лицензию")
+    q = sub.add_parser("qr", help="QR-код для готовой лицензии/ключа (ключи разработчика не нужны)")
+    q.add_argument("license")
+    q.add_argument("--out", default=None, help="сохранить картинку (.png или .svg)")
+
+    v =sub.add_parser("verify", help="Проверить лицензию")
     v.add_argument("license")
     v.add_argument("--device", required=True)
 
@@ -254,7 +302,7 @@ def main():
 
     args = ap.parse_args()
     cmds = {"init": cmd_init, "embed": cmd_embed, "genlicense": cmd_genlicense,
-            "genshort": cmd_genshort, "verify": cmd_verify, "list": cmd_list}
+            "genshort": cmd_genshort, "qr": cmd_qr, "verify": cmd_verify, "list": cmd_list}
     if args.command in cmds:
         cmds[args.command](args)
     else:

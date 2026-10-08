@@ -110,6 +110,10 @@ python -m product_core.keygen genlicense 5 0 42 --device A3F2B1C8E4D71029 --mont
 #                                        │ │  └ client_id
 #                              product_id┘ └ variant_id
 #    → строка OL1-…  (клиент вставляет её на экране активации)
+
+# 8. QR-код лицензии (pip install "product-core[qr]")
+python -m product_core.keygen genlicense 5 0 42 --device A3F2B1C8E4D71029 --qr lic.png
+python -m product_core.keygen qr "OL1-…" --out lic.svg   # для уже выданной лицензии; ключи разработчика не нужны
 ```
 
 ---
