@@ -1,0 +1,29 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "smart-dictionary",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "8765", "--directory", "products/smart-dictionary/content"],
+      "port": 8765
+    },
+    {
+      "name": "interactive-map",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "8766", "--directory", "products/interactive-map/content"],
+      "port": 8766
+    },
+    {
+      "name": "music-encyclopedia",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "8780", "--directory", "products/music-encyclopedia/content"],
+      "port": 8780
+    },
+    {
+      "name": "speech-therapy",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "8781", "--directory", "products/speech-therapy/content"],
+      "port": 8781
+    }
+  ]
+}

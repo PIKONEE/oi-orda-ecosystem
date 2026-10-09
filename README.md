@@ -14,6 +14,7 @@ products/
 
 Каждый продукт = `content/` + `product.json` + `_secret.py` (генерируется keygen, **в репозиторий не входит**).
 Архитектура и правила — в [`product-core/ECOSYSTEM.md`](product-core/ECOSYSTEM.md); по каждому продукту — его `CLAUDE.md`.
+Работа из облачного чата Claude (все проекты, лицензии, QR) — [`CLAUDE.md`](CLAUDE.md).
 
 ## Важно
 Секреты (`ecosystem.keys`, `_secret.py`, `keys.db`, `master.key`, `license.dat`) и сборки
