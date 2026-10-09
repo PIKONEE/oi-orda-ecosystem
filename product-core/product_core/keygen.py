@@ -120,6 +120,23 @@ def _db():
     return conn
 
 
+def _parse_device_id(raw: str) -> str:
+    """Device ID: ровно 16 hex-символов (0-9, A-F), латиница. Иначе — понятная ошибка."""
+    device_id = (raw or "").strip().upper()
+    bad = [c for c in device_id if c not in "0123456789ABCDEF"]
+    if len(device_id) != 16 or bad:
+        if len(device_id) != 16:
+            print(f"❌ Device ID должен быть 16 hex-символов (получено {len(device_id)})")
+        if bad:
+            shown = ", ".join(f"«{c}» (U+{ord(c):04X})" for c in dict.fromkeys(bad))
+            print(f"❌ Недопустимые символы: {shown}. Допустимы только 0-9 и латинские A-F.")
+            if any(ord(c) > 127 for c in bad):
+                print("   Похоже, вставлена кириллица вместо латиницы/цифр (З≠3, В≠B, А≠A, Е≠E, С≠C). "
+                      "Скопируйте ID с экрана активации, не перепечатывая.")
+        sys.exit(1)
+    return device_id
+
+
 def _emit_qr(text: str, out: str | None = None) -> None:
     """QR с текстом лицензии: в терминал и (если задан out) в файл .png/.svg."""
     try:
@@ -156,9 +173,7 @@ def cmd_genlicense(args):
             print(f"❌ {name} должен быть 0–{hi}"); sys.exit(1)
     if not (1 <= args.months <= 65535):
         print("❌ months должен быть 1–65535"); sys.exit(1)
-    device_id = (args.device or "").strip().upper()
-    if len(device_id) != 16:
-        print(f"❌ Device ID должен быть 16 hex-символов (получено {len(device_id)})"); sys.exit(1)
+    device_id = _parse_device_id(args.device)
 
     ks = load_keystore()
     priv = bytes.fromhex(ks["ed25519_priv"])
@@ -196,9 +211,7 @@ def cmd_genshort(args):
         print("❌ client_id должен быть 0–65535"); sys.exit(1)
     if not (1 <= args.months <= 255):
         print("❌ months должен быть 1–255 (для короткого ключа)"); sys.exit(1)
-    device_id = (args.device or "").strip().upper()
-    if len(device_id) != 16:
-        print(f"❌ Device ID должен быть 16 hex-символов (получено {len(device_id)})"); sys.exit(1)
+    device_id = _parse_device_id(args.device)
 
     ks = load_keystore()
     content_key = proto.derive_content_key(bytes.fromhex(ks["content_master"]), args.product_id)
@@ -224,9 +237,7 @@ def cmd_genshort(args):
 
 
 def cmd_verify(args):
-    device_id = (args.device or "").strip().upper()
-    if len(device_id) != 16:
-        print("❌ Нужен корректный --device (16 hex)"); sys.exit(1)
+    device_id = _parse_device_id(args.device)
     ks = load_keystore()
     pub = bytes.fromhex(ks["ed25519_pub"])
     decoded = proto.decode_license(args.license)
